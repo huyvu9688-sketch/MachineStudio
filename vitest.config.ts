@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -7,11 +8,13 @@ export default defineConfig({
       // `server-only` is a marker package whose default entry point throws
       // on import; Next.js only resolves it to a no-op under the
       // "react-server" export condition, which the plain Node test
-      // environment does not set. Aliasing it to the package's own
-      // empty.js lets server-only boundaries (lib/env.ts, lib/db/*) be
-      // imported under test without weakening the marker in application
-      // builds.
-      "server-only": "server-only/empty.js",
+      // environment does not set. Alias it to a local no-op so server-only
+      // boundaries (lib/env.ts, lib/db/*) are importable under test. This
+      // applies to the test runner only — application builds still resolve
+      // the real package, so the marker keeps its meaning.
+      "server-only": fileURLToPath(
+        new URL("./tests/stubs/server-only.ts", import.meta.url),
+      ),
     },
   },
   test: {
