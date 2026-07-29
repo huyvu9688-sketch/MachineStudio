@@ -1,11 +1,18 @@
-// Schema v1 (project hierarchy, graph, runs, catalog, baselines) is a
-// later work unit. This file only establishes the datasource and
-// generator so Prisma is configured for local PostgreSQL development.
-//
 // Prisma 7 removed the `url` property from the datasource block (error
 // P1012). The connection URL now lives in `prisma.config.ts` for the CLI
 // (Migrate/introspection), and the runtime connection is supplied to the
 // PrismaClient constructor through a driver adapter — see lib/db/client.ts.
+//
+// Storage-model rules (context/architecture.md "Storage Model",
+// context/code-standards.md "Database and Migrations"):
+//   - Identity, ownership, revision, lifecycle, and frequently filtered
+//     fields are relational (this file). Module-specific value payloads use
+//     versioned JSONB validated on both write and read (Unit 2.2:
+//     `ParameterValue.value` holds an `EngineeringValue`; runs in 2.3).
+//   - Timestamps are stored in UTC (`@db.Timestamptz`).
+//   - Adding a conforming module must never require a schema change, so
+//     nothing here is module-specific. The graph tables key values and links
+//     by canonical `parameterId` strings, not per-module columns.
 
 datasource db {
   provider = "postgresql"
@@ -14,4 +21,385 @@ datasource db {
 generator client {
   provider = "prisma-client"
   output   = "../lib/db/generated/prisma"
+}
+
+/// A platform user. Identity is owned by Clerk; this table is a local
+/// ownership reference keyed by the Clerk user ID (`id`), not a profile
+/// store (context/architecture.md "Auth and Access": every project has
+/// exactly one owner, enforced on every project-related query/mutation).
+model User {
+  /// Clerk user ID (the external identity), used directly as the primary key.
+  id        String   @id
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  projects MachineProject[]
+
+  @@map("users")
+}
+
+/// A machine engineering project. Owned by exactly one `User`; deleting the
+/// owner cascades to their projects and the whole subtree below.
+model MachineProject {
+  id               String   @id @default(cuid())
+  ownerId          String
+  name             String
+  /// Primary market profile selected at creation, as a `marketProfileKey`
+  /// (e.g. "US-General-Industrial-Machinery@1"). Validated against the
+  /// standards registry at the application-service boundary (Unit 2.4).
+  marketProfileKey String
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
+
+  owner          User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  configurations MachineConfiguration[]
+
+  @@index([ownerId])
+  @@map("machine_projects")
+}
+
+/// A design configuration (variant) of a project. Draft configurations
+/// become immutable baselines in a later unit (Milestone 2, lib/configuration).
+model MachineConfiguration {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  project           MachineProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assemblies        Assembly[]
+  workflowInstances WorkflowInstance[]
+  requirements      Requirement[]
+  designAssumptions DesignAssumption[]
+  loadCases         LoadCase[]
+  parameterValues   ParameterValue[]
+  parameterLinks    ParameterLink[]
+
+  @@index([projectId])
+  @@map("machine_configurations")
+}
+
+/// A node in a configuration's assembly hierarchy. `parentId` is null for a
+/// root assembly; deleting an assembly cascades to its descendants. An
+/// assembly is the scope for the parameter graph (context/architecture.md
+/// "Parameter Graph").
+model Assembly {
+  id              String   @id @default(cuid())
+  configurationId String
+  parentId        String?
+  name            String
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  configuration     MachineConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  parent            Assembly?            @relation("AssemblyHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children          Assembly[]           @relation("AssemblyHierarchy")
+  moduleInstances   ModuleInstance[]
+  requirements      Requirement[]
+  designAssumptions DesignAssumption[]
+  parameterValues   ParameterValue[]
+  sourceOfLinks     ParameterLink[]
+
+  @@index([configurationId])
+  @@index([parentId])
+  @@map("assemblies")
+}
+
+/// An instance of a guided workflow (e.g. `linear-axis@1`) coordinating a
+/// set of module instances within a configuration, without combining their
+/// compute logic (context/architecture.md "lib/workflows/").
+model WorkflowInstance {
+  id              String                 @id @default(cuid())
+  configurationId String
+  /// Stable workflow ID, e.g. "linear-axis".
+  workflowId      String
+  /// Semantic version of the workflow definition, e.g. "1.0.0".
+  workflowVersion String
+  status          WorkflowInstanceStatus @default(draft)
+  createdAt       DateTime               @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime               @updatedAt @db.Timestamptz(6)
+
+  configuration   MachineConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  moduleInstances ModuleInstance[]
+
+  @@index([configurationId])
+  @@map("workflow_instances")
+}
+
+/// A placed instance of a versioned calculation module within an assembly.
+/// The exact released package is pinned by (`modulePackageId`,
+/// `moduleVersion`) so a configuration records which module version it was
+/// built with (context/architecture.md "Module Package Contract"). Detaching
+/// a workflow does not delete its modules (`onDelete: SetNull`).
+model ModuleInstance {
+  id                 String   @id @default(cuid())
+  assemblyId         String
+  workflowInstanceId String?
+  /// Stable module ID from the module manifest, e.g. "example-linear-thrust".
+  modulePackageId    String
+  /// Semantic version of the released module package, e.g. "0.1.0".
+  moduleVersion      String
+  label              String
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @db.Timestamptz(6)
+
+  assembly         Assembly          @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: SetNull)
+  parameterValues  ParameterValue[]
+  targetOfLinks    ParameterLink[]   @relation("ParameterLinkTarget")
+  sourceOfLinks    ParameterLink[]   @relation("ParameterLinkSource")
+  calculationRuns  CalculationRun[]
+
+  @@index([assemblyId])
+  @@index([workflowInstanceId])
+  @@map("module_instances")
+}
+
+/// Lifecycle of a `WorkflowInstance`. A full multi-user review workflow is
+/// deferred (context/roadmap.md "Explicitly Deferred").
+enum WorkflowInstanceStatus {
+  draft
+  active
+  completed
+  abandoned
+}
+
+// --- Unit 2.2: requirements and parameter graph --------------------------
+
+/// Load-case category. Mirrors `LoadCaseCategory` in
+/// lib/engine/parameters (Unit 1.3); kept in lockstep so persisted load
+/// cases and graph nodes speak the same categories the engine validates.
+enum LoadCaseCategory {
+  normal
+  peak
+  holding
+  emergency_stop
+}
+
+/// The role a value node plays in the parameter graph. Mirrors
+/// `GraphNodeKind` in lib/engine/graph (Unit 1.8): every kind provides a
+/// value (a source) except `module_input`, which consumes one (a sink).
+enum ParameterNodeKind {
+  machine_requirement
+  assembly_parameter
+  workflow_parameter
+  module_input
+  module_output
+}
+
+/// How an authored `ParameterValue` was supplied. `default` (the parameter
+/// registry's constant) and `linked` (a `ParameterLink`) are resolution
+/// outcomes, not stored rows, so only the authored sources appear here
+/// (context/architecture.md: "Every input source is manual, linked, default,
+/// or workflow-provided").
+enum ParameterValueSource {
+  manual
+  workflow
+}
+
+/// A machine or assembly requirement (design intent). Machine-level when
+/// `assemblyId` is null; otherwise scoped to an assembly. Verification links
+/// to calculation runs are added with the run schema (Unit 2.3+).
+model Requirement {
+  id              String   @id @default(cuid())
+  configurationId String
+  /// Null for a machine-level requirement; set for an assembly-scoped one.
+  assemblyId      String?
+  /// Short human code, e.g. "REQ-01".
+  code            String
+  statement       String
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  configuration      MachineConfiguration  @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  assembly           Assembly?             @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  acceptanceCriteria AcceptanceCriterion[]
+
+  @@index([configurationId])
+  @@index([assemblyId])
+  @@map("requirements")
+}
+
+/// A testable acceptance criterion belonging to a requirement.
+model AcceptanceCriterion {
+  id            String   @id @default(cuid())
+  requirementId String
+  statement     String
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@index([requirementId])
+  @@map("acceptance_criteria")
+}
+
+/// A recorded design assumption. Machine-level when `assemblyId` is null.
+model DesignAssumption {
+  id              String   @id @default(cuid())
+  configurationId String
+  assemblyId      String?
+  statement       String
+  /// Optional rationale / justification for the assumption.
+  rationale       String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  configuration MachineConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  assembly      Assembly?            @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+
+  @@index([configurationId])
+  @@index([assemblyId])
+  @@map("design_assumptions")
+}
+
+/// A load case (normal, peak, holding, emergency-stop) defined for a
+/// configuration. Per-case parameter magnitudes are `ParameterValue`s tagged
+/// with the matching `loadCase`.
+model LoadCase {
+  id              String           @id @default(cuid())
+  configurationId String
+  category        LoadCaseCategory
+  label           String
+  description     String?
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(6)
+
+  configuration MachineConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+
+  @@index([configurationId])
+  @@map("load_cases")
+}
+
+/// An authored value at a parameter-graph node: a provider value
+/// (machine requirement / assembly parameter / workflow-provided) or a value
+/// entered on a module input port. `value` is a versioned `EngineeringValue`
+/// JSONB payload, validated with the lib/engine/values schemas on write and
+/// read (context/code-standards.md "Validation": never trust JSONB). Nothing
+/// here is module-specific — the node is identified by canonical `parameterId`.
+model ParameterValue {
+  id               String               @id @default(cuid())
+  configurationId  String
+  /// Scope of a provider value (null = machine/configuration root scope).
+  assemblyId       String?
+  /// Set when this value is entered on a module input port.
+  moduleInstanceId String?
+  nodeKind         ParameterNodeKind
+  /// Canonical parameter ID, e.g. "motion.axis.payload_mass".
+  parameterId      String
+  loadCase         LoadCaseCategory?
+  source           ParameterValueSource
+  /// Serialized `EngineeringValue` (Unit 1.1). Validated on write and read.
+  value            Json
+  createdAt        DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime             @updatedAt @db.Timestamptz(6)
+
+  configuration  MachineConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  assembly       Assembly?            @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  moduleInstance ModuleInstance?      @relation(fields: [moduleInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([configurationId])
+  @@index([assemblyId])
+  @@index([moduleInstanceId])
+  @@map("parameter_values")
+}
+
+/// A confirmed parameter link: a value flows from a provider node (source) to
+/// a module input port (target). Links are never created silently (invariant
+/// "No silent binding") and can never form a cycle — the application layer
+/// rejects cycles with lib/engine/graph before persisting (invariant "Acyclic
+/// graph"). A module input takes at most one confirmed source, enforced by the
+/// unique constraint on the target port.
+model ParameterLink {
+  id              String @id @default(cuid())
+  configurationId String
+
+  /// Target: always a module input port.
+  targetModuleInstanceId String
+  targetParameterId      String
+  targetLoadCase         LoadCaseCategory?
+
+  /// Source: a provider node. `sourceModuleInstanceId` is set when the source
+  /// is another module's output port; `sourceAssemblyId` scopes a
+  /// requirement/assembly/workflow provider value (null = machine root).
+  sourceKind             ParameterNodeKind
+  sourceModuleInstanceId String?
+  sourceAssemblyId       String?
+  sourceParameterId      String
+  sourceLoadCase         LoadCaseCategory?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  configuration        MachineConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  targetModuleInstance ModuleInstance       @relation("ParameterLinkTarget", fields: [targetModuleInstanceId], references: [id], onDelete: Cascade)
+  sourceModuleInstance ModuleInstance?      @relation("ParameterLinkSource", fields: [sourceModuleInstanceId], references: [id], onDelete: Cascade)
+  sourceAssembly       Assembly?            @relation(fields: [sourceAssemblyId], references: [id], onDelete: Cascade)
+
+  @@unique([targetModuleInstanceId, targetParameterId, targetLoadCase])
+  @@index([configurationId])
+  @@index([targetModuleInstanceId])
+  @@index([sourceModuleInstanceId])
+  @@map("parameter_links")
+}
+
+// --- Unit 2.3: immutable calculation runs --------------------------------
+
+/// Overall/aggregate check state. Mirrors `CheckStatus` in lib/engine/trace
+/// (Unit 1.5): a warning never masks a fail; an empty check set is
+/// `not_applicable` (context/ui-context.md "Status Model").
+enum CheckStatus {
+  pass
+  fail
+  warning
+  not_applicable
+  invalid_input
+}
+
+/// An immutable calculation-run snapshot (context/architecture.md "Calculation
+/// Reproducibility"). The full resolved input, outputs, trace, checks,
+/// warnings, assumptions, validity, and version pins live in `snapshot`
+/// (versioned JSONB validated on write and read); `status` and `criticalMargin`
+/// are search-critical summaries normalized out of it, and the version columns
+/// are normalized for filtering. Only `stale`/`staleReason` may ever change —
+/// the engineering snapshot is write-once (invariant "Immutable runs";
+/// enforced by a DB trigger added in this unit's migration). A correction is a
+/// new run, never an edit.
+model CalculationRun {
+  id               String @id @default(cuid())
+  moduleInstanceId String
+
+  /// Version pins, normalized from `snapshot.versions` for reproducibility and
+  /// filtering (context/architecture.md: engine/module/registry version fields).
+  engineSdkVersion         String
+  modulePackageId          String
+  moduleVersion            String
+  modulePackageHash        String
+  parameterRegistryVersion String
+
+  /// Search-critical summaries derived from the snapshot's checks.
+  status         CheckStatus
+  /// Smallest dimensionless (safety-factor) check margin, or null when none is
+  /// dimensionless. Authoritative per-check margins (with units) are in `snapshot`.
+  criticalMargin Float?
+
+  /// The only mutable engineering-relevant state: staleness.
+  stale       Boolean @default(false)
+  staleReason String?
+
+  /// Clerk user ID of who ran it (null when unattributed); the run timestamp.
+  createdByUserId String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  /// Full immutable computation snapshot (resolved input + computation + version
+  /// block). Validated with the lib/engine schemas on write and read.
+  snapshot Json
+
+  moduleInstance ModuleInstance @relation(fields: [moduleInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([moduleInstanceId])
+  @@index([stale])
+  @@map("calculation_runs")
 }

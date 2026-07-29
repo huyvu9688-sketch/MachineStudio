@@ -1,13 +1,17 @@
 // lib/db owns the Prisma client and persistence adapters. This is the
-// only library boundary that imports Prisma. Schema v1 (project
-// hierarchy, graph, runs, catalog, baselines) is a later work unit
-// (Milestone 2); prisma/schema.prisma currently declares only the
-// datasource and generator. See context/architecture.md.
+// only library boundary that imports Prisma. Live schema: the project
+// hierarchy (Unit 2.1: User, MachineProject, MachineConfiguration, Assembly,
+// WorkflowInstance, ModuleInstance) and the requirements + parameter graph
+// (Unit 2.2: Requirement, AcceptanceCriterion, DesignAssumption, LoadCase,
+// ParameterValue, ParameterLink) and immutable calculation runs (Unit 2.3:
+// CalculationRun). Catalog (2.6) is a later work unit. See
+// context/architecture.md.
 
 import "server-only";
 import { prisma } from "./client";
 
 export { prisma } from "./client";
+export * from "./repositories";
 
 /** Successful result of {@link checkDatabaseHealth}. */
 export interface DatabaseHealthOk {

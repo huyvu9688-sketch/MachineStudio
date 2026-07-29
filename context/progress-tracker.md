@@ -26,29 +26,177 @@ Update this file after every meaningful implementation change.
   `scripts/`, and the new `lib/modules/` boundary. Unit 1.8 (parameter graph
   core) complete, delivered in the new `lib/engine/graph/` boundary. **Milestone
   1's generic-engine units (1.1–1.8) are now all complete.**
+- Milestone 2 — Persistence and Application Services: started 2026-07-29.
+  **Unit 2.1 (Prisma schema: project hierarchy) complete**, delivered as the
+  first models in `prisma/schema.prisma` (User, MachineProject,
+  MachineConfiguration, Assembly, WorkflowInstance, ModuleInstance), the
+  applied migration `prisma/migrations/…_project_hierarchy`, and the
+  ownership-scoped project-tree repository in `lib/db/repositories/`.
+  **Unit 2.2 (Prisma schema: requirements and graph) complete** (2026-07-29),
+  adding Requirement, AcceptanceCriterion, DesignAssumption, LoadCase,
+  ParameterValue, and ParameterLink, the migration
+  `prisma/migrations/…_requirements_and_graph`, and two new repositories
+  (`requirements-repository.ts`, `graph-repository.ts`) — JSONB validated on
+  write and read, link cycle rejection reusing `lib/engine/graph`, and
+  module-input source resolution. Verified locally against live PostgreSQL:
+  `npm run verify` green, 334/334 tests.
+  **Unit 2.3 (Prisma schema: immutable runs) complete** (2026-07-29), adding
+  the `CalculationRun` model + `CheckStatus` enum, the migration
+  `prisma/migrations/…_immutable_runs` (including a DB immutability-guard
+  trigger), a versioned run-snapshot contract validated on write and read, and
+  `run-repository.ts`. Verified locally: `npm run verify` green, 342/342 tests.
 
 ## Current Goal
 
-- Units 0.4 and 0.5 are both complete and verified (2026-07-29). Milestone 1
-  (generic engineering engine, Units 1.1–1.8) remains functionally complete.
-  `prisma generate` now succeeds in GitHub Actions CI, and the Unit 0.4
-  live-database health check passes there against a real PostgreSQL service
-  container — so Unit 0.4's exit criterion ("Database health check passes")
-  is met. The remaining not-yet-satisfied item on the roadmap's "Definition
-  of Project Ready for First Production Module" is calculation-run
-  persistence (Milestone 2). **Next work unit: Unit 2.1 (Prisma schema for
-  the project hierarchy).**
-- Standing constraint, not a blocker: the primary dev machine still cannot
-  run `prisma generate` (corporate TLS interception of `binaries.prisma.sh`),
-  so `npm run typecheck` and `npm run build` cannot pass *there* — both need
-  the generated client, which is gitignored by design. `npm run lint` and
-  `npm run test` do pass locally (the health check self-skips when the
-  generated client is absent). CI is currently the verification environment
-  for anything touching the database. Milestone 2 is workable this way, but
-  it is friction worth resolving — see Open Questions
+- Milestone 2 in progress. **Unit 2.3 (Prisma schema: immutable runs) is
+  complete and fully verified locally on 2026-07-29** — see the Completed
+  entry. `npm run verify` (lint + typecheck + test + build) is green against a
+  real PostgreSQL database, 342/342 tests. **Next work unit: Unit 2.4
+  (calculation application service — the `executeModuleInstance` use case in the
+  new `lib/application/` boundary: authorize owner, load the pinned module
+  package, resolve+validate inputs via Unit 2.2's `resolveModuleInputs`, execute
+  the pure module via `executeModule`, persist an immutable run via Unit 2.3's
+  `createCalculationRun`, update module status, append an audit event — run
+  persistence + status/audit atomic in one transaction).**
+- IMPORTANT UPDATE (2026-07-29) to the long-standing `prisma generate`
+  constraint: on a fresh clone this session, `prisma generate`, `typecheck`,
+  and `build` **all succeed on a local dev machine** — because the schema uses
+  Prisma 7's Rust-free `prisma-client` generator (`provider = "prisma-client"`),
+  which downloads **no** engine binary from `binaries.prisma.sh`, so the old
+  corporate-TLS block on that host no longer affects generation. A local
+  PostgreSQL was provisioned with `scoop install postgresql` (Docker absent)
+  and the live-DB tests (`health.test.ts`, `project-repository.test.ts`) pass
+  against it. Practical notes for the next session: (a) neither
+  `prisma.config.ts` nor vitest auto-loads `.env`, so pass `DATABASE_URL`
+  **inline** for the Prisma CLI, `npm test`, and `npm run verify` (`next build`
+  does auto-load `.env`); (b) the `machinestudio` role was granted `CREATEDB`
+  so `prisma migrate dev` can create its shadow database. CI remains a valid
+  verification path, but local DB iteration now works too.
 
 ## Completed
 
+- Unit 2.3: Prisma schema for immutable calculation runs + repository
+  (2026-07-29), the third Milestone 2 unit. Added the `CalculationRun` model
+  and a `CheckStatus` enum (mirroring `lib/engine/trace`) to
+  `prisma/schema.prisma`, with migration
+  `prisma/migrations/20260729153159_immutable_runs`. Storage per the
+  implementation map + architecture "Calculation Reproducibility": the **full
+  immutable snapshot** (resolved input + `ModuleComputation` outputs/trace/
+  checks/warnings/assumptions/validity + version pins + attribution) is a
+  versioned JSONB payload validated on **write and read** with a schema
+  composed from the engine's own `ModuleInputSchema`/`ModuleComputationSchema`
+  (`run-snapshot.ts`, `RUN_SNAPSHOT_FORMAT_VERSION = 1`), so the run envelope
+  stays in lockstep with the value/trace/check contracts. Search-critical
+  summaries are **normalized into columns**: `status`
+  (`overallCheckStatus(checks)`) and `criticalMargin` (the smallest
+  *dimensionless* safety-factor margin — heterogeneous physical margins are not
+  comparable, so they are ignored, and the authoritative per-check margins with
+  units stay in the snapshot), plus the engine-SDK/module/hash/registry version
+  columns. **Immutability is enforced two ways** (context/code-standards.md:
+  "service rules and database constraints where practical"): the repository
+  exposes no path to update the snapshot or any engineering column, and the
+  migration installs a `BEFORE UPDATE` trigger `calculation_runs_immutable_guard`
+  that raises unless only `stale`/`staleReason`/`updatedAt` changed — a
+  correction is a new run (invariant "Immutable runs"). `run-repository.ts`
+  (only-Prisma-boundary): `createCalculationRun` (validate snapshot → derive
+  summaries → persist), ownership-scoped `loadCalculationRun` (returns the full
+  validated snapshot so a report renders **without executing the module** — the
+  exit criterion) and `listRunsForModuleInstance` (summaries via Prisma `omit`),
+  and the `markRunStale` stale-state primitive (the only mutation; full
+  transactional propagation is Unit 2.5). Typed `RunRepositoryError`
+  (invalid_input | invalid_snapshot). New `run-types.ts` (branded
+  `CalculationRunId`, `CalculationRunSnapshot`/`RunVersions`/summary+record/
+  create-input contracts); re-exported through `lib/db/repositories/index.ts`.
+  8 new live-DB tests (`run-repository.test.ts`, same `describe.skipIf` guard)
+  cover snapshot round-trip (render without re-execute), **reproduction from
+  the stored input + pinned version** (re-executing `example-scaffold@0.1.0`
+  from the reloaded input matches the stored outputs), summary derivation
+  (status + smallest dimensionless margin), invalid-on-write and
+  corrupt-on-read rejection, the **trigger blocking a snapshot/version update**,
+  stale state changing while the snapshot stays put, and ownership isolation.
+  `npm run verify` green with a live database: lint (0 warnings), typecheck,
+  **342/342 tests**, and build all pass (2026-07-29)
+- Unit 2.2: Prisma schema for requirements and the parameter graph +
+  repositories (2026-07-29), the second Milestone 2 unit. Added six relational
+  models to `prisma/schema.prisma`: `Requirement` (machine-level when
+  `assemblyId` is null, else assembly-scoped) with `AcceptanceCriterion`
+  children, `DesignAssumption`, `LoadCase` (with a `LoadCaseCategory` enum
+  mirroring `lib/engine/parameters`), and the graph pair `ParameterValue` +
+  `ParameterLink`. Storage per the implementation map: identity/ownership/
+  source-type/timestamps are relational; the `EngineeringValue` payload on
+  `ParameterValue.value` is **versioned JSONB validated on both write and
+  read** (reuses the `lib/engine/values` schema — never trust JSONB). Nothing
+  is module-specific — nodes are keyed by canonical `parameterId` strings, so
+  invariant #13 (generic extension) holds; a `ParameterValue.nodeKind` /
+  `ParameterLink.sourceKind` enum mirrors `lib/engine/graph`'s `GraphNodeKind`.
+  Migration `prisma/migrations/20260729150630_requirements_and_graph` created
+  and applied; timestamps `TIMESTAMPTZ` (UTC). Deletion via FK rules: every new
+  table cascades from its configuration (and provider values/links cascade from
+  the assembly or module instance they reference), so deleting a project still
+  cleans up the whole subtree. A unique index on
+  `(targetModuleInstanceId, targetParameterId, targetLoadCase)` enforces one
+  confirmed link per input port. Two new repositories under
+  `lib/db/repositories/` (still the only Prisma-importing boundary):
+  `requirements-repository.ts` (Zod-validated `createRequirement`/
+  `createAcceptanceCriterion`/`createDesignAssumption`/`createLoadCase`;
+  ownership-scoped reads `listRequirements` (with criteria)/
+  `listDesignAssumptions`/`listLoadCases` that filter through
+  configuration→project→owner) and `graph-repository.ts`
+  (`createParameterValue` — JSONB validated on write; `createParameterLink` —
+  rejects duplicate target ports and **cycles** by reconstructing the
+  configuration's link graph and calling `lib/engine/graph`'s
+  `buildParameterGraph`+`wouldCreateCycle`, which adds each module's internal
+  input→output feed edges so cross-module cycles are caught; and
+  `resolveModuleInputs(moduleInstanceId, ownerId, inputPorts)` — the exit
+  criterion, classifying each declared port as manual/workflow/linked/default
+  and re-validating JSONB on read). Typed `RequirementsRepositoryError`
+  (invalid_input) and `GraphRepositoryError` (invalid_input | invalid_snapshot
+  | cycle | duplicate_link). New branded IDs + records/inputs in
+  `requirements-types.ts` and `graph-types.ts`; re-exported through
+  `lib/db/repositories/index.ts`. Exit criterion met: a module instance can
+  resolve manual, default, workflow, and linked input sources. 13 new live-DB
+  tests (`graph-repository.test.ts` ×9, `requirements-repository.test.ts` ×4,
+  same `describe.skipIf` guard as `health.test.ts`) cover JSONB round-trip,
+  invalid-value-on-write and corrupt-payload-on-read rejection, four-source
+  resolution, module-output link resolving to a null value (run supplies it in
+  2.4), self-cycle and cross-module cycle rejection with the acyclic link
+  allowed, duplicate-link rejection, and ownership isolation on the reads.
+  `npm run verify` green with a live database: lint (0 warnings), typecheck,
+  **334/334 tests**, and build all pass (2026-07-29)
+- Unit 2.1: Prisma schema for the project hierarchy + ownership-scoped
+  repository (2026-07-29), the first Milestone 2 unit. Added six relational
+  models to `prisma/schema.prisma`: `User` (a local ownership reference keyed
+  by the Clerk user ID — not a profile store), `MachineProject` (owner FK +
+  `marketProfileKey` chosen at creation), `MachineConfiguration`, `Assembly`
+  (self-referential `parentId` for the assembly hierarchy — the parameter-graph
+  scope), `WorkflowInstance` (`workflowId` + `workflowVersion` + a
+  `WorkflowInstanceStatus` enum), and `ModuleInstance` (pins the released
+  package by `modulePackageId` + `moduleVersion`). Timestamps are `TIMESTAMPTZ`
+  (UTC per code-standards). Deletion behavior is enforced by FK rules:
+  `onDelete: Cascade` down owner→project→configuration→assembly(subtree)→module,
+  and `ModuleInstance.workflowInstance` uses `onDelete: SetNull` so detaching a
+  workflow does not delete its modules. Nothing is module-specific, upholding
+  invariant #13 (generic extension). Migration
+  `prisma/migrations/20260729…_project_hierarchy` created and applied.
+  `lib/db/repositories/` is the new persistence-adapter surface (still the only
+  Prisma-importing boundary): `types.ts` (branded IDs `UserId`/`MachineProjectId`/
+  … with `as*` casts matching lib/engine convention, plus record/tree and
+  create-input contracts) and `project-repository.ts` (Zod-validated create
+  functions `upsertUser`/`createProject`/`createConfiguration`/`createAssembly`/
+  `createWorkflowInstance`/`createModuleInstance`; ownership-scoped
+  `loadProjectTree(projectId, ownerId)` that reassembles the flat assembly rows
+  into a nested forest by `parentId`; `listProjectsByOwner`; and
+  `deleteProject(projectId, ownerId)`). Typed `ProjectRepositoryError`
+  (`invalid_input`) at the validation boundary. Re-exported from
+  `lib/db/index.ts`. Exit criterion met: a project tree is created and loaded
+  through repository interfaces. 7 new live-DB tests
+  (`project-repository.test.ts`, same `describe.skipIf` guard as
+  `health.test.ts`) cover the Unit 2.1 plan — create+load full tree, ownership
+  isolation (another owner loads/lists nothing), non-existent-owner FK
+  rejection, invalid-input rejection, project-delete cascade, parent-assembly
+  self-referential cascade, and workflow-delete SetNull detach. `npm run verify`
+  green with a live database: lint (0 warnings), typecheck, **321/321 tests**,
+  and build all pass (2026-07-29)
 - Competitive landscape and white-space analysis
 - Initial architecture direction selected
 - Context documentation v1 written on 2026-07-27
@@ -509,23 +657,38 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-Units 0.4 and 0.5 are both done and verified (2026-07-29) and drop off this
-list. `prisma generate` now succeeds in CI, so Milestone 2 is unblocked.
-Phase 0 is complete apart from the deliberately deferred Unit 0.1.
+Unit 2.3 is done and verified locally (2026-07-29) and drops off this list.
+`prisma generate`, migrations, and live-DB tests run locally, so Milestone 2
+iteration does not require a CI round trip.
 
-1. Milestone 2 (Prisma persistence + application services, Units 2.1–2.9),
-   starting with Unit 2.1 (Prisma schema: project hierarchy). This is the
-   remaining gap in the roadmap's "Definition of Project Ready for First
-   Production Module" (calculation-run persistence). Unit 2.1's exit
-   criterion ("A project tree can be created and loaded through repository
-   interfaces") needs the generated client and a live database, both of
-   which now work in CI. Note the working constraint: schema and migration
-   work cannot be *run* on the corporate-network dev machine, so either
-   develop it against CI, or resolve the `binaries.prisma.sh` block first
-   (see Open Questions) — the latter is worth doing before Milestone 2 in
-   earnest, because migration work is iterative and a CI round trip per
-   iteration is slow. Milestone 3 (generic UI) and Milestone 4 (modules)
-   follow
+1. **Unit 2.4 (calculation application service)** — next, and the **first unit
+   in the new `lib/application/` boundary**. The `executeModuleInstance` use
+   case: (1) authorize owner; (2) load the pinned module package version from
+   `lib/modules`; (3) resolve+validate inputs — reuse Unit 2.2's
+   `resolveModuleInputs` (pass the module's declared input ports from the
+   package) to gather manual/workflow/linked/default sources, then build the
+   `ModuleInput`; (4) execute the pure module via `executeModule`; (5) persist
+   an immutable run via Unit 2.3's `createCalculationRun` (assemble the
+   `CalculationRunSnapshot` from the resolved input + computation + the
+   package's version pins); (6) update the `ModuleInstance` status; (7) append
+   an audit event. **Transaction rule (implementation map):** run persistence +
+   status/audit updates are atomic — open the transaction at the
+   application-service boundary (`lib/application`), depend on
+   ports/interfaces, and keep the route handlers thin. This is a **new system
+   boundary** (`lib/application`) plus wiring across `lib/db` + `lib/modules` +
+   `lib/audit`; if it exceeds two boundaries in one sitting, split per the
+   ai-workflow-rules (e.g. land the audit-event schema/`lib/audit` primitive
+   first, then the orchestration). Exit criterion: one example module runs end
+   to end through an application service. Then Units 2.5 (stale propagation) →
+   2.9. Milestone 3 (generic UI) and Milestone 4 (modules) follow.
+   - Deferred to the confirm/suggestion flow (NOT Unit 2.2): **semantic link
+     compatibility** (`evaluateLinkCompatibility`). Unit 2.2 persists an
+     already-confirmed link and rejects cycles (a structural rule independent
+     of the registry); compatibility gating — which needs both endpoints to be
+     registered canonical parameters plus the approved-mapping set — lives in
+     the suggest-and-confirm graph service and the link-suggestion UI (Unit
+     3.4), which only offer compatible links to confirm. See Architecture
+     Decisions.
 2. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
    fixtures once the user has real cases to compare against
 3. Downstream parameter groups (screw, guide, coupling, support-bearing,
@@ -682,6 +845,63 @@ Phase 0 is complete apart from the deliberately deferred Unit 0.1.
 
 ## Architecture Decisions
 
+- (2026-07-29, Unit 2.3) Immutable calculation-run persistence model. A run is
+  written once; its engineering payload is a **versioned JSONB snapshot**
+  (`CalculationRunSnapshot`, format version 1) holding the resolved input, the
+  full `ModuleComputation`, the version pins, and attribution — validated on
+  write and read by a schema **composed from the engine's own
+  `ModuleInputSchema`/`ModuleComputationSchema`** so the run envelope never
+  drifts from the value/trace/check contracts. `status` and `criticalMargin`
+  are **denormalized search columns** derived from the snapshot's checks at
+  write time; `criticalMargin` is the smallest *dimensionless* (safety-factor)
+  margin only — mixing units in a min is meaningless, so physical margins are
+  excluded and the authoritative per-check margins stay in the snapshot.
+  **Immutability is enforced in two layers:** (a) the repository exposes no
+  update path for the snapshot or any engineering/summary/version column — only
+  `markRunStale` touches `stale`/`staleReason`; (b) a Postgres `BEFORE UPDATE`
+  trigger (`calculation_runs_immutable_guard`, installed by hand-appending SQL
+  to the `--create-only` migration) raises unless only stale state + updatedAt
+  changed. This is the first use of a **custom-SQL trigger in a migration** in
+  this repo; the pattern (generate with `--create-only`, append the trigger,
+  then apply) is how future immutable tables (baselines, Unit 2.9) should be
+  guarded. Ownership is enforced on the reads (`loadCalculationRun`/
+  `listRunsForModuleInstance` filter moduleInstance→assembly→configuration→
+  project→owner); `createCalculationRun`/`markRunStale` trust the caller (the
+  application service authorizes), matching the Unit 2.1/2.2 pattern. Engine
+  "build hash": only the engine **SDK semantic version** is pinned today; a
+  git/build hash can be added to `RunVersions` when a deploy pipeline provides
+  one (the snapshot schema is versioned, so adding a field is a format bump)
+- (2026-07-29, Unit 2.2) Requirements + parameter-graph persistence model.
+  `ParameterValue` is a generic value node — a provider (machine requirement /
+  assembly parameter / workflow value, scoped by `assemblyId` or the
+  configuration root) or an authored value on a module input port (keyed by
+  `moduleInstanceId`); its `value` is a versioned `EngineeringValue` JSONB
+  payload validated with `lib/engine/values` **on write and on read** (a
+  corrupt stored payload is rejected, not trusted). `ParameterLink` records a
+  confirmed source→(module input) link; a unique index on the target port
+  enforces one confirmed source per input. **Cycle rejection is a persistence
+  rule** here (structural, registry-independent): `createParameterLink`
+  reconstructs the configuration's link graph — the persisted links plus the
+  proposed link's two endpoint nodes (so `buildParameterGraph` can add each
+  module's internal input→output feed edges) — and calls `wouldCreateCycle`
+  before writing. Because a cycle-relevant internal edge always has two
+  link-endpoint ports, reconstructing from `ParameterLink` rows alone (no
+  module-registry lookup) detects cross-module cycles correctly. **Input
+  resolution** (`resolveModuleInputs`) takes the module's declared input ports
+  from the caller (the application layer holds the package) rather than
+  importing `lib/modules`, keeping `lib/db` free of the registry; it classifies
+  each port as manual / workflow / linked / default. A module-output link
+  resolves to a `null` value at this layer — its value comes from that module's
+  run (Unit 2.4). **Deliberately deferred: semantic link compatibility.** The
+  tracker's Next Up flagged reusing `wouldCreateCycle`/compatibility; cycle
+  rejection is done, but `evaluateLinkCompatibility` needs both endpoints to be
+  registered canonical parameters and the approved-mapping set, which is the
+  suggest-and-confirm flow's concern (the UI only offers compatible links) —
+  not the schema unit's. Compatibility gating lives with link suggestion (Unit
+  3.4) and the graph application service. Ownership is enforced on the reads
+  (`listRequirements`/`listDesignAssumptions`/`listLoadCases`/
+  `resolveModuleInputs` filter through configuration→project→owner); creates
+  trust the caller, matching the Unit 2.1 pattern
 - (2026-07-29, Unit 0.4) Database connection model under Prisma 7. The
   connection URL is declared in **two** places by design, both reading the
   same `DATABASE_URL`: `prisma.config.ts` supplies it to the **CLI**
@@ -1077,3 +1297,41 @@ Phase 0 is complete apart from the deliberately deferred Unit 0.1.
   user's explicit instruction this session, no TLS workaround was attempted
   at any point; the dev machine's `binaries.prisma.sh` block stands, and CI
   is the verification environment for database work until IT allowlists it
+- 2026-07-29 (Unit 2.2 session, primary dev machine): on "implement the first
+  Next Up item", implemented Unit 2.2 (Prisma schema: requirements and graph)
+  end to end. Read the full mandatory context set first. Confirmed scope stays
+  within two boundaries of change (`prisma/` + `lib/db/`), reusing the already
+  built pure engine (`lib/engine/graph`, `/values`, `/parameters`) as library
+  dependencies — no split needed, matching the Unit 2.1 precedent. Added the
+  six models + three enums, generated the client, and created/applied the
+  migration against the **local** PostgreSQL (scoop) — `prisma generate`,
+  `migrate dev`, and the live-DB tests all run locally now, with `DATABASE_URL`
+  passed inline (neither `prisma.config.ts` nor vitest auto-loads `.env`; only
+  `next build` does). Two new repositories + two type files + 13 live tests.
+  One iteration during test: `parseValue` initially guessed the error code from
+  whether the payload was `undefined`, which mis-classified an invalid
+  write-path value as `invalid_snapshot`; fixed by passing the intended code
+  (`invalid_input` on write, `invalid_snapshot` on read) explicitly. Deferred
+  semantic link compatibility to the confirm/suggestion flow (Unit 3.4) with a
+  documented rationale — cycle rejection is in, compatibility is not. `npm run
+  verify` green against the live DB (lint 0 warnings, typecheck, 334/334 tests,
+  build). Kept to one unit — did not start Unit 2.3
+- 2026-07-29 (Unit 2.3 session, primary dev machine): on "continue" (the
+  project's established signal to take the next Next Up item), implemented Unit
+  2.3 (Prisma schema: immutable runs) end to end. Scope stayed within two
+  boundaries of change (`prisma/` + `lib/db/`), reusing the engine's
+  module-sdk/trace/units/values schemas as library dependencies — no split.
+  Added `CalculationRun` + `CheckStatus`; created the migration with
+  `--create-only`, **hand-appended a `BEFORE UPDATE` immutability trigger** to
+  the SQL, then applied it (the first custom-SQL migration here). Composed the
+  run-snapshot Zod schema from `ModuleInputSchema`/`ModuleComputationSchema`;
+  derived `status`/`criticalMargin` summary columns (dimensionless margins
+  only). `run-repository.ts` has no snapshot-update path; `markRunStale` is the
+  only mutation. 8 live-DB tests including a real reproduction test
+  (re-executing `example-scaffold` from the stored input matches stored
+  outputs) and a trigger test (a direct snapshot UPDATE is rejected by the DB).
+  As in Unit 2.2, `prisma migrate dev`'s bundled client regen did not refresh
+  the generated TS types for the new model until an explicit `prisma generate`
+  was run — do that after every `migrate dev` on this setup before typecheck.
+  `npm run verify` green against the live DB (lint 0 warnings, typecheck,
+  342/342 tests, build). Kept to one unit — did not start Unit 2.4

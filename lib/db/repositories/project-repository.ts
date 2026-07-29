@@ -1,0 +1,406 @@
+// Project-hierarchy persistence adapter (Unit 2.1).
+//
+// This is a `lib/db` repository — a thin persistence adapter over Prisma,
+// the only boundary allowed to import it (context/architecture.md
+// "lib/db/"). Multi-step business transactions belong in `lib/application`
+// (Unit 2.4+); this module owns single-aggregate reads/writes and the
+// ownership-scoped project-tree load that Unit 2.1's exit criterion names
+// ("A project tree can be created and loaded through repository
+// interfaces").
+//
+// Ownership is enforced here on every read and delete: the caller passes the
+// owning `UserId`, and queries filter by it so one user can never load or
+// delete another user's project (context/architecture.md "Auth and Access";
+// context/code-standards.md "Security").
+
+import "server-only";
+import { z } from "zod";
+import { prisma } from "../client";
+import type {
+  AssemblyNode,
+  AssemblyRecord,
+  ConfigurationNode,
+  CreateAssemblyInput,
+  CreateConfigurationInput,
+  CreateModuleInstanceInput,
+  CreateProjectInput,
+  CreateWorkflowInstanceInput,
+  MachineConfigurationRecord,
+  MachineProjectId,
+  MachineProjectRecord,
+  ModuleInstanceRecord,
+  ProjectTree,
+  UserId,
+  UserRecord,
+  WorkflowInstanceRecord,
+  WorkflowInstanceStatus,
+} from "./types";
+import {
+  asAssemblyId,
+  asMachineConfigurationId,
+  asMachineProjectId,
+  asModuleInstanceId,
+  asUserId,
+  asWorkflowInstanceId,
+} from "./types";
+
+/** Machine-readable classification of a repository failure. */
+export type ProjectRepositoryErrorCode = "invalid_input";
+
+/** Thrown when a repository input fails validation at the persistence boundary. */
+export class ProjectRepositoryError extends Error {
+  readonly code: ProjectRepositoryErrorCode;
+
+  constructor(message: string, code: ProjectRepositoryErrorCode = "invalid_input") {
+    super(message);
+    this.name = "ProjectRepositoryError";
+    this.code = code;
+  }
+}
+
+const nonEmpty = z.string().trim().min(1);
+
+const workflowStatusSchema: z.ZodType<WorkflowInstanceStatus> = z.enum([
+  "draft",
+  "active",
+  "completed",
+  "abandoned",
+]);
+
+const createProjectSchema = z.object({
+  ownerId: nonEmpty,
+  name: nonEmpty,
+  marketProfileKey: nonEmpty,
+});
+const createConfigurationSchema = z.object({
+  projectId: nonEmpty,
+  name: nonEmpty,
+});
+const createAssemblySchema = z.object({
+  configurationId: nonEmpty,
+  parentId: nonEmpty.optional(),
+  name: nonEmpty,
+});
+const createWorkflowInstanceSchema = z.object({
+  configurationId: nonEmpty,
+  workflowId: nonEmpty,
+  workflowVersion: nonEmpty,
+  status: workflowStatusSchema.optional(),
+});
+const createModuleInstanceSchema = z.object({
+  assemblyId: nonEmpty,
+  workflowInstanceId: nonEmpty.optional(),
+  modulePackageId: nonEmpty,
+  moduleVersion: nonEmpty,
+  label: nonEmpty,
+});
+
+function parse<T>(schema: z.ZodType<T>, input: unknown): T {
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    throw new ProjectRepositoryError(
+      `Invalid repository input: ${result.error.issues
+        .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+        .join("; ")}`,
+    );
+  }
+  return result.data;
+}
+
+// --- Row → branded-record mappers ----------------------------------------
+
+interface UserRow {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+interface ProjectRow {
+  id: string;
+  ownerId: string;
+  name: string;
+  marketProfileKey: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+interface ConfigurationRow {
+  id: string;
+  projectId: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+interface AssemblyRow {
+  id: string;
+  configurationId: string;
+  parentId: string | null;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+interface WorkflowInstanceRow {
+  id: string;
+  configurationId: string;
+  workflowId: string;
+  workflowVersion: string;
+  status: WorkflowInstanceStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+interface ModuleInstanceRow {
+  id: string;
+  assemblyId: string;
+  workflowInstanceId: string | null;
+  modulePackageId: string;
+  moduleVersion: string;
+  label: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+function toUserRecord(row: UserRow): UserRecord {
+  return { id: asUserId(row.id), createdAt: row.createdAt, updatedAt: row.updatedAt };
+}
+function toProjectRecord(row: ProjectRow): MachineProjectRecord {
+  return {
+    id: asMachineProjectId(row.id),
+    ownerId: asUserId(row.ownerId),
+    name: row.name,
+    marketProfileKey: row.marketProfileKey,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+function toConfigurationRecord(row: ConfigurationRow): MachineConfigurationRecord {
+  return {
+    id: asMachineConfigurationId(row.id),
+    projectId: asMachineProjectId(row.projectId),
+    name: row.name,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+function toAssemblyRecord(row: AssemblyRow): AssemblyRecord {
+  return {
+    id: asAssemblyId(row.id),
+    configurationId: asMachineConfigurationId(row.configurationId),
+    parentId: row.parentId === null ? null : asAssemblyId(row.parentId),
+    name: row.name,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+function toWorkflowInstanceRecord(row: WorkflowInstanceRow): WorkflowInstanceRecord {
+  return {
+    id: asWorkflowInstanceId(row.id),
+    configurationId: asMachineConfigurationId(row.configurationId),
+    workflowId: row.workflowId,
+    workflowVersion: row.workflowVersion,
+    status: row.status,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+function toModuleInstanceRecord(row: ModuleInstanceRow): ModuleInstanceRecord {
+  return {
+    id: asModuleInstanceId(row.id),
+    assemblyId: asAssemblyId(row.assemblyId),
+    workflowInstanceId:
+      row.workflowInstanceId === null
+        ? null
+        : asWorkflowInstanceId(row.workflowInstanceId),
+    modulePackageId: row.modulePackageId,
+    moduleVersion: row.moduleVersion,
+    label: row.label,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+// --- Creates -------------------------------------------------------------
+
+/** Creates (or, if it already exists, returns) a `User` ownership reference. */
+export async function upsertUser(id: string): Promise<UserRecord> {
+  const userId = parse(nonEmpty, id);
+  const row = await prisma.user.upsert({
+    where: { id: userId },
+    create: { id: userId },
+    update: {},
+  });
+  return toUserRecord(row);
+}
+
+/** Creates a `MachineProject` owned by `input.ownerId`. */
+export async function createProject(
+  input: CreateProjectInput,
+): Promise<MachineProjectRecord> {
+  const data = parse(createProjectSchema, input);
+  const row = await prisma.machineProject.create({ data });
+  return toProjectRecord(row);
+}
+
+/** Creates a `MachineConfiguration` under a project. */
+export async function createConfiguration(
+  input: CreateConfigurationInput,
+): Promise<MachineConfigurationRecord> {
+  const data = parse(createConfigurationSchema, input);
+  const row = await prisma.machineConfiguration.create({ data });
+  return toConfigurationRecord(row);
+}
+
+/** Creates an `Assembly`; omit `parentId` for a root assembly. */
+export async function createAssembly(
+  input: CreateAssemblyInput,
+): Promise<AssemblyRecord> {
+  const data = parse(createAssemblySchema, input);
+  const row = await prisma.assembly.create({
+    data: {
+      configurationId: data.configurationId,
+      name: data.name,
+      parentId: data.parentId ?? null,
+    },
+  });
+  return toAssemblyRecord(row);
+}
+
+/** Creates a `WorkflowInstance` under a configuration. */
+export async function createWorkflowInstance(
+  input: CreateWorkflowInstanceInput,
+): Promise<WorkflowInstanceRecord> {
+  const data = parse(createWorkflowInstanceSchema, input);
+  const row = await prisma.workflowInstance.create({
+    data: {
+      configurationId: data.configurationId,
+      workflowId: data.workflowId,
+      workflowVersion: data.workflowVersion,
+      ...(data.status ? { status: data.status } : {}),
+    },
+  });
+  return toWorkflowInstanceRecord(row);
+}
+
+/** Creates a `ModuleInstance` in an assembly, pinning its package id+version. */
+export async function createModuleInstance(
+  input: CreateModuleInstanceInput,
+): Promise<ModuleInstanceRecord> {
+  const data = parse(createModuleInstanceSchema, input);
+  const row = await prisma.moduleInstance.create({
+    data: {
+      assemblyId: data.assemblyId,
+      modulePackageId: data.modulePackageId,
+      moduleVersion: data.moduleVersion,
+      label: data.label,
+      workflowInstanceId: data.workflowInstanceId ?? null,
+    },
+  });
+  return toModuleInstanceRecord(row);
+}
+
+// --- Reads (ownership-scoped) --------------------------------------------
+
+/** Lists a user's projects (newest first), scoped to the owner. */
+export async function listProjectsByOwner(
+  ownerId: UserId,
+): Promise<MachineProjectRecord[]> {
+  const owner = parse(nonEmpty, ownerId);
+  const rows = await prisma.machineProject.findMany({
+    where: { ownerId: owner },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map(toProjectRecord);
+}
+
+/**
+ * Loads a project and its full configuration/assembly/module/workflow tree,
+ * or `null` if the project does not exist or is not owned by `ownerId`.
+ * The flat assembly rows are assembled into a nested tree by `parentId`.
+ */
+export async function loadProjectTree(
+  projectId: MachineProjectId,
+  ownerId: UserId,
+): Promise<ProjectTree | null> {
+  const id = parse(nonEmpty, projectId);
+  const owner = parse(nonEmpty, ownerId);
+
+  const project = await prisma.machineProject.findFirst({
+    where: { id, ownerId: owner },
+    include: {
+      configurations: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          workflowInstances: { orderBy: { createdAt: "asc" } },
+          assemblies: {
+            orderBy: { createdAt: "asc" },
+            include: { moduleInstances: { orderBy: { createdAt: "asc" } } },
+          },
+        },
+      },
+    },
+  });
+  if (project === null) {
+    return null;
+  }
+
+  const configurations: ConfigurationNode[] = project.configurations.map(
+    (config) => ({
+      ...toConfigurationRecord(config),
+      workflowInstances: config.workflowInstances.map(toWorkflowInstanceRecord),
+      assemblies: buildAssemblyForest(config.assemblies),
+    }),
+  );
+
+  return { ...toProjectRecord(project), configurations };
+}
+
+/** A configuration's assembly row joined with its module instances. */
+type ConfigAssemblyRow = AssemblyRow & {
+  readonly moduleInstances: readonly ModuleInstanceRow[];
+};
+
+/**
+ * Builds the nested root-assembly forest from a configuration's flat assembly
+ * rows. Every row belongs to one configuration, so any `parentId` that is not
+ * itself in the list is treated as a root (defensive; should not occur).
+ */
+function buildAssemblyForest(
+  rows: readonly ConfigAssemblyRow[],
+): AssemblyNode[] {
+  const childrenByParent = new Map<string | null, ConfigAssemblyRow[]>();
+  const ids = new Set(rows.map((r) => r.id));
+  for (const row of rows) {
+    const key = row.parentId !== null && ids.has(row.parentId) ? row.parentId : null;
+    const bucket = childrenByParent.get(key);
+    if (bucket) {
+      bucket.push(row);
+    } else {
+      childrenByParent.set(key, [row]);
+    }
+  }
+
+  const build = (row: ConfigAssemblyRow): AssemblyNode => ({
+    ...toAssemblyRecord(row),
+    moduleInstances: row.moduleInstances.map(toModuleInstanceRecord),
+    children: (childrenByParent.get(row.id) ?? []).map(build),
+  });
+
+  return (childrenByParent.get(null) ?? []).map(build);
+}
+
+// --- Delete (ownership-scoped) -------------------------------------------
+
+/**
+ * Deletes a project owned by `ownerId`, cascading to its configurations,
+ * assemblies (whole subtree), workflow instances, and module instances via
+ * the schema's `onDelete: Cascade` rules. Returns `true` when a row was
+ * deleted, `false` when nothing matched (wrong owner or unknown id).
+ */
+export async function deleteProject(
+  projectId: MachineProjectId,
+  ownerId: UserId,
+): Promise<boolean> {
+  const id = parse(nonEmpty, projectId);
+  const owner = parse(nonEmpty, ownerId);
+  const result = await prisma.machineProject.deleteMany({
+    where: { id, ownerId: owner },
+  });
+  return result.count > 0;
+}
