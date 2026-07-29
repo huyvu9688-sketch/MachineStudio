@@ -8,7 +8,11 @@ Update this file after every meaningful implementation change.
   outstanding)
 - Phase 0B — Repository and Quality Foundations: repository
   initialization completed 2026-07-28, out of the roadmap's normal
-  sequence (see Session Notes)
+  sequence (see Session Notes). Unit 0.4 (database client + health check)
+  finished 2026-07-29 — code-complete and locally lint/test-verified;
+  `npm run typecheck`/`build` and a live-database run are not yet clean
+  anywhere they have actually been attempted (see Open Questions). Unit
+  0.5 (ADR + validation structure) complete 2026-07-29
 - Milestone 1 — Generic Engineering Engine: started 2026-07-28. Units 1.1
   (EngineeringValue contracts), 1.2 (unit registry and conversion engine), and
   1.3 (canonical parameter registry v1) complete. Unit 1.4 (source registry and
@@ -19,20 +23,25 @@ Update this file after every meaningful implementation change.
   registry codegen) complete, delivered across `lib/engine/module-sdk/`,
   `scripts/`, and the new `lib/modules/` boundary. Unit 1.8 (parameter graph
   core) complete, delivered in the new `lib/engine/graph/` boundary. **Milestone
-  1's generic-engine units (1.1–1.8) are now all complete.** Unit 0.4 remains
-  partially open — Prisma client generation is still blocked (see Open Questions)
+  1's generic-engine units (1.1–1.8) are now all complete.**
 
 ## Current Goal
 
-- Milestone 1 (generic engineering engine) is functionally complete: Units
-  1.1–1.8 are done. The remaining not-yet-satisfied item on the roadmap's
-  "Definition of Project Ready for First Production Module" is
-  calculation-run persistence (Milestone 2), which needs the database. Next
-  unblocked, no-DB work: Unit 0.5 (ADR and validation structure). Milestone 2
-  (Prisma schema + persistence + application services) is blocked until
-  `prisma generate` runs on a network without the corporate TLS interception
-  (or an authorized CA-trust change), which also gates finishing Unit 0.4
-  (`lib/db/client.ts`, DB health check) (see Open Questions)
+- Unit 0.5 (ADR and validation structure) and Unit 0.4 (database client and
+  health check code) are both done (2026-07-29). Milestone 1 (generic
+  engineering engine, Units 1.1–1.8) remains functionally complete. The
+  remaining not-yet-satisfied item on the roadmap's "Definition of Project
+  Ready for First Production Module" is calculation-run persistence
+  (Milestone 2), which needs a database Unit 2.1 can actually migrate and
+  query against. `prisma generate` has not yet completed successfully
+  anywhere it has actually been run — not on the original corporate-network
+  dev machine, not in this session's cloud/remote agent sandbox (which
+  turned out to sit behind the *same* interception — see Open Questions),
+  and its first attempt in GitHub Actions CI also failed. Milestone 2 work
+  can start (Unit 2.1: Prisma schema for the project hierarchy), but neither
+  it nor Unit 0.4's live-database exit criterion can be marked verified
+  until a `prisma generate` run — locally or in CI — is confirmed to
+  succeed (see Open Questions)
 
 ## Completed
 
@@ -376,6 +385,81 @@ Update this file after every meaningful implementation change.
   multi-level stale propagation, plus builder-integrity errors and semantic-axis
   (dimension/value-type/bound) rejections. `npm run lint` (0 warnings),
   `typecheck`, `test`, and `build` all pass (2026-07-28)
+- Unit 0.5: ADR and validation structure implemented (2026-07-29).
+  `context/adr/README.md` documents the ADR process (when to write one, the
+  numbering convention, and an immutability rule that mirrors the
+  parameter-deprecation/source-revision immutability pattern already used
+  elsewhere: an accepted ADR is never edited to reflect a reversal — a
+  reversal is a new ADR that supersedes it) plus an index of the five initial
+  records; `context/adr/TEMPLATE.md` is the copy-and-fill template
+  (Context/Decision/Consequences/Notes). Five ADRs formalize decisions
+  **already made** — no new rationale invented, all pulled from
+  `context/architecture.md`, `context/project-overview.md`,
+  `context/roadmap.md`, and this file's own "Architecture Decisions"/
+  "Resolved Product Decisions" entries: ADR-0001 (modular TypeScript
+  monolith for the MVP), ADR-0002 (immutable calculation runs and
+  baselines), ADR-0003 (the versioned `ModulePackage` SDK contract in
+  `lib/engine/module-sdk/`), ADR-0004 (canonical SI storage with flexible
+  engineering display units), ADR-0005 (manufacturer specifications plus
+  lightweight component assignment, explicitly no approval/supplier/
+  inventory workflow in the MVP). `validation/module-validation-template.md`
+  is the Stage-4 validation record template from `ai-workflow-rules.md`'s
+  New Module Workflow: module identity, purpose/validity envelope, a sources
+  table referencing `lib/standards` `SourceRevision` IDs, three published
+  reference examples with explicit tolerances, an independent-method/tool
+  comparison, tolerances-and-deviations summary, unsupported conditions, a
+  test-coverage checklist, a reviewer field, and — verbatim per
+  `ai-workflow-rules.md` — the documented solo-validation
+  reviewer-substitute rule ("When no second engineer is available, the
+  documented independent benchmark comparison serves as the review
+  substitute and is recorded as such"). `validation/source-index.md` is the
+  running index of source revisions used by validated modules, referencing
+  `lib/standards`; it ships with its row format explained and **zero
+  entries**, since no module has completed Stage-4 validation yet —
+  pre-populating it would invent evidence that does not exist. Exit
+  criterion met: the `context/adr/` and `validation/` paths `CLAUDE.md`
+  already referenced now exist and match
+- Unit 0.4: finished the database client and health check (2026-07-29).
+  Added the `postinstall` script (`"prisma generate"`) to `package.json` so
+  the generated client regenerates on every `npm ci`/`npm install` instead
+  of being committed — the standard fix for a gitignored custom-output
+  Prisma client, and it keeps `lib/db` the sole Prisma-importing boundary.
+  Implemented `lib/db/client.ts`: a `server-only`, TSDoc'd singleton
+  `PrismaClient` cached on `globalThis` outside production (the standard
+  Next.js/Prisma hot-reload-safe pattern, so dev-server edits reuse one
+  connection pool instead of exhausting Postgres connections), importing
+  `PrismaClient` from the generated `./generated/prisma/client` output.
+  Implemented `checkDatabaseHealth()` in `lib/db/index.ts`: a typed
+  `SELECT 1` round trip via `$queryRaw`, returning a discriminated
+  `{ ok: true, latencyMs }` / `{ ok: false, error }` result rather than
+  throwing, per the project's discriminated-union result-state convention.
+  Added `lib/db/health.test.ts` — a **live**-database Vitest test that
+  round-trips `checkDatabaseHealth()` against `DATABASE_URL`, gated with
+  `describe.skipIf` so it reports as *skipped* (not silently passed)
+  whenever `lib/db/generated/prisma` does not exist locally — and a
+  `db:health` convenience script. Added a `postgres:16-alpine` service
+  container plus a job-level `DATABASE_URL` to
+  `.github/workflows/ci.yml`, matching `docker-compose.yml`'s local
+  credentials, so `prisma generate` (via postinstall) and the live health
+  check both have a real target database in CI.
+  **Verification, stated plainly per this project's blocker-transparency
+  norm:** `npm run lint` passes clean; `npm run test` passes (313 tests,
+  plus the new health test correctly reported as skipped, not passed,
+  since the generated client does not exist here). `npm run typecheck` and
+  `npm run build` do **not** pass in this session's sandbox — both fail on
+  exactly one line, `lib/db/client.ts`'s
+  `Cannot find module './generated/prisma/client'`, because `prisma
+  generate` itself could not complete (see Open Questions: this sandbox
+  turned out to sit behind the same corporate TLS interception as the
+  original dev machine, confirmed by direct TLS-chain inspection). Pushed
+  to `origin/main` specifically to get a real answer from GitHub's own
+  runners; the first CI run after this push also failed at the `npm ci`
+  step, and the exact failure text could not be retrieved (see Open
+  Questions) — so Unit 0.4's live-database exit criterion ("Database
+  health check passes") is **not yet confirmed anywhere**, only
+  code-complete and reasoned through in isolation (the single missing-module
+  typecheck error, with no other errors, indicates the added code is
+  otherwise consistent; it does not prove the live query path works)
 
 ## In Progress
 
@@ -398,24 +482,24 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-Unblocked engine units are listed first; Unit 0.4 stays blocked on the
-corporate-network Prisma issue (re-confirmed 2026-07-28, see Open Questions).
+Unit 0.5 and Unit 0.4 are both done (2026-07-29) and drop off this list.
+`prisma generate` succeeding end to end — locally or in CI — is now the
+single gate on Milestone 2 and on confirming Unit 0.4's live-database exit
+criterion; it is tracked as one open item, not a separate line per unit.
 
-1. Unit 0.5: install ADR and validation structures (context files already
-   in `context/`; add `context/adr/` with the ADR-0001..0005 records for
-   decisions already made, an ADR template, and `validation/` templates). No
-   network/DB dependency — the last unblocked non-DB unit
-2. Milestone 2 (Prisma persistence + application services, Units 2.1–2.9):
-   BLOCKED on the database. Needs `prisma generate` to run first (corporate TLS
-   interception, see Open Questions). This is the remaining gap in the roadmap's
-   "Definition of Project Ready for First Production Module" (calculation-run
-   persistence). Milestone 3 (generic UI) and Milestone 4 (modules) follow
-3. Finish Unit 0.4 (BLOCKED): unblock `prisma generate` on a different
-   network, or via an authorized CA-trust change, then `lib/db/client.ts`
-   and the database health check
-4. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
+1. Milestone 2 (Prisma persistence + application services, Units 2.1–2.9),
+   starting with Unit 2.1 (Prisma schema: project hierarchy). This is the
+   remaining gap in the roadmap's "Definition of Project Ready for First
+   Production Module" (calculation-run persistence). Before or while
+   building schema v1, resolve why `prisma generate` has not yet completed
+   successfully anywhere it has been attempted (see Open Questions) — Unit
+   2.1's exit criterion ("A project tree can be created and loaded through
+   repository interfaces") needs the same generated client and live
+   database Unit 0.4 does. Milestone 3 (generic UI) and Milestone 4
+   (modules) follow
+2. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
    fixtures once the user has real cases to compare against
-5. Downstream parameter groups (screw, guide, coupling, support-bearing,
+3. Downstream parameter groups (screw, guide, coupling, support-bearing,
    drive-train): NOT released in registry v1 — approved pending proposals to
    be released per module at its Stage-2 parameter contract (bumping the
    registry version). See `lib/engine/parameters/README.md` and Open Questions
@@ -489,7 +573,11 @@ corporate-network Prisma issue (re-confirmed 2026-07-28, see Open Questions).
   `binaries.prisma.sh`; `registry.npmjs.org` and Google Fonts work).
   Whoever next runs `npx shadcn add <component>` or `prisma
   generate`/`migrate` needs network access to those hosts, or the
-  corporate proxy needs to allowlist them
+  corporate proxy needs to allowlist them. STILL STANDING (2026-07-29):
+  this is a separate, unresolved constraint for anyone running these
+  commands directly on that machine — it is not fixed by anything done
+  this session (see the Unit 0.4 session note immediately below for what
+  *was* actually tested)
 - shadcn/ui was configured by hand (Radix + "new-york" style) instead of
   via `npx shadcn init`, since that command's live init endpoint was
   unreachable; confirm the style/base choice once the CLI is reachable,
@@ -517,7 +605,48 @@ corporate-network Prisma issue (re-confirmed 2026-07-28, see Open Questions).
   chose option (d): defer Unit 0.4 and proceed with Unit 1.1. Option (c)
   (`NODE_EXTRA_CA_CERTS` → the OS-trusted corporate root CA, Prisma CLI
   only) remains the narrowest way to unblock in-place and needs explicit
-  user authorization before use
+  user authorization before use.
+  2026-07-29 (Unit 0.4 finish session — new finding, changes the picture):
+  this session ran in a cloud/remote agent sandbox explicitly intended as
+  option (a) — "a network without that interception." `prisma generate`
+  still failed there with the identical error. Direct TLS-chain inspection
+  (`socket.getPeerCertificate(true)` walking the issuer chain) proved why:
+  the certificate presented for `binaries.prisma.sh` in *this sandbox* is
+  issued by `ashleytrust.ashleyfurniture.com`, itself issued by the
+  self-signed **"Ashley Furniture Industries Root Certificate Authority"**
+  — the same interception, not a coincidence. This sandbox is evidently not
+  network-isolated from the corporate proxy the way option (a) assumed. No
+  bypass was attempted (no `NODE_TLS_REJECT_UNAUTHORIZED`, no CA-trust
+  change) — that remains option (c), unchanged, still requiring explicit
+  authorization. Curl-level connectivity to `binaries.prisma.sh` and
+  `registry.npmjs.org`/`github.com` is fine from this sandbox; only Node's
+  own TLS trust store (which does not include the intercepting CA the way
+  the OS certificate store does) rejects the chain — consistent with
+  Windows tools (schannel) trusting it silently while Node does not.
+  Given that, the `postinstall` script plus a `postgres` service container
+  were wired into `.github/workflows/ci.yml` (a genuinely different,
+  GitHub-hosted network) as the real test of option (a), and the
+  Unit 0.4/0.5 commits were pushed to `origin/main` specifically to get a
+  clean answer from there. Result: **inconclusive so far** — the first CI
+  run (`workflow run 30415067428`, commit `4734637`) failed at the "Install
+  dependencies" step (`npm ci`, which now runs `prisma generate` via
+  postinstall), but this session could not retrieve the exact log text:
+  the REST log-download endpoint returned `403 Must have admin rights to
+  Repository`, and the web log viewer required signing in — neither is
+  available without credentials this sandbox does not have, and it was
+  correctly refused when it tried to inspect local git credential
+  configuration to work around that. It is therefore unknown whether the
+  CI failure is (i) the same TLS interception somehow reaching GitHub's
+  runners, (ii) an unrelated transient failure, or (iii) a real
+  configuration bug in `prisma.config.ts`/the new `postinstall` wiring —
+  the CI job for the **initial** commit (before this session's changes)
+  passed cleanly, which at least rules out the service-container syntax
+  and confirms GitHub Actions itself was healthy before this change.
+  Whoever picks this up next with an authenticated GitHub session (or
+  `gh` CLI access) should open
+  <https://github.com/huyvu9688-sketch/MachineStudio/actions/runs/30415067428>
+  (and any newer run on `main`) and read the actual "Install dependencies"
+  step output before assuming which of (i)/(ii)/(iii) it is
 
 ## Resolved Product Decisions
 
@@ -542,6 +671,13 @@ corporate-network Prisma issue (re-confirmed 2026-07-28, see Open Questions).
 
 ## Architecture Decisions
 
+- (2026-07-29, Unit 0.5) The five decisions immediately below (modular
+  monolith, immutable runs, module package contract, canonical SI storage,
+  manufacturer specs plus lightweight assignment) are now formalized as
+  ADR-0001 through ADR-0005 in `context/adr/`, with the reasoning traced
+  back to the specification sections that motivated each one. This list
+  entry is not replaced by the ADRs — it stays as the running index this
+  file already provides
 - Modular TypeScript monolith for the MVP
 - Generic engine separated from versioned module packages
 - Guided workflows coordinate modules without combining formulas
@@ -841,3 +977,45 @@ corporate-network Prisma issue (re-confirmed 2026-07-28, see Open Questions).
   This completes Milestone 1's generic engine (Units 1.1–1.8). `npm run lint`
   (0 warnings), `typecheck`, `test`, and `build` all pass. Kept to one unit — did
   not start the next (Unit 0.5 / Milestone 2)
+- 2026-07-29 (Unit 0.5 + Unit 0.4-finish session, run from a cloud/remote
+  agent sandbox on an explicit, detailed brief covering both units): read
+  the full mandatory context set first (`CLAUDE.md` through
+  `progress-tracker.md`, plus `us-market-profile.md`/`jp-market-profile.md`/
+  `ui-context.md`). **Unit 0.5** delivered end to end and committed alone
+  (`feat(0.5): add ADR and validation structure`): `context/adr/`
+  (README + process, template, ADR-0001..0005 pulling rationale only from
+  already-recorded decisions in `architecture.md`/`project-overview.md`/
+  `roadmap.md`/this file — no invented rationale) and `validation/`
+  (`module-validation-template.md` with the solo reviewer-substitute rule
+  quoted verbatim from `ai-workflow-rules.md`; `source-index.md` with its
+  format explained and deliberately zero entries). **Unit 0.4** delivered
+  next and committed separately (`feat(0.4): finish database client and
+  health check`): `postinstall` script, `lib/db/client.ts`
+  (server-only singleton `PrismaClient`), `checkDatabaseHealth()` in
+  `lib/db/index.ts`, and `lib/db/health.test.ts` (a live-DB test that
+  reports *skipped*, not passed, when the generated client is absent — an
+  explicit design choice so `npm run test` never fakes a pass it can't
+  back up). The brief's premise — that this sandbox would be a network
+  without the corporate TLS interception — did not hold: `prisma generate`
+  failed here too, and inspecting the TLS chain directly showed the
+  intercepting certificate is issued by the same
+  `Ashley Furniture Industries Root Certificate Authority` documented for
+  the original dev machine. No bypass was attempted (no
+  `NODE_TLS_REJECT_UNAUTHORIZED`, no CA-trust change), matching the brief's
+  explicit instruction to stop and report rather than route around it; an
+  attempt to inspect local git credential configuration (to see whether a
+  reusable token existed for querying CI logs) was correctly blocked by
+  the environment's own permission classifier and was not pursued further.
+  Locally verified: `npm run lint` clean, `npm run test` green (313 passed,
+  1 skipped). Not locally verified: `npm run typecheck`/`npm run build`
+  (both fail on the single expected `Cannot find module
+  './generated/prisma/client'` line). Added a `postgres` service container
+  to `.github/workflows/ci.yml` and pushed both commits to `origin/main` to
+  get a real answer from GitHub's runners; the first resulting CI run
+  failed at "Install dependencies," but the exact log text was not
+  retrievable without an authenticated GitHub session (REST log download:
+  `403 Must have admin rights`; web viewer: sign-in required) — logged as a
+  new, unresolved open item rather than guessed at. `context/
+  progress-tracker.md` updated in a third commit reflecting all of the
+  above, including correcting the brief's assumption that the
+  corporate-network block was resolved for this remote path — it was not
