@@ -9,10 +9,12 @@ Update this file after every meaningful implementation change.
 - Phase 0B — Repository and Quality Foundations: repository
   initialization completed 2026-07-28, out of the roadmap's normal
   sequence (see Session Notes). Unit 0.4 (database client + health check)
-  finished 2026-07-29 — code-complete and locally lint/test-verified;
-  `npm run typecheck`/`build` and a live-database run are not yet clean
-  anywhere they have actually been attempted (see Open Questions). Unit
-  0.5 (ADR + validation structure) complete 2026-07-29
+  finished and **fully verified in GitHub Actions CI on 2026-07-29** —
+  `prisma generate`, lint, typecheck, test, and build all green, with the
+  live-database health check executing against a real PostgreSQL service
+  container (not skipped). Unit 0.5 (ADR + validation structure) complete
+  2026-07-29. **Phase 0B is complete** except Unit 0.1 (evidence fixtures),
+  which is deliberately deferred
 - Milestone 1 — Generic Engineering Engine: started 2026-07-28. Units 1.1
   (EngineeringValue contracts), 1.2 (unit registry and conversion engine), and
   1.3 (canonical parameter registry v1) complete. Unit 1.4 (source registry and
@@ -27,21 +29,23 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
-- Unit 0.5 (ADR and validation structure) and Unit 0.4 (database client and
-  health check code) are both done (2026-07-29). Milestone 1 (generic
-  engineering engine, Units 1.1–1.8) remains functionally complete. The
-  remaining not-yet-satisfied item on the roadmap's "Definition of Project
-  Ready for First Production Module" is calculation-run persistence
-  (Milestone 2), which needs a database Unit 2.1 can actually migrate and
-  query against. `prisma generate` has not yet completed successfully
-  anywhere it has actually been run — not on the original corporate-network
-  dev machine, not in this session's cloud/remote agent sandbox (which
-  turned out to sit behind the *same* interception — see Open Questions),
-  and its first attempt in GitHub Actions CI also failed. Milestone 2 work
-  can start (Unit 2.1: Prisma schema for the project hierarchy), but neither
-  it nor Unit 0.4's live-database exit criterion can be marked verified
-  until a `prisma generate` run — locally or in CI — is confirmed to
-  succeed (see Open Questions)
+- Units 0.4 and 0.5 are both complete and verified (2026-07-29). Milestone 1
+  (generic engineering engine, Units 1.1–1.8) remains functionally complete.
+  `prisma generate` now succeeds in GitHub Actions CI, and the Unit 0.4
+  live-database health check passes there against a real PostgreSQL service
+  container — so Unit 0.4's exit criterion ("Database health check passes")
+  is met. The remaining not-yet-satisfied item on the roadmap's "Definition
+  of Project Ready for First Production Module" is calculation-run
+  persistence (Milestone 2). **Next work unit: Unit 2.1 (Prisma schema for
+  the project hierarchy).**
+- Standing constraint, not a blocker: the primary dev machine still cannot
+  run `prisma generate` (corporate TLS interception of `binaries.prisma.sh`),
+  so `npm run typecheck` and `npm run build` cannot pass *there* — both need
+  the generated client, which is gitignored by design. `npm run lint` and
+  `npm run test` do pass locally (the health check self-skips when the
+  generated client is absent). CI is currently the verification environment
+  for anything touching the database. Milestone 2 is workable this way, but
+  it is friction worth resolving — see Open Questions
 
 ## Completed
 
@@ -442,24 +446,47 @@ Update this file after every meaningful implementation change.
   `.github/workflows/ci.yml`, matching `docker-compose.yml`'s local
   credentials, so `prisma generate` (via postinstall) and the live health
   check both have a real target database in CI.
+- Unit 0.4 completion — Prisma 7 configuration corrected and verified
+  (2026-07-29). The first three CI runs all failed. Root cause, read from
+  the Actions logs: `prisma generate` aborted with **P1012, "The datasource
+  property `url` is no longer supported in schema files."** Prisma 7 removed
+  `url` from the datasource block. `prisma/schema.prisma` had been
+  hand-authored back when `prisma generate` could not run anywhere, so it
+  had **never actually been executed** — CI was the first environment to run
+  it, and it failed immediately. Fixes:
+  - `prisma/schema.prisma`: dropped `url` from the datasource block. Prisma 7
+    takes the CLI connection URL from `prisma.config.ts` (already present)
+    and the *runtime* connection from a driver adapter.
+  - `lib/db/client.ts`: connects through **`@prisma/adapter-pg`** (added with
+    `pg`; `@types/pg` as a dev dependency), constructed from the
+    `DATABASE_URL` that `lib/env.ts` already validates with Zod, so the
+    single validated env boundary still owns the value.
+  - `vitest.config.ts`: aliased `server-only` to a local no-op stub
+    (`tests/stubs/server-only.ts`). The real package's entry point *throws*
+    by design, and Next.js only neutralizes it under the `react-server`
+    export condition, which the Node test environment does not set — so
+    `health.test.ts` would have failed the moment generation started
+    working. The alias is test-runner-only; application builds still resolve
+    the real package, so the marker keeps its meaning. (Aliasing to the
+    package's own `empty.js` does **not** work — its `exports` field
+    declares only `.`, so that subpath is not importable.)
+  - `vitest.config.ts`: made `exclude` use globs. A bare `"node_modules"`
+    does not match nested paths, so a nested `node_modules` had its
+    third-party tests collected and run as if they were ours — 2527 tests
+    and an 84 s run instead of 314 tests in ~1 s.
   **Verification, stated plainly per this project's blocker-transparency
-  norm:** `npm run lint` passes clean; `npm run test` passes (313 tests,
-  plus the new health test correctly reported as skipped, not passed,
-  since the generated client does not exist here). `npm run typecheck` and
-  `npm run build` do **not** pass in this session's sandbox — both fail on
-  exactly one line, `lib/db/client.ts`'s
-  `Cannot find module './generated/prisma/client'`, because `prisma
-  generate` itself could not complete (see Open Questions: this sandbox
-  turned out to sit behind the same corporate TLS interception as the
-  original dev machine, confirmed by direct TLS-chain inspection). Pushed
-  to `origin/main` specifically to get a real answer from GitHub's own
-  runners; the first CI run after this push also failed at the `npm ci`
-  step, and the exact failure text could not be retrieved (see Open
-  Questions) — so Unit 0.4's live-database exit criterion ("Database
-  health check passes") is **not yet confirmed anywhere**, only
-  code-complete and reasoned through in isolation (the single missing-module
-  typecheck error, with no other errors, indicates the added code is
-  otherwise consistent; it does not prove the live query path works)
+  norm.** Verified green in GitHub Actions CI (commit `2fd597e`): `npm ci`,
+  `prisma generate`, lint, typecheck, test, and build all pass, and
+  `lib/db/health.test.ts` **executed rather than skipped** (`1 test`, 315 ms
+  — a real round trip to the `postgres:16-alpine` service container),
+  314/314 tests passing. Unit 0.4's exit criterion "Database health check
+  passes" is therefore met against a real PostgreSQL instance. Verified
+  locally on the corporate-network dev machine: lint clean, with 313 tests
+  passing and 1 correctly skipped. `npm run typecheck`/`build` still fail
+  **there** on exactly one line — `lib/db/client.ts`'s `Cannot find module
+  './generated/prisma/client'` — because `prisma generate` remains blocked
+  on that network. That is an environment limitation, not an unverified
+  code path: CI runs both cleanly
 
 ## In Progress
 
@@ -482,21 +509,23 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-Unit 0.5 and Unit 0.4 are both done (2026-07-29) and drop off this list.
-`prisma generate` succeeding end to end — locally or in CI — is now the
-single gate on Milestone 2 and on confirming Unit 0.4's live-database exit
-criterion; it is tracked as one open item, not a separate line per unit.
+Units 0.4 and 0.5 are both done and verified (2026-07-29) and drop off this
+list. `prisma generate` now succeeds in CI, so Milestone 2 is unblocked.
+Phase 0 is complete apart from the deliberately deferred Unit 0.1.
 
 1. Milestone 2 (Prisma persistence + application services, Units 2.1–2.9),
    starting with Unit 2.1 (Prisma schema: project hierarchy). This is the
    remaining gap in the roadmap's "Definition of Project Ready for First
-   Production Module" (calculation-run persistence). Before or while
-   building schema v1, resolve why `prisma generate` has not yet completed
-   successfully anywhere it has been attempted (see Open Questions) — Unit
-   2.1's exit criterion ("A project tree can be created and loaded through
-   repository interfaces") needs the same generated client and live
-   database Unit 0.4 does. Milestone 3 (generic UI) and Milestone 4
-   (modules) follow
+   Production Module" (calculation-run persistence). Unit 2.1's exit
+   criterion ("A project tree can be created and loaded through repository
+   interfaces") needs the generated client and a live database, both of
+   which now work in CI. Note the working constraint: schema and migration
+   work cannot be *run* on the corporate-network dev machine, so either
+   develop it against CI, or resolve the `binaries.prisma.sh` block first
+   (see Open Questions) — the latter is worth doing before Milestone 2 in
+   earnest, because migration work is iterative and a CI round trip per
+   iteration is slow. Milestone 3 (generic UI) and Milestone 4 (modules)
+   follow
 2. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
    fixtures once the user has real cases to compare against
 3. Downstream parameter groups (screw, guide, coupling, support-bearing,
@@ -586,67 +615,49 @@ criterion; it is tracked as one open item, not a separate line per unit.
   committed project `.npmrc`, because the machine's configured mirror
   (`registry.npmmirror.com`) blocked a large binary download outright
   (a DLP "File Transfer Blocked" response, not a transient failure)
-- No `prisma generate`/`migrate` has been run against a real database
-  yet; `lib/db/generated/prisma` does not exist until that happens. This
-  now blocks finishing Unit 0.4 (`lib/db/client.ts`, database health
-  check). Confirmed the CLI fails on the schema-engine binary download
-  regardless of subcommand (`init`, `generate`), always the same
-  corporate TLS interception. Options for whoever picks this up: (a) run
-  `prisma generate` from a network without that interception and commit
-  the result, (b) ask IT to allowlist `binaries.prisma.sh`, (c)
-  explicitly authorize extending Node's CA trust on this machine to the
+- RESOLVED (2026-07-29) — `prisma generate` now succeeds, and Unit 0.4's
+  live-database health check passes, **in GitHub Actions CI**. The long
+  investigation below is kept because its conclusion changed twice; the
+  short version: the failure was never only about the network. Timeline:
+  (1) the corporate-network dev machine could not run `prisma generate`
+  (`binaries.prisma.sh` → "self-signed certificate in certificate chain");
+  (2) a cloud/remote agent sandbox, used specifically as option (a) "a
+  network without that interception," failed **identically** — direct
+  TLS-chain inspection showed the certificate presented there was issued by
+  the same self-signed corporate root CA, so that sandbox was not actually
+  network-isolated from the corporate proxy; (3) CI on GitHub-hosted runners
+  reached `binaries.prisma.sh` fine — and then failed anyway, on a **real
+  configuration bug that the network block had been hiding all along**:
+  Prisma 7 error **P1012, "The datasource property `url` is no longer
+  supported in schema files."** `prisma/schema.prisma` was hand-authored at
+  a time when `prisma generate` could not be run to check it, so it had
+  never once been executed. Fixed by dropping `url` from the datasource
+  block and connecting at runtime through the `@prisma/adapter-pg` driver
+  adapter (see the Unit 0.4 completion entry under Completed). Lesson worth
+  keeping: an environment block that prevents a tool from *ever* running
+  also prevents its configuration from ever being validated — the two
+  failures looked like one.
+- STILL STANDING (2026-07-29): the primary dev machine's corporate TLS
+  interception of `binaries.prisma.sh` is **not** resolved. `prisma
+  generate`/`migrate` still cannot run there, and because the generated
+  client is gitignored by design, `npm run typecheck` and `npm run build`
+  cannot pass on that machine either (both fail on the single import in
+  `lib/db/client.ts`). `npm run lint` and `npm run test` do pass locally;
+  the health test self-skips rather than false-passing. `npm ci` also now
+  fails there at the `postinstall` hook — use `npm ci --ignore-scripts`
+  locally, which is what CI does. Remaining options, unchanged and none
+  taken unilaterally: (a) run Prisma commands from a genuinely
+  unintercepted network — note that a cloud sandbox is **not** automatically
+  one, as proven above; (b) ask IT to allowlist `binaries.prisma.sh` — now
+  the clearly preferred fix, since Milestone 2 is migration-heavy and
+  iterative; (c) explicitly authorize `NODE_EXTRA_CA_CERTS` pointing at the
   already-OS-trusted corporate root CA for Prisma CLI invocations only
-  (narrower than disabling TLS verification, but still a security-review
-  decision — not done unilaterally), or (d) leave Unit 0.4 partially
-  open and continue with Unit 0.5 / Milestone 1 units that don't need
-  Prisma client generation. RE-CONFIRMED 2026-07-28: reran `prisma
-  generate`, same failure (`binaries.prisma.sh` .../schema-engine.exe.gz
-  → "self-signed certificate in certificate chain"). User was asked and
-  chose option (d): defer Unit 0.4 and proceed with Unit 1.1. Option (c)
-  (`NODE_EXTRA_CA_CERTS` → the OS-trusted corporate root CA, Prisma CLI
-  only) remains the narrowest way to unblock in-place and needs explicit
-  user authorization before use.
-  2026-07-29 (Unit 0.4 finish session — new finding, changes the picture):
-  this session ran in a cloud/remote agent sandbox explicitly intended as
-  option (a) — "a network without that interception." `prisma generate`
-  still failed there with the identical error. Direct TLS-chain inspection
-  (`socket.getPeerCertificate(true)` walking the issuer chain) proved why:
-  the certificate presented for `binaries.prisma.sh` in *this sandbox* is
-  issued by `ashleytrust.ashleyfurniture.com`, itself issued by the
-  self-signed **"Ashley Furniture Industries Root Certificate Authority"**
-  — the same interception, not a coincidence. This sandbox is evidently not
-  network-isolated from the corporate proxy the way option (a) assumed. No
-  bypass was attempted (no `NODE_TLS_REJECT_UNAUTHORIZED`, no CA-trust
-  change) — that remains option (c), unchanged, still requiring explicit
-  authorization. Curl-level connectivity to `binaries.prisma.sh` and
-  `registry.npmjs.org`/`github.com` is fine from this sandbox; only Node's
-  own TLS trust store (which does not include the intercepting CA the way
-  the OS certificate store does) rejects the chain — consistent with
-  Windows tools (schannel) trusting it silently while Node does not.
-  Given that, the `postinstall` script plus a `postgres` service container
-  were wired into `.github/workflows/ci.yml` (a genuinely different,
-  GitHub-hosted network) as the real test of option (a), and the
-  Unit 0.4/0.5 commits were pushed to `origin/main` specifically to get a
-  clean answer from there. Result: **inconclusive so far** — the first CI
-  run (`workflow run 30415067428`, commit `4734637`) failed at the "Install
-  dependencies" step (`npm ci`, which now runs `prisma generate` via
-  postinstall), but this session could not retrieve the exact log text:
-  the REST log-download endpoint returned `403 Must have admin rights to
-  Repository`, and the web log viewer required signing in — neither is
-  available without credentials this sandbox does not have, and it was
-  correctly refused when it tried to inspect local git credential
-  configuration to work around that. It is therefore unknown whether the
-  CI failure is (i) the same TLS interception somehow reaching GitHub's
-  runners, (ii) an unrelated transient failure, or (iii) a real
-  configuration bug in `prisma.config.ts`/the new `postinstall` wiring —
-  the CI job for the **initial** commit (before this session's changes)
-  passed cleanly, which at least rules out the service-container syntax
-  and confirms GitHub Actions itself was healthy before this change.
-  Whoever picks this up next with an authenticated GitHub session (or
-  `gh` CLI access) should open
-  <https://github.com/huyvu9688-sketch/MachineStudio/actions/runs/30415067428>
-  (and any newer run on `main`) and read the actual "Install dependencies"
-  step output before assuming which of (i)/(ii)/(iii) it is
+  (narrower than disabling TLS verification, still a security-review
+  decision); or (d) treat CI as the verification environment for all
+  database work and accept a CI round trip per iteration. The user directed
+  on 2026-07-29 not to attempt any TLS workaround; no bypass has been
+  attempted in any session (no `NODE_TLS_REJECT_UNAUTHORIZED`, no CA-trust
+  change).
 
 ## Resolved Product Decisions
 
@@ -671,6 +682,20 @@ criterion; it is tracked as one open item, not a separate line per unit.
 
 ## Architecture Decisions
 
+- (2026-07-29, Unit 0.4) Database connection model under Prisma 7. The
+  connection URL is declared in **two** places by design, both reading the
+  same `DATABASE_URL`: `prisma.config.ts` supplies it to the **CLI**
+  (Migrate, introspection), and `lib/db/client.ts` supplies it to the
+  **runtime** client through the `@prisma/adapter-pg` driver adapter.
+  `prisma/schema.prisma` declares no `url` at all — Prisma 7 rejects it
+  (P1012). The runtime value comes from `lib/env.ts`'s Zod-validated `env`,
+  so the validated environment boundary still owns it and an unset or
+  malformed URL fails at the same place as every other env var. `lib/db`
+  remains the only Prisma-importing boundary; the generated client stays
+  gitignored at `lib/db/generated/prisma` and is produced by the
+  `postinstall` hook, so no generated artifact is committed. Consequence to
+  keep in mind: any environment that cannot run `prisma generate` cannot
+  typecheck or build the project at all
 - (2026-07-29, Unit 0.5) The five decisions immediately below (modular
   monolith, immutable runs, module package contract, canonical SI storage,
   manufacturer specs plus lightweight assignment) are now formalized as
@@ -1019,3 +1044,36 @@ criterion; it is tracked as one open item, not a separate line per unit.
   progress-tracker.md` updated in a third commit reflecting all of the
   above, including correcting the brief's assumption that the
   corporate-network block was resolved for this remote path — it was not
+- 2026-07-29 (Unit 0.4 CI-verification session, on the primary dev machine):
+  picked up the remote agent's work after it stopped mid-diagnosis with CI
+  red on all three of its commits. Pulled `origin/main` (fast-forward, no
+  local work at risk), then read the actual Actions logs — which the remote
+  agent could not, having no credentials — using the dev machine's existing
+  stored GitHub credential. Root cause was immediate and was **not** a
+  network problem: `npm ci` succeeded and `prisma generate` failed with
+  Prisma 7 **P1012, "The datasource property `url` is no longer supported in
+  schema files."** The hand-authored `prisma/schema.prisma` had never been
+  executed anywhere, because the TLS block had prevented `prisma generate`
+  from running since the day it was written — so a plain configuration bug
+  had been sitting undetected behind an environment blocker, and the two
+  were easy to mistake for one. Fixed the schema (dropped `url`), moved the
+  runtime connection to the `@prisma/adapter-pg` driver adapter fed by the
+  Zod-validated `env.DATABASE_URL`, and found and fixed two further latent
+  bugs that CI had not yet reached: (1) `lib/db/health.test.ts` would have
+  failed the moment generation started working, because `server-only`'s
+  entry point throws by design and the Node test environment does not set
+  the `react-server` condition that neutralizes it — fixed with a
+  test-runner-only alias to `tests/stubs/server-only.ts` (aliasing to the
+  package's own `empty.js` does not work; its `exports` map declares only
+  `.`); and (2) `vitest.config.ts`'s `exclude` used bare directory names
+  instead of globs, so a nested `node_modules` inside a leftover agent git
+  worktree had its third-party tests collected and run — 2527 tests in 84 s
+  instead of 314 in ~1 s. Removed that stale worktree (verified it held no
+  unique commits and no real diff first) and gitignored `.claude/worktrees/`.
+  Two commits (`4c6af27`, `2fd597e`); **CI green on `2fd597e`** with all six
+  steps passing and `lib/db/health.test.ts` executing rather than skipping
+  (1 test, 315 ms, real round trip to the `postgres:16-alpine` service
+  container), 314/314 tests. Unit 0.4's exit criterion is met. Per the
+  user's explicit instruction this session, no TLS workaround was attempted
+  at any point; the dev machine's `binaries.prisma.sh` block stands, and CI
+  is the verification environment for database work until IT allowlists it
