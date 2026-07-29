@@ -37,8 +37,18 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      # Split from the old single "Install dependencies" step (which ran
+      # `npm ci` with the "postinstall" hook enabled) so a CI failure names
+      # exactly which phase failed: plain dependency installation, or the
+      # `prisma generate` binary download. This is a temporary diagnostic
+      # split — see context/progress-tracker.md "Open Questions" for why:
+      # the previous single step failed twice in a row here with no
+      # accessible log detail.
+      - name: Install dependencies (no scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
 
       - name: Lint
         run: npm run lint
