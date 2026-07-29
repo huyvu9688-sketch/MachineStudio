@@ -6,6 +6,7 @@
     "node": ">=26"
   },
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -13,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "db:health": "vitest run lib/db/health.test.ts",
     "module:new": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/module-new.mts",
     "registry:generate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-registry.mts",
     "format": "prettier --write .",

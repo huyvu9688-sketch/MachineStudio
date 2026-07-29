@@ -8,6 +8,27 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # PostgreSQL service container so `prisma generate` (run automatically
+    # by the "postinstall" script during `npm ci`) and the live database
+    # health check in lib/db/health.test.ts (Unit 0.4 exit criterion) both
+    # run against a real database in CI, matching docker-compose.yml's
+    # local-development credentials.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: machinestudio
+          POSTGRES_PASSWORD: machinestudio
+          POSTGRES_DB: machinestudio
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U machinestudio"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: "postgresql://machinestudio:machinestudio@localhost:5432/machinestudio?schema=public"
     steps:
       - uses: actions/checkout@v4
 
