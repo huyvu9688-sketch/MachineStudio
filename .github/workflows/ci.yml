@@ -37,13 +37,17 @@ jobs:
           node-version-file: ".nvmrc"
           cache: "npm"
 
-      # Split from the old single "Install dependencies" step (which ran
-      # `npm ci` with the "postinstall" hook enabled) so a CI failure names
-      # exactly which phase failed: plain dependency installation, or the
-      # `prisma generate` binary download. This is a temporary diagnostic
-      # split — see context/progress-tracker.md "Open Questions" for why:
-      # the previous single step failed twice in a row here with no
-      # accessible log detail.
+      # Dependency install and client generation are deliberately separate
+      # steps so a failure names its phase instead of being buried in npm
+      # output. `--ignore-scripts` suppresses the package.json "postinstall"
+      # hook here only to avoid generating twice; the hook is what makes a
+      # plain `npm install` work for a fresh clone. Prisma is the only
+      # dependency in this project that relies on an install script.
+      #
+      # CI is currently the only environment that can run `prisma generate`
+      # at all: the primary development machine sits behind corporate TLS
+      # interception that blocks binaries.prisma.sh. See
+      # context/progress-tracker.md "Open Questions".
       - name: Install dependencies (no scripts)
         run: npm ci --ignore-scripts
 

@@ -1,10 +1,14 @@
 // Schema v1 (project hierarchy, graph, runs, catalog, baselines) is a
 // later work unit. This file only establishes the datasource and
 // generator so Prisma is configured for local PostgreSQL development.
+//
+// Prisma 7 removed the `url` property from the datasource block (error
+// P1012). The connection URL now lives in `prisma.config.ts` for the CLI
+// (Migrate/introspection), and the runtime connection is supplied to the
+// PrismaClient constructor through a driver adapter — see lib/db/client.ts.
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 generator client {
