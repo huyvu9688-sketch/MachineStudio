@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens from context/ui-context.md. Light mode only in the MVP;
+ * do not add a dark-mode override block until a future unit introduces it.
+ */
+:root {
+  --bg-base: #f3f4f6;
+  --bg-surface: #ffffff;
+  --bg-appbar: #1565c0;
+  --text-primary: #1f2937;
+  --text-muted: #4b5563;
+  --text-on-accent: #ffffff;
+  --accent-primary: #1565c0;
+  --accent-hover: #114e9e;
+  --border-default: #e5e7eb;
+  --state-error: #dc2626;
+  --state-success: #15803d;
+  --state-stale: #b45309;
+  --state-info: #1d4ed8;
+  --state-neutral: #6b7280;
+
+  --shadow-sm: rgba(0, 0, 0, 0.08) 0px 1px 3px 0px;
+
+  --motion-instant: 100ms;
+  --motion-fast: 150ms;
+  --motion-normal: 200ms;
+}
+
+@theme inline {
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-appbar: var(--bg-appbar);
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  --color-text-on-accent: var(--text-on-accent);
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-hover: var(--accent-hover);
+  --color-border-default: var(--border-default);
+  --color-state-error: var(--state-error);
+  --color-state-success: var(--state-success);
+  --color-state-stale: var(--state-stale);
+  --color-state-info: var(--state-info);
+  --color-state-neutral: var(--state-neutral);
+
+  --shadow-sm: var(--shadow-sm);
+
+  --font-sans: var(--font-ibm-plex-sans);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}

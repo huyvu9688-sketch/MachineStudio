@@ -1,0 +1,9 @@
+.next
+node_modules
+lib/db/generated
+coverage
+package-lock.json
+
+# Hand-authored specification documents; not reformatted by tooling.
+context/
+validation/

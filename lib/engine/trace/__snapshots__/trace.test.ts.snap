@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`report-from-trace (exit criterion) > renders an outline from trace data alone, without module compute code 1`] = `
+"§ Load cases
+  § Normal running
+    • Friction force [axis.friction_force]
+        F_f = μ · m · g
+        → F_f = 1.1768 N
+    • Required thrust [axis.thrust_force]
+        F = F_f
+        → F = 1.1768 N
+        src: us.ansi.b11_0@2023 6.1"
+`;

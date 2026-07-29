@@ -1,0 +1,43 @@
+// The released canonical parameter registry singleton (Unit 1.3). Building it
+// runs every registry invariant over the seed definitions, so an invalid
+// released set fails fast at import time. Convenience lookups bind to this
+// singleton; tests that need to exercise invariants with fixtures use
+// `buildParameterRegistry` directly.
+
+import { PARAMETER_DEFINITIONS, PARAMETER_REGISTRY_VERSION } from "./definitions";
+import { buildParameterRegistry, type ParameterRegistry } from "./registry";
+import type { ParameterDefinition } from "./types";
+
+/** The released canonical parameter registry. */
+export const PARAMETER_REGISTRY: ParameterRegistry = buildParameterRegistry(
+  PARAMETER_DEFINITIONS,
+  PARAMETER_REGISTRY_VERSION,
+);
+
+/** Content fingerprint of the released registry (drift detection). */
+export const PARAMETER_REGISTRY_HASH = PARAMETER_REGISTRY.hash;
+
+/** Returns the released definition for `id`, or `undefined` when unknown. */
+export function getParameter(id: string): ParameterDefinition | undefined {
+  return PARAMETER_REGISTRY.get(id);
+}
+
+/** True when `id` is a released parameter. */
+export function hasParameter(id: string): boolean {
+  return PARAMETER_REGISTRY.has(id);
+}
+
+/** All released definitions, sorted by ID. */
+export function listParameters(): readonly ParameterDefinition[] {
+  return PARAMETER_REGISTRY.list();
+}
+
+/**
+ * Resolves `id` to its active released definition, following the replacement
+ * chain when deprecated.
+ *
+ * @throws {@link ParameterRegistryError} when `id` is not registered.
+ */
+export function resolveParameter(id: string): ParameterDefinition {
+  return PARAMETER_REGISTRY.resolve(id);
+}
