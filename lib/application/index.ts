@@ -10,3 +10,14 @@ export {
   type ExecuteModuleInstanceErrorCode,
   type ExecuteModuleInstanceResult,
 } from "./calculations/execute-module-instance";
+
+export {
+  setParameterValue,
+  confirmParameterLink,
+  removeParameterLink,
+  type SetParameterValueResult,
+  type ConfirmParameterLinkResult,
+  type RemoveParameterLinkResult,
+  type StalePropagationError,
+  type StalePropagationErrorCode,
+} from "./parameters";
