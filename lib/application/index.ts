@@ -1,0 +1,12 @@
+// lib/application owns use-case and transaction orchestration
+// (context/architecture.md "lib/application/"). Route handlers call these
+// services; business transactions do not live in route handlers, React
+// components, or raw database query files.
+
+export {
+  executeModuleInstance,
+  type ExecuteModuleInstanceInput,
+  type ExecuteModuleInstanceError,
+  type ExecuteModuleInstanceErrorCode,
+  type ExecuteModuleInstanceResult,
+} from "./calculations/execute-module-instance";
