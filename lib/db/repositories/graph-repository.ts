@@ -14,13 +14,22 @@
 //     check. buildParameterGraph adds each module's internal input→output feed
 //     edges, so cross-module cycles are caught.
 //
-// The full stale-propagation transaction is a later application service (Unit
-// 2.5); this module owns single-write persistence and the input resolution that
-// Unit 2.2's exit criterion names.
+// `loadConfigurationGraph` reconstructs the full confirmed-link graph for a
+// configuration — used here for the cycle check, and by the stale-propagation
+// application service (Unit 2.5, `lib/application/parameters/`) to compute
+// downstream impact when a value changes or a link is confirmed/removed. This
+// module owns single-write persistence and the input resolution that Unit
+// 2.2's exit criterion names; the propagation transaction itself is Unit 2.5.
 
 import "server-only";
 import { z } from "zod";
-import type { GraphLink, GraphNode, NodeId, ParameterGraph } from "../../engine/graph";
+import type {
+  GraphLink,
+  GraphNode,
+  IndexedParameterGraph,
+  NodeId,
+  ParameterGraph,
+} from "../../engine/graph";
 import {
   asLinkId,
   asNodeId,
@@ -34,6 +43,7 @@ import type { EngineeringValue } from "../../engine/values";
 import { safeParseEngineeringValue } from "../../engine/values";
 import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "../client";
+import type { DbClient } from "./db-client";
 import type { ModuleInstanceId, UserId } from "./types";
 import {
   asAssemblyId,
@@ -230,10 +240,15 @@ function toParameterLinkRecord(row: ParameterLinkRow): ParameterLinkRecord {
   };
 }
 
-// --- Graph reconstruction (for cycle rejection) --------------------------
+// --- Graph reconstruction (cycle rejection + Unit 2.5 stale propagation) --
 
-/** The identity of a graph node, sufficient to reconstruct it deterministically. */
-interface NodeDescriptor {
+/**
+ * The identity of a graph node, sufficient to reconstruct it deterministically.
+ * Exported so the stale-propagation application service (Unit 2.5) can name a
+ * "changed node" — e.g. a module's own port, from its package — the same way a
+ * link's persisted endpoints are reconstructed here.
+ */
+export interface GraphNodeDescriptor {
   readonly kind: ParameterNodeKind;
   readonly moduleInstanceId: string | null;
   readonly assemblyId: string | null;
@@ -246,7 +261,7 @@ interface NodeDescriptor {
  * across every link. Module ports are keyed by their module instance; provider
  * values by their scope (assembly, or the configuration root).
  */
-function nodeIdOf(descriptor: NodeDescriptor): NodeId {
+export function parameterGraphNodeId(descriptor: GraphNodeDescriptor): NodeId {
   const owner =
     descriptor.moduleInstanceId !== null
       ? `m:${descriptor.moduleInstanceId}`
@@ -256,7 +271,7 @@ function nodeIdOf(descriptor: NodeDescriptor): NodeId {
   );
 }
 
-function targetDescriptor(link: ParameterLinkRow): NodeDescriptor {
+function targetDescriptor(link: ParameterLinkRow): GraphNodeDescriptor {
   return {
     kind: "module_input",
     moduleInstanceId: link.targetModuleInstanceId,
@@ -265,7 +280,7 @@ function targetDescriptor(link: ParameterLinkRow): NodeDescriptor {
     loadCase: link.targetLoadCase,
   };
 }
-function sourceDescriptor(link: ParameterLinkRow): NodeDescriptor {
+function sourceDescriptor(link: ParameterLinkRow): GraphNodeDescriptor {
   return {
     kind: link.sourceKind,
     moduleInstanceId: link.sourceModuleInstanceId,
@@ -277,12 +292,13 @@ function sourceDescriptor(link: ParameterLinkRow): NodeDescriptor {
 
 /**
  * Builds a `GraphNode` from a descriptor. All nodes share one synthetic root
- * scope: scope proximity is irrelevant to cycle detection (only suggestion
- * ranking uses it), so a single scope keeps the reconstruction minimal.
+ * scope: scope proximity is irrelevant to cycle detection or stale-impact
+ * traversal (only suggestion ranking uses it), so a single scope keeps the
+ * reconstruction minimal.
  */
-function graphNodeOf(descriptor: NodeDescriptor, scopeId: string): GraphNode {
+function graphNodeOf(descriptor: GraphNodeDescriptor, scopeId: string): GraphNode {
   return {
-    id: nodeIdOf(descriptor),
+    id: parameterGraphNodeId(descriptor),
     kind: descriptor.kind,
     parameterId: asParameterId(descriptor.parameterId),
     scopeId: asScopeId(scopeId),
@@ -293,19 +309,72 @@ function graphNodeOf(descriptor: NodeDescriptor, scopeId: string): GraphNode {
   };
 }
 
+/**
+ * Reconstructs the full confirmed-link graph for a configuration: every
+ * `ParameterLink` row contributes its source and target as nodes, plus each
+ * module instance's internal input→output feed edge wherever `buildParameterGraph`
+ * finds both a `module_input` and `module_output` node for it. Pass `extraNodes`
+ * to guarantee a node is present even though it is not (yet) a link endpoint —
+ * e.g. a module's own port that is only ever directly authored, never linked;
+ * without it, changing that value would have no node to start the stale-impact
+ * traversal from, and — if the changed port is an input and its sibling output
+ * is otherwise unlinked — no internal edge to prove the module's own runs are
+ * affected.
+ *
+ * Used here for the cycle check (`createParameterLink`) and by the
+ * stale-propagation application service (Unit 2.5).
+ */
+export async function loadConfigurationGraph(
+  configurationId: string,
+  extraNodes: readonly GraphNodeDescriptor[] = [],
+): Promise<IndexedParameterGraph> {
+  const links: ParameterLinkRow[] = await prisma.parameterLink.findMany({
+    where: { configurationId },
+  });
+
+  const nodesById = new Map<string, GraphNode>();
+  const addNode = (descriptor: GraphNodeDescriptor): void => {
+    const node = graphNodeOf(descriptor, configurationId);
+    nodesById.set(node.id, node);
+  };
+  for (const link of links) {
+    addNode(sourceDescriptor(link));
+    addNode(targetDescriptor(link));
+  }
+  for (const descriptor of extraNodes) {
+    addNode(descriptor);
+  }
+
+  const graphLinks: GraphLink[] = links.map((link) => ({
+    id: asLinkId(link.id),
+    sourceNodeId: parameterGraphNodeId(sourceDescriptor(link)),
+    targetNodeId: parameterGraphNodeId(targetDescriptor(link)),
+  }));
+
+  const graph: ParameterGraph = {
+    scopes: [{ id: asScopeId(configurationId) }],
+    nodes: [...nodesById.values()],
+    links: graphLinks,
+  };
+  return buildParameterGraph(graph);
+}
+
 // --- Creates -------------------------------------------------------------
 
 /**
  * Creates a `ParameterValue`. The `value` payload is validated as an
  * `EngineeringValue` before it is written (invalid input is rejected, not
- * persisted).
+ * persisted). Pass `client` (a `$transaction` callback's `tx`) to make this
+ * atomic with other writes — e.g. Unit 2.5's stale-propagation use cases,
+ * which mark downstream runs stale in the same transaction.
  */
 export async function createParameterValue(
   input: CreateParameterValueInput,
+  client: DbClient = prisma,
 ): Promise<ParameterValueRecord> {
   const data = parse(createParameterValueSchema, input);
   const value = parseValue(input.value, "createParameterValue", "invalid_input");
-  const row = await prisma.parameterValue.create({
+  const row = await client.parameterValue.create({
     data: {
       configurationId: data.configurationId,
       assemblyId: data.assemblyId ?? null,
@@ -324,11 +393,14 @@ export async function createParameterValue(
  * Creates a confirmed `ParameterLink` after rejecting duplicates (one confirmed
  * source per input port) and cycles. Reconstructs the configuration's link
  * graph and asks lib/engine/graph whether the proposed link would close a cycle.
+ * Pass `client` (a `$transaction` callback's `tx`) to make the write atomic
+ * with other writes — e.g. Unit 2.5's stale-propagation use cases.
  *
  * @throws {@link GraphRepositoryError} with code `duplicate_link` or `cycle`.
  */
 export async function createParameterLink(
   input: CreateParameterLinkInput,
+  client: DbClient = prisma,
 ): Promise<ParameterLinkRecord> {
   const data = parse(createParameterLinkSchema, input);
 
@@ -351,14 +423,14 @@ export async function createParameterLink(
     );
   }
 
-  const proposedTarget: NodeDescriptor = {
+  const proposedTarget: GraphNodeDescriptor = {
     kind: "module_input",
     moduleInstanceId: data.targetModuleInstanceId,
     assemblyId: null,
     parameterId: data.targetParameterId,
     loadCase: data.targetLoadCase ?? null,
   };
-  const proposedSource: NodeDescriptor = {
+  const proposedSource: GraphNodeDescriptor = {
     kind: data.sourceKind,
     moduleInstanceId: data.sourceModuleInstanceId ?? null,
     assemblyId: data.sourceAssemblyId ?? null,
@@ -369,40 +441,25 @@ export async function createParameterLink(
   // Reconstruct the graph from the persisted links plus the proposed endpoints
   // (the endpoints must be present so buildParameterGraph can add the modules'
   // internal input→output edges), but NOT the proposed link itself.
-  const scopeId = data.configurationId;
-  const nodesById = new Map<string, GraphNode>();
-  const addNode = (descriptor: NodeDescriptor): void => {
-    const node = graphNodeOf(descriptor, scopeId);
-    nodesById.set(node.id, node);
-  };
-  for (const link of existing) {
-    addNode(sourceDescriptor(link));
-    addNode(targetDescriptor(link));
-  }
-  addNode(proposedSource);
-  addNode(proposedTarget);
+  const indexed = await loadConfigurationGraph(data.configurationId, [
+    proposedSource,
+    proposedTarget,
+  ]);
 
-  const links: GraphLink[] = existing.map((link) => ({
-    id: asLinkId(link.id),
-    sourceNodeId: nodeIdOf(sourceDescriptor(link)),
-    targetNodeId: nodeIdOf(targetDescriptor(link)),
-  }));
-
-  const graph: ParameterGraph = {
-    scopes: [{ id: asScopeId(scopeId) }],
-    nodes: [...nodesById.values()],
-    links,
-  };
-  const indexed = buildParameterGraph(graph);
-
-  if (wouldCreateCycle(indexed, nodeIdOf(proposedSource), nodeIdOf(proposedTarget))) {
+  if (
+    wouldCreateCycle(
+      indexed,
+      parameterGraphNodeId(proposedSource),
+      parameterGraphNodeId(proposedTarget),
+    )
+  ) {
     throw new GraphRepositoryError(
       `Link from ${data.sourceParameterId} to ${data.targetParameterId} would create a cycle`,
       "cycle",
     );
   }
 
-  const row = await prisma.parameterLink.create({
+  const row = await client.parameterLink.create({
     data: {
       configurationId: data.configurationId,
       targetModuleInstanceId: data.targetModuleInstanceId,
@@ -416,6 +473,44 @@ export async function createParameterLink(
     },
   });
   return toParameterLinkRecord(row);
+}
+
+// --- Ownership-scoped read + delete (Unit 2.5) ---------------------------
+
+/**
+ * Loads a confirmed `ParameterLink`, scoped to the owner (the filter walks
+ * configuration → project → owner). Returns `null` when the link does not
+ * exist or is not owned by `ownerId`. Unit 2.5's `removeParameterLink` needs
+ * the link's target endpoint before it can compute stale impact.
+ */
+export async function loadParameterLinkForOwner(
+  linkId: string,
+  ownerId: UserId,
+): Promise<ParameterLinkRecord | null> {
+  const id = parse(nonEmpty, linkId);
+  const owner = parse(nonEmpty, ownerId);
+  const row = await prisma.parameterLink.findFirst({
+    where: { id, configuration: { project: { ownerId: owner } } },
+  });
+  return row === null ? null : toParameterLinkRecord(row);
+}
+
+/**
+ * Deletes a confirmed `ParameterLink`, scoped to the owner in the same query
+ * (no separate authorization read needed). Returns `true` when a row was
+ * deleted, `false` when nothing matched (wrong owner or unknown id).
+ */
+export async function deleteParameterLink(
+  linkId: string,
+  ownerId: UserId,
+  client: DbClient = prisma,
+): Promise<boolean> {
+  const id = parse(nonEmpty, linkId);
+  const owner = parse(nonEmpty, ownerId);
+  const result = await client.parameterLink.deleteMany({
+    where: { id, configuration: { project: { ownerId: owner } } },
+  });
+  return result.count > 0;
 }
 
 // --- Input resolution (ownership-scoped) ---------------------------------

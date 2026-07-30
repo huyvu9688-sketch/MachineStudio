@@ -18,6 +18,7 @@ export {
   deleteProject,
   loadModuleInstanceForOwner,
   updateModuleInstanceRunStatus,
+  isConfigurationOwnedBy,
 } from "./project-repository";
 export type { ProjectRepositoryErrorCode } from "./project-repository";
 
@@ -40,8 +41,15 @@ export {
   createParameterValue,
   createParameterLink,
   resolveModuleInputs,
+  loadConfigurationGraph,
+  parameterGraphNodeId,
+  loadParameterLinkForOwner,
+  deleteParameterLink,
 } from "./graph-repository";
-export type { GraphRepositoryErrorCode } from "./graph-repository";
+export type {
+  GraphRepositoryErrorCode,
+  GraphNodeDescriptor,
+} from "./graph-repository";
 
 // Immutable calculation runs (Unit 2.3).
 export * from "./run-types";
@@ -52,6 +60,7 @@ export {
   loadCalculationRun,
   listRunsForModuleInstance,
   markRunStale,
+  markRunsStaleForModuleInstances,
 } from "./run-repository";
 export type { RunRepositoryErrorCode } from "./run-repository";
 

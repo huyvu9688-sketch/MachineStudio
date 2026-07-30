@@ -255,3 +255,30 @@ export async function markRunStale(
   });
   return toRunSummary(row);
 }
+
+/**
+ * Marks every not-already-stale run of the given module instances stale with
+ * `reason`, in one statement. The bulk counterpart to {@link markRunStale}:
+ * Unit 2.5's stale-propagation use cases compute `staleModuleInstanceIds`
+ * (via `lib/engine/graph`'s `computeStaleImpact`) and pass them here inside
+ * the same transaction as the change that caused the impact (invariant
+ * "Transactional stale propagation"). Every existing run of an affected
+ * module instance is marked — not only its latest — since any of them could
+ * still be loaded and would otherwise misrepresent a result computed from
+ * since-changed inputs. Returns the number of rows updated. A no-op (`0`)
+ * for an empty list, rather than an unbounded `IN ()` query.
+ */
+export async function markRunsStaleForModuleInstances(
+  moduleInstanceIds: readonly ModuleInstanceId[],
+  reason: string,
+  client: DbClient = prisma,
+): Promise<number> {
+  if (moduleInstanceIds.length === 0) {
+    return 0;
+  }
+  const result = await client.calculationRun.updateMany({
+    where: { moduleInstanceId: { in: [...moduleInstanceIds] }, stale: false },
+    data: { stale: true, staleReason: reason },
+  });
+  return result.count;
+}

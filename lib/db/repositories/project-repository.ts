@@ -465,3 +465,25 @@ export async function updateModuleInstanceRunStatus(
     data: { lastCalculationRunId, lastRunStatus },
   });
 }
+
+// --- Configuration ownership (Unit 2.5) -----------------------------------
+
+/**
+ * Whether a configuration belongs to `ownerId` (the filter walks configuration
+ * → project → owner). Unit 2.5's `setParameterValue` uses this to authorize a
+ * change to a *provider* value (a machine requirement, assembly parameter, or
+ * workflow-provided value — no owning module instance to check via
+ * `loadModuleInstanceForOwner`).
+ */
+export async function isConfigurationOwnedBy(
+  configurationId: string,
+  ownerId: UserId,
+): Promise<boolean> {
+  const id = parse(nonEmpty, configurationId);
+  const owner = parse(nonEmpty, ownerId);
+  const row = await prisma.machineConfiguration.findFirst({
+    where: { id, project: { ownerId: owner } },
+    select: { id: true },
+  });
+  return row !== null;
+}
