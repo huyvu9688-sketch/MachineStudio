@@ -69,30 +69,70 @@ Update this file after every meaningful implementation change.
   (commit `8dd8800`, run 30508278042): lint, typecheck, test (10 new live-DB
   catalog tests included), and build all green, with the hand-authored
   migration deployed cleanly to the live Postgres service container.
+  **Unit 2.7 part 1 (catalog CSV import: mapping + parser + row validation +
+  unit normalization) complete** (2026-07-30), delivered entirely in
+  `lib/catalog/` — `import-mapping.ts`/`import-mapping-schemas.ts` (the
+  versioned `ImportMapping` contract) and `csv-import.ts`
+  (`parseCsvTable`/`parseCatalogCsv`), pure and DB-free. **Split from Unit
+  2.7's persistence half** (idempotent upsert + import batch summary, which
+  needs `lib/application`/`lib/db`) per the work-unit split rule — see Current
+  Goal. 21 new pure tests (no live database needed). Verified locally: lint
+  (0 warnings), the full suite (334/334 passing, 58 skipped unchanged), and
+  typecheck confirmed to introduce no new errors beyond the pre-existing
+  missing-generated-client cascade.
 
 ## Current Goal
 
 - Milestone 2 in progress. **Unit 2.6 (manufacturer catalog schema) is
   complete and verified in GitHub Actions CI** (2026-07-30, commit `8dd8800`,
-  run 30508278042 — every step green: install, generate, deploy migrations,
-  lint, typecheck, test, build) — see the Completed entry. **Next work unit:
-  Unit 2.7 (catalog CSV import service)** — import mapping schema, CSV parser,
-  unit normalization, row validation, dry-run mode, error report, import batch
-  summary, and idempotent upsert rules on top of Unit 2.6's
-  `CatalogImportBatch`/`ManufacturerPartRevision` models (exit criterion: a
-  manufacturer catalog fixture imports reproducibly and reports every rejected
-  row). Then Units 2.8–2.9; Milestone 3 (generic UI) and Milestone 4 (modules)
-  follow.
-  - DEFERRED within Unit 2.6 (documented in `lib/catalog/types.ts` and the
-    Unit 2.6 Completed entry, not a gap to silently carry forward): matching a
-    specific `ManufacturerPartRevision.attributes` payload against its
-    declared `ComponentSchemaVersion.fields` list (required keys present,
-    kind/unit match) is NOT implemented — this unit validates only that
-    `attributes` is well-formed `EngineeringValue`s and that `fields` is a
-    well-formed, unique-key field list. Cross-validating one against the other
-    is Unit 2.7 (import) and Unit 2.8 (matching) work, mirroring the Unit 2.2
-    decision to defer semantic parameter-link compatibility to the
-    confirm/suggestion flow rather than the schema unit.
+  run 30508278042 — every step green). **Unit 2.7 part 1 (catalog CSV import:
+  mapping + parser + row validation + unit normalization) is complete**
+  (2026-07-30) — see the Completed entry.
+  - **SPLIT DECISION (2026-07-30, Unit 2.7):** the implementation map's Unit
+    2.7 ("Catalog CSV import service") deliverables — import mapping schema,
+    CSV parser, unit normalization, row validation, dry-run mode, error
+    report, import batch summary, idempotent upsert rules — span three
+    `context/architecture.md` system boundaries: `lib/catalog` (mapping
+    schema, parsing, row validation, unit normalization — all pure), `lib/db`
+    (an idempotent upsert repository function), and `lib/application`
+    (`lib/application/catalogs/`: the multi-step orchestration transaction
+    that persists rows and writes the batch summary, per
+    context/code-standards.md "Application Services": "Multi-step use cases
+    live in lib/application"). `ai-workflow-rules.md`'s split rule triggers at
+    "more than two system boundaries," so this session split Unit 2.7 into
+    **part 1** (`lib/catalog` only — done, see Completed) and **part 2**
+    (`lib/db` + `lib/application`, exactly two boundaries, the same count Unit
+    2.4 used as one unit delivered via two commits — precedent for keeping
+    part 2 as a single unit rather than splitting further).
+  - **Next work unit: Unit 2.7 part 2** — a new
+    `lib/db/repositories/catalog-repository.ts` idempotent-upsert function
+    (using the `(manufacturerId, partNumber, sourceRevision)` unique
+    constraint Unit 2.6 already created) and a new
+    `lib/application/catalogs/import-catalog.ts` service that calls part 1's
+    `parseCatalogCsv`, persists every valid row inside one transaction, and
+    records the import batch summary (row/success/error counts) — reusing
+    `lib/audit`'s `AuditEvent` (extending its `AuditEventType`/`AuditEntityType`
+    unions) rather than adding new `CatalogImportBatch` columns, since a
+    second schema change in the same map-unit would itself be a split-rule
+    trigger. Also implement here: the Unit 2.6-deferred cross-validation of a
+    resolved row's attributes against its schema version's field list is
+    **already done in part 1** (`parseCatalogCsv` uses
+    `ComponentAttributesSchema` plus the mapping/schema-field consistency
+    checks in `validateMappingAgainstSchema`) — part 2 only needs to persist,
+    not re-validate. Exit criterion (shared with part 1): a manufacturer
+    catalog fixture imports reproducibly and reports every rejected row —
+    part 1 proves the "reports every rejected row" half; part 2 proves
+    "imports reproducibly" against real Postgres. Then Unit 2.8 (catalog
+    matching + `ComponentAssignment`), Unit 2.9 (baseline + audit services);
+    Milestone 3 (generic UI) and Milestone 4 (modules) follow.
+  - DEFERRED within Unit 2.6, RESOLVED in Unit 2.7 part 1 (documented in
+    `lib/catalog/types.ts`'s Unit 2.6 comment and `csv-import.ts`'s top
+    comment): matching a specific `ManufacturerPartRevision.attributes`
+    payload against its declared `ComponentSchemaVersion.fields` list
+    (required keys present, kind/unit match) is now implemented in
+    `parseCatalogCsv` (`validateMappingAgainstSchema` at setup time, plus
+    per-row required/kind/unit resolution) — not merely generic
+    `EngineeringValue` shape validation.
   - DEFERRED within Unit 2.5 (documented in
     `lib/application/parameters/stale-propagation.ts`, not a gap to
     silently carry forward): "change an assigned-component feedback input"
@@ -991,25 +1031,25 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-Unit 2.6 is done and verified green in GitHub Actions CI (2026-07-30, see
-Current Goal) and drops off this list. This session had no local database at
-all — CI remains the verification path until a future session confirms local
-Postgres access again.
+Unit 2.6 (verified green in CI) and Unit 2.7 part 1 (pure CSV import logic)
+are both done (2026-07-30, see Current Goal) and drop off this list. This
+session had no local database at all — CI remains the verification path for
+anything touching Postgres until a future session confirms local access again.
 
-1. **Unit 2.7 (catalog CSV import service)** — next. Deliverables per the
-   implementation map: import mapping schema, CSV parser, unit normalization
-   (through `lib/engine/units`), row validation, dry-run mode, error report,
-   import batch summary, and idempotent upsert rules (by manufacturer, part
-   number, source revision, and import mapping) on top of Unit 2.6's
-   `CatalogImportBatch` and `ManufacturerPartRevision` models. This is also
-   the natural place to implement the deferred Unit 2.6 cross-validation —
-   checking an imported row's attributes against its `ComponentSchemaVersion`
-   `fields` list (required keys present, kind/unit match) — since the import
-   path is where a `ComponentSchemaVersion` is chosen for untrusted external
-   data. Exit criterion: a manufacturer catalog fixture imports reproducibly
-   and reports every rejected row. Then Unit 2.8 (catalog matching +
-   `ComponentAssignment`) and Unit 2.9 (baseline + audit services). Milestone
-   3 (generic UI) and Milestone 4 (modules) follow.
+1. **Unit 2.7 part 2 (catalog import persistence + orchestration)** — next.
+   See Current Goal's "SPLIT DECISION" entry for the full split rationale.
+   Deliverables: an idempotent-upsert repository function in
+   `lib/db/repositories/catalog-repository.ts` and a new
+   `lib/application/catalogs/import-catalog.ts` service (parse via part 1's
+   `parseCatalogCsv` → persist every valid row transactionally → record the
+   import batch summary, reusing `lib/audit`'s `AuditEvent` for
+   rowCount/successCount/errorCount + import-mapping provenance rather than a
+   second Unit 2.6 schema change). Exit criterion (shared with part 1): a
+   manufacturer catalog fixture imports reproducibly and reports every
+   rejected row — part 2 proves the "imports reproducibly" half against real
+   Postgres. Then Unit 2.8 (catalog matching + `ComponentAssignment`) and Unit
+   2.9 (baseline + audit services). Milestone 3 (generic UI) and Milestone 4
+   (modules) follow.
    - Deferred to the confirm/suggestion flow (NOT Unit 2.2): **semantic link
      compatibility** (`evaluateLinkCompatibility`). Unit 2.2 persists an
      already-confirmed link and rejects cycles (a structural rule independent
@@ -1179,6 +1219,32 @@ Postgres access again.
 
 ## Architecture Decisions
 
+- (2026-07-30, Unit 2.7) Split Unit 2.7 into two parts because its deliverables
+  span three `context/architecture.md` system boundaries (`lib/catalog`,
+  `lib/db`, `lib/application`), exceeding `ai-workflow-rules.md`'s "more than
+  two system boundaries" split trigger. Part 1 (this session): `lib/catalog`
+  only — `ImportMapping` contract, CSV tokenizer, row validation, unit
+  normalization via `lib/engine/units`, all pure and DB-free, so
+  `parseCatalogCsv` alone already *is* dry-run mode. Part 2 (next session):
+  `lib/db` (idempotent upsert) + `lib/application/catalogs/` (orchestration
+  transaction, batch summary) — exactly two boundaries, mirroring Unit 2.4's
+  precedent of delivering a `lib/db` + `lib/application` pair as one unit via
+  two commits rather than splitting further. See Current Goal and Next Up for
+  the full breakdown.
+- (2026-07-30, Unit 2.7) Moved `PartLifecycleStatus`/`DataQualityStatus` from
+  `lib/db/repositories/catalog-types.ts` (hand-rolled there in Unit 2.6) to
+  `lib/catalog/types.ts` (domain-owned), with `lib/db` now importing them —
+  the same cross-package pattern `LoadCaseCategory`
+  (`lib/engine/parameters` → `lib/db/repositories/graph-repository.ts`) and
+  `CheckStatus` (`lib/engine/trace` → `lib/db/repositories/types.ts`) already
+  establish: a concept `lib/db` is allowed to depend on (per
+  context/architecture.md's one-directional boundaries) should be defined once
+  in its owning domain package, not redeclared. Caught while building Unit
+  2.7's CSV importer, which needed `PartLifecycleStatus` and would otherwise
+  have redeclared it a third time. Non-breaking: the Prisma enum values are
+  unchanged (no migration), `lib/db/repositories/catalog-types.ts` re-exports
+  both names so existing imports from that module or the `lib/db/repositories`
+  barrel are unaffected.
 - (2026-07-30, Unit 2.6) Catalog data is shared reference data, not
   project-owned. Every model added in this unit (`Manufacturer`,
   `ComponentType`, `ComponentSchemaVersion`, `CatalogImportBatch`,

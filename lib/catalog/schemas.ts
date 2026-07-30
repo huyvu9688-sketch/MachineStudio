@@ -7,7 +7,10 @@
 import { z } from "zod";
 import { EngineeringValueSchema } from "../engine/values";
 import type { EngineeringValueKind } from "../engine/values";
-import type { ComponentAttributeFieldDefinition, ComponentAttributes } from "./types";
+import type {
+  ComponentAttributeFieldDefinition,
+  ComponentAttributes,
+} from "./types";
 
 const nonEmpty = z.string().trim().min(1);
 
@@ -43,9 +46,12 @@ export const ComponentAttributeFieldDefinitionSchema: z.ZodType<ComponentAttribu
 export const ComponentAttributeFieldListSchema = z
   .array(ComponentAttributeFieldDefinitionSchema)
   .min(1)
-  .refine((fields) => new Set(fields.map((f) => f.key)).size === fields.length, {
-    message: "Field keys must be unique within a component schema version",
-  });
+  .refine(
+    (fields) => new Set(fields.map((f) => f.key)).size === fields.length,
+    {
+      message: "Field keys must be unique within a component schema version",
+    },
+  );
 
 /**
  * Validates a `ManufacturerPartRevision.attributes` payload: a record of
@@ -53,14 +59,16 @@ export const ComponentAttributeFieldListSchema = z
  * be a well-formed `EngineeringValue`; matching a specific schema version's
  * field list is a catalog import/matching concern (Units 2.7/2.8).
  */
-export const ComponentAttributesSchema: z.ZodType<ComponentAttributes> = z.record(
-  nonEmpty,
-  EngineeringValueSchema,
-);
+export const ComponentAttributesSchema: z.ZodType<ComponentAttributes> =
+  z.record(nonEmpty, EngineeringValueSchema);
 
 // --- Compile-time schema/interface parity guard -----------------------------
 
-type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type MutuallyAssignable<A, B> = [A] extends [B]
+  ? [B] extends [A]
+    ? true
+    : false
+  : false;
 type Assert<T extends true> = T;
 
 export type _CatalogSchemaParity = [
@@ -70,5 +78,10 @@ export type _CatalogSchemaParity = [
       z.infer<typeof ComponentAttributeFieldDefinitionSchema>
     >
   >,
-  Assert<MutuallyAssignable<ComponentAttributes, z.infer<typeof ComponentAttributesSchema>>>,
+  Assert<
+    MutuallyAssignable<
+      ComponentAttributes,
+      z.infer<typeof ComponentAttributesSchema>
+    >
+  >,
 ];

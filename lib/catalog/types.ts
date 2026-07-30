@@ -40,3 +40,23 @@ export interface ComponentAttributeFieldDefinition {
  * well-formed `EngineeringValue` — on write and read.
  */
 export type ComponentAttributes = Readonly<Record<string, EngineeringValue>>;
+
+/**
+ * Lifecycle of a manufacturer part, when known (context/code-standards.md
+ * "Catalog"). `undefined`/absent means unknown. Owned here (not
+ * `lib/db`) because part-revision identity/lifecycle is a catalog validation
+ * concern — `lib/db/repositories/catalog-types.ts` imports this rather than
+ * redeclaring it, the same cross-package pattern
+ * `lib/engine/parameters`' `LoadCaseCategory` already follows. The Prisma enum
+ * of the same name (`prisma/schema.prisma`) is the persisted mirror.
+ */
+export type PartLifecycleStatus =
+  "active" | "not_recommended_for_new_design" | "obsolete" | "discontinued";
+
+/**
+ * Data-quality state of an imported/entered manufacturer part revision
+ * (project-overview.md "Manufacturer Part Data": "Data quality status and
+ * validation errors"). See {@link PartLifecycleStatus} for why this is owned
+ * here rather than in `lib/db`.
+ */
+export type DataQualityStatus = "valid" | "warning" | "error";

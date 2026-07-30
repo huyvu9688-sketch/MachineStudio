@@ -7,8 +7,20 @@
 // do (context/code-standards.md "Catalog": no company-approved-part,
 // supplier, pricing, or inventory workflow in the MVP).
 
-import type { ComponentAttributeFieldDefinition, ComponentAttributes } from "../../catalog";
+import type {
+  ComponentAttributeFieldDefinition,
+  ComponentAttributes,
+  DataQualityStatus,
+  PartLifecycleStatus,
+} from "../../catalog";
 import type { UserId } from "./types";
+
+// Re-exported so existing importers of `PartLifecycleStatus`/`DataQualityStatus`
+// from this module (or the `lib/db/repositories` barrel) are unaffected — the
+// types are now owned by `lib/catalog` (see its `types.ts`), the same
+// cross-package pattern `LoadCaseCategory` (`lib/engine/parameters`) already
+// follows for `lib/db`.
+export type { DataQualityStatus, PartLifecycleStatus };
 
 // --- Branded IDs -----------------------------------------------------------
 
@@ -31,12 +43,16 @@ export type ComponentSchemaVersionId = string & {
   readonly __brand: "ComponentSchemaVersionId";
 };
 /** Casts a raw string to a {@link ComponentSchemaVersionId}. Identity at runtime. */
-export function asComponentSchemaVersionId(id: string): ComponentSchemaVersionId {
+export function asComponentSchemaVersionId(
+  id: string,
+): ComponentSchemaVersionId {
   return id as ComponentSchemaVersionId;
 }
 
 /** A `CatalogImportBatch` ID. */
-export type CatalogImportBatchId = string & { readonly __brand: "CatalogImportBatchId" };
+export type CatalogImportBatchId = string & {
+  readonly __brand: "CatalogImportBatchId";
+};
 /** Casts a raw string to a {@link CatalogImportBatchId}. Identity at runtime. */
 export function asCatalogImportBatchId(id: string): CatalogImportBatchId {
   return id as CatalogImportBatchId;
@@ -47,28 +63,20 @@ export type ManufacturerPartRevisionId = string & {
   readonly __brand: "ManufacturerPartRevisionId";
 };
 /** Casts a raw string to a {@link ManufacturerPartRevisionId}. Identity at runtime. */
-export function asManufacturerPartRevisionId(id: string): ManufacturerPartRevisionId {
+export function asManufacturerPartRevisionId(
+  id: string,
+): ManufacturerPartRevisionId {
   return id as ManufacturerPartRevisionId;
 }
 
 /** A `DatasheetAttachment` ID. */
-export type DatasheetAttachmentId = string & { readonly __brand: "DatasheetAttachmentId" };
+export type DatasheetAttachmentId = string & {
+  readonly __brand: "DatasheetAttachmentId";
+};
 /** Casts a raw string to a {@link DatasheetAttachmentId}. Identity at runtime. */
 export function asDatasheetAttachmentId(id: string): DatasheetAttachmentId {
   return id as DatasheetAttachmentId;
 }
-
-// --- Enums (mirror the Prisma enums) ---------------------------------------
-
-/** Lifecycle of a manufacturer part, when known; mirrors `PartLifecycleStatus`. */
-export type PartLifecycleStatus =
-  | "active"
-  | "not_recommended_for_new_design"
-  | "obsolete"
-  | "discontinued";
-
-/** Data-quality state of a part revision; mirrors `DataQualityStatus`. */
-export type DataQualityStatus = "valid" | "warning" | "error";
 
 // --- Records (a single row) -------------------------------------------------
 
