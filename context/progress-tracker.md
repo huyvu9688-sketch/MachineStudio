@@ -296,6 +296,29 @@ Update this file after every meaningful implementation change.
     dropped) to `"pipe"`, so a future failure's real cause appears in the CI
     step output directly instead of requiring another guess-and-repro cycle
     like this one. Not yet re-verified in CI — needs another push.
+  - **UPDATE: the timeout raise was the wrong diagnosis.** Pushed as
+    `49c1038`, CI run 30546168760 — "E2E smoke test" failed again, this time
+    running to the *exact new* 300s timeout (13:18:19–13:23:20 UTC) with the
+    piped stdout/stderr adding nothing visible (still no log access — the
+    `check-runs` annotations API, tried as a fallback, returned only
+    "Process completed with exit code 1," no detail). Two runs failing at
+    two different configured timeouts, both to the exact second, is not
+    "slow" — it is "never succeeds," so raising the number further would
+    never have helped. Re-diagnosed by local repro instead: removed the
+    gitignored `.clerk/` cache entirely (forcing keyless mode's full
+    first-time provisioning, the closest local approximation of a fresh CI
+    checkout) and polled `127.0.0.1` every 5s — ready and reachable within
+    10s regardless, ruling out Clerk/Turbopack/font-fetch slowness as the
+    cause. The remaining candidate: `next dev` binding only to the IPv6
+    loopback (`::1`) on some Linux containers, unreachable from a
+    `127.0.0.1`-based (IPv4) check no matter how long it waits — a
+    documented Next.js/Node class of issue on certain CI images. Fixed by
+    adding `--hostname 0.0.0.0` to the dev command, forcing both interfaces;
+    confirmed locally that `next dev --hostname 0.0.0.0` still serves both
+    `127.0.0.1` and `localhost` correctly. Timeouts brought back down to
+    120s (webServer) / Playwright's own defaults, since a fixed binding
+    issue should restore the ~10-15s local start time. Not yet re-verified
+    in CI — this is the third attempt.
   angle-as-base-dimension power algebra gap — closed, locally verified.**
   Confirmed-by-test problem: `multiplyQuantities(10 N*m, 100 rad/s)` returns
   `kg*m^2*s^-3*rad`, not `W` — because `Dimensions.torque` carries no angle
