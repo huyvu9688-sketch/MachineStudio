@@ -497,9 +497,11 @@ Update this file after every meaningful implementation change.
       fails at the same pre-existing `execute-module-instance.ts:247` error
       it already failed at before this session's changes (Next.js stops at
       the first type error, so this confirms no new error class without
-      needing to see past that known blocker). **Unit 2.9 is now fully
-      implemented; full verification (typecheck, build, migration deploy,
-      and the 17 new live-DB tests) is deferred to GitHub Actions CI.**
+      needing to see past that known blocker). **Verified in GitHub Actions
+      CI** (commit `7941eaf`, run 30525753448 — every step green, including
+      "Deploy migrations" confirming the hand-authored `MachineBaseline`
+      table and its immutability-guard trigger apply cleanly, and all 17 new
+      live-DB tests). **Unit 2.9 is now fully complete.**
   - **Next work unit**: Milestone 3 (generic UI), starting with Unit 3.1
     (workspace shell), then Milestone 4 (modules).
   - DEFERRED within Unit 2.6, RESOLVED in Unit 2.7 part 1 (documented in
@@ -1408,20 +1410,13 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-Units 2.6, 2.7 (both parts), and 2.8 (both parts) are complete and verified
-green in GitHub Actions CI (2026-07-30 — Unit 2.8's initial push needed a
-test-cleanup fix, see Current Goal) and drop off this list. **Unit 2.9 (both
-parts) is now fully implemented** (2026-07-30, see Current Goal) — part 1
-needed no CI round trip (pure `lib/configuration`); part 2 touches the Prisma
-schema, so it is implemented-and-locally-checked until a push confirms it
-green in GitHub Actions CI, the same convention every prior schema-touching
-unit followed.
+Units 2.6 through 2.9 are all complete and verified green in GitHub Actions
+CI (2026-07-30 — Unit 2.8's initial push needed a test-cleanup fix, see
+Current Goal) and drop off this list. **Milestone 2 (Persistence and
+Application Services) is now complete.**
 
-1. **Get Unit 2.9 part 2 pushed and green in CI** — the immediate next
-   action, not a new unit. Same verification step every prior schema-touching
-   unit (2.1–2.8) already went through.
-2. **Milestone 3 (generic UI)**, starting with Unit 3.1 (workspace shell),
-   once Unit 2.9 is fully verified. Then Milestone 4 (modules).
+1. **Milestone 3 (generic UI)**, starting with Unit 3.1 (workspace shell).
+   Then Milestone 4 (modules).
    - Deferred to the confirm/suggestion flow (NOT Unit 2.2): **semantic link
      compatibility** (`evaluateLinkCompatibility`). Unit 2.2 persists an
      already-confirmed link and rejects cycles (a structural rule independent
@@ -1448,9 +1443,9 @@ unit followed.
      `rankCandidates`'s output to pass to `assignComponent`. Part 1
      deliberately did not guess which operator each attribute needs — see
      Current Goal and Architecture Decisions.
-3. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
+2. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
    fixtures once the user has real cases to compare against
-4. Downstream parameter groups (screw, guide, coupling, support-bearing,
+3. Downstream parameter groups (screw, guide, coupling, support-bearing,
    drive-train): NOT released in registry v1 — approved pending proposals to
    be released per module at its Stage-2 parameter contract (bumping the
    registry version). See `lib/engine/parameters/README.md` and Open Questions
