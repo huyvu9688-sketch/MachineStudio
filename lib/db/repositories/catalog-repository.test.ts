@@ -14,6 +14,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { SERIALIZATION_FORMAT_VERSION } from "../../engine/values";
 import type { Quantity } from "../../engine/values";
 import type { ComponentAttributeFieldDefinition } from "../../catalog";
+import { asManufacturerPartRevisionId } from "./catalog-types";
 import type {
   ComponentSchemaVersionId,
   ComponentTypeId,
@@ -327,24 +328,27 @@ describe.skipIf(!liveDatabaseAvailable)(
         "ball-screw",
         ballScrewFields,
       );
-      const revision = await catalog.createManufacturerPartRevision({
-        manufacturerId,
-        componentTypeId,
-        componentSchemaVersionId: schemaVersionId,
-        partNumber: "BSS1520-914",
-        sourceRevision: "2026-catalog",
-        attributes: { lead: quantity(20, "mm") },
-      });
-      createdPartRevisionIds.push(revision.id);
 
-      // Bypass the repository to corrupt the stored JSONB directly.
-      await client.prisma.manufacturerPartRevision.update({
-        where: { id: revision.id },
-        data: { attributes: { lead: { kind: "not-a-real-kind" } } },
-      });
+      // manufacturer_part_revisions' immutability trigger (ADR-0006) rejects
+      // every UPDATE (verified by the next test), so corrupting an existing
+      // row via an `.update()` bypass — the way this test used to — is no
+      // longer possible. That is the point of the trigger. Instead, insert a
+      // row with an already-corrupt payload directly, simulating data written
+      // before a stricter schema version, the same scenario the trigger
+      // cannot protect against on its own (mirrors
+      // baseline-repository.test.ts's "rejects a corrupt stored snapshot on
+      // read").
+      const corruptId = randomUUID();
+      await client.prisma.$executeRaw`
+        INSERT INTO manufacturer_part_revisions
+          (id, "manufacturerId", "componentTypeId", "componentSchemaVersionId", "partNumber", "sourceRevision", attributes, "createdAt", "updatedAt")
+        VALUES
+          (${corruptId}, ${manufacturerId}, ${componentTypeId}, ${schemaVersionId}, 'BSS1520-914', '2026-catalog', '{"lead": {"kind": "not-a-real-kind"}}'::jsonb, now(), now())
+      `;
+      createdPartRevisionIds.push(corruptId);
 
       await expect(
-        catalog.loadManufacturerPartRevision(revision.id),
+        catalog.loadManufacturerPartRevision(asManufacturerPartRevisionId(corruptId)),
       ).rejects.toMatchObject({
         code: "invalid_snapshot",
       });
