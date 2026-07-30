@@ -52,18 +52,32 @@ Update this file after every meaningful implementation change.
   (this session had no local database — see Current Goal): lint, typecheck,
   test, and build all green with migrations deployed to the live Postgres
   service container.
+  **Unit 2.5 (stale propagation service) complete** (2026-07-30), adding
+  `setParameterValue`, `confirmParameterLink`, and `removeParameterLink` in a
+  new `lib/application/parameters/` boundary, plus the repository primitives
+  they need (`loadConfigurationGraph`, `markRunsStaleForModuleInstances`,
+  `isConfigurationOwnedBy`, `deleteParameterLink`,
+  `loadParameterLinkForOwner`). Verified **in GitHub Actions CI**: lint,
+  typecheck, test, and build all green.
 
 ## Current Goal
 
-- Milestone 2 in progress. **Unit 2.4 (calculation application service) is
-  complete and verified in CI on 2026-07-30** — see the Completed entry.
-  **Next work unit: Unit 2.5 (stale propagation service)** — use cases for
-  changing a manual/default value, confirming/removing a link, and changing a
-  workflow-provided value, each computing downstream impact via
-  `lib/engine/graph`'s `computeStaleImpact` and marking runs (and later,
-  assignments) stale in one transaction (invariant "Transactional stale
-  propagation"). Then Units 2.6–2.9; Milestone 3 (generic UI) and Milestone 4
+- Milestone 2 in progress. **Unit 2.5 (stale propagation service) is complete
+  and verified in CI on 2026-07-30** — see the Completed entry. **Next work
+  unit: Unit 2.6 (manufacturer catalog schema)** — Prisma models for
+  `Manufacturer`, `ComponentType`, `ComponentSchemaVersion`,
+  `CatalogImportBatch`, `ManufacturerPartRevision`, and datasheet attachment
+  metadata, with versioned-attributes JSONB per component type (exit
+  criterion: two component types with different attributes coexist without a
+  schema change). Then Units 2.7–2.9; Milestone 3 (generic UI) and Milestone 4
   (modules) follow.
+  - DEFERRED within Unit 2.5 (documented in
+    `lib/application/parameters/stale-propagation.ts`, not a gap to
+    silently carry forward): "change an assigned-component feedback input"
+    — the implementation map's fourth stale-propagation use case. It needs
+    `ComponentAssignment`, which does not exist until Unit 2.8. Revisit
+    then — the same `computeStaleImpact` + transactional-mark pattern
+    applies once that model exists.
 - IMPORTANT UPDATE (2026-07-29) to the long-standing `prisma generate`
   constraint: on a fresh clone this session, `prisma generate`, `typecheck`,
   and `build` **all succeed on a local dev machine** — because the schema uses
@@ -111,6 +125,73 @@ Update this file after every meaningful implementation change.
 
 ## Completed
 
+- Unit 2.5: stale propagation service (2026-07-30), the fifth Milestone 2
+  unit, delivered in a new `lib/application/parameters/` boundary plus
+  supporting repository primitives. Implements three of the implementation
+  map's four use cases — `setParameterValue` (change a manual/default or
+  workflow-provided value — one function, since both are structurally
+  identical: author a new `ParameterValue` row, then propagate), and
+  `confirmParameterLink`/`removeParameterLink`. Each computes downstream
+  impact with `lib/engine/graph`'s `computeStaleImpact` and marks every
+  affected `CalculationRun` stale in the same transaction as the write
+  (invariant "Transactional stale propagation") via a new bulk
+  `markRunsStaleForModuleInstances` (the counterpart to Unit 2.3's
+  single-run `markRunStale`).
+  - **Graph reconstruction, generalized.** `createParameterLink`'s existing
+    cycle-check reconstruction (Unit 2.2) only added nodes for existing
+    *link endpoints* — sufficient for cycle detection, but not for stale
+    impact: a module's own directly-authored, never-linked input has no
+    node to start a traversal from, and if its sibling output is also
+    unlinked, no internal edge to prove *that module's own* runs are
+    affected by changing it. Extracted a shared, exported
+    `loadConfigurationGraph(configurationId, extraNodes)` (refactoring
+    `createParameterLink` to call it — behavior unchanged) that accepts
+    extra node descriptors to guarantee are present. The stale-propagation
+    services always pass the changed module's **full port set** (inputs and
+    outputs, read from its package via `lib/modules`) as extra nodes,
+    guaranteeing its own internal feed edge exists regardless of link
+    connectivity. `lib/db` still never imports the module registry — only
+    the application layer enumerates a package's ports, mirroring Unit
+    2.4's own `executeModuleInstance`. `parameterGraphNodeId` and
+    `GraphNodeDescriptor` are now exported for this reuse.
+  - **Authorization** branches on whether the changed node has an owning
+    module instance: `loadModuleInstanceForOwner` (Unit 2.4) for a module's
+    own port, or a new `isConfigurationOwnedBy` for a bare provider value
+    (machine requirement / assembly / workflow parameter). New
+    `loadParameterLinkForOwner` (ownership-scoped read) and
+    `deleteParameterLink` (ownership-scoped delete, no separate
+    authorization query needed) support `removeParameterLink`.
+    `createParameterValue`/`createParameterLink` now accept an optional
+    transaction client, like Unit 2.4's repositories.
+  - **Transaction ordering is deliberate**: each use case marks the
+    precomputed downstream runs stale *before* performing the actual write,
+    inside the same `prisma.$transaction`. An invalid write (a malformed
+    `EngineeringValue`, a cycle, a duplicate link) then rolls back the
+    stale marks too, not just the write — proving real atomicity rather
+    than merely short-circuiting before any mutation.
+  - **DEFERRED** (documented in `stale-propagation.ts`, not implemented):
+    "change an assigned-component feedback input," the implementation
+    map's fourth use case — needs `ComponentAssignment` (Unit 2.8).
+  - 10 new live-DB tests (`stale-propagation.test.ts`) cover the Unit 2.5
+    plan exactly: multi-level dependency chain (A→B→C, changing A stales
+    all three), multiple branches (A→B, A→C, changing A stales both, not
+    each other), no unrelated stale records, and transaction rollback —
+    plus confirm/remove's individual stale-marking behavior, provider-value
+    authorization, and unauthorized access for all three use cases. One
+    round of CI failures (the first push) came from a **test-authoring**
+    mistake, not an implementation bug: several tests tried to get a
+    "fresh" run for a linked module by re-executing it through the
+    confirmed link, but `example-scaffold`'s one input/output pair is
+    deliberately dimension-mismatched (mass in, force out — chosen so
+    linked-value resolution has something concrete to pull, same as Unit
+    2.4's own test) — re-executing through it genuinely fails validation,
+    exactly as it should. Fixed by resetting a run's stale flag directly
+    via `markRunStale` instead of trying to produce a second run through
+    re-execution; no production code changed. Exit criterion met: the
+    architecture stale invariant is proven against PostgreSQL. **Verified
+    in GitHub Actions CI** (no local database this session): lint,
+    typecheck, test, and build all green, migrations deployed to the live
+    Postgres service container.
 - Unit 2.4: calculation application service (2026-07-30), the fourth
   Milestone 2 unit and the first `lib/application` boundary
   (context/architecture.md "lib/application/": use-case and transaction
@@ -763,25 +844,26 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-Unit 2.4 is done and verified in CI (2026-07-30) and drops off this list.
+Unit 2.5 is done and verified in CI (2026-07-30) and drops off this list.
 This session had no local database at all (see Current Goal's 2026-07-30
 correction) — CI is the verification path until a future session confirms
 local Postgres access again.
 
-1. **Unit 2.5 (stale propagation service)** — next. Use cases for: change a
-   manual/default value; confirm/remove a link; change a workflow-provided
-   value; change an assigned-component feedback input when applicable. Each
-   computes downstream impact with `lib/engine/graph`'s `computeStaleImpact`
-   (BFS over the feed graph to distinct downstream module instances) and
-   marks the affected `CalculationRun`s stale (Unit 2.3's `markRunStale`) in
-   one transaction — opened at the application-service boundary, same
-   pattern Unit 2.4 established (`prisma.$transaction`, repository writes
-   accepting the shared `DbClient`). Tests per the implementation map:
-   multi-level dependency chain, multiple branches, no unrelated stale
-   records, transaction rollback. Exit criterion: the architecture stale
-   invariant ("Transactional stale propagation") is proven against
-   PostgreSQL. Then Units 2.6 → 2.9. Milestone 3 (generic UI) and Milestone 4
-   (modules) follow.
+1. **Unit 2.6 (manufacturer catalog schema)** — next. Prisma models:
+   `Manufacturer`, `ComponentType`, `ComponentSchemaVersion`,
+   `CatalogImportBatch`, `ManufacturerPartRevision`, and datasheet attachment
+   metadata. Part data per the implementation map: manufacturer + part
+   number, source revision + source link, lifecycle state when known,
+   versioned attributes JSONB (validated against the component's
+   `ComponentSchemaVersion`, same "validate on write and read" convention as
+   every other JSONB payload so far), and a data-quality state. Explicit
+   exclusions (context/roadmap.md "Explicitly Deferred"): no company
+   approval state, no supplier/pricing records, no inventory, no procurement
+   workflow. Exit criterion: two component types with different attributes
+   coexist without a Prisma schema change — i.e. adding a new component type
+   is a new `ComponentSchemaVersion` row, never a migration. Then Units
+   2.7–2.9 (CSV import, catalog matching, baseline + audit services).
+   Milestone 3 (generic UI) and Milestone 4 (modules) follow.
    - Deferred to the confirm/suggestion flow (NOT Unit 2.2): **semantic link
      compatibility** (`evaluateLinkCompatibility`). Unit 2.2 persists an
      already-confirmed link and rejects cycles (a structural rule independent
@@ -790,6 +872,11 @@ local Postgres access again.
      the suggest-and-confirm graph service and the link-suggestion UI (Unit
      3.4), which only offer compatible links to confirm. See Architecture
      Decisions.
+   - Deferred to Unit 2.8/2.9 (NOT Unit 2.5): "change an assigned-component
+     feedback input" stale-propagation use case — needs `ComponentAssignment`,
+     which Unit 2.6 does not create (that is Unit 2.8). Apply the same
+     `computeStaleImpact` + transactional-mark pattern Unit 2.5 established
+     once that model exists.
 2. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
    fixtures once the user has real cases to compare against
 3. Downstream parameter groups (screw, guide, coupling, support-bearing,
