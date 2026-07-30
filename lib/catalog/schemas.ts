@@ -10,6 +10,7 @@ import type { EngineeringValueKind } from "../engine/values";
 import type {
   ComponentAttributeFieldDefinition,
   ComponentAttributes,
+  ManualPartDetails,
 } from "./types";
 
 const nonEmpty = z.string().trim().min(1);
@@ -62,6 +63,19 @@ export const ComponentAttributeFieldListSchema = z
 export const ComponentAttributesSchema: z.ZodType<ComponentAttributes> =
   z.record(nonEmpty, EngineeringValueSchema);
 
+/**
+ * Validates a `ComponentAssignment.manualPartDetails` payload (Unit 2.8): a
+ * manual/custom part record with no catalog backing.
+ */
+export const ManualPartDetailsSchema: z.ZodType<ManualPartDetails> = z
+  .object({
+    description: nonEmpty,
+    manufacturerName: nonEmpty.optional(),
+    partNumber: nonEmpty.optional(),
+    notes: nonEmpty.optional(),
+  })
+  .strict();
+
 // --- Compile-time schema/interface parity guard -----------------------------
 
 type MutuallyAssignable<A, B> = [A] extends [B]
@@ -82,6 +96,12 @@ export type _CatalogSchemaParity = [
     MutuallyAssignable<
       ComponentAttributes,
       z.infer<typeof ComponentAttributesSchema>
+    >
+  >,
+  Assert<
+    MutuallyAssignable<
+      ManualPartDetails,
+      z.infer<typeof ManualPartDetailsSchema>
     >
   >,
 ];

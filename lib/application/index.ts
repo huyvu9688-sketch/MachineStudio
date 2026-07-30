@@ -32,3 +32,12 @@ export {
   type ImportCatalogError,
   type ImportCatalogErrorCode,
 } from "./catalogs/import-catalog";
+
+export {
+  assignComponent,
+  type AssignComponentTarget,
+  type AssignComponentInput,
+  type AssignComponentResult,
+  type AssignComponentError,
+  type AssignComponentErrorCode,
+} from "./catalogs/assign-component";

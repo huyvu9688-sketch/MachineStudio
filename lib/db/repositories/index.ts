@@ -19,6 +19,7 @@ export {
   loadModuleInstanceForOwner,
   updateModuleInstanceRunStatus,
   isConfigurationOwnedBy,
+  isAssemblyOwnedBy,
 } from "./project-repository";
 export type { ProjectRepositoryErrorCode } from "./project-repository";
 
@@ -90,3 +91,14 @@ export {
   listManufacturerPartRevisionsByComponentType,
 } from "./catalog-repository";
 export type { CatalogRepositoryErrorCode } from "./catalog-repository";
+
+// Component assignment (Unit 2.8 part 2).
+export * from "./component-assignment-types";
+export {
+  ComponentAssignmentRepositoryError,
+  createComponentAssignment,
+  loadComponentAssignmentForOwner,
+  listComponentAssignmentsForConfiguration,
+  markComponentAssignmentsStaleForModuleInstances,
+} from "./component-assignment-repository";
+export type { ComponentAssignmentRepositoryErrorCode } from "./component-assignment-repository";

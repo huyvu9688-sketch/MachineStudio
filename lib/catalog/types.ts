@@ -60,3 +60,19 @@ export type PartLifecycleStatus =
  * here rather than in `lib/db`.
  */
 export type DataQualityStatus = "valid" | "warning" | "error";
+
+/**
+ * A manual/custom part record for a `ComponentAssignment` with no catalog
+ * backing (Unit 2.8; context/ui-context.md "Catalog and Assignment UI":
+ * "Manual/custom part entry is supported"). Deliberately minimal — a full
+ * manual-part entry form is a Unit 3.6 UI concern; this is the least
+ * persistence shape the Unit 2.8 exit criterion ("assigned parts can
+ * populate the BOM") needs. Owned here, not `lib/db`, mirroring
+ * {@link PartLifecycleStatus}'s placement.
+ */
+export interface ManualPartDetails {
+  readonly description: string;
+  readonly manufacturerName?: string;
+  readonly partNumber?: string;
+  readonly notes?: string;
+}

@@ -487,3 +487,25 @@ export async function isConfigurationOwnedBy(
   });
   return row !== null;
 }
+
+// --- Assembly ownership (Unit 2.8) ----------------------------------------
+
+/**
+ * Whether an assembly belongs to `ownerId` (the filter walks assembly →
+ * configuration → project → owner). Unit 2.8's `assignComponent` uses this to
+ * authorize a manual/custom part assigned directly to an assembly — no
+ * owning module instance to check via `loadModuleInstanceForOwner`, the same
+ * gap `isConfigurationOwnedBy` fills for a machine-level provider value.
+ */
+export async function isAssemblyOwnedBy(
+  assemblyId: string,
+  ownerId: UserId,
+): Promise<boolean> {
+  const id = parse(nonEmpty, assemblyId);
+  const owner = parse(nonEmpty, ownerId);
+  const row = await prisma.assembly.findFirst({
+    where: { id, configuration: { project: { ownerId: owner } } },
+    select: { id: true },
+  });
+  return row !== null;
+}

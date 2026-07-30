@@ -15,6 +15,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { makeQuantity, type EngineeringValue } from "@/lib/engine";
+import type { ComponentAssignmentId } from "../../db/repositories/component-assignment-types";
 import type { CalculationRunId } from "../../db/repositories/run-types";
 import type {
   AssemblyId,
@@ -41,6 +42,7 @@ describe.skipIf(!generatedClientAvailable)(
     let projects: typeof import("../../db/repositories/project-repository");
     let graph: typeof import("../../db/repositories/graph-repository");
     let runs: typeof import("../../db/repositories/run-repository");
+    let assignments: typeof import("../../db/repositories/component-assignment-repository");
     let client: typeof import("../../db/client");
     const createdUserIds: string[] = [];
 
@@ -113,6 +115,29 @@ describe.skipIf(!generatedClientAvailable)(
       return row.stale;
     }
 
+    async function isAssignmentStale(id: ComponentAssignmentId): Promise<boolean> {
+      const row = await client.prisma.componentAssignment.findUniqueOrThrow({
+        where: { id },
+      });
+      return row.stale;
+    }
+
+    /** A manual-sourced assignment targeting a module instance's calculated run (Unit 2.8). */
+    async function assignToModule(
+      s: Scaffold,
+      m: { moduleInstanceId: ModuleInstanceId; runId: CalculationRunId },
+    ): Promise<ComponentAssignmentId> {
+      const created = await assignments.createComponentAssignment({
+        configurationId: s.configId,
+        targetKind: "module_instance",
+        moduleInstanceId: m.moduleInstanceId,
+        partSource: "manual",
+        manualPartDetails: { description: "Stand-in part for stale-propagation tests" },
+        calculationRunId: m.runId,
+      });
+      return created.id;
+    }
+
     /**
      * Clears a run's stale flag, simulating "this run is the current one" for
      * test setup. Confirming a link already stales its target's existing run
@@ -135,6 +160,7 @@ describe.skipIf(!generatedClientAvailable)(
       projects = await import("../../db/repositories/project-repository");
       graph = await import("../../db/repositories/graph-repository");
       runs = await import("../../db/repositories/run-repository");
+      assignments = await import("../../db/repositories/component-assignment-repository");
       client = await import("../../db/client");
     });
 
@@ -407,6 +433,54 @@ describe.skipIf(!generatedClientAvailable)(
         where: { id: confirmed.link.id },
       });
       expect(linkRow).not.toBeNull();
+    });
+
+    it("marks a component assignment stale when its target module instance's value changes (Unit 2.8)", async () => {
+      const s = await scaffold();
+      const a = await newModuleWithRun(s, "A");
+      const assignmentId = await assignToModule(s, a);
+      expect(await isAssignmentStale(assignmentId)).toBe(false);
+
+      const result = await stalePropagation.setParameterValue(
+        {
+          configurationId: s.configId,
+          moduleInstanceId: a.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: PAYLOAD_MASS,
+          source: "manual",
+          value: makeQuantity(40, "kg"),
+        },
+        s.ownerId,
+      );
+      expect(result.ok).toBe(true);
+      expect(await isAssignmentStale(assignmentId)).toBe(true);
+    });
+
+    it("marks a component assignment stale when a link to its target module instance is confirmed or removed (Unit 2.8)", async () => {
+      const s = await scaffold();
+      const a = await newModuleWithRun(s, "A");
+      const b = await newModuleWithRun(s, "B");
+      const assignmentId = await assignToModule(s, b);
+      expect(await isAssignmentStale(assignmentId)).toBe(false);
+
+      const confirmed = await stalePropagation.confirmParameterLink(
+        linkInput(s, a.moduleInstanceId, b.moduleInstanceId),
+        s.ownerId,
+      );
+      expect(confirmed.ok).toBe(true);
+      expect(await isAssignmentStale(assignmentId)).toBe(true);
+
+      // Reset (both the run and the assignment) to isolate removal's effect.
+      await resetRunFresh(b.runId);
+      await client.prisma.componentAssignment.update({
+        where: { id: assignmentId },
+        data: { stale: false, staleReason: null },
+      });
+      if (!confirmed.ok) return;
+
+      const removed = await stalePropagation.removeParameterLink(confirmed.link.id, s.ownerId);
+      expect(removed.ok).toBe(true);
+      expect(await isAssignmentStale(assignmentId)).toBe(true);
     });
   },
 );

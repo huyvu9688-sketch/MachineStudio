@@ -111,6 +111,41 @@ Update this file after every meaningful implementation change.
   compound-unique-key name `upsertManufacturerPartRevision` assumed (Prisma's
   default naming for an unnamed `@@unique([...])`, guessed without being able
   to generate the client locally) is correct.
+  **Unit 2.8 part 1 (catalog matching: hard-filter + ranking engine) complete**
+  (2026-07-30), delivered entirely in `lib/catalog/` (`matching-types.ts`,
+  `matching.ts`) — pure and DB-free, no migration needed. Split from Unit
+  2.8's `ComponentAssignment` persistence + assignment orchestration half per
+  the same "more than two system boundaries" rule Unit 2.7 used — see Current
+  Goal. 22 new pure tests; full suite 356/356 passed (69 skipped, unchanged).
+  Verified locally only (no DB touched, so no CI round trip needed): lint (0
+  warnings), typecheck and build fail only on the pre-existing, unrelated
+  missing-generated-client cascade (confirmed via `git status` that no file
+  in that cascade was touched this session).
+  **Unit 2.8 part 2 (`ComponentAssignment` persistence and assignment
+  orchestration) implemented** (2026-07-30) — see the Current Goal entry for
+  full detail. Adds the `ComponentAssignment` model and two new enums to
+  `prisma/schema.prisma`, migration
+  `prisma/migrations/20260730150000_component_assignment` (**hand-authored**
+  — this session hit the same corporate-TLS `binaries.prisma.sh` block as
+  every prior schema-touching session, confirmed freshly by re-testing `npx
+  prisma generate`), the new `lib/db/repositories/component-assignment-repository.ts`
+  and `component-assignment-types.ts`, `isAssemblyOwnedBy` in
+  `project-repository.ts`, the new `lib/application/catalogs/assign-component.ts`
+  service, and extends `lib/application/parameters/stale-propagation.ts` to
+  also mark dependent `ComponentAssignment`s stale (closing invariant 8's
+  "and component assignments" clause). 26 new tests (all live-DB, self-skip
+  locally). **This unit's completeness note differs from Unit 2.8 part 1's**:
+  because this part touches the Prisma schema, this project's established
+  convention (every prior schema-touching unit: 2.1–2.7) is to treat GitHub
+  Actions CI as the actual verification environment, not local `npm run
+  build`/`typecheck` (which cannot pass without the generated Prisma client
+  on this network). Locally confirmed: lint (0 warnings), full suite
+  (356/356 passed, 95 skipped — up from 69), and typecheck/build introduce no
+  new error class beyond the pre-existing, already-documented
+  missing-generated-client cascade. **Full verification (typecheck, build,
+  migration deploy, and the new live-DB tests) has not yet run in CI** — that
+  needs a commit and push, which this session did not do without asking
+  first (see Current Goal).
 
 ## Current Goal
 
@@ -154,10 +189,142 @@ Update this file after every meaningful implementation change.
     `20260730140000_catalog_import_batch_summary`) — still inside the
     already-counted `lib/db` boundary, not a new one, so the split-rule count
     (`lib/catalog` + `lib/db` + `lib/application` = 3, split into part-1's 1 +
-    part-2's 2) still holds. See Architecture Decisions. **Next work unit:
-    Unit 2.8 (catalog matching + `ComponentAssignment`)**, then Unit 2.9
-    (baseline + audit services); Milestone 3 (generic UI) and Milestone 4
-    (modules) follow.
+    part-2's 2) still holds. See Architecture Decisions.
+  - **SPLIT DECISION (2026-07-30, Unit 2.8):** the implementation map's Unit
+    2.8 ("Catalog matching and component assignment") deliverables —
+    hard-filter engine, transparent ranking result, rejection reasons,
+    required-spec output, `ComponentAssignment` persistence, manual/custom
+    part assignment — span the same three boundaries Unit 2.7 did:
+    `lib/catalog` (hard filters + ranking, pure), `lib/db` (schema +
+    `ComponentAssignment` persistence), and `lib/application` (assignment
+    orchestration). Split the same way: **part 1** (`lib/catalog` only, this
+    session) and **part 2** (`lib/db` + `lib/application`, not yet started).
+  - **Part 1 delivered** (2026-07-30): `lib/catalog/matching-types.ts` +
+    `matching.ts` — a generic, component-type-agnostic hard-filter and ranking
+    engine. A `MatchCriterion` is `{ key, label, operator: "gte"|"lte"|"eq",
+    value: EngineeringValue, tolerance? }` — deliberately **not** shaped
+    around `lib/engine/module-sdk`'s `CatalogAdapter.requiredSpec()` (which
+    returns a bare `Record<string, EngineeringValue>` with no comparison
+    operator). Touching that type would have pulled a fourth boundary
+    (`lib/engine`) into this unit, and — more importantly — the operator a
+    given attribute needs (a capacity floor, a size ceiling, or an identity
+    match) is real engineering judgment no released contract currently
+    records; inventing it silently would violate "no invented behavior."
+    Building explicit `MatchCriterion`s from a module's `requiredSpec()` output
+    is deferred to whichever later unit first wires a real production module's
+    catalog adapter to this engine (Milestone 4). `evaluateCriterion` compares
+    one candidate attribute against one criterion (unit-aware for quantities
+    via `lib/engine/units`'s `convert`, never inferring a comparison operator
+    itself) and returns a typed pass/fail plus a human-readable reason
+    (`missing_attribute`, `value_kind_mismatch`, `dimension_mismatch`,
+    `below_minimum`, `above_maximum`, `not_equal`) — the "rejection reasons"
+    deliverable. `rankCandidates` runs hard filters first (a failing candidate
+    is never scored — "hard constraints run before ranking") and orders
+    survivors by mean fractional margin across their `"gte"`/`"lte"` criteria,
+    smallest surplus (tightest fit, least oversized) first, ties broken by
+    candidate `id` for determinism — the same tie-break pattern
+    `lib/engine/graph/suggest.ts` uses for source-suggestion ordering.
+    `describeRequiredSpec` formats criteria for the UI's "required
+    specification summary first" (`context/ui-context.md`). 22 new tests;
+    `npm run lint`/`test` clean, `typecheck`/`build` show only the
+    pre-existing missing-generated-client cascade (unrelated — this part
+    touches no `lib/db` file).
+  - **Part 2 delivered** (2026-07-30): the `ComponentAssignment` model, two
+    new enums, and five new back-relations in `prisma/schema.prisma`; the
+    migration `prisma/migrations/20260730150000_component_assignment`
+    (**hand-authored** — `npx prisma generate` was re-tried fresh this
+    session and hit the identical corporate-TLS `binaries.prisma.sh` block
+    every prior schema-touching session documents, so nothing changed about
+    that constraint); `lib/db/repositories/component-assignment-types.ts` +
+    `component-assignment-repository.ts` (`createComponentAssignment`,
+    ownership-scoped `loadComponentAssignmentForOwner`/
+    `listComponentAssignmentsForConfiguration`, and the bulk
+    `markComponentAssignmentsStaleForModuleInstances`); a new
+    `isAssemblyOwnedBy` in `project-repository.ts` (the assembly-level
+    counterpart to Unit 2.5's `isConfigurationOwnedBy`); and
+    `lib/application/catalogs/assign-component.ts` (`assignComponent`),
+    which authorizes the target, cross-checks a supplied `calculationRunId`
+    against its target module instance, verifies a catalog part revision
+    exists, then persists.
+    - **Schema design mirrors `ParameterLink`'s existing discriminator
+      pattern** (Unit 2.2): `targetKind` (`"module_instance"` |
+      `"assembly"`) sits alongside nullable `moduleInstanceId`/`assemblyId`
+      columns, and `partSource` (`"catalog"` | `"manual"`) sits alongside
+      nullable `manufacturerPartRevisionId`/`manualPartDetails` — validated
+      together by the repository's Zod `.refine()` chain, not a DB CHECK
+      constraint, the same boundary `graph-repository.ts`'s
+      `createParameterLink` already draws. `targetKind: "assembly"` with
+      `assemblyId` omitted means the machine/configuration root — the same
+      nullable-`assemblyId`-means-machine-level convention `Requirement`/
+      `DesignAssumption` already use — so two DB columns plus one
+      discriminator cover all three of the implementation map's "target
+      project/assembly/module" cases without a third column.
+    - **`partSource` and `targetKind` are orthogonal.** A manual/custom part
+      can target a `module_instance` (an engineer's own hand-picked
+      substitute for a calculated requirement, still needing a justifying
+      run) exactly as a catalog part can — "supporting run required for
+      calculated components" is keyed off `targetKind`, not `partSource`.
+    - **`configurationId` is caller-supplied and trusted**, not cross-checked
+      against the target's real configuration — matching the existing
+      convention `CreateParameterLinkInput`/`CreateParameterValueInput`
+      already establish (`stale-propagation.ts`'s use cases never verify
+      `input.configurationId` against the module instance's actual
+      configuration either). Not a new gap Unit 2.8 introduces; consistent
+      with what is already there.
+    - **Stale propagation closes invariant 8's second half.**
+      `lib/application/parameters/stale-propagation.ts` (Unit 2.5) now calls
+      the new `markComponentAssignmentsStaleForModuleInstances` alongside
+      the existing `markRunsStaleForModuleInstances` in all three use cases,
+      inside the same transaction — "downstream runs and component
+      assignments become stale in the same transaction as the upstream
+      change" is now literally true, not only true for runs. This is
+      deliberately the *simple* direction only (an assignment goes stale
+      when its justifying run does); Unit 2.5's fourth deferred trigger
+      ("change an assigned-component feedback input" — an assignment acting
+      as a value *source* other calculations consume) still needs a new
+      parameter-graph node kind and remains deferred as its own future unit
+      — see Next Up.
+    - **Nullable JSONB write convention**: `manualPartDetails` is the
+      project's first *nullable* `Json` column (every prior JSONB column —
+      `ParameterValue.value`, `CalculationRun.snapshot`,
+      `ComponentSchemaVersion.fields`, `ManufacturerPartRevision.attributes`
+      — is required). To avoid Prisma's `DbNull`/`JsonNull` ambiguity for a
+      nullable JSON column, `createComponentAssignment` omits the
+      `manualPartDetails` key entirely from the `data` object when there is
+      no payload (rather than assigning `null`), letting the column default
+      to real SQL `NULL`.
+    - 26 new tests (all live-DB, self-skipping locally):
+      `component-assignment-repository.test.ts` covers the create/read shape
+      rules (both part sources, all three target cases, every `.refine()`
+      mismatch, malformed and corrupt `manualPartDetails`, ownership
+      isolation, and the bulk stale-marking primitive including its
+      idempotency and empty-list no-op); `assign-component.test.ts` covers
+      the orchestration layer (successful assignment for each target kind,
+      unauthorized for each target kind, a run that does not exist, a run
+      belonging to a different module instance, a run supplied for a
+      non-calculated target, a part revision that does not exist, and a
+      repository validation failure surfacing as `invalid_input` rather than
+      throwing); two new tests appended to `stale-propagation.test.ts`
+      (`setParameterValue` and `confirmParameterLink`/`removeParameterLink`
+      each marking a dependent assignment stale) prove the wiring end to
+      end, reusing the existing `scaffold()`/`newModuleWithRun()` fixtures.
+    - **Verification differs from every other schema-touching unit so far**:
+      this session did not commit or push (git commits require the user's
+      explicit go-ahead, independent of `ai-workflow-rules.md`'s own
+      suggested "commit with the work-unit ID" delivery step), so **GitHub
+      Actions CI has not verified this migration, the new repository
+      queries against real Prisma-generated types, or the 26 new live-DB
+      tests.** Locally confirmed: `npm run lint` (0 warnings), `npm run
+      test` (356/356 passed, 95 skipped — up from 69), and `npm run
+      typecheck`/`build` introduce no new error class beyond the
+      pre-existing missing-generated-client cascade (verified line-by-line
+      against the pre-change error list). Until a commit is pushed and CI
+      runs, this part should be treated as implemented-and-locally-checked,
+      not fully verified — unlike Units 2.1–2.7, which all reached a
+      "verified in GitHub Actions CI" state before being called done.
+  - **Next work unit: Unit 2.9** (baseline + audit services), once Unit 2.8
+    part 2 is committed and CI-verified. Milestone 3 (generic UI) and
+    Milestone 4 (modules) follow.
   - DEFERRED within Unit 2.6, RESOLVED in Unit 2.7 part 1 (documented in
     `lib/catalog/types.ts`'s Unit 2.6 comment and `csv-import.ts`'s top
     comment): matching a specific `ManufacturerPartRevision.attributes`
@@ -1064,29 +1231,27 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-Unit 2.6 and both parts of Unit 2.7 are done and verified green in GitHub
-Actions CI (2026-07-30, see Current Goal — part 2's plan-correction note
-explains why the batch summary landed on new `CatalogImportBatch` columns
-instead of the originally-planned `AuditEvent` reuse) and drop off this list.
-This session had no local database at all — CI remains the verification path
-for anything touching Postgres until a future session confirms local access
-again.
+Unit 2.6, both parts of Unit 2.7, and both parts of Unit 2.8 are implemented
+(2026-07-30, see Current Goal) and drop off this list. Unit 2.6/2.7 are
+verified green in GitHub Actions CI. Unit 2.8 part 1 needed no CI round trip
+(pure `lib/catalog`, no database touched). **Unit 2.8 part 2 touches the
+Prisma schema and has NOT yet been committed, pushed, or CI-verified** — that
+is the immediate next action, ahead of starting Unit 2.9, per this project's
+established convention that a schema-touching unit is not "done" (only
+"implemented and locally checked") until GitHub Actions confirms the
+migration and the new live-DB tests. See Current Goal for exactly what is
+locally verified and what is not.
 
-1. **Unit 2.8 (catalog matching and component assignment)** — next. Per
-   `context/implementation-map.md`: hard-filter engine, transparent ranking
-   result, rejection reasons, required-spec output, `ComponentAssignment`
-   persistence (target project/assembly/module, manufacturer part revision or
-   manual/custom part payload, quantity, supporting calculation run,
-   assignment timestamp/user, stale state), and manual/custom part assignment.
-   This is also where `ComponentAssignment` — needed by Unit 2.5's deferred
-   fourth stale-propagation use case — finally exists. Exit criterion: assigned
-   parts can populate the BOM without an approval or selection workflow
-   subsystem. Likely spans `lib/catalog` (hard filters + ranking, pure) +
-   `lib/db` (schema + `ComponentAssignment` persistence) + `lib/application`
-   (assignment orchestration) again — check the same "more than two system
-   boundaries" split question before starting, the way Unit 2.7 was split.
-   Then Unit 2.9 (baseline + audit services); Milestone 3 (generic UI) and
-   Milestone 4 (modules) follow.
+1. **Get Unit 2.8 part 2 committed, pushed, and green in CI** — the
+   immediate next action, not a new unit. Nothing about the implementation is
+   expected to change; this is the same verification step every prior
+   schema-touching unit (2.1–2.7) already went through.
+2. **Unit 2.9 (baseline + audit services)** — next real unit, once Unit 2.8
+   is fully verified. Per `context/implementation-map.md`: `MachineBaseline`
+   snapshot, baseline item references, baseline creation checks, baseline
+   comparison, and the append-only `AuditEvent` query surfaces (Unit 2.4 only
+   added the minimal "append an event" shape). Then Milestone 3 (generic UI)
+   and Milestone 4 (modules) follow.
    - Deferred to the confirm/suggestion flow (NOT Unit 2.2): **semantic link
      compatibility** (`evaluateLinkCompatibility`). Unit 2.2 persists an
      already-confirmed link and rejects cycles (a structural rule independent
@@ -1095,14 +1260,27 @@ again.
      the suggest-and-confirm graph service and the link-suggestion UI (Unit
      3.4), which only offer compatible links to confirm. See Architecture
      Decisions.
-   - Deferred to Unit 2.8/2.9 (NOT Unit 2.5): "change an assigned-component
-     feedback input" stale-propagation use case — needs `ComponentAssignment`,
-     which Unit 2.6 does not create (that is Unit 2.8). Apply the same
-     `computeStaleImpact` + transactional-mark pattern Unit 2.5 established
-     once that model exists.
-2. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
+   - Deferred as its own future unit (NOT Unit 2.8): "change an
+     assigned-component feedback input" stale-propagation use case — an
+     assignment acting as a *source* of a value other calculations consume
+     (e.g. an assigned bearing's real stiffness feeding back into an
+     upstream calculation). Unit 2.8 part 2 implemented the simpler
+     direction only (an assignment goes stale when its justifying run does).
+     This feedback direction needs a new parameter-graph node kind — a
+     materially larger change than a stale-propagation call site — so it is
+     deferred until a real module actually needs it, not folded into Unit
+     2.8. See Architecture Decisions.
+   - Deferred to whichever Milestone-4 module first ships a `catalogAdapter`
+     (NOT Unit 2.8): converting a module's `CatalogAdapter.requiredSpec()`
+     output (a bare `Record<string, EngineeringValue>`, no operator) into
+     part 1's explicit `MatchCriterion[]` (key + `"gte"`/`"lte"`/`"eq"` +
+     value), then choosing a `manufacturerPartRevisionId` from
+     `rankCandidates`'s output to pass to `assignComponent`. Part 1
+     deliberately did not guess which operator each attribute needs — see
+     Current Goal and Architecture Decisions.
+3. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
    fixtures once the user has real cases to compare against
-3. Downstream parameter groups (screw, guide, coupling, support-bearing,
+4. Downstream parameter groups (screw, guide, coupling, support-bearing,
    drive-train): NOT released in registry v1 — approved pending proposals to
    be released per module at its Stage-2 parameter contract (bumping the
    registry version). See `lib/engine/parameters/README.md` and Open Questions
@@ -1256,6 +1434,77 @@ again.
 
 ## Architecture Decisions
 
+- (2026-07-30, Unit 2.8 part 2) **`ComponentAssignment` reuses `ParameterLink`'s
+  discriminator-plus-nullable-columns pattern** rather than a DB CHECK
+  constraint or separate tables per target/part-source combination:
+  `targetKind` (`module_instance`/`assembly`) alongside nullable
+  `moduleInstanceId`/`assemblyId`, and `partSource` (`catalog`/`manual`)
+  alongside nullable `manufacturerPartRevisionId`/`manualPartDetails`, both
+  cross-validated by the repository's Zod `.refine()` chain. A
+  `targetKind: "assembly"` row with `assemblyId` omitted means the
+  machine/configuration root — reusing `Requirement`/`DesignAssumption`'s
+  existing nullable-`assemblyId`-means-machine-level convention — so the
+  implementation map's three-way "target project/assembly/module" is covered
+  by two columns and one enum, not three columns.
+- (2026-07-30, Unit 2.8 part 2) **The Unit 2.5 stale-propagation invariant is
+  now fully implemented for its simple direction only.** Every one of
+  `stale-propagation.ts`'s three use cases now calls the new
+  `markComponentAssignmentsStaleForModuleInstances` in the same transaction
+  as `markRunsStaleForModuleInstances`, making architecture invariant 8
+  ("downstream runs and component assignments become stale in the same
+  transaction") literally true. Deliberately NOT implemented: Unit 2.5's
+  fourth deferred trigger, "change an assigned-component feedback input" — an
+  assignment acting as a *source* feeding a value into other calculations
+  (e.g. an assigned bearing's real stiffness overriding an assumed value
+  used elsewhere). That direction needs a new `lib/engine/graph`
+  `GraphNodeKind` (a node kind that resolves to an assignment's recorded
+  spec rather than an authored/linked `ParameterValue`), a materially larger
+  change than adding a stale-propagation call site, and no module yet
+  produces or consumes such a value. Deferred until a real module needs it,
+  not folded into this unit — see Next Up.
+- (2026-07-30, Unit 2.8 part 1) Split Unit 2.8 into two parts for the same
+  reason and the same way as Unit 2.7 (three system boundaries: `lib/catalog`,
+  `lib/db`, `lib/application`). Part 1 (this session): `lib/catalog` only —
+  the hard-filter/ranking matching engine (`matching-types.ts`/`matching.ts`),
+  pure and DB-free. Part 2 (not started): `lib/db` (`ComponentAssignment`
+  schema/persistence) + `lib/application` (assignment orchestration), the same
+  two-boundary-as-one-unit precedent Unit 2.4 and Unit 2.7 part 2 both used.
+  See Current Goal and Next Up.
+- (2026-07-30, Unit 2.8 part 1) **`MatchCriterion` is a generic key/operator/
+  value triple, deliberately decoupled from `lib/engine/module-sdk`'s
+  `CatalogAdapter.requiredSpec()`.** `requiredSpec()` (Unit 1.6) returns a bare
+  `Record<string, EngineeringValue>` with no comparison semantics — it cannot
+  say whether a given attribute is a capacity floor (`"gte"`), a size ceiling
+  (`"lte"`), or an identity match (`"eq"`). That mapping is genuine
+  engineering judgment specific to each component type/attribute (e.g. a
+  ball screw's dynamic load rating is a floor, its bore diameter is often an
+  exact fit, a motor's max speed is a ceiling) that no released contract
+  records yet, and no production module exists yet to consult. Rather than
+  invent a per-attribute default (risking a silently wrong hard filter — the
+  opposite of "transparent") or extend `CatalogAdapter` itself (pulling a
+  fourth boundary, `lib/engine`, into an already-three-boundary unit), Unit
+  2.8 part 1 defines `MatchCriterion` as an explicit, caller-constructed
+  input to the pure evaluator. Converting a specific module's `requiredSpec()`
+  output into `MatchCriterion[]` is deferred to that module's Stage 5 (Milestone
+  4), when the real per-attribute semantics are actually known. This mirrors
+  the Unit 1.8 precedent of keeping `evaluateLinkCompatibility` generic over
+  parameter *qualifier metadata* rather than hardcoding per-parameter rules.
+- (2026-07-30, Unit 2.8 part 1) **Ranking heuristic: tightest fit first.**
+  `rankCandidates` scores a passing candidate by the mean fractional margin
+  across its `"gte"`/`"lte"` criteria and sorts ascending — the candidate that
+  clears the requirement by the *smallest* margin ranks first, not the most
+  capable one. Rationale: once a candidate has passed every hard constraint,
+  preferring the least-oversized part is the standard engineering/cost
+  heuristic (avoid paying for capacity the design does not need) and gives a
+  single deterministic, code-standards-required "score reason" without
+  needing a cost or size attribute that does not exist in the schema yet.
+  `"eq"` criteria never contribute to the score (they are pass/fail identity
+  checks, not a spectrum) — a candidate scored only on `"eq"` criteria gets
+  `0`. This is a default, not a hardcoded final ranking policy: a future
+  catalog adapter can pass different criteria weighting once real
+  cost/preference data exists; the mechanism (deterministic score + exposed
+  per-criterion reasons + stable `id` tie-break) is what Unit 2.8 commits to,
+  not this specific scoring formula.
 - (2026-07-30, Unit 2.7) Split Unit 2.7 into two parts because its deliverables
   span three `context/architecture.md` system boundaries (`lib/catalog`,
   `lib/db`, `lib/application`), exceeding `ai-workflow-rules.md`'s "more than

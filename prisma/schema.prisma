@@ -68,14 +68,15 @@ model MachineConfiguration {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
-  project           MachineProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assemblies        Assembly[]
-  workflowInstances WorkflowInstance[]
-  requirements      Requirement[]
-  designAssumptions DesignAssumption[]
-  loadCases         LoadCase[]
-  parameterValues   ParameterValue[]
-  parameterLinks    ParameterLink[]
+  project              MachineProject        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assemblies           Assembly[]
+  workflowInstances    WorkflowInstance[]
+  requirements         Requirement[]
+  designAssumptions    DesignAssumption[]
+  loadCases            LoadCase[]
+  parameterValues      ParameterValue[]
+  parameterLinks       ParameterLink[]
+  componentAssignments ComponentAssignment[]
 
   @@index([projectId])
   @@map("machine_configurations")
@@ -93,14 +94,15 @@ model Assembly {
   createdAt       DateTime @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @db.Timestamptz(6)
 
-  configuration     MachineConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
-  parent            Assembly?            @relation("AssemblyHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children          Assembly[]           @relation("AssemblyHierarchy")
-  moduleInstances   ModuleInstance[]
-  requirements      Requirement[]
-  designAssumptions DesignAssumption[]
-  parameterValues   ParameterValue[]
-  sourceOfLinks     ParameterLink[]
+  configuration        MachineConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  parent               Assembly?            @relation("AssemblyHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children             Assembly[]           @relation("AssemblyHierarchy")
+  moduleInstances      ModuleInstance[]
+  requirements         Requirement[]
+  designAssumptions    DesignAssumption[]
+  parameterValues      ParameterValue[]
+  sourceOfLinks        ParameterLink[]
+  componentAssignments ComponentAssignment[]
 
   @@index([configurationId])
   @@index([parentId])
@@ -156,12 +158,13 @@ model ModuleInstance {
   createdAt            DateTime     @default(now()) @db.Timestamptz(6)
   updatedAt            DateTime     @updatedAt @db.Timestamptz(6)
 
-  assembly         Assembly          @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
-  workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: SetNull)
-  parameterValues  ParameterValue[]
-  targetOfLinks    ParameterLink[]   @relation("ParameterLinkTarget")
-  sourceOfLinks    ParameterLink[]   @relation("ParameterLinkSource")
-  calculationRuns  CalculationRun[]
+  assembly             Assembly          @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  workflowInstance     WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: SetNull)
+  parameterValues      ParameterValue[]
+  targetOfLinks        ParameterLink[]   @relation("ParameterLinkTarget")
+  sourceOfLinks        ParameterLink[]   @relation("ParameterLinkSource")
+  calculationRuns      CalculationRun[]
+  componentAssignments ComponentAssignment[]
 
   @@index([assemblyId])
   @@index([workflowInstanceId])
@@ -410,7 +413,8 @@ model CalculationRun {
   /// block). Validated with the lib/engine schemas on write and read.
   snapshot Json
 
-  moduleInstance ModuleInstance @relation(fields: [moduleInstanceId], references: [id], onDelete: Cascade)
+  moduleInstance       ModuleInstance        @relation(fields: [moduleInstanceId], references: [id], onDelete: Cascade)
+  componentAssignments ComponentAssignment[]
 
   @@index([moduleInstanceId])
   @@index([stale])
@@ -603,6 +607,7 @@ model ManufacturerPartRevision {
   componentSchemaVersion ComponentSchemaVersion @relation(fields: [componentSchemaVersionId], references: [id], onDelete: Restrict)
   importBatch            CatalogImportBatch?    @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
   datasheetAttachments   DatasheetAttachment[]
+  componentAssignments   ComponentAssignment[]
 
   @@unique([manufacturerId, partNumber, sourceRevision])
   @@index([componentTypeId])
@@ -633,4 +638,101 @@ model DatasheetAttachment {
 
   @@index([manufacturerPartRevisionId])
   @@map("datasheet_attachments")
+}
+
+// --- Unit 2.8: component assignment ---------------------------------------
+
+/// What a `ComponentAssignment` is attached to. Mirrors `ParameterLink.sourceKind`'s
+/// discriminator-plus-nullable-columns pattern: exactly one of
+/// `moduleInstanceId`/`assemblyId` is meaningful per kind, enforced at the
+/// repository boundary (Zod `.refine`), not a DB CHECK constraint.
+enum ComponentAssignmentTargetKind {
+  /// The assignment fulfills a specific module instance's calculated
+  /// requirement (a "calculated component"). `moduleInstanceId` is set;
+  /// `assemblyId` is not (the module instance's own assembly already scopes it).
+  module_instance
+  /// The assignment has no supporting calculation (e.g. a manual bracket).
+  /// `assemblyId` may be set (assembly-scoped) or omitted (machine/configuration
+  /// root), the same nullable-`assemblyId` convention `Requirement`/
+  /// `DesignAssumption` already use — together these three states cover the
+  /// implementation map's "target project/assembly/module."
+  assembly
+}
+
+/// How a `ComponentAssignment`'s part is identified. Mirrors
+/// `ComponentReference.source` (lib/engine/values, Unit 1.1), which was
+/// defined specifically to mirror this model.
+enum ComponentAssignmentPartSource {
+  catalog
+  manual
+}
+
+/// A lightweight link from a target to an assigned part
+/// (context/architecture.md "Catalog and BOM": `ComponentAssignment`;
+/// "intentionally lightweight... not an approval workflow";
+/// project-overview.md "Manufacturer Part Data": "required for BOM generation
+/// and stale detection"). Unlike the catalog reference tables (Unit 2.6),
+/// this model IS project-scoped — see the Unit 2.6 architecture decision in
+/// context/progress-tracker.md ("ComponentAssignment is where a specific
+/// project links to a specific catalog part revision").
+///
+/// `partSource` discriminates the part reference: `catalog` sets
+/// `manufacturerPartRevisionId` (an exact revision, never a bare part
+/// number — "Exact part revision retained"); `manual` sets
+/// `manualPartDetails` (lib/catalog, validated JSONB). This is independent of
+/// `targetKind`: a manual part can still be assigned to a `module_instance`
+/// target (an engineer's own hand-picked substitute for a calculated
+/// requirement).
+///
+/// `calculationRunId` is the justifying run for a calculated component
+/// (implementation map: "Supporting run required for calculated components")
+/// — required when `targetKind` is `module_instance`, optional otherwise (a
+/// manual/assembly-level part has no calculation to justify it).
+///
+/// `stale` mirrors `CalculationRun.stale`: propagated in the same transaction
+/// as its justifying run going stale (context/architecture.md invariant
+/// "Transactional stale propagation": "downstream runs and component
+/// assignments become stale in the same transaction"). This does NOT
+/// implement Unit 2.5's fourth deferred stale-propagation trigger ("change an
+/// assigned-component feedback input" — an assignment acting as a *source*
+/// of a value other calculations consume, which would need a new
+/// parameter-graph node kind and is a materially larger, still-deferred
+/// feature); it only implements the simpler, explicitly-named direction: an
+/// assignment goes stale when the run that justifies it does.
+model ComponentAssignment {
+  id              String @id @default(cuid())
+  configurationId String
+
+  targetKind       ComponentAssignmentTargetKind
+  moduleInstanceId String?
+  assemblyId       String?
+
+  partSource                 ComponentAssignmentPartSource
+  manufacturerPartRevisionId String?
+  /// A `ManualPartDetails` (lib/catalog) JSONB payload, validated on write and
+  /// read. Set only when `partSource` is `manual`.
+  manualPartDetails Json?
+
+  quantity         Int     @default(1)
+  calculationRunId String?
+
+  stale       Boolean @default(false)
+  staleReason String?
+
+  assignedByUserId String?
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
+
+  configuration            MachineConfiguration      @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  moduleInstance           ModuleInstance?           @relation(fields: [moduleInstanceId], references: [id], onDelete: Cascade)
+  assembly                 Assembly?                 @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  manufacturerPartRevision ManufacturerPartRevision? @relation(fields: [manufacturerPartRevisionId], references: [id], onDelete: Restrict)
+  calculationRun           CalculationRun?           @relation(fields: [calculationRunId], references: [id], onDelete: Restrict)
+
+  @@index([configurationId])
+  @@index([moduleInstanceId])
+  @@index([assemblyId])
+  @@index([manufacturerPartRevisionId])
+  @@index([calculationRunId])
+  @@map("component_assignments")
 }

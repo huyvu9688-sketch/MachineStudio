@@ -7,9 +7,9 @@
 // CalculationRun), append-only audit events (Unit 2.4: AuditEvent), and the
 // manufacturer catalog (Unit 2.6: Manufacturer, ComponentType,
 // ComponentSchemaVersion, CatalogImportBatch, ManufacturerPartRevision,
-// DatasheetAttachment) — shared reference data, not project-owned. Component
-// assignment and BOM (2.8/5.1) are later work units. See
-// context/architecture.md.
+// DatasheetAttachment) — shared reference data, not project-owned — and
+// component assignment (Unit 2.8: ComponentAssignment), which IS
+// project-scoped. BOM (5.1) is a later work unit. See context/architecture.md.
 
 import "server-only";
 import { prisma } from "./client";

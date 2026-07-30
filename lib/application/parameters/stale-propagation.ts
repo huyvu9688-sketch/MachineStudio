@@ -1,14 +1,20 @@
-// Stale-propagation use cases (Unit 2.5): change a manual/default value,
-// change a workflow-provided value, confirm a link, and remove a link. Each
-// computes downstream impact with `lib/engine/graph`'s `computeStaleImpact`
-// and marks the affected calculation runs stale in the same transaction as
-// the change (context/architecture.md invariant 8, "Transactional stale
-// propagation": "downstream runs and component assignments become stale in
-// the same transaction as the upstream change").
+// Stale-propagation use cases (Unit 2.5, extended in Unit 2.8 part 2): change
+// a manual/default value, change a workflow-provided value, confirm a link,
+// and remove a link. Each computes downstream impact with
+// `lib/engine/graph`'s `computeStaleImpact` and marks the affected
+// calculation runs AND their dependent component assignments stale in the
+// same transaction as the change (context/architecture.md invariant 8,
+// "Transactional stale propagation": "downstream runs and component
+// assignments become stale in the same transaction as the upstream change").
 //
-// DEFERRED (not implemented here): "change an assigned-component feedback
-// input" — the fourth use case the implementation map names. It needs
-// `ComponentAssignment`, which does not exist yet (Unit 2.8). Revisit then.
+// DEFERRED (still not implemented here): "change an assigned-component
+// feedback input" — the fourth use case the implementation map names. Unlike
+// the simple "an assignment goes stale when its justifying run does"
+// direction implemented below, this is an assignment acting as a *source* of
+// a value other calculations consume (e.g. an assigned bearing's real
+// stiffness feeding back into an upstream calculation) — it needs a new
+// parameter-graph node kind and is a materially larger feature. Revisit as
+// its own unit.
 //
 // Graph reconstruction needs each changed module's *full* port set (not only
 // nodes that already appear as a link endpoint) so its own internal
@@ -32,6 +38,7 @@ import {
   loadConfigurationGraph,
   loadModuleInstanceForOwner,
   loadParameterLinkForOwner,
+  markComponentAssignmentsStaleForModuleInstances,
   markRunsStaleForModuleInstances,
   parameterGraphNodeId,
   prisma,
@@ -199,6 +206,11 @@ export async function setParameterValue(
         "An upstream parameter value changed.",
         tx,
       );
+      await markComponentAssignmentsStaleForModuleInstances(
+        staleModuleInstanceIds,
+        "An upstream parameter value changed.",
+        tx,
+      );
       return createParameterValue(input, tx);
     });
     return { ok: true, value, staleModuleInstanceIds };
@@ -246,6 +258,11 @@ export async function confirmParameterLink(
   try {
     const link = await prisma.$transaction(async (tx) => {
       await markRunsStaleForModuleInstances(
+        staleModuleInstanceIds,
+        "A parameter link was confirmed.",
+        tx,
+      );
+      await markComponentAssignmentsStaleForModuleInstances(
         staleModuleInstanceIds,
         "A parameter link was confirmed.",
         tx,
@@ -302,6 +319,11 @@ export async function removeParameterLink(
 
   await prisma.$transaction(async (tx) => {
     await markRunsStaleForModuleInstances(
+      staleModuleInstanceIds,
+      "A parameter link was removed.",
+      tx,
+    );
+    await markComponentAssignmentsStaleForModuleInstances(
       staleModuleInstanceIds,
       "A parameter link was removed.",
       tx,
