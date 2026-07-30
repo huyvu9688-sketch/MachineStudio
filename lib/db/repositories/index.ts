@@ -68,3 +68,21 @@ export type { RunRepositoryErrorCode } from "./run-repository";
 export * from "./audit-types";
 export { AuditRepositoryError, appendAuditEvent } from "./audit-repository";
 export type { AuditRepositoryErrorCode } from "./audit-repository";
+
+// Manufacturer catalog (Unit 2.6).
+export * from "./catalog-types";
+export {
+  CatalogRepositoryError,
+  createManufacturer,
+  createComponentType,
+  createComponentSchemaVersion,
+  createCatalogImportBatch,
+  createManufacturerPartRevision,
+  createDatasheetAttachment,
+  loadManufacturer,
+  loadCatalogImportBatch,
+  loadComponentSchemaVersion,
+  loadManufacturerPartRevision,
+  listManufacturerPartRevisionsByComponentType,
+} from "./catalog-repository";
+export type { CatalogRepositoryErrorCode } from "./catalog-repository";

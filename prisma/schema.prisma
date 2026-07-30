@@ -449,3 +449,173 @@ model AuditEvent {
   @@index([entityType, entityId])
   @@map("audit_events")
 }
+
+// --- Unit 2.6: manufacturer catalog schema --------------------------------
+
+/// A manufacturer of catalog parts (context/architecture.md "Catalog and BOM":
+/// `Manufacturer`). Shared reference data, not project-owned — every project's
+/// component filtering reads from the same imported catalog, unlike the
+/// project hierarchy above which is strictly per-owner
+/// (context/architecture.md "Auth and Access").
+model Manufacturer {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  partRevisions ManufacturerPartRevision[]
+  importBatches CatalogImportBatch[]
+
+  @@map("manufacturers")
+}
+
+/// A catalog component type (e.g. "ball_screw", "linear_guide"). `id` is a
+/// stable slug set by the caller, not a generated cuid — mirroring
+/// `ModuleInstance.modulePackageId`'s convention for a code-referenced stable
+/// identifier, since a future catalog-matching adapter keys its filtering
+/// logic by this string. Adding a new component type never requires a Prisma
+/// schema change (Unit 2.6 exit criterion): its attribute shape lives in a
+/// `ComponentSchemaVersion` row, not a new column or table.
+model ComponentType {
+  id          String   @id
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  schemaVersions ComponentSchemaVersion[]
+  partRevisions  ManufacturerPartRevision[]
+  importBatches  CatalogImportBatch[]
+
+  @@map("component_types")
+}
+
+/// A versioned attribute-field declaration for one `ComponentType`
+/// (context/architecture.md "lib/catalog/": "Component-type schemas").
+/// `fields` is a versioned JSONB array of `ComponentAttributeFieldDefinition`
+/// (lib/catalog), validated on write and read. A `ManufacturerPartRevision`'s
+/// generic `attributes` JSONB is validated only as well-formed
+/// `EngineeringValue`s at this schema unit; matching it against a specific
+/// version's field list is a catalog import/matching concern (Units 2.7/2.8).
+model ComponentSchemaVersion {
+  id              String   @id @default(cuid())
+  componentTypeId String
+  version         String
+  fields          Json
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  componentType ComponentType              @relation(fields: [componentTypeId], references: [id], onDelete: Cascade)
+  partRevisions ManufacturerPartRevision[]
+
+  @@unique([componentTypeId, version])
+  @@index([componentTypeId])
+  @@map("component_schema_versions")
+}
+
+/// A batch of manufacturer part revisions imported together (context/
+/// architecture.md "Catalog and BOM": `CatalogImportBatch`). This unit records
+/// only batch identity/provenance; parsing, row validation, dry-run mode, and
+/// the error report are Unit 2.7 (Catalog CSV import service).
+model CatalogImportBatch {
+  id               String   @id @default(cuid())
+  componentTypeId  String
+  manufacturerId   String
+  sourceLabel      String
+  importedByUserId String?
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+
+  componentType ComponentType              @relation(fields: [componentTypeId], references: [id], onDelete: Restrict)
+  manufacturer  Manufacturer               @relation(fields: [manufacturerId], references: [id], onDelete: Restrict)
+  partRevisions ManufacturerPartRevision[]
+
+  @@index([componentTypeId])
+  @@index([manufacturerId])
+  @@map("catalog_import_batches")
+}
+
+/// Lifecycle of a manufacturer part, when known (context/code-standards.md
+/// "Catalog"). Null on `ManufacturerPartRevision.lifecycleStatus` means unknown
+/// ("Lifecycle status when known" — project-overview.md "Manufacturer Part Data").
+enum PartLifecycleStatus {
+  active
+  not_recommended_for_new_design
+  obsolete
+  discontinued
+}
+
+/// Data-quality state of an imported/entered manufacturer part revision
+/// (project-overview.md "Manufacturer Part Data": "Data quality status and
+/// validation errors").
+enum DataQualityStatus {
+  valid
+  warning
+  error
+}
+
+/// A single manufacturer part specification, versioned and source-backed
+/// (context/code-standards.md "Catalog": "Manufacturer part specifications are
+/// versioned and source-backed"). Identity/revision/lifecycle fields are
+/// relational; `attributes` is a versioned JSONB payload of attribute key to
+/// `EngineeringValue` (lib/catalog), validated on write and read (never trust
+/// JSONB) — component-specific attributes for every component type coexist in
+/// this one generic column (Unit 2.6 exit criterion). No company-approval,
+/// supplier, pricing, or inventory fields exist here (context/roadmap.md
+/// "Explicitly Deferred").
+model ManufacturerPartRevision {
+  id                       String  @id @default(cuid())
+  manufacturerId           String
+  componentTypeId          String
+  componentSchemaVersionId String
+  partNumber               String
+  /// Catalog edition/date or cited document revision identity. A plain string,
+  /// not a `lib/standards` `SourceRevision` id — a manufacturer catalog entry
+  /// is not necessarily a formally registered source document.
+  sourceRevision    String
+  sourceLink        String?
+  lifecycleStatus   PartLifecycleStatus?
+  dataQualityStatus DataQualityStatus    @default(valid)
+  validationErrors  String[]             @default([])
+  /// Versioned `ComponentAttributes` JSONB (lib/catalog): attribute key to
+  /// `EngineeringValue`, validated on write and read.
+  attributes    Json
+  importBatchId String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  manufacturer           Manufacturer           @relation(fields: [manufacturerId], references: [id], onDelete: Restrict)
+  componentType          ComponentType          @relation(fields: [componentTypeId], references: [id], onDelete: Restrict)
+  componentSchemaVersion ComponentSchemaVersion @relation(fields: [componentSchemaVersionId], references: [id], onDelete: Restrict)
+  importBatch            CatalogImportBatch?    @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  datasheetAttachments   DatasheetAttachment[]
+
+  @@unique([manufacturerId, partNumber, sourceRevision])
+  @@index([componentTypeId])
+  @@index([componentSchemaVersionId])
+  @@index([importBatchId])
+  @@map("manufacturer_part_revisions")
+}
+
+/// Datasheet/catalog-source attachment metadata for a manufacturer part
+/// revision (context/architecture.md "Blob storage": "checksum, MIME type,
+/// size, upload source, and access control metadata"). This unit records the
+/// metadata row only; the blob storage integration itself (upload endpoint,
+/// storage backend, signed URLs) is a later concern — `storageKey` is a
+/// placeholder locator until that exists.
+model DatasheetAttachment {
+  id                         String   @id @default(cuid())
+  manufacturerPartRevisionId String
+  fileName                   String
+  mimeType                   String
+  sizeBytes                  Int
+  checksum                   String
+  storageKey                 String
+  uploadSource               String
+  uploadedByUserId           String?
+  createdAt                  DateTime @default(now()) @db.Timestamptz(6)
+
+  manufacturerPartRevision ManufacturerPartRevision @relation(fields: [manufacturerPartRevisionId], references: [id], onDelete: Cascade)
+
+  @@index([manufacturerPartRevisionId])
+  @@map("datasheet_attachments")
+}

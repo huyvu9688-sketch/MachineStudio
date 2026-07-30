@@ -1,10 +1,14 @@
 // lib/db owns the Prisma client and persistence adapters. This is the
 // only library boundary that imports Prisma. Live schema: the project
 // hierarchy (Unit 2.1: User, MachineProject, MachineConfiguration, Assembly,
-// WorkflowInstance, ModuleInstance) and the requirements + parameter graph
+// WorkflowInstance, ModuleInstance), the requirements + parameter graph
 // (Unit 2.2: Requirement, AcceptanceCriterion, DesignAssumption, LoadCase,
-// ParameterValue, ParameterLink) and immutable calculation runs (Unit 2.3:
-// CalculationRun). Catalog (2.6) is a later work unit. See
+// ParameterValue, ParameterLink), immutable calculation runs (Unit 2.3:
+// CalculationRun), append-only audit events (Unit 2.4: AuditEvent), and the
+// manufacturer catalog (Unit 2.6: Manufacturer, ComponentType,
+// ComponentSchemaVersion, CatalogImportBatch, ManufacturerPartRevision,
+// DatasheetAttachment) — shared reference data, not project-owned. Component
+// assignment and BOM (2.8/5.1) are later work units. See
 // context/architecture.md.
 
 import "server-only";
