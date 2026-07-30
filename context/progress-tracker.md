@@ -76,18 +76,20 @@ Update this file after every meaningful implementation change.
   (`parseCsvTable`/`parseCatalogCsv`), pure and DB-free. **Split from Unit
   2.7's persistence half** (idempotent upsert + import batch summary, which
   needs `lib/application`/`lib/db`) per the work-unit split rule — see Current
-  Goal. 21 new pure tests (no live database needed). Verified locally: lint
-  (0 warnings), the full suite (334/334 passing, 58 skipped unchanged), and
-  typecheck confirmed to introduce no new errors beyond the pre-existing
-  missing-generated-client cascade.
+  Goal. 21 new pure tests (no live database needed). Verified **in GitHub
+  Actions CI** (commit `484c733`, run 30509515278): lint, typecheck, test
+  (334/334, 58 skipped unchanged), and build all green — this part needed no
+  migration, so this is the first Milestone-2-era unit confirmed green without
+  a "Deploy migrations" step doing any work.
 
 ## Current Goal
 
 - Milestone 2 in progress. **Unit 2.6 (manufacturer catalog schema) is
   complete and verified in GitHub Actions CI** (2026-07-30, commit `8dd8800`,
   run 30508278042 — every step green). **Unit 2.7 part 1 (catalog CSV import:
-  mapping + parser + row validation + unit normalization) is complete**
-  (2026-07-30) — see the Completed entry.
+  mapping + parser + row validation + unit normalization) is complete and
+  verified in GitHub Actions CI** (2026-07-30, commit `484c733`, run
+  30509515278 — every step green) — see the Completed entry.
   - **SPLIT DECISION (2026-07-30, Unit 2.7):** the implementation map's Unit
     2.7 ("Catalog CSV import service") deliverables — import mapping schema,
     CSV parser, unit normalization, row validation, dry-run mode, error
