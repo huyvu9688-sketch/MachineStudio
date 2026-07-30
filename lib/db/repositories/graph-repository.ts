@@ -323,12 +323,19 @@ function graphNodeOf(descriptor: GraphNodeDescriptor, scopeId: string): GraphNod
  *
  * Used here for the cycle check (`createParameterLink`) and by the
  * stale-propagation application service (Unit 2.5).
+ *
+ * Pass `client` (a `$transaction` callback's `tx`) when the graph is read as
+ * part of a transaction that also writes links: a read on the singleton client
+ * runs in its own transaction and cannot see uncommitted rows, so a cycle
+ * check or stale-impact traversal would be blind to a link the same use case
+ * just created.
  */
 export async function loadConfigurationGraph(
   configurationId: string,
   extraNodes: readonly GraphNodeDescriptor[] = [],
+  client: DbClient = prisma,
 ): Promise<IndexedParameterGraph> {
-  const links: ParameterLinkRow[] = await prisma.parameterLink.findMany({
+  const links: ParameterLinkRow[] = await client.parameterLink.findMany({
     where: { configurationId },
   });
 
@@ -404,7 +411,10 @@ export async function createParameterLink(
 ): Promise<ParameterLinkRecord> {
   const data = parse(createParameterLinkSchema, input);
 
-  const existing: ParameterLinkRow[] = await prisma.parameterLink.findMany({
+  // Read through `client`, not the singleton: inside a transaction the
+  // duplicate and cycle checks must see links this same transaction already
+  // wrote, or two links confirmed in one transaction could close a cycle.
+  const existing: ParameterLinkRow[] = await client.parameterLink.findMany({
     where: { configurationId: data.configurationId },
   });
 
@@ -441,10 +451,11 @@ export async function createParameterLink(
   // Reconstruct the graph from the persisted links plus the proposed endpoints
   // (the endpoints must be present so buildParameterGraph can add the modules'
   // internal input→output edges), but NOT the proposed link itself.
-  const indexed = await loadConfigurationGraph(data.configurationId, [
-    proposedSource,
-    proposedTarget,
-  ]);
+  const indexed = await loadConfigurationGraph(
+    data.configurationId,
+    [proposedSource, proposedTarget],
+    client,
+  );
 
   if (
     wouldCreateCycle(
@@ -531,7 +542,7 @@ export async function listParameterLinksForConfiguration(
   const owner = parse(nonEmpty, ownerId);
   const rows: ParameterLinkRow[] = await prisma.parameterLink.findMany({
     where: { configurationId: id, configuration: { project: { ownerId: owner } } },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
   return rows.map(toParameterLinkRecord);
 }
@@ -554,7 +565,12 @@ export async function listCurrentParameterValuesForConfiguration(
   const owner = parse(nonEmpty, ownerId);
   const rows: ParameterValueRow[] = await prisma.parameterValue.findMany({
     where: { configurationId: id, configuration: { project: { ownerId: owner } } },
-    orderBy: { createdAt: "desc" },
+    // `createdAt` alone is not a total order: two rows written in the same
+    // transaction (or inside the same clock tick) tie, and the tie is broken
+    // by whatever order Postgres happens to return — so "the current value"
+    // would be non-deterministic. `id` is unique and monotonic per cuid, so
+    // adding it makes the newest row a single, reproducible choice.
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
 
   const latestByNode = new Map<string, ParameterValueRow>();
@@ -610,6 +626,12 @@ export async function resolveModuleInputs(
   });
   const valueRows: ParameterValueRow[] = await prisma.parameterValue.findMany({
     where: { moduleInstanceId: id, nodeKind: "module_input" },
+    // Authored values are append-only history (a change writes a new row), so
+    // a port can have several. Ascending order means the last row written into
+    // `valuesByPort` below is the newest one; `id` breaks same-timestamp ties
+    // so the resolved input is reproducible rather than dependent on Postgres
+    // row order.
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
 
   const linksByPort = new Map<string, ParameterLinkRow>();
@@ -687,7 +709,9 @@ async function resolveLinkedSourceValue(
       parameterId: link.sourceParameterId,
       loadCase: link.sourceLoadCase,
     },
-    orderBy: { createdAt: "desc" },
+    // Newest authored value wins, with `id` as a deterministic tiebreak (see
+    // `resolveModuleInputs`).
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
   if (provider === null) {
     return null;

@@ -9,9 +9,7 @@
 // unit adds (context/implementation-map.md Unit 2.4).
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { makeQuantity } from "@/lib/engine";
 import type {
@@ -21,20 +19,22 @@ import type {
   UserId,
 } from "../../db/repositories/types";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(
-  join(here, "..", "..", "db", "generated", "prisma"),
-);
-
 const MODULE_ID = "example-scaffold";
 const MODULE_VERSION = "0.1.0";
+// The relay fixture declares the same canonical parameter in and out
+// (see lib/modules/example-relay/0.1.0/manifest.ts), which is what makes a
+// valid module-to-module link possible.
+const RELAY_ID = "example-relay";
+const RELAY_VERSION = "0.1.0";
+const THRUST_FORCE = "motion.axis.thrust_force";
 
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "executeModuleInstance (live database)",
   () => {
     let application: typeof import("./execute-module-instance");
     let projects: typeof import("../../db/repositories/project-repository");
     let graph: typeof import("../../db/repositories/graph-repository");
+    let runs: typeof import("../../db/repositories/run-repository");
     let client: typeof import("../../db/client");
     const createdUserIds: string[] = [];
 
@@ -95,6 +95,7 @@ describe.skipIf(!generatedClientAvailable)(
       application = await import("./execute-module-instance");
       projects = await import("../../db/repositories/project-repository");
       graph = await import("../../db/repositories/graph-repository");
+      runs = await import("../../db/repositories/run-repository");
       client = await import("../../db/client");
     });
 
@@ -251,6 +252,75 @@ describe.skipIf(!generatedClientAvailable)(
       // Dimension mismatch (force fed into a mass port), not an absent value.
       expect(result.error.code).toBe("invalid_input");
       expect(result.error.message).not.toContain("Missing required input");
+    });
+
+    it("refuses to execute against a stale upstream run", async () => {
+      // Two relay instances chained: the upstream's output feeds the
+      // downstream's input, same canonical parameter, so the link is valid.
+      const s = await scaffold({
+        modulePackageId: RELAY_ID,
+        moduleVersion: RELAY_VERSION,
+      });
+      await graph.createParameterValue({
+        configurationId: s.configId,
+        moduleInstanceId: s.moduleInstanceId,
+        nodeKind: "module_input",
+        parameterId: THRUST_FORCE,
+        source: "manual",
+        value: makeQuantity(274, "N"),
+      });
+      const upstreamRun = await application.executeModuleInstance({
+        moduleInstanceId: s.moduleInstanceId,
+        ownerId: s.ownerId,
+      });
+      expect(upstreamRun.ok).toBe(true);
+      if (!upstreamRun.ok) return;
+
+      const downstream = await projects.createModuleInstance({
+        assemblyId: s.assemblyId,
+        modulePackageId: RELAY_ID,
+        moduleVersion: RELAY_VERSION,
+        label: "Downstream relay",
+      });
+      await graph.createParameterLink({
+        configurationId: s.configId,
+        targetModuleInstanceId: downstream.id,
+        targetParameterId: THRUST_FORCE,
+        sourceKind: "module_output",
+        sourceModuleInstanceId: s.moduleInstanceId,
+        sourceParameterId: THRUST_FORCE,
+      });
+
+      // While the upstream run is current, the downstream module executes and
+      // consumes the relayed value.
+      const fresh = await application.executeModuleInstance({
+        moduleInstanceId: downstream.id,
+        ownerId: s.ownerId,
+      });
+      expect(fresh.ok).toBe(true);
+      if (!fresh.ok) return;
+      expect(fresh.run.snapshot.input.values.thrust_force_in).toEqual(
+        makeQuantity(274, "N"),
+      );
+
+      // Once the upstream run is stale, its outputs no longer follow from the
+      // current design, so executing the downstream module would persist a
+      // fresh-looking run built on superseded numbers.
+      await runs.markRunStale(upstreamRun.run.id, true, "An upstream value changed.");
+      const stale = await application.executeModuleInstance({
+        moduleInstanceId: downstream.id,
+        ownerId: s.ownerId,
+      });
+      expect(stale.ok).toBe(false);
+      if (stale.ok) return;
+      expect(stale.error.code).toBe("stale_upstream");
+      expect(stale.error.message).toContain("An upstream value changed.");
+
+      // Nothing was persisted for the refused execution.
+      const downstreamRuns = await client.prisma.calculationRun.findMany({
+        where: { moduleInstanceId: downstream.id },
+      });
+      expect(downstreamRuns).toHaveLength(1);
     });
   },
 );

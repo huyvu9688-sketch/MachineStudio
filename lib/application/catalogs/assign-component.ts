@@ -16,18 +16,20 @@
 // "calculated component," which requires a justifying calculation run — see
 // the target discriminated union below) or a bare assembly/configuration
 // root (a manual/custom part with no supporting calculation, e.g. a
-// bracket). `configurationId` is caller-supplied and trusted, not
-// cross-checked against the target's real configuration — the same
-// convention `lib/application/parameters/stale-propagation.ts`'s
-// `CreateParameterLinkInput`/`CreateParameterValueInput` already use.
+// bracket). `configurationId` is caller-supplied but NOT trusted: it is
+// cross-checked against the configuration the target actually belongs to.
+// Authorizing only the target leaves the row's `configurationId` free, so a
+// caller could file an assignment for a module instance they own under a
+// configuration they do not own at all — the assignment would then appear in
+// that configuration's BOM and baseline snapshots.
 
 import "server-only";
 import type { ManualPartDetails } from "@/lib/catalog";
 import {
   ComponentAssignmentRepositoryError,
   createComponentAssignment,
-  isAssemblyOwnedBy,
   isConfigurationOwnedBy,
+  loadAssemblyForOwner,
   loadCalculationRun,
   loadManufacturerPartRevision,
   loadModuleInstanceForOwner,
@@ -93,7 +95,8 @@ function invalid(message: string): AssignComponentResult {
  * assembly/configuration root), scoped to `ownerId`:
  *
  * 1. Authorizes the target — the owning module instance, the named assembly,
- *    or (for a configuration-root target) the configuration itself.
+ *    or (for a configuration-root target) the configuration itself — and
+ *    confirms the target really belongs to `input.configurationId`.
  * 2. When `calculationRunId` is given, verifies it exists, is owned by
  *    `ownerId`, and actually belongs to the target module instance —
  *    "Exact part revision retained" only means something if the justifying
@@ -119,10 +122,18 @@ export async function assignComponent(
     if (context === null) {
       return unauthorized("Module instance not found or not owned by this user.");
     }
+    if (context.configurationId !== input.configurationId) {
+      return unauthorized(
+        "Module instance does not belong to the given configuration.",
+      );
+    }
   } else if (input.target.assemblyId !== undefined) {
-    const owned = await isAssemblyOwnedBy(input.target.assemblyId, ownerId);
-    if (!owned) {
+    const assembly = await loadAssemblyForOwner(input.target.assemblyId, ownerId);
+    if (assembly === null) {
       return unauthorized("Assembly not found or not owned by this user.");
+    }
+    if (assembly.configurationId !== input.configurationId) {
+      return unauthorized("Assembly does not belong to the given configuration.");
     }
   } else {
     const owned = await isConfigurationOwnedBy(input.configurationId, ownerId);

@@ -9,9 +9,7 @@
 // schema change.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { SERIALIZATION_FORMAT_VERSION } from "../../engine/values";
 import type { Quantity } from "../../engine/values";
@@ -21,11 +19,6 @@ import type {
   ComponentTypeId,
   ManufacturerId,
 } from "./catalog-types";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(
-  join(here, "..", "generated", "prisma"),
-);
 
 function quantity(value: number, unit: string): Quantity {
   return { v: SERIALIZATION_FORMAT_VERSION, kind: "quantity", value, unit };
@@ -65,7 +58,7 @@ const servoMotorFields: ComponentAttributeFieldDefinition[] = [
   },
 ];
 
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "catalog-repository (live database)",
   () => {
     let catalog: typeof import("./catalog-repository");
@@ -397,7 +390,41 @@ describe.skipIf(!generatedClientAvailable)(
       expect(revision.attributes).toEqual({ lead: quantity(20, "mm") });
     });
 
-    it("upsertManufacturerPartRevision updates the existing row in place on a repeat import (idempotent)", async () => {
+    it("upsertManufacturerPartRevision returns the existing row for an exact repeat import (idempotent)", async () => {
+      const manufacturerId = await newManufacturer();
+      const { componentTypeId, schemaVersionId } = await newComponentType(
+        "ball-screw",
+        ballScrewFields,
+      );
+      const identity = {
+        manufacturerId,
+        componentTypeId,
+        componentSchemaVersionId: schemaVersionId,
+        partNumber: "BSS1520-914",
+        sourceRevision: "2026-catalog",
+        attributes: { lead: quantity(20, "mm") },
+        dataQualityStatus: "warning" as const,
+      };
+
+      const first = await catalog.upsertManufacturerPartRevision(identity);
+      createdPartRevisionIds.push(first.id);
+
+      // Re-running the identical import is a no-op: one row, unchanged.
+      const second = await catalog.upsertManufacturerPartRevision(identity);
+
+      expect(second.id).toBe(first.id);
+      expect(second.attributes).toEqual({ lead: quantity(20, "mm") });
+      expect(second.dataQualityStatus).toBe("warning");
+      expect(second.updatedAt).toEqual(first.updatedAt);
+
+      const all =
+        await catalog.listManufacturerPartRevisionsByComponentType(
+          componentTypeId,
+        );
+      expect(all.map((r) => r.id)).toEqual([first.id]);
+    });
+
+    it("upsertManufacturerPartRevision reports a conflict instead of rewriting changed content (ADR-0006)", async () => {
       const manufacturerId = await newManufacturer();
       const { componentTypeId, schemaVersionId } = await newComponentType(
         "ball-screw",
@@ -414,28 +441,67 @@ describe.skipIf(!generatedClientAvailable)(
       const first = await catalog.upsertManufacturerPartRevision({
         ...identity,
         attributes: { lead: quantity(20, "mm") },
-        dataQualityStatus: "warning",
       });
       createdPartRevisionIds.push(first.id);
 
-      // Re-importing the same manufacturer + part number + source revision
-      // (e.g. a corrected re-run of the same catalog file) updates the row in
-      // place rather than duplicating or rejecting it.
-      const second = await catalog.upsertManufacturerPartRevision({
+      // A baseline or component assignment may already pin this exact revision,
+      // so a corrected lead is a new source revision — not an edit.
+      await expect(
+        catalog.upsertManufacturerPartRevision({
+          ...identity,
+          attributes: { lead: quantity(25, "mm") },
+        }),
+      ).rejects.toMatchObject({ code: "conflict" });
+
+      const reloaded = await catalog.loadManufacturerPartRevision(first.id);
+      expect(reloaded?.attributes).toEqual({ lead: quantity(20, "mm") });
+
+      // The corrected data is accepted under its own source revision.
+      const corrected = await catalog.upsertManufacturerPartRevision({
         ...identity,
+        sourceRevision: "2026-catalog-rev-b",
         attributes: { lead: quantity(25, "mm") },
-        dataQualityStatus: "valid",
       });
+      createdPartRevisionIds.push(corrected.id);
+      expect(corrected.id).not.toBe(first.id);
+    });
 
-      expect(second.id).toBe(first.id);
-      expect(second.attributes).toEqual({ lead: quantity(25, "mm") });
-      expect(second.dataQualityStatus).toBe("valid");
+    it("rejects any UPDATE to a part revision at the database (immutability trigger)", async () => {
+      const manufacturerId = await newManufacturer();
+      const { componentTypeId, schemaVersionId } = await newComponentType(
+        "ball-screw",
+        ballScrewFields,
+      );
+      const revision = await catalog.createManufacturerPartRevision({
+        manufacturerId,
+        componentTypeId,
+        componentSchemaVersionId: schemaVersionId,
+        partNumber: "BSS1520-914",
+        sourceRevision: "2026-catalog",
+        attributes: { lead: quantity(20, "mm") },
+      });
+      createdPartRevisionIds.push(revision.id);
 
-      const all =
-        await catalog.listManufacturerPartRevisionsByComponentType(
-          componentTypeId,
-        );
-      expect(all.map((r) => r.id)).toEqual([first.id]);
+      // Bypassing the repository entirely: the guard is in the database, so a
+      // direct write cannot rewrite an engineering record either.
+      await expect(
+        client.prisma.manufacturerPartRevision.update({
+          where: { id: revision.id },
+          data: {
+            attributes: { lead: quantity(25, "mm") } as unknown as Record<
+              string,
+              never
+            >,
+          },
+        }),
+      ).rejects.toThrow(/immutable/i);
+
+      await expect(
+        client.prisma.manufacturerPartRevision.update({
+          where: { id: revision.id },
+          data: { lifecycleStatus: "obsolete" },
+        }),
+      ).rejects.toThrow(/immutable/i);
     });
 
     it("cascades datasheet attachments when their part revision is deleted", async () => {

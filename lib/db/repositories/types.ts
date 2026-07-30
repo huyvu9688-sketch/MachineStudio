@@ -128,12 +128,18 @@ export interface ModuleInstanceRecord {
 }
 
 /**
- * A module instance plus the project it ultimately belongs to. Unit 2.4's
- * `executeModuleInstance` needs the owning project id to attribute the audit
- * event it appends, one join further than `ModuleInstanceRecord` alone carries.
+ * A module instance plus the configuration and project it ultimately belongs
+ * to. Unit 2.4's `executeModuleInstance` needs the owning project id to
+ * attribute the audit event it appends, one join further than
+ * `ModuleInstanceRecord` alone carries; the application services also need
+ * `configurationId` to reject a write whose caller-supplied configuration is
+ * not the one this module instance actually lives in (ownership alone does not
+ * establish that — one owner can have many configurations, and a
+ * `configurationId` from another owner entirely must not be written either).
  */
 export interface ModuleInstanceExecutionContext {
   readonly moduleInstance: ModuleInstanceRecord;
+  readonly configurationId: MachineConfigurationId;
   readonly projectId: MachineProjectId;
 }
 

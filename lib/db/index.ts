@@ -27,7 +27,12 @@ export interface DatabaseHealthOk {
 /** Failed result of {@link checkDatabaseHealth}. */
 export interface DatabaseHealthError {
   readonly ok: false;
-  /** Human-readable failure reason; never a raw stack trace. */
+  /**
+   * Fixed, non-identifying failure reason. Driver messages for this query name
+   * the host, port, database, and sometimes the role
+   * (`Can't reach database server at localhost:5432`), so the detail is logged
+   * server-side instead of being handed to whatever renders the result.
+   */
   readonly error: string;
 }
 
@@ -46,6 +51,11 @@ export type DatabaseHealthResult = DatabaseHealthOk | DatabaseHealthError;
  * try/catch, per `context/code-standards.md` ("Prefer discriminated
  * unions for engineering values and result states" and the API error
  * envelope convention of not exposing raw stack traces).
+ *
+ * The returned `error` is a fixed string: a health endpoint is often the least
+ * protected route in a deployment, and the driver's own message discloses the
+ * connection target. The underlying error is logged instead, so an operator
+ * still has the detail where it belongs.
  */
 export async function checkDatabaseHealth(): Promise<DatabaseHealthResult> {
   const startedAt = performance.now();
@@ -53,9 +63,10 @@ export async function checkDatabaseHealth(): Promise<DatabaseHealthResult> {
     await prisma.$queryRaw`SELECT 1`;
     return { ok: true, latencyMs: performance.now() - startedAt };
   } catch (error) {
+    console.error("Database health check failed:", error);
     return {
       ok: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: "Database health check failed.",
     };
   }
 }

@@ -74,3 +74,4 @@ and Sources"). When circumstances change:
 | [ADR-0003](0003-versioned-module-package-contract.md) | Versioned module package contract (`ModulePackage` SDK boundary) | Accepted |
 | [ADR-0004](0004-canonical-si-storage-with-display-units.md) | Canonical SI storage with flexible engineering display units | Accepted |
 | [ADR-0005](0005-manufacturer-specs-lightweight-assignment.md) | Manufacturer specifications plus lightweight component assignment | Accepted |
+| [ADR-0006](0006-immutable-manufacturer-part-revisions.md) | Immutable manufacturer part revisions | Accepted |

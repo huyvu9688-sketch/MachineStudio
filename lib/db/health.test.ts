@@ -16,15 +16,10 @@
 // constraint that can prevent `prisma generate` from running on some
 // developer machines.
 
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { describe, expect, it } from "vitest";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(join(here, "generated", "prisma"));
-
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "checkDatabaseHealth (live database)",
   () => {
     it("round-trips a trivial query against DATABASE_URL", async () => {

@@ -65,6 +65,17 @@ jobs:
       - name: Deploy migrations
         run: npx prisma migrate deploy
 
+      # Audits what actually ships. `--omit=dev` is deliberate: the current
+      # remaining advisories are all in ESLint's dependency tree (a
+      # brace-expansion DoS reachable only by feeding a malicious pattern to a
+      # local lint run), and clearing them needs a breaking ESLint major, so
+      # gating on them would either block CI or invite a blanket ignore.
+      # Production dependencies must stay clean — `package.json` "overrides"
+      # forces the patched postcss and sharp that Next has not yet released;
+      # re-check those pins on every Next upgrade.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev
+
       - name: Lint
         run: npm run lint
 

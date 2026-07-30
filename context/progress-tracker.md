@@ -4,6 +4,14 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
+- **2026-07-30: an integrity-hardening pass sits on top of Milestone 2,
+  implemented locally and not yet CI-verified** (see Current Goal). It closed
+  cross-configuration write paths, made link compatibility a server-side rule,
+  stopped stale upstream results from feeding downstream runs, made
+  manufacturer part revisions immutable (ADR-0006, new migration), and cleared
+  the production dependency advisories. Milestone 2's units remain complete;
+  three earlier decisions were reversed rather than extended (see Architecture
+  Decisions)
 - Phase 0A — Evidence and Specification Baseline (evidence fixtures still
   outstanding)
 - Phase 0B — Repository and Quality Foundations: repository
@@ -171,6 +179,111 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
+- **2026-07-30 integrity-hardening pass (implemented locally, NOT yet
+  committed or CI-verified).** An external audit reported a set of findings
+  against `main` at `22cdf64`; each was re-checked against the code in this
+  repository and every one held. Note that the audit's own fixes never
+  reached this repository — they were made in a different container and
+  never committed, so this pass re-implements them here. What changed:
+  - **Cross-configuration writes are rejected.** `setParameterValue`,
+    `confirmParameterLink`, and `assignComponent` authorized their *target*
+    but trusted the caller's `configurationId`, so an owned module instance
+    or assembly could be used to file a value, link, or component assignment
+    into a different configuration — including one belonging to another
+    owner, which would then surface in that configuration's graph, BOM, and
+    baseline snapshots. Each service now cross-checks the target's real
+    configuration, and `loadModuleInstanceForOwner` returns
+    `configurationId` for that purpose. `isAssemblyOwnedBy` became
+    `loadAssemblyForOwner` (a boolean could not answer "which configuration
+    is this assembly in?"). This reverses the Unit 2.8 note that called
+    caller-supplied `configurationId` a deliberate, consistent convention:
+    the convention was consistently wrong.
+  - **Semantic link compatibility is enforced server-side**, in
+    `confirmParameterLink`, not deferred to the Unit 3.4 suggestion UI.
+    Both endpoints must be owned and in the named configuration, each module
+    endpoint must be a port its pinned package actually declares, and the
+    pair must satisfy `lib/engine/graph`'s `evaluateLinkCompatibility`
+    (invariant "Semantic link safety"). Two new error codes:
+    `incompatible`, `module_not_found`. No approved cross-parameter mappings
+    are declared, so only same-parameter links are authorized today — and an
+    approved mapping must never come from the request arguments.
+  - **A new development fixture module, `example-relay@0.1.0`**
+    (`lib/modules/example-relay/`), declares `motion.axis.thrust_force` as
+    both its input and its output. It exists because enforcing compatibility
+    made the previous integration-test chains inexpressible: they linked
+    example-scaffold's force output into another instance's mass input, a
+    link that is genuinely unsafe and is now rejected. The relay makes a
+    *valid* multi-module chain expressible, so cycle rejection and
+    multi-level stale propagation are still covered. It computes nothing and
+    its validation record says so plainly.
+  - **Downstream execution refuses a stale upstream run.**
+    `executeModuleInstance` resolved a linked module-output value from the
+    source's latest run without checking `stale`, so a downstream run could
+    be persisted looking fresh while built on superseded numbers. New error
+    code `stale_upstream`. There is no older non-stale run to fall back on —
+    `markRunsStaleForModuleInstances` marks every run of an affected module
+    instance — so the upstream module must be re-run.
+  - **Append-only selection is deterministic.** `resolveModuleInputs` read a
+    port's authored values with no `orderBy` at all and let the last row seen
+    win, so "the current value" depended on Postgres row order; several
+    other reads ordered by `createdAt` alone, which ties. Every read that
+    *picks* a row or feeds a snapshot now orders by `createdAt` plus `id`.
+  - **Graph reads inside a transaction use the transaction client.**
+    `loadConfigurationGraph` and `createParameterLink`'s duplicate/cycle
+    checks read through the singleton, so they could not see rows written
+    earlier in the same transaction. Stale-impact computation also moved
+    *inside* each use case's transaction.
+  - **Manufacturer part revisions are immutable (ADR-0006, written this
+    session).** `upsertManufacturerPartRevision` overwrote attributes,
+    lifecycle, data-quality state, source link, and provenance in place on
+    re-import — silently changing what an already-released baseline or
+    component assignment meant. It now creates, returns an exact repeat
+    unchanged (provenance stays with the first batch), or raises
+    `conflict`; migration `20260730170000_immutable_part_revisions` adds a
+    `BEFORE UPDATE` trigger and changes `importBatchId` to `onDelete:
+    Restrict`. `importCatalog` reports a conflict per row (with a new
+    `conflictCount`) rather than failing a whole file — the conflict is
+    detected before any write is issued, so the transaction stays intact.
+  - **Health-check errors are redacted.** Driver messages name the host,
+    port, and database; the detail is logged instead.
+  - **Production dependency advisories cleared** with `overrides` for
+    `postcss` (^8.5.25) and `sharp` (^0.35.3) — three high-severity
+    advisories reachable through Next 16.2.12 — and CI now runs
+    `npm audit --omit=dev`. Remaining findings are ESLint-tree and
+    development-only (a `brace-expansion` DoS needing a breaking ESLint
+    major).
+  - **15.3 MB of third-party reference material moved** from `public/ref
+    data/` (which Next.js serves to anyone, unauthenticated) to
+    `reference/source-material/`, via `git mv` so history follows the
+    rename. Licensing review and history rewriting remain open decisions.
+  - **Root `README.md` and `.editorconfig` added** (the two Unit 0.2
+    artifacts the 2026-07-30 audit found missing).
+  - **Live-database suites now report skipped rather than failing** when
+    there is no `DATABASE_URL`, via a shared `tests/live-database.ts` gate
+    replacing 15 copies of a client-existence check. Previously the guard
+    only checked for the generated Prisma client, so generating the client
+    without a database turned 15 files red.
+  - **Verification (this machine).** `prisma generate` **succeeded here
+    today** — unlike every session since 2026-07-29, this network did not
+    block it — so typecheck and build are real local signals again: `npm run
+    lint` (0 warnings), `npm run typecheck`, `npm run build`, and `npm audit
+    --omit=dev` (0 vulnerabilities) all pass, with 396 tests green across 36
+    files. There is still **no local PostgreSQL** (no `psql`, no Docker), so
+    the 15 live-database files (125 tests) skip, including every test written
+    this session for the new rejections, the immutability trigger, and the
+    new migration. **Nothing has been committed or pushed, so CI has not run
+    at all on this work** — treat it as implemented-and-locally-checked, not
+    verified, until a push turns CI green.
+  - **Not attempted this session** (each is a design decision, not a bug fix,
+    and is recorded under Open Questions): transactionally consistent
+    baseline/execution snapshots; a module content hash covering compute
+    source; the angle-as-base-dimension consequence for angular power
+    algebra (**confirmed by direct test**: `multiplyQuantities(10 N·m,
+    100 rad/s)` yields `kg*m^2*s^-3*rad`, magnitude correct but not
+    convertible to `W`); database-level same-configuration constraints;
+    an administrator authorization policy for shared catalog imports; Unit
+    0.3's Playwright/Testing Library/coverage gap; and `format:check`, red on
+    124 files and still not in CI.
 - Milestone 2 in progress. **Unit 2.6 (manufacturer catalog schema) is
   complete and verified in GitHub Actions CI** (2026-07-30, commit `8dd8800`,
   run 30508278042 — every step green). **Unit 2.7 part 1 (catalog CSV import:
@@ -1415,16 +1528,28 @@ CI (2026-07-30 — Unit 2.8's initial push needed a test-cleanup fix, see
 Current Goal) and drop off this list. **Milestone 2 (Persistence and
 Application Services) is now complete.**
 
-1. **Milestone 3 (generic UI)**, starting with Unit 3.1 (workspace shell).
+1. **Push the 2026-07-30 integrity-hardening pass and get CI green** (see
+   Current Goal). It carries a new migration
+   (`20260730170000_immutable_part_revisions`) and changes 15 live-database
+   test files, none of which can run on this machine. Until CI runs, the
+   hardening is unverified.
+2. **Close the reopened Unit 0.3 quality-toolchain gap:** React Testing
+   Library, Playwright with an authenticated-route smoke strategy, coverage
+   configuration for engine/modules, a `test:e2e` script, and the CI E2E step.
+   Do not call Phase 0B complete until those checks execute.
+3. **Milestone 3 (generic UI)**, starting with Unit 3.1 (workspace shell).
    Then Milestone 4 (modules).
-   - Deferred to the confirm/suggestion flow (NOT Unit 2.2): **semantic link
-     compatibility** (`evaluateLinkCompatibility`). Unit 2.2 persists an
-     already-confirmed link and rejects cycles (a structural rule independent
-     of the registry); compatibility gating — which needs both endpoints to be
-     registered canonical parameters plus the approved-mapping set — lives in
-     the suggest-and-confirm graph service and the link-suggestion UI (Unit
-     3.4), which only offer compatible links to confirm. See Architecture
-     Decisions.
+   - **RESOLVED (2026-07-30 hardening pass), superseding the deferral below:**
+     semantic link compatibility is now enforced by `confirmParameterLink` in
+     `lib/application/parameters/`, alongside declared-port verification and
+     both-endpoint configuration scoping. Unit 3.4's suggestion UI must reuse
+     that service; it may pre-filter candidates for usability, but the server
+     boundary is what makes a link safe. The original deferral (kept for the
+     record): compatibility gating was to live only in the suggest-and-confirm
+     flow, because it needs both endpoints to be registered canonical
+     parameters plus the approved-mapping set. That reasoning was sound about
+     *what* the check needs and wrong about *where* it belongs — a UI-only
+     gate leaves the write path open.
    - Deferred as its own future unit (NOT Unit 2.8): "change an
      assigned-component feedback input" stale-propagation use case — an
      assignment acting as a *source* of a value other calculations consume
@@ -1443,9 +1568,9 @@ Application Services) is now complete.**
      `rankCandidates`'s output to pass to `assignComponent`. Part 1
      deliberately did not guess which operator each attribute needs — see
      Current Goal and Architecture Decisions.
-2. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
+4. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
    fixtures once the user has real cases to compare against
-3. Downstream parameter groups (screw, guide, coupling, support-bearing,
+5. Downstream parameter groups (screw, guide, coupling, support-bearing,
    drive-train): NOT released in registry v1 — approved pending proposals to
    be released per module at its Stage-2 parameter contract (bumping the
    registry version). See `lib/engine/parameters/README.md` and Open Questions
@@ -1478,11 +1603,56 @@ Application Services) is now complete.**
   models this as (drive-roller + belt + load inertia) at ratio 1:1 using
   standard formulas (Omron R88M guide has the conveyor-belt inertia
   formula). Not an MVP blocker; note as a Phase 2+ mechanism to support
-- `public/ref data/` placement: reference PDFs/screenshots currently sit
-  under `public/`, which Next.js serves publicly as static assets (~15 MB
-  of third-party training/vendor material). Before any deploy or public
-  commit, move these to a non-served location (e.g. `reference/` or
-  `tests/fixtures/`) and/or gitignore them — they should not be web-served
+- PARTLY RESOLVED (2026-07-30 hardening pass): the ~15.3 MB reference batch
+  moved from `public/ref data/` to `reference/source-material/` (`git mv`, so
+  history follows the rename), and Next.js no longer serves it as
+  unauthenticated static content. **Still open:** those 38 files remain in git
+  history at the old path, so a history rewrite is the only way to remove them
+  from the repository if distribution requires it; the licensing review below
+  is unchanged; and the spreadsheet and at least one PDF carry author metadata
+  worth checking before the repository is shared
+- ARCHITECTURE FOLLOW-UPS from the 2026-07-30 audit, each a design decision
+  rather than a bug fix, none attempted in the hardening pass:
+  - **Transactionally consistent read snapshots.** Stale propagation now
+    computes impact inside its own transaction, but `createBaseline` performs
+    seven independent reads before persisting, and `executeModuleInstance`
+    resolves inputs across several reads — under concurrent edits either can
+    freeze or compute from mixed-time state. A baseline is immutable, so this
+    matters most there. The fix is to thread a transaction client through the
+    repository *read* surface and run those reads at `RepeatableRead`; that
+    touches many read signatures, so it deserves its own work unit
+  - **Module content hash covers declarative metadata only.**
+    `packageContentHash` deliberately excludes `compute` and helper source
+    (functions are not stably serializable), so two packages with identical
+    manifests but different formulas hash the same. A run pins that hash as
+    its reproducibility claim. Resolve before any production module is
+    released — most likely by hashing the module directory's source files at
+    release time
+  - **Angle as a base dimension breaks angular power algebra.** Confirmed by
+    direct test: `multiplyQuantities(10 N·m, 100 rad/s)` returns
+    `kg*m^2*s^-3*rad` — the magnitude is right, but the unit is not `W` and
+    will not convert to it. Angle is a base dimension on purpose (so `rad` ≠
+    ratio and `rad/s` ≠ `Hz`, which the graph relies on to reject wrong
+    links), so this is a real trade-off, not an oversight: modules doing
+    torque × angular velocity must construct the result explicitly rather
+    than rely on unit simplification. Decide the treatment (an explicit
+    angle-cancelling rule in `multiply`/`divide`, a dedicated power helper,
+    or a documented convention) before motion/drive-train modules ship
+  - **Same-configuration constraints exist only in the application services.**
+    The 2026-07-30 hardening pass closed the cross-configuration write paths
+    at the service boundary; the database would still accept a
+    `ParameterValue`, `ParameterLink`, or `ComponentAssignment` whose
+    configuration and target disagree. Composite foreign keys or triggers
+    would give defense in depth, matching the pattern the immutable-run and
+    part-revision triggers already establish
+  - **Shared catalog imports have no authorization at all.** `importCatalog`
+    takes no owner and checks nothing — catalog data is deliberately shared
+    reference data (Unit 2.6), so "who may import or overwrite it" is a
+    policy question with no answer yet. Nothing exposes it (no route or UI),
+    so this is not currently reachable; it must be settled before one exists
+  - **`format:check` is red on 124 files and is not in CI.** Most predate this
+    work. A formatting-only commit would fix it, but mixing it into a
+    behavior change makes review impossible — so it needs its own commit
 - Licensing: ID39/ID42 are third-party training PDFs and the Omron/ATLANTA
   guides are vendor method references. Store METHOD + clause/source
   metadata only (per licensing policy), never embed their copyrighted
@@ -1599,6 +1769,45 @@ Application Services) is now complete.**
 
 ## Architecture Decisions
 
+- (2026-07-30 hardening pass) **Manufacturer part revisions are write-once
+  engineering records — ADR-0006.** An exact repeat import reuses the existing
+  row and leaves its provenance with the batch that first produced it; changed
+  content under the same `(manufacturer, part number, source revision)`
+  identity is a `conflict` and must be imported under a new source revision. A
+  `BEFORE UPDATE` trigger backs the repository rule (the second use of the
+  custom-SQL-trigger pattern Unit 2.3 established), and `importBatchId` became
+  `onDelete: Restrict` so recorded provenance cannot be detached. `importCatalog`
+  reports conflicts per row rather than failing a whole file: the other rows
+  are valid manufacturer data, and the conflict is detected before any write is
+  issued, so the transaction stays intact. This reverses Unit 2.7 part 2's
+  "re-importing the same identity updates the existing row in place."
+- (2026-07-30 hardening pass) **Authorization is target ownership *plus*
+  configuration membership.** Units 2.2/2.5/2.8 treated a caller-supplied
+  `configurationId` as trusted and documented that as a deliberate convention.
+  It was a cross-tenant write path: one owner's module instance or assembly
+  could file a value, link, or component assignment under any configuration id
+  the caller chose. Every application service now cross-checks the target's
+  real configuration, and both endpoints of a link must be in it.
+  `ModuleInstanceExecutionContext` carries `configurationId` for this;
+  `isAssemblyOwnedBy` was replaced by `loadAssemblyForOwner`.
+- (2026-07-30 hardening pass) **Semantic link compatibility belongs to the
+  application service, not the suggestion UI** — reversing Unit 2.2's
+  deferral. `confirmParameterLink` verifies declared ports on both module
+  endpoints and calls `evaluateLinkCompatibility` (invariant "Semantic link
+  safety"). The repository keeps only the structural, registry-independent
+  rules (duplicate target port, cycle), so `createParameterLink` stays a
+  lower-level primitive — that split is why the repository's own tests can
+  still construct a deliberately mismatched link to exercise value
+  resolution. Approved cross-parameter mappings, when any exist, must come
+  from a reviewed set — never from the caller's arguments.
+- (2026-07-30 hardening pass) **A stale upstream run is not an input.**
+  `executeModuleInstance` refuses (`stale_upstream`) rather than computing from
+  a superseded output, because the alternative persists an immutable run whose
+  own inputs were never valid together. `example-relay@0.1.0` was added as a
+  development fixture so a *valid* multi-module chain remains expressible for
+  integration tests now that incompatible links are rejected; it is a fixture
+  in the same sense `example-scaffold` is a scaffolder demonstration, not a
+  production module.
 - (2026-07-30, Unit 2.8 part 2) **`ComponentAssignment` reuses `ParameterLink`'s
   discriminator-plus-nullable-columns pattern** rather than a DB CHECK
   constraint or separate tables per target/part-source combination:
@@ -1996,6 +2205,27 @@ Application Services) is now complete.**
 
 ## Session Notes
 
+- 2026-07-30 integrity-hardening session: the user supplied an external audit
+  report (findings plus claimed fixes) produced in a different container. The
+  first thing checked was whether those fixes were present here — they were
+  not: `HEAD` was `22cdf64` with a clean tree, and none of the audit's
+  artifacts (root `README.md`, `.editorconfig`, ADR-0006, the `reference/`
+  move) existed, because that container never committed or pushed. Each
+  finding was then re-verified against the actual code, all held, and the
+  fixes were re-implemented here — see Current Goal for the full list and
+  Architecture Decisions for the three reversals of earlier decisions
+  (part-revision mutability, trusted `configurationId`, UI-only link
+  compatibility). Two "remaining risk" claims were checked rather than
+  restated: the angular-power-algebra consequence of angle-as-a-base-dimension
+  is real (direct test: `10 N·m × 100 rad/s` → `kg*m^2*s^-3*rad`, not `W`),
+  and `format:check` fails on 124 files, not ~100. **`prisma generate`
+  succeeded on this network today**, so local typecheck/build are meaningful
+  signals again — but there is still no local PostgreSQL, so every
+  live-database test (including all of this session's new ones) and the new
+  migration remain CI-only. No commit or push was made, so **CI has not run
+  on this work at all**; the shared `tests/live-database.ts` gate was added
+  so those suites report *skipped* rather than failing once a client exists
+  without a database
 - Specification upgrade completed 2026-07-28
 - Start with Unit 0.1, not repository code, because validation evidence is
   required before production formulas

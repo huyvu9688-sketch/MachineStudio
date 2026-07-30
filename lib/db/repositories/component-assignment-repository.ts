@@ -278,7 +278,10 @@ export async function listComponentAssignmentsForConfiguration(
   const owner = parse(nonEmpty, ownerId);
   const rows = await prisma.componentAssignment.findMany({
     where: { configurationId: id, configuration: { project: { ownerId: owner } } },
-    orderBy: { createdAt: "desc" },
+    // A total order (`id` breaks same-timestamp ties): Unit 2.9's baseline
+    // snapshot freezes this list, so two baselines of unchanged data must
+    // serialize their assignments identically.
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
   return rows.map(toComponentAssignmentRecord);
 }

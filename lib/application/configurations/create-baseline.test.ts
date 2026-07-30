@@ -17,9 +17,7 @@
 // directly for `machine_baselines` in baseline-repository.test.ts.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { makeQuantity } from "@/lib/engine";
 import type { CalculationRunId } from "../../db/repositories/run-types";
@@ -31,16 +29,11 @@ import type {
   UserId,
 } from "../../db/repositories/types";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(
-  join(here, "..", "..", "db", "generated", "prisma"),
-);
-
 const MODULE_ID = "example-scaffold";
 const MODULE_VERSION = "0.1.0";
 const PAYLOAD_MASS = "motion.axis.payload_mass";
 
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "createBaseline (live database)",
   () => {
     let createBaseline: typeof import("./create-baseline").createBaseline;

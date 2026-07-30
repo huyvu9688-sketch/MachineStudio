@@ -8,17 +8,12 @@
 // snapshot validation on write/read and ownership isolation.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { BASELINE_SNAPSHOT_FORMAT_VERSION } from "../../configuration";
 import type { MachineBaselineSnapshot } from "../../configuration";
 import { asMachineBaselineId } from "./baseline-types";
 import type { MachineConfigurationId, UserId } from "./types";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(join(here, "..", "generated", "prisma"));
 
 function minimalSnapshot(overrides: Partial<MachineBaselineSnapshot> = {}): MachineBaselineSnapshot {
   return {
@@ -41,7 +36,7 @@ function minimalSnapshot(overrides: Partial<MachineBaselineSnapshot> = {}): Mach
   };
 }
 
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "baseline-repository (live database)",
   () => {
     let baselines: typeof import("./baseline-repository");

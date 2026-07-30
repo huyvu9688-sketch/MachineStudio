@@ -165,7 +165,7 @@ export async function listMachineBaselinesForConfiguration(
   const owner = parseId(ownerId);
   const rows = await prisma.machineBaseline.findMany({
     where: { configurationId: id, configuration: { project: { ownerId: owner } } },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     omit: { snapshot: true },
   });
   return rows.map(toBaselineSummary);

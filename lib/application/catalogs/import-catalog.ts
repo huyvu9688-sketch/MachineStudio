@@ -26,6 +26,7 @@ import "server-only";
 import { CsvImportError, parseCatalogCsv } from "@/lib/catalog";
 import type { CsvFieldError, ImportMapping } from "@/lib/catalog";
 import {
+  CatalogRepositoryError,
   createCatalogImportBatch,
   loadComponentSchemaVersion,
   loadManufacturer,
@@ -74,8 +75,15 @@ export interface ImportCatalogRowOutcome {
   readonly errors: readonly CsvFieldError[];
   readonly partNumber?: string;
   readonly sourceRevision?: string;
-  /** Set only when the row was successfully parsed and persisted. */
+  /** Set only when the row was successfully parsed and recorded. */
   readonly manufacturerPartRevisionId?: ManufacturerPartRevisionId;
+  /**
+   * Set when the row was rejected because an immutable part revision already
+   * exists under the same identity with different content (ADR-0006). The row
+   * is a data problem to resolve — usually by importing the corrected data
+   * under a new source revision — not a failure of the import as a whole.
+   */
+  readonly conflict?: string;
 }
 
 /** Result of a dry run: parsed and validated, nothing written. */
@@ -88,7 +96,7 @@ export interface ImportCatalogDryRunResult {
   readonly rows: readonly ImportCatalogRowOutcome[];
 }
 
-/** Result of a real import: every valid row persisted, batch summary recorded. */
+/** Result of a real import: every valid row recorded, batch summary written. */
 export interface ImportCatalogAppliedResult {
   readonly ok: true;
   readonly dryRun: false;
@@ -96,7 +104,14 @@ export interface ImportCatalogAppliedResult {
   readonly totalRows: number;
   readonly validRowCount: number;
   readonly invalidRowCount: number;
+  /**
+   * Rows whose part revision is now recorded: newly created, plus exact
+   * repeats of an already-recorded revision (an idempotent re-import records
+   * nothing new but leaves the row correctly present).
+   */
   readonly persistedCount: number;
+  /** Rows rejected because an immutable revision exists with different content. */
+  readonly conflictCount: number;
   readonly rows: readonly ImportCatalogRowOutcome[];
 }
 
@@ -112,13 +127,17 @@ export type ImportCatalogResult =
   | { readonly ok: false; readonly error: ImportCatalogError };
 
 /**
- * Parses a manufacturer catalog CSV against `mapping` and persists every
- * valid row, idempotently, as a `ManufacturerPartRevision` — re-running the
- * same import updates existing rows in place rather than duplicating or
- * rejecting them. Never throws for a bad data row (already resolved by
- * `parseCatalogCsv` into a per-row error) or a broken import setup (returned
- * as `{ ok: false }`); an unexpected repository error still throws — that is
- * a real bug, not a modeled outcome.
+ * Parses a manufacturer catalog CSV against `mapping` and records every valid
+ * row as a `ManufacturerPartRevision`, idempotently: re-running the identical
+ * import is a no-op, while a row whose content differs from the revision
+ * already recorded under the same identity is reported as a conflict rather
+ * than overwriting it (ADR-0006 — a part revision is immutable, so corrected
+ * data belongs under a new source revision).
+ *
+ * Never throws for a bad data row (already resolved by `parseCatalogCsv` into a
+ * per-row error), a conflicting row, or a broken import setup (returned as
+ * `{ ok: false }`); an unexpected repository error still throws — that is a
+ * real bug, not a modeled outcome.
  */
 export async function importCatalog(
   input: ImportCatalogInput,
@@ -206,7 +225,7 @@ export async function importCatalog(
 
   // Batch creation and every valid row's upsert are atomic
   // (context/code-standards.md "Application Services").
-  const { batchId, rowOutcomes, persistedCount } = await prisma.$transaction(
+  const { batchId, rowOutcomes, persistedCount, conflictCount } = await prisma.$transaction(
     async (tx) => {
       const batch = await createCatalogImportBatch(
         {
@@ -227,6 +246,7 @@ export async function importCatalog(
 
       const outcomes: ImportCatalogRowOutcome[] = [];
       let persisted = 0;
+      let conflicts = 0;
       for (const row of report.rows) {
         if (
           !row.ok ||
@@ -241,39 +261,60 @@ export async function importCatalog(
           });
           continue;
         }
-        const persistedRow = await upsertManufacturerPartRevision(
-          {
-            manufacturerId: input.manufacturerId,
-            componentTypeId: input.componentTypeId,
-            componentSchemaVersionId: input.componentSchemaVersionId,
+        try {
+          const persistedRow = await upsertManufacturerPartRevision(
+            {
+              manufacturerId: input.manufacturerId,
+              componentTypeId: input.componentTypeId,
+              componentSchemaVersionId: input.componentSchemaVersionId,
+              partNumber: row.partNumber,
+              sourceRevision: row.sourceRevision,
+              ...(row.sourceLink !== undefined
+                ? { sourceLink: row.sourceLink }
+                : {}),
+              ...(row.lifecycleStatus !== undefined
+                ? { lifecycleStatus: row.lifecycleStatus }
+                : {}),
+              attributes: row.attributes,
+              importBatchId: batch.id,
+            },
+            tx,
+          );
+          persisted += 1;
+          outcomes.push({
+            rowNumber: row.rowNumber,
+            ok: true,
+            errors: [],
             partNumber: row.partNumber,
             sourceRevision: row.sourceRevision,
-            ...(row.sourceLink !== undefined
-              ? { sourceLink: row.sourceLink }
-              : {}),
-            ...(row.lifecycleStatus !== undefined
-              ? { lifecycleStatus: row.lifecycleStatus }
-              : {}),
-            attributes: row.attributes,
-            importBatchId: batch.id,
-          },
-          tx,
-        );
-        persisted += 1;
-        outcomes.push({
-          rowNumber: row.rowNumber,
-          ok: true,
-          errors: [],
-          partNumber: row.partNumber,
-          sourceRevision: row.sourceRevision,
-          manufacturerPartRevisionId: persistedRow.id,
-        });
+            manufacturerPartRevisionId: persistedRow.id,
+          });
+        } catch (err) {
+          // A conflict with an existing immutable revision is a reportable row
+          // outcome, not a failed import: the remaining rows are still valid
+          // data, and the conflict is detected before any write is issued, so
+          // the transaction is intact and can continue.
+          if (err instanceof CatalogRepositoryError && err.code === "conflict") {
+            conflicts += 1;
+            outcomes.push({
+              rowNumber: row.rowNumber,
+              ok: false,
+              errors: [],
+              partNumber: row.partNumber,
+              sourceRevision: row.sourceRevision,
+              conflict: err.message,
+            });
+            continue;
+          }
+          throw err;
+        }
       }
 
       return {
         batchId: batch.id,
         rowOutcomes: outcomes,
         persistedCount: persisted,
+        conflictCount: conflicts,
       };
     },
   );
@@ -286,6 +327,7 @@ export async function importCatalog(
     validRowCount: report.validRowCount,
     invalidRowCount: report.invalidRowCount,
     persistedCount,
+    conflictCount,
     rows: rowOutcomes,
   };
 }

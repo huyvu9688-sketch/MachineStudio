@@ -26,7 +26,14 @@
 // registry (mirrors Unit 2.4's `executeModuleInstance`).
 
 import "server-only";
-import { computeStaleImpact } from "@/lib/engine";
+import {
+  asParameterId,
+  asScopeId,
+  computeStaleImpact,
+  evaluateLinkCompatibility,
+  type GraphNode,
+  type ModulePackage,
+} from "@/lib/engine";
 import { getModulePackage } from "@/lib/modules";
 import {
   GraphRepositoryError,
@@ -35,6 +42,7 @@ import {
   createParameterValue,
   deleteParameterLink,
   isConfigurationOwnedBy,
+  loadAssemblyForOwner,
   loadConfigurationGraph,
   loadModuleInstanceForOwner,
   loadParameterLinkForOwner,
@@ -44,6 +52,7 @@ import {
   prisma,
   type CreateParameterLinkInput,
   type CreateParameterValueInput,
+  type DbClient,
   type GraphNodeDescriptor,
   type ModuleInstanceId,
   type ParameterLinkId,
@@ -57,7 +66,9 @@ export type StalePropagationErrorCode =
   | "unauthorized"
   | "invalid_input"
   | "cycle"
-  | "duplicate_link";
+  | "duplicate_link"
+  | "module_not_found"
+  | "incompatible";
 
 /** A failed stale-propagation use-case outcome. */
 export interface StalePropagationError {
@@ -93,6 +104,12 @@ export type RemoveParameterLinkResult =
 
 function unauthorized(message: string): { ok: false; error: StalePropagationError } {
   return { ok: false, error: { code: "unauthorized", message } };
+}
+function failure(
+  code: StalePropagationErrorCode,
+  message: string,
+): { ok: false; error: StalePropagationError } {
+  return { ok: false, error: { code, message } };
 }
 
 /**
@@ -138,19 +155,70 @@ function moduleInstancePortDescriptors(
 /**
  * Computes the stale impact of changing `changedDescriptor`, reconstructing
  * the configuration's graph with `extraNodes` guaranteed present alongside it.
+ * Reads through `client` so the traversal runs inside the same transaction as
+ * the write it is about to authorize, rather than against separately-committed
+ * state (see each use case's transaction body).
  */
 async function computeImpact(
   configurationId: string,
   changedDescriptor: GraphNodeDescriptor,
   extraNodes: readonly GraphNodeDescriptor[],
+  client: DbClient,
 ): Promise<readonly ModuleInstanceId[]> {
   const changedNodeId = parameterGraphNodeId(changedDescriptor);
-  const graph = await loadConfigurationGraph(configurationId, [
-    changedDescriptor,
-    ...extraNodes,
-  ]);
+  const graph = await loadConfigurationGraph(
+    configurationId,
+    [changedDescriptor, ...extraNodes],
+    client,
+  );
   const impact = computeStaleImpact(graph, [changedNodeId]);
   return impact.staleModuleInstanceIds.map(asModuleInstanceId);
+}
+
+/**
+ * A `GraphNode` for one link endpoint, so the engine's semantic
+ * link-compatibility rules (Unit 1.8) can be applied to a proposed link before
+ * it is persisted. All endpoints share one synthetic scope: compatibility does
+ * not consider scope proximity (only source *suggestion* ranking does).
+ */
+function compatibilityNode(
+  descriptor: GraphNodeDescriptor,
+  configurationId: string,
+): GraphNode {
+  return {
+    id: parameterGraphNodeId(descriptor),
+    kind: descriptor.kind,
+    parameterId: asParameterId(descriptor.parameterId),
+    scopeId: asScopeId(configurationId),
+    ...(descriptor.loadCase !== null ? { loadCase: descriptor.loadCase } : {}),
+    ...(descriptor.moduleInstanceId !== null
+      ? { moduleInstanceId: descriptor.moduleInstanceId }
+      : {}),
+  };
+}
+
+/** Whether `pkg` declares an input port for exactly this parameter and load case. */
+function declaresInputPort(
+  pkg: ModulePackage,
+  parameterId: string,
+  loadCase: string | null,
+): boolean {
+  return pkg.ports.inputs.some(
+    (port) =>
+      port.parameterId === parameterId && (port.loadCase ?? null) === loadCase,
+  );
+}
+
+/** Whether `pkg` declares an output port for exactly this parameter and load case. */
+function declaresOutputPort(
+  pkg: ModulePackage,
+  parameterId: string,
+  loadCase: string | null,
+): boolean {
+  return pkg.ports.outputs.some(
+    (port) =>
+      port.parameterId === parameterId && (port.loadCase ?? null) === loadCase,
+  );
 }
 
 /**
@@ -165,11 +233,21 @@ export async function setParameterValue(
   input: CreateParameterValueInput,
   ownerId: UserId,
 ): Promise<SetParameterValueResult> {
+  // Authorization has two parts, and the second is not implied by the first:
+  // the caller must own the thing being changed, AND that thing must actually
+  // live in `input.configurationId` — otherwise a value row lands in a
+  // configuration (possibly another owner's) that the authorized target has
+  // nothing to do with, where it would then resolve as a real input.
   let extraNodes: readonly GraphNodeDescriptor[] = [];
   if (input.moduleInstanceId !== undefined) {
     const context = await loadModuleInstanceForOwner(input.moduleInstanceId, ownerId);
     if (context === null) {
       return unauthorized("Module instance not found or not owned by this user.");
+    }
+    if (context.configurationId !== input.configurationId) {
+      return unauthorized(
+        "Module instance does not belong to the given configuration.",
+      );
     }
     extraNodes = moduleInstancePortDescriptors(
       input.moduleInstanceId,
@@ -181,6 +259,15 @@ export async function setParameterValue(
     if (!owned) {
       return unauthorized("Configuration not found or not owned by this user.");
     }
+    if (input.assemblyId !== undefined) {
+      const assembly = await loadAssemblyForOwner(input.assemblyId, ownerId);
+      if (assembly === null) {
+        return unauthorized("Assembly not found or not owned by this user.");
+      }
+      if (assembly.configurationId !== input.configurationId) {
+        return unauthorized("Assembly does not belong to the given configuration.");
+      }
+    }
   }
 
   const changedDescriptor: GraphNodeDescriptor = {
@@ -190,16 +277,19 @@ export async function setParameterValue(
     parameterId: input.parameterId,
     loadCase: input.loadCase ?? null,
   };
-  const staleModuleInstanceIds = await computeImpact(
-    input.configurationId,
-    changedDescriptor,
-    extraNodes,
-  );
 
   try {
-    const value = await prisma.$transaction(async (tx) => {
-      // Stale-marking runs first so an invalid `input.value` (caught by
-      // createParameterValue's own validation) rolls back the whole
+    const result = await prisma.$transaction(async (tx) => {
+      // Impact is computed inside the transaction so the traversal and the
+      // stale marks it drives see one state of the graph.
+      const staleModuleInstanceIds = await computeImpact(
+        input.configurationId,
+        changedDescriptor,
+        extraNodes,
+        tx,
+      );
+      // Stale-marking runs before the write so an invalid `input.value`
+      // (caught by createParameterValue's own validation) rolls back the whole
       // transaction, proving atomicity rather than merely short-circuiting.
       await markRunsStaleForModuleInstances(
         staleModuleInstanceIds,
@@ -211,9 +301,10 @@ export async function setParameterValue(
         "An upstream parameter value changed.",
         tx,
       );
-      return createParameterValue(input, tx);
+      const value = await createParameterValue(input, tx);
+      return { value, staleModuleInstanceIds };
     });
-    return { ok: true, value, staleModuleInstanceIds };
+    return { ok: true, ...result };
   } catch (error) {
     if (error instanceof GraphRepositoryError) {
       return { ok: false, error: { code: "invalid_input", message: error.message } };
@@ -227,6 +318,21 @@ export async function setParameterValue(
  * created silently) and marks every downstream calculation run stale in the
  * same transaction, including the target module's own runs — its resolved
  * input has effectively changed.
+ *
+ * This is the authoritative gate for invariant "Semantic link safety": both
+ * endpoints must be owned by the caller and belong to `input.configurationId`,
+ * each module endpoint must be a port its pinned package actually declares, and
+ * the pair must satisfy `lib/engine/graph`'s `evaluateLinkCompatibility` —
+ * parameter identity (or an approved mapping), value family, dimension,
+ * qualifier axes, frame, and load case. A suggestion UI (Unit 3.4) may
+ * pre-filter candidates for usability, but it is not what makes a link safe;
+ * unit compatibility alone never authorizes one.
+ *
+ * No approved cross-parameter mappings are declared yet
+ * (`lib/engine/graph`'s `ApprovedParameterMapping` set is deliberately empty),
+ * so today a link is authorized only between the *same* canonical parameter.
+ * Approved mappings must come from a reviewed, curated set when one exists —
+ * never from this call's arguments, which the caller controls.
  */
 export async function confirmParameterLink(
   input: CreateParameterLinkInput,
@@ -236,11 +342,21 @@ export async function confirmParameterLink(
   if (context === null) {
     return unauthorized("Target module instance not found or not owned by this user.");
   }
-  const extraNodes = moduleInstancePortDescriptors(
-    input.targetModuleInstanceId,
+  if (context.configurationId !== input.configurationId) {
+    return unauthorized(
+      "Target module instance does not belong to the given configuration.",
+    );
+  }
+  const targetPkg = getModulePackage(
     context.moduleInstance.modulePackageId,
     context.moduleInstance.moduleVersion,
   );
+  if (targetPkg === undefined) {
+    return failure(
+      "module_not_found",
+      `Module package "${context.moduleInstance.modulePackageId}@${context.moduleInstance.moduleVersion}" is not registered.`,
+    );
+  }
 
   const targetDescriptor: GraphNodeDescriptor = {
     kind: "module_input",
@@ -249,14 +365,105 @@ export async function confirmParameterLink(
     parameterId: input.targetParameterId,
     loadCase: input.targetLoadCase ?? null,
   };
-  const staleModuleInstanceIds = await computeImpact(
-    input.configurationId,
-    targetDescriptor,
-    extraNodes,
+  if (
+    !declaresInputPort(
+      targetPkg,
+      targetDescriptor.parameterId,
+      targetDescriptor.loadCase,
+    )
+  ) {
+    return failure(
+      "invalid_input",
+      `Module "${targetPkg.manifest.id}@${targetPkg.manifest.version}" declares no input port for ${input.targetParameterId}${input.targetLoadCase !== undefined ? ` (load case ${input.targetLoadCase})` : ""}.`,
+    );
+  }
+
+  const sourceDescriptor: GraphNodeDescriptor = {
+    kind: input.sourceKind,
+    moduleInstanceId: input.sourceModuleInstanceId ?? null,
+    assemblyId: input.sourceAssemblyId ?? null,
+    parameterId: input.sourceParameterId,
+    loadCase: input.sourceLoadCase ?? null,
+  };
+
+  if (input.sourceKind === "module_output") {
+    if (input.sourceModuleInstanceId === undefined) {
+      return failure(
+        "invalid_input",
+        "A module-output source requires sourceModuleInstanceId.",
+      );
+    }
+    const sourceContext = await loadModuleInstanceForOwner(
+      input.sourceModuleInstanceId,
+      ownerId,
+    );
+    if (sourceContext === null) {
+      return unauthorized("Source module instance not found or not owned by this user.");
+    }
+    if (sourceContext.configurationId !== input.configurationId) {
+      return unauthorized(
+        "Source module instance does not belong to the given configuration.",
+      );
+    }
+    const sourcePkg = getModulePackage(
+      sourceContext.moduleInstance.modulePackageId,
+      sourceContext.moduleInstance.moduleVersion,
+    );
+    if (sourcePkg === undefined) {
+      return failure(
+        "module_not_found",
+        `Module package "${sourceContext.moduleInstance.modulePackageId}@${sourceContext.moduleInstance.moduleVersion}" is not registered.`,
+      );
+    }
+    if (
+      !declaresOutputPort(
+        sourcePkg,
+        sourceDescriptor.parameterId,
+        sourceDescriptor.loadCase,
+      )
+    ) {
+      return failure(
+        "invalid_input",
+        `Module "${sourcePkg.manifest.id}@${sourcePkg.manifest.version}" declares no output port for ${input.sourceParameterId}.`,
+      );
+    }
+  } else if (input.sourceAssemblyId !== undefined) {
+    const assembly = await loadAssemblyForOwner(input.sourceAssemblyId, ownerId);
+    if (assembly === null) {
+      return unauthorized("Source assembly not found or not owned by this user.");
+    }
+    if (assembly.configurationId !== input.configurationId) {
+      return unauthorized(
+        "Source assembly does not belong to the given configuration.",
+      );
+    }
+  }
+
+  const compatibility = evaluateLinkCompatibility(
+    compatibilityNode(sourceDescriptor, input.configurationId),
+    compatibilityNode(targetDescriptor, input.configurationId),
+  );
+  if (!compatibility.compatible) {
+    return failure(
+      "incompatible",
+      `Link from ${input.sourceParameterId} to ${input.targetParameterId} is not semantically compatible (${compatibility.reasons.join(", ")}).`,
+    );
+  }
+
+  const extraNodes = moduleInstancePortDescriptors(
+    input.targetModuleInstanceId,
+    context.moduleInstance.modulePackageId,
+    context.moduleInstance.moduleVersion,
   );
 
   try {
-    const link = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      const staleModuleInstanceIds = await computeImpact(
+        input.configurationId,
+        targetDescriptor,
+        extraNodes,
+        tx,
+      );
       await markRunsStaleForModuleInstances(
         staleModuleInstanceIds,
         "A parameter link was confirmed.",
@@ -267,9 +474,10 @@ export async function confirmParameterLink(
         "A parameter link was confirmed.",
         tx,
       );
-      return createParameterLink(input, tx);
+      const link = await createParameterLink(input, tx);
+      return { link, staleModuleInstanceIds };
     });
-    return { ok: true, link, staleModuleInstanceIds };
+    return { ok: true, ...result };
   } catch (error) {
     if (error instanceof GraphRepositoryError) {
       const code = error.code === "cycle" || error.code === "duplicate_link" ? error.code : "invalid_input";
@@ -311,24 +519,28 @@ export async function removeParameterLink(
     parameterId: link.targetParameterId,
     loadCase: link.targetLoadCase,
   };
-  const staleModuleInstanceIds = await computeImpact(
-    link.configurationId,
-    targetDescriptor,
-    extraNodes,
-  );
 
-  await prisma.$transaction(async (tx) => {
+  const staleModuleInstanceIds = await prisma.$transaction(async (tx) => {
+    // Computed inside the transaction, and before the delete, so the traversal
+    // still sees the link whose removal is being propagated.
+    const impacted = await computeImpact(
+      link.configurationId,
+      targetDescriptor,
+      extraNodes,
+      tx,
+    );
     await markRunsStaleForModuleInstances(
-      staleModuleInstanceIds,
+      impacted,
       "A parameter link was removed.",
       tx,
     );
     await markComponentAssignmentsStaleForModuleInstances(
-      staleModuleInstanceIds,
+      impacted,
       "A parameter link was removed.",
       tx,
     );
     await deleteParameterLink(linkId, ownerId, tx);
+    return impacted;
   });
 
   return { ok: true, staleModuleInstanceIds };

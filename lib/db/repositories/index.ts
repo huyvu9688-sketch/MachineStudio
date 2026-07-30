@@ -19,7 +19,7 @@ export {
   loadModuleInstanceForOwner,
   updateModuleInstanceRunStatus,
   isConfigurationOwnedBy,
-  isAssemblyOwnedBy,
+  loadAssemblyForOwner,
   loadConfigurationForOwner,
   loadConfigurationTree,
 } from "./project-repository";

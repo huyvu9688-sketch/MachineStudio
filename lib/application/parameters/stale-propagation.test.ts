@@ -10,9 +10,7 @@
 // instance).
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { makeQuantity, type EngineeringValue } from "@/lib/engine";
 import type { ComponentAssignmentId } from "../../db/repositories/component-assignment-types";
@@ -24,17 +22,20 @@ import type {
   UserId,
 } from "../../db/repositories/types";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(
-  join(here, "..", "..", "db", "generated", "prisma"),
-);
-
-const MODULE_ID = "example-scaffold";
+// Chains are built from the relay fixture, whose declared input and output are
+// the same canonical parameter (lib/modules/example-relay/0.1.0/manifest.ts).
+// `confirmParameterLink` enforces semantic compatibility, so a chain of
+// example-scaffold instances (mass in, force out) is not expressible — by
+// design: that link is genuinely unsafe, and one test below asserts it is
+// rejected.
+const MODULE_ID = "example-relay";
 const MODULE_VERSION = "0.1.0";
+const SCAFFOLD_ID = "example-scaffold";
+const SCAFFOLD_VERSION = "0.1.0";
 const PAYLOAD_MASS = "motion.axis.payload_mass";
 const THRUST_FORCE = "motion.axis.thrust_force";
 
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "stale-propagation use cases (live database)",
   () => {
     let stalePropagation: typeof import("./stale-propagation");
@@ -85,9 +86,9 @@ describe.skipIf(!generatedClientAvailable)(
         configurationId: s.configId,
         moduleInstanceId: mi.id,
         nodeKind: "module_input",
-        parameterId: PAYLOAD_MASS,
+        parameterId: THRUST_FORCE,
         source: "manual",
-        value: makeQuantity(10, "kg"),
+        value: makeQuantity(274, "N"),
       });
       const result = await executeModuleInstance({
         moduleInstanceId: mi.id,
@@ -97,11 +98,48 @@ describe.skipIf(!generatedClientAvailable)(
       return { moduleInstanceId: mi.id, runId: result.run.id };
     }
 
+    /**
+     * A second configuration (with an assembly) under the *same* owner — the
+     * case ownership checks alone cannot catch.
+     */
+    async function otherConfiguration(
+      s: Scaffold,
+    ): Promise<{ configId: MachineConfigurationId; assemblyId: AssemblyId }> {
+      const project = await projects.createProject({
+        ownerId: s.ownerId,
+        name: "Other machine",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const config = await projects.createConfiguration({
+        projectId: project.id,
+        name: "Other baseline",
+      });
+      const assembly = await projects.createAssembly({
+        configurationId: config.id,
+        name: "Y axis",
+      });
+      return { configId: config.id, assemblyId: assembly.id };
+    }
+
+    /** An example-scaffold instance (mass in, force out) — for the incompatible-link case. */
+    async function newScaffoldModule(
+      s: Scaffold,
+      label: string,
+    ): Promise<ModuleInstanceId> {
+      const mi = await projects.createModuleInstance({
+        assemblyId: s.assemblyId,
+        modulePackageId: SCAFFOLD_ID,
+        moduleVersion: SCAFFOLD_VERSION,
+        label,
+      });
+      return mi.id;
+    }
+
     function linkInput(s: Scaffold, sourceModuleInstanceId: ModuleInstanceId, targetModuleInstanceId: ModuleInstanceId) {
       return {
         configurationId: s.configId,
         targetModuleInstanceId,
-        targetParameterId: PAYLOAD_MASS,
+        targetParameterId: THRUST_FORCE,
         sourceKind: "module_output" as const,
         sourceModuleInstanceId,
         sourceParameterId: THRUST_FORCE,
@@ -141,13 +179,10 @@ describe.skipIf(!generatedClientAvailable)(
     /**
      * Clears a run's stale flag, simulating "this run is the current one" for
      * test setup. Confirming a link already stales its target's existing run
-     * (a behavior asserted directly elsewhere) — tests that need a *fresh*
-     * run to then re-stale can't get one by re-executing through this suite's
-     * example-scaffold link, since its one input/output pair is deliberately
-     * dimension-mismatched (mass in, force out) precisely so linked-value
-     * resolution is exercised; re-executing through it fails validation
-     * rather than producing a new run. `markRunStale` is the real,
-     * public primitive for toggling this flag either direction.
+     * (a behavior asserted directly elsewhere), so a test that needs a *fresh*
+     * run to then re-stale resets the flag here rather than re-executing —
+     * keeping each assertion about one propagation event. `markRunStale` is
+     * the real, public primitive for toggling this flag either direction.
      */
     async function resetRunFresh(runId: CalculationRunId): Promise<void> {
       await runs.markRunStale(runId, false);
@@ -199,9 +234,9 @@ describe.skipIf(!generatedClientAvailable)(
           configurationId: s.configId,
           moduleInstanceId: a.moduleInstanceId,
           nodeKind: "module_input",
-          parameterId: PAYLOAD_MASS,
+          parameterId: THRUST_FORCE,
           source: "manual",
-          value: makeQuantity(20, "kg"),
+          value: makeQuantity(300, "N"),
         },
         s.ownerId,
       );
@@ -239,9 +274,9 @@ describe.skipIf(!generatedClientAvailable)(
           configurationId: s.configId,
           moduleInstanceId: a.moduleInstanceId,
           nodeKind: "module_input",
-          parameterId: PAYLOAD_MASS,
+          parameterId: THRUST_FORCE,
           source: "manual",
-          value: makeQuantity(25, "kg"),
+          value: makeQuantity(320, "N"),
         },
         s.ownerId,
       );
@@ -271,9 +306,9 @@ describe.skipIf(!generatedClientAvailable)(
           configurationId: s.configId,
           moduleInstanceId: a.moduleInstanceId,
           nodeKind: "module_input",
-          parameterId: PAYLOAD_MASS,
+          parameterId: THRUST_FORCE,
           source: "manual",
-          value: makeQuantity(30, "kg"),
+          value: makeQuantity(340, "N"),
         },
         s.ownerId,
       );
@@ -300,7 +335,7 @@ describe.skipIf(!generatedClientAvailable)(
           configurationId: s.configId,
           moduleInstanceId: a.moduleInstanceId,
           nodeKind: "module_input",
-          parameterId: PAYLOAD_MASS,
+          parameterId: THRUST_FORCE,
           source: "manual",
           value: invalidValue,
         },
@@ -446,9 +481,9 @@ describe.skipIf(!generatedClientAvailable)(
           configurationId: s.configId,
           moduleInstanceId: a.moduleInstanceId,
           nodeKind: "module_input",
-          parameterId: PAYLOAD_MASS,
+          parameterId: THRUST_FORCE,
           source: "manual",
-          value: makeQuantity(40, "kg"),
+          value: makeQuantity(360, "N"),
         },
         s.ownerId,
       );
@@ -481,6 +516,154 @@ describe.skipIf(!generatedClientAvailable)(
       const removed = await stalePropagation.removeParameterLink(confirmed.link.id, s.ownerId);
       expect(removed.ok).toBe(true);
       expect(await isAssignmentStale(assignmentId)).toBe(true);
+    });
+
+    // --- Semantic link safety (enforced here, not only in a suggestion UI) ---
+
+    it("rejects a semantically incompatible link between two different parameters", async () => {
+      const s = await scaffold();
+      const source = await newScaffoldModule(s, "Upstream scaffold");
+      const target = await newScaffoldModule(s, "Downstream scaffold");
+
+      // Both ports are declared by their packages — example-scaffold outputs a
+      // thrust force and consumes a payload mass — so this reaches the
+      // compatibility gate rather than failing the port check. Both are
+      // registered parameters, and unit compatibility is irrelevant here (kg
+      // vs N differ anyway); what rejects it is that they are not the same
+      // canonical parameter and no approved mapping joins them.
+      const result = await stalePropagation.confirmParameterLink(
+        {
+          configurationId: s.configId,
+          targetModuleInstanceId: target,
+          targetParameterId: PAYLOAD_MASS,
+          sourceKind: "module_output",
+          sourceModuleInstanceId: source,
+          sourceParameterId: THRUST_FORCE,
+        },
+        s.ownerId,
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("incompatible");
+      expect(result.error.message).toContain("parameter_identity");
+
+      const links = await client.prisma.parameterLink.findMany({
+        where: { configurationId: s.configId },
+      });
+      expect(links).toHaveLength(0);
+    });
+
+    it("rejects a link to a port the target module does not declare", async () => {
+      const s = await scaffold();
+      const a = await newModuleWithRun(s, "A");
+      const b = await newModuleWithRun(s, "B");
+
+      const result = await stalePropagation.confirmParameterLink(
+        {
+          ...linkInput(s, a.moduleInstanceId, b.moduleInstanceId),
+          // The relay declares one input port, for THRUST_FORCE.
+          targetParameterId: PAYLOAD_MASS,
+        },
+        s.ownerId,
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("invalid_input");
+      expect(result.error.message).toContain("declares no input port");
+    });
+
+    it("rejects a link whose source output the source module does not declare", async () => {
+      const s = await scaffold();
+      const a = await newModuleWithRun(s, "A");
+      const b = await newModuleWithRun(s, "B");
+
+      const result = await stalePropagation.confirmParameterLink(
+        {
+          ...linkInput(s, a.moduleInstanceId, b.moduleInstanceId),
+          sourceParameterId: PAYLOAD_MASS,
+        },
+        s.ownerId,
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("invalid_input");
+      expect(result.error.message).toContain("declares no output port");
+    });
+
+    // --- Configuration scoping (ownership alone is not enough) ---------------
+
+    it("rejects a value change whose configurationId is not the module instance's own", async () => {
+      const s = await scaffold();
+      const a = await newModuleWithRun(s, "A");
+      const other = await otherConfiguration(s);
+
+      const result = await stalePropagation.setParameterValue(
+        {
+          configurationId: other.configId,
+          moduleInstanceId: a.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: THRUST_FORCE,
+          source: "manual",
+          value: makeQuantity(280, "N"),
+        },
+        s.ownerId,
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("unauthorized");
+
+      // Nothing was filed under the foreign configuration.
+      const values = await client.prisma.parameterValue.findMany({
+        where: { configurationId: other.configId },
+      });
+      expect(values).toHaveLength(0);
+    });
+
+    it("rejects a provider value whose assembly belongs to another configuration", async () => {
+      const s = await scaffold();
+      const other = await otherConfiguration(s);
+
+      const result = await stalePropagation.setParameterValue(
+        {
+          configurationId: s.configId,
+          assemblyId: other.assemblyId,
+          nodeKind: "assembly_parameter",
+          parameterId: PAYLOAD_MASS,
+          source: "manual",
+          value: makeQuantity(15, "kg"),
+        },
+        s.ownerId,
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("unauthorized");
+    });
+
+    it("rejects a link whose source module instance belongs to another configuration", async () => {
+      const s = await scaffold();
+      const target = await newModuleWithRun(s, "Target");
+      const other = await otherConfiguration(s);
+      const foreignSource = await projects.createModuleInstance({
+        assemblyId: other.assemblyId,
+        modulePackageId: MODULE_ID,
+        moduleVersion: MODULE_VERSION,
+        label: "Source in another configuration",
+      });
+
+      const result = await stalePropagation.confirmParameterLink(
+        {
+          configurationId: s.configId,
+          targetModuleInstanceId: target.moduleInstanceId,
+          targetParameterId: THRUST_FORCE,
+          sourceKind: "module_output",
+          sourceModuleInstanceId: foreignSource.id,
+          sourceParameterId: THRUST_FORCE,
+        },
+        s.ownerId,
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("unauthorized");
     });
   },
 );

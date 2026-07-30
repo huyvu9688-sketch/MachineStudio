@@ -10,9 +10,7 @@
 // verifying a catalog part revision exists before assigning it.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { makeQuantity } from "@/lib/engine";
 import type { CalculationRunId } from "../../db/repositories/run-types";
@@ -24,16 +22,11 @@ import type {
 } from "../../db/repositories/types";
 import type { ManufacturerPartRevisionId } from "../../db/repositories/catalog-types";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(
-  join(here, "..", "..", "db", "generated", "prisma"),
-);
-
 const MODULE_ID = "example-scaffold";
 const MODULE_VERSION = "0.1.0";
 const PAYLOAD_MASS = "motion.axis.payload_mass";
 
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "assignComponent (live database)",
   () => {
     let assignComponent: typeof import("./assign-component").assignComponent;
@@ -420,6 +413,71 @@ describe.skipIf(!generatedClientAvailable)(
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("invalid_input");
+    });
+
+    it("reports unauthorized when the target does not belong to the given configuration", async () => {
+      const f = await fixture();
+      // A second configuration under the same owner: the caller owns both the
+      // module instance and the configuration, so only a target-to-
+      // configuration check can catch this.
+      const otherProject = await projects.createProject({
+        ownerId: f.ownerId,
+        name: "Other machine",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const otherConfig = await projects.createConfiguration({
+        projectId: otherProject.id,
+        name: "Other baseline",
+      });
+
+      const result = await assignComponent(
+        {
+          configurationId: otherConfig.id,
+          target: { kind: "module_instance", moduleInstanceId: f.moduleInstanceId },
+          partSource: "catalog",
+          manufacturerPartRevisionId: f.partRevisionId,
+          calculationRunId: f.runId,
+        },
+        f.ownerId,
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("unauthorized");
+
+      const rows = await client.prisma.componentAssignment.findMany({
+        where: { configurationId: otherConfig.id },
+      });
+      expect(rows).toHaveLength(0);
+    });
+
+    it("reports unauthorized when the target assembly belongs to another configuration", async () => {
+      const f = await fixture();
+      const otherProject = await projects.createProject({
+        ownerId: f.ownerId,
+        name: "Other machine",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const otherConfig = await projects.createConfiguration({
+        projectId: otherProject.id,
+        name: "Other baseline",
+      });
+      const otherAssembly = await projects.createAssembly({
+        configurationId: otherConfig.id,
+        name: "Y axis",
+      });
+
+      const result = await assignComponent(
+        {
+          configurationId: f.configId,
+          target: { kind: "assembly", assemblyId: otherAssembly.id },
+          partSource: "manual",
+          manualPartDetails: { description: "Bracket" },
+        },
+        f.ownerId,
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("unauthorized");
     });
   },
 );

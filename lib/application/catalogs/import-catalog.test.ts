@@ -10,9 +10,7 @@
 // database, plus the service's setup-validation error paths.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type {
   ComponentAttributeFieldDefinition,
@@ -23,11 +21,6 @@ import type {
   ComponentTypeId,
   ManufacturerId,
 } from "../../db/repositories/catalog-types";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(
-  join(here, "..", "..", "db", "generated", "prisma"),
-);
 
 const ballScrewFields: ComponentAttributeFieldDefinition[] = [
   {
@@ -48,7 +41,7 @@ const ballScrewFields: ComponentAttributeFieldDefinition[] = [
 
 const csvHeader = "Part Number,Revision,Lead (mm),Diameter (mm)";
 
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "importCatalog (live database)",
   () => {
     let application: typeof import("./import-catalog");
@@ -197,10 +190,57 @@ describe.skipIf(!generatedClientAvailable)(
       expect(batch?.importMappingVersion).toBe("1.0.0");
     });
 
-    it("imports reproducibly: re-running the same file updates rows in place, not duplicates", async () => {
+    it("imports reproducibly: re-running the identical file changes nothing and duplicates nothing", async () => {
       const s = await scaffold();
       const csv = csvHeader + "\n" + "BSS1520-914,2026-catalog,20,15\n";
-      const revisedCsv = csvHeader + "\n" + "BSS1520-914,2026-catalog,22,15\n";
+
+      const firstRun = await application.importCatalog({
+        manufacturerId: s.manufacturerId,
+        componentTypeId: s.componentTypeId,
+        componentSchemaVersionId: s.schemaVersionId,
+        mapping: s.mapping,
+        csvText: csv,
+        sourceLabel: "test-catalog.csv",
+      });
+      if (!firstRun.ok || firstRun.dryRun)
+        throw new Error("expected an applied result");
+      createdImportBatchIds.push(firstRun.batchId);
+
+      const secondRun = await application.importCatalog({
+        manufacturerId: s.manufacturerId,
+        componentTypeId: s.componentTypeId,
+        componentSchemaVersionId: s.schemaVersionId,
+        mapping: s.mapping,
+        csvText: csv,
+        sourceLabel: "test-catalog-again.csv",
+      });
+      if (!secondRun.ok || secondRun.dryRun)
+        throw new Error("expected an applied result");
+      createdImportBatchIds.push(secondRun.batchId);
+
+      expect(secondRun.batchId).not.toBe(firstRun.batchId);
+      expect(secondRun.persistedCount).toBe(1);
+      expect(secondRun.conflictCount).toBe(0);
+
+      const persisted =
+        await catalog.listManufacturerPartRevisionsByComponentType(
+          s.componentTypeId,
+        );
+      expect(persisted).toHaveLength(1);
+      expect(persisted[0]?.attributes.lead).toMatchObject({ value: 20 });
+      // Provenance stays with the batch that first produced the revision
+      // (ADR-0006) — a later identical import does not re-parent it.
+      expect(persisted[0]?.importBatchId).toBe(firstRun.batchId);
+    });
+
+    it("reports a conflict per row when a re-import changes an existing revision's content (ADR-0006)", async () => {
+      const s = await scaffold();
+      const csv =
+        csvHeader + "\n" + "BSS1520-914,2026-catalog,20,15\n" + "BSS1520-916,2026-catalog,25,16\n";
+      // The same source revision, one row corrected: the corrected row conflicts
+      // with an immutable record; the untouched row is still an exact repeat.
+      const revisedCsv =
+        csvHeader + "\n" + "BSS1520-914,2026-catalog,22,15\n" + "BSS1520-916,2026-catalog,25,16\n";
 
       const firstRun = await application.importCatalog({
         manufacturerId: s.manufacturerId,
@@ -226,15 +266,41 @@ describe.skipIf(!generatedClientAvailable)(
         throw new Error("expected an applied result");
       createdImportBatchIds.push(secondRun.batchId);
 
-      expect(secondRun.batchId).not.toBe(firstRun.batchId);
+      expect(secondRun.conflictCount).toBe(1);
+      expect(secondRun.persistedCount).toBe(1);
+      const conflicted = secondRun.rows.find((r) => r.conflict !== undefined);
+      expect(conflicted?.partNumber).toBe("BSS1520-914");
+      expect(conflicted?.conflict).toContain("attributes");
 
+      // The stored revision still says what it said when it was imported, and
+      // the non-conflicting row was not rolled back with it.
       const persisted =
         await catalog.listManufacturerPartRevisionsByComponentType(
           s.componentTypeId,
         );
-      expect(persisted).toHaveLength(1);
-      expect(persisted[0]?.attributes.lead).toMatchObject({ value: 22 });
-      expect(persisted[0]?.importBatchId).toBe(secondRun.batchId);
+      expect(persisted).toHaveLength(2);
+      const original = persisted.find((r) => r.partNumber === "BSS1520-914");
+      expect(original?.attributes.lead).toMatchObject({ value: 20 });
+    });
+
+    it("keeps an import batch that a part revision cites as provenance (ADR-0006)", async () => {
+      const s = await scaffold();
+      const csv = csvHeader + "\n" + "BSS1520-914,2026-catalog,20,15\n";
+
+      const run = await application.importCatalog({
+        manufacturerId: s.manufacturerId,
+        componentTypeId: s.componentTypeId,
+        componentSchemaVersionId: s.schemaVersionId,
+        mapping: s.mapping,
+        csvText: csv,
+        sourceLabel: "test-catalog.csv",
+      });
+      if (!run.ok || run.dryRun) throw new Error("expected an applied result");
+      createdImportBatchIds.push(run.batchId);
+
+      await expect(
+        client.prisma.catalogImportBatch.delete({ where: { id: run.batchId } }),
+      ).rejects.toThrow();
     });
 
     it("dry run parses and validates without writing anything", async () => {

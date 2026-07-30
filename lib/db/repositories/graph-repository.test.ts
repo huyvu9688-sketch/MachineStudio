@@ -7,9 +7,7 @@
 // (the unit's exit criterion), plus ownership isolation.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { SERIALIZATION_FORMAT_VERSION } from "../../engine/values";
 import type { EngineeringValue, Quantity } from "../../engine/values";
@@ -20,14 +18,11 @@ import type {
   UserId,
 } from "./types";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(join(here, "..", "generated", "prisma"));
-
 function kg(value: number): Quantity {
   return { v: SERIALIZATION_FORMAT_VERSION, kind: "quantity", value, unit: "kg" };
 }
 
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "graph-repository (live database)",
   () => {
     let graph: typeof import("./graph-repository");

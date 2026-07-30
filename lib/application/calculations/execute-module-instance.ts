@@ -60,7 +60,8 @@ export interface ExecuteModuleInstanceInput {
 export type ExecuteModuleInstanceErrorCode =
   | "unauthorized"
   | "module_not_found"
-  | "invalid_input";
+  | "invalid_input"
+  | "stale_upstream";
 
 /** A failed {@link executeModuleInstance} outcome. */
 export interface ExecuteModuleInstanceError {
@@ -79,32 +80,51 @@ export type ExecuteModuleInstanceResult =
   | { readonly ok: false; readonly error: ExecuteModuleInstanceError };
 
 /**
+ * The outcome of resolving a linked module-output source: a concrete value, a
+ * refusal because the upstream result is known to be out of date, or nothing
+ * resolvable.
+ */
+type UpstreamValue =
+  | { readonly kind: "value"; readonly value: EngineeringValue }
+  | { readonly kind: "stale"; readonly staleReason: string | null }
+  | { readonly kind: "unresolved" };
+
+/**
  * Resolves the value a confirmed link to a module-output source carries,
  * pulling it from that source module's latest calculation run
  * (`lib/db/repositories/graph-repository.ts`'s `resolveLinkedSourceValue`
  * deliberately returns `null` for this case: "its value comes from that
  * module's calculation run, wired in the execution service (Unit 2.4)").
- * Returns `undefined` when the source has no run yet, isn't owned by
+ *
+ * Returns `unresolved` when the source has no run yet, isn't owned by
  * `ownerId`, or its package/output port can no longer be found — the caller
  * then leaves the input port unresolved, and `executeModule` reports a clear
  * "missing required input" rather than this function inventing a value.
+ *
+ * Returns `stale` when the source's latest run is marked stale: an upstream
+ * input changed after that run was computed, so its outputs no longer follow
+ * from the current design. Consuming one would persist a fresh-looking run
+ * built on superseded numbers, which is exactly what the stale flag exists to
+ * prevent. Every run of an affected module instance is marked stale together
+ * (`markRunsStaleForModuleInstances`), so there is no older, "less stale" run
+ * to fall back to — the upstream module has to be re-run first.
  */
 async function resolveModuleOutputValue(
   sourceModuleInstanceId: ModuleInstanceId,
   sourceParameterId: string,
   sourceLoadCase: LoadCaseCategory | null,
   ownerId: UserId,
-): Promise<EngineeringValue | undefined> {
+): Promise<UpstreamValue> {
   const sourceContext = await loadModuleInstanceForOwner(sourceModuleInstanceId, ownerId);
   if (sourceContext === null) {
-    return undefined;
+    return { kind: "unresolved" };
   }
   const sourcePkg = getModulePackage(
     sourceContext.moduleInstance.modulePackageId,
     sourceContext.moduleInstance.moduleVersion,
   );
   if (sourcePkg === undefined) {
-    return undefined;
+    return { kind: "unresolved" };
   }
   const outputPort = sourcePkg.ports.outputs.find(
     (port) =>
@@ -112,16 +132,20 @@ async function resolveModuleOutputValue(
       (port.loadCase ?? null) === sourceLoadCase,
   );
   if (outputPort === undefined) {
-    return undefined;
+    return { kind: "unresolved" };
   }
 
   const summaries = await listRunsForModuleInstance(sourceModuleInstanceId, ownerId);
   const latest = summaries[0];
   if (latest === undefined) {
-    return undefined;
+    return { kind: "unresolved" };
+  }
+  if (latest.stale) {
+    return { kind: "stale", staleReason: latest.staleReason };
   }
   const latestRun = await loadCalculationRun(latest.id, ownerId);
-  return latestRun?.snapshot.computation.outputs[outputPort.key];
+  const value = latestRun?.snapshot.computation.outputs[outputPort.key];
+  return value === undefined ? { kind: "unresolved" } : { kind: "value", value };
 }
 
 /**
@@ -132,9 +156,9 @@ async function resolveModuleOutputValue(
  * appending an audit event in the same transaction.
  *
  * Never throws for an expected domain failure (unauthorized, an unregistered
- * module version, or inputs the module rejects); those come back as
- * `{ ok: false }`. An unexpected repository error still throws — that is a
- * real bug, not a modeled outcome.
+ * module version, inputs the module rejects, or a linked upstream result that
+ * is stale); those come back as `{ ok: false }`. An unexpected repository error
+ * still throws — that is a real bug, not a modeled outcome.
  */
 export async function executeModuleInstance(
   input: ExecuteModuleInstanceInput,
@@ -192,12 +216,24 @@ export async function executeModuleInstance(
       if (resolved.value !== null) {
         value = resolved.value;
       } else if (resolved.link.sourceModuleInstanceId !== null) {
-        value = await resolveModuleOutputValue(
+        const upstream = await resolveModuleOutputValue(
           resolved.link.sourceModuleInstanceId,
           resolved.link.sourceParameterId,
           resolved.link.sourceLoadCase,
           input.ownerId,
         );
+        if (upstream.kind === "stale") {
+          return {
+            ok: false,
+            error: {
+              code: "stale_upstream",
+              message: `Input "${port.key}" is linked to a module output whose latest calculation run is stale${upstream.staleReason === null ? "" : ` (${upstream.staleReason})`}. Re-run the upstream module before executing this one.`,
+            },
+          };
+        }
+        if (upstream.kind === "value") {
+          value = upstream.value;
+        }
       }
     }
     // "default": leave undefined — the SDK fills the constant default (or

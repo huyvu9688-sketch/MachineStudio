@@ -7,16 +7,11 @@
 // DesignAssumption, and LoadCase.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { MachineConfigurationId, UserId } from "./types";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(join(here, "..", "generated", "prisma"));
-
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "requirements-repository (live database)",
   () => {
     let repo: typeof import("./requirements-repository");

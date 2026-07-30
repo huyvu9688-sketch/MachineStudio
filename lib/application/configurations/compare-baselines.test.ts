@@ -11,9 +11,7 @@
 // (Unit 2.9 part 1); this file proves the wiring, not the diff logic again.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { makeQuantity } from "@/lib/engine";
 import type {
@@ -23,16 +21,11 @@ import type {
 } from "../../db/repositories/types";
 import type { MachineBaselineId } from "../../db/repositories/baseline-types";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(
-  join(here, "..", "..", "db", "generated", "prisma"),
-);
-
 const MODULE_ID = "example-scaffold";
 const MODULE_VERSION = "0.1.0";
 const PAYLOAD_MASS = "motion.axis.payload_mass";
 
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "compareBaselines (live database)",
   () => {
     let createBaseline: typeof import("./create-baseline").createBaseline;

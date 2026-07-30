@@ -21,6 +21,10 @@
     "format:check": "prettier --check .",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
+  "overrides": {
+    "postcss": "^8.5.25",
+    "sharp": "^0.35.3"
+  },
   "dependencies": {
     "@clerk/nextjs": "^7.6.2",
     "@prisma/adapter-pg": "^7.9.1",

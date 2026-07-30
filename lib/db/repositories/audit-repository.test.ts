@@ -4,16 +4,11 @@
 // absent (see context/progress-tracker.md).
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { MachineProjectId, UserId } from "./types";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(join(here, "..", "generated", "prisma"));
-
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "audit-repository (live database)",
   () => {
     let audit: typeof import("./audit-repository");

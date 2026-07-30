@@ -606,7 +606,13 @@ model ManufacturerPartRevision {
   manufacturer           Manufacturer           @relation(fields: [manufacturerId], references: [id], onDelete: Restrict)
   componentType          ComponentType          @relation(fields: [componentTypeId], references: [id], onDelete: Restrict)
   componentSchemaVersion ComponentSchemaVersion @relation(fields: [componentSchemaVersionId], references: [id], onDelete: Restrict)
-  importBatch            CatalogImportBatch?    @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  /// `Restrict`, not `SetNull` (ADR-0006): a part revision is immutable, so its
+  /// recorded provenance cannot be detached — deleting the batch that produced
+  /// a revision would silently rewrite where that revision came from. The
+  /// `manufacturer_part_revisions_immutable_guard` trigger would reject the
+  /// resulting UPDATE anyway; `Restrict` fails the delete with a clear FK error
+  /// instead.
+  importBatch            CatalogImportBatch?    @relation(fields: [importBatchId], references: [id], onDelete: Restrict)
   datasheetAttachments   DatasheetAttachment[]
   componentAssignments   ComponentAssignment[]
 

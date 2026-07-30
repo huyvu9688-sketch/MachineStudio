@@ -132,7 +132,7 @@ export async function listAuditEventsForProject(
   const owner = parseId(ownerId);
   const rows = await prisma.auditEvent.findMany({
     where: { projectId: id, project: { ownerId: owner } },
-    orderBy: { occurredAt: "desc" },
+    orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
   });
   return rows.map(toAuditEventRecord);
 }

@@ -26,6 +26,7 @@ import type {
   ComponentAttributeFieldDefinition,
   ComponentAttributes,
 } from "../../catalog";
+import { engineeringValuesEqual } from "../../engine/values";
 import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "../client";
 import type { DbClient } from "./db-client";
@@ -60,8 +61,16 @@ import {
   asManufacturerPartRevisionId,
 } from "./catalog-types";
 
-/** Machine-readable classification of a catalog-repository failure. */
-export type CatalogRepositoryErrorCode = "invalid_input" | "invalid_snapshot";
+/**
+ * Machine-readable classification of a catalog-repository failure. `conflict`
+ * means an immutable part revision already exists under the same
+ * `(manufacturer, part number, source revision)` identity with *different*
+ * content — the corrected data needs its own source revision (ADR-0006).
+ */
+export type CatalogRepositoryErrorCode =
+  | "invalid_input"
+  | "invalid_snapshot"
+  | "conflict";
 
 /** Thrown by the catalog repository for validation failures. */
 export class CatalogRepositoryError extends Error {
@@ -474,16 +483,26 @@ export async function createManufacturerPartRevision(
 }
 
 /**
- * Creates or updates a `ManufacturerPartRevision` by its
- * `(manufacturerId, partNumber, sourceRevision)` identity — the idempotent
- * upsert `code-standards.md` "Catalog" requires for imports ("Imports are
- * idempotent by manufacturer, part number, source revision, and import
- * mapping"). Re-importing the same identity updates the existing row in
- * place (attributes, lifecycle, data-quality, attaching it to the new import
- * batch) rather than rejecting it as a duplicate — unlike
- * {@link createManufacturerPartRevision}, which is for manual/one-off entry
- * where a duplicate should surface as an error. `input.attributes` is
- * validated identically to the create path.
+ * Records a `ManufacturerPartRevision` for an import, keyed by its
+ * `(manufacturerId, partNumber, sourceRevision)` identity. Imports are
+ * idempotent (`code-standards.md` "Catalog": "Imports are idempotent by
+ * manufacturer, part number, source revision, and import mapping") *without*
+ * being destructive:
+ *
+ *   - no existing row → create it;
+ *   - an existing row whose engineering content is identical → return it
+ *     unchanged, still parented to the import batch that first produced it;
+ *   - an existing row whose content differs → `conflict`.
+ *
+ * A part revision is a write-once engineering record (ADR-0006): assignments
+ * and released baselines pin one by id, so silently rewriting its attributes
+ * would change what an already-approved decision means. Corrected
+ * manufacturer data is imported under a new source revision instead. The
+ * database enforces this too — see the `manufacturer_part_revisions_immutable_guard`
+ * trigger — so a write that bypasses this function cannot rewrite one either.
+ *
+ * @throws {@link CatalogRepositoryError} with code `conflict` when the same
+ * identity already exists with different content.
  */
 export async function upsertManufacturerPartRevision(
   input: CreateManufacturerPartRevisionInput,
@@ -495,17 +514,8 @@ export async function upsertManufacturerPartRevision(
     "upsertManufacturerPartRevision",
     "invalid_input",
   );
-  const shared = {
-    componentTypeId: data.componentTypeId,
-    componentSchemaVersionId: data.componentSchemaVersionId,
-    sourceLink: data.sourceLink ?? null,
-    lifecycleStatus: data.lifecycleStatus ?? null,
-    dataQualityStatus: data.dataQualityStatus ?? "valid",
-    validationErrors: [...(data.validationErrors ?? [])],
-    attributes: attributes as unknown as Prisma.InputJsonValue,
-    importBatchId: data.importBatchId ?? null,
-  };
-  const row = await client.manufacturerPartRevision.upsert({
+
+  const existing = await client.manufacturerPartRevision.findUnique({
     where: {
       manufacturerId_partNumber_sourceRevision: {
         manufacturerId: data.manufacturerId,
@@ -513,15 +523,112 @@ export async function upsertManufacturerPartRevision(
         sourceRevision: data.sourceRevision,
       },
     },
-    create: {
+  });
+
+  if (existing !== null) {
+    const current = toManufacturerPartRevisionRecord(existing);
+    const differences = partRevisionDifferences(current, {
+      componentTypeId: data.componentTypeId,
+      componentSchemaVersionId: data.componentSchemaVersionId,
+      sourceLink: data.sourceLink ?? null,
+      lifecycleStatus: data.lifecycleStatus ?? null,
+      dataQualityStatus: data.dataQualityStatus ?? "valid",
+      validationErrors: [...(data.validationErrors ?? [])],
+      attributes,
+    });
+    if (differences.length > 0) {
+      throw new CatalogRepositoryError(
+        `Part revision "${data.partNumber}" (source revision "${data.sourceRevision}") already exists with different content (${differences.join(", ")}). A manufacturer part revision is immutable — import the corrected data under a new source revision.`,
+        "conflict",
+      );
+    }
+    // Identical re-import: idempotent, and provenance stays with the batch
+    // that first produced this revision rather than being re-parented.
+    return current;
+  }
+
+  const row = await client.manufacturerPartRevision.create({
+    data: {
       manufacturerId: data.manufacturerId,
       partNumber: data.partNumber,
       sourceRevision: data.sourceRevision,
-      ...shared,
+      componentTypeId: data.componentTypeId,
+      componentSchemaVersionId: data.componentSchemaVersionId,
+      sourceLink: data.sourceLink ?? null,
+      lifecycleStatus: data.lifecycleStatus ?? null,
+      dataQualityStatus: data.dataQualityStatus ?? "valid",
+      validationErrors: [...(data.validationErrors ?? [])],
+      attributes: attributes as unknown as Prisma.InputJsonValue,
+      importBatchId: data.importBatchId ?? null,
     },
-    update: shared,
   });
   return toManufacturerPartRevisionRecord(row);
+}
+
+/** The content fields an import may supply for a part revision. */
+interface PartRevisionContent {
+  readonly componentTypeId: string;
+  readonly componentSchemaVersionId: string;
+  readonly sourceLink: string | null;
+  readonly lifecycleStatus: PartLifecycleStatus | null;
+  readonly dataQualityStatus: DataQualityStatus;
+  readonly validationErrors: readonly string[];
+  readonly attributes: ComponentAttributes;
+}
+
+/**
+ * Names the fields on which an incoming import differs from the stored
+ * revision. Empty means the import is an exact repeat. `importBatchId` is
+ * deliberately not compared — which batch re-imported identical content does
+ * not change what the revision says.
+ */
+function partRevisionDifferences(
+  stored: ManufacturerPartRevisionRecord,
+  incoming: PartRevisionContent,
+): string[] {
+  const differences: string[] = [];
+  if (stored.componentTypeId !== incoming.componentTypeId) {
+    differences.push("componentTypeId");
+  }
+  if (stored.componentSchemaVersionId !== incoming.componentSchemaVersionId) {
+    differences.push("componentSchemaVersionId");
+  }
+  if (stored.sourceLink !== incoming.sourceLink) differences.push("sourceLink");
+  if (stored.lifecycleStatus !== incoming.lifecycleStatus) {
+    differences.push("lifecycleStatus");
+  }
+  if (stored.dataQualityStatus !== incoming.dataQualityStatus) {
+    differences.push("dataQualityStatus");
+  }
+  if (
+    stored.validationErrors.length !== incoming.validationErrors.length ||
+    stored.validationErrors.some((e, i) => e !== incoming.validationErrors[i])
+  ) {
+    differences.push("validationErrors");
+  }
+  if (!componentAttributesEqual(stored.attributes, incoming.attributes)) {
+    differences.push("attributes");
+  }
+  return differences;
+}
+
+/**
+ * Whether two attribute payloads carry the same engineering content. Values are
+ * compared with the engine's own `engineeringValuesEqual` rather than by JSON
+ * shape, so the comparison follows the released value contract (Unit 1.1)
+ * instead of a second, drifting definition of equality.
+ */
+function componentAttributesEqual(
+  a: ComponentAttributes,
+  b: ComponentAttributes,
+): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  return aKeys.every((key) => {
+    const other = b[key];
+    return other !== undefined && engineeringValuesEqual(a[key], other);
+  });
 }
 
 /** Creates a `DatasheetAttachment` for a manufacturer part revision. */

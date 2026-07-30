@@ -434,7 +434,9 @@ export async function loadModuleInstanceForOwner(
   const row = await prisma.moduleInstance.findFirst({
     where: { id, assembly: { configuration: { project: { ownerId: owner } } } },
     include: {
-      assembly: { select: { configuration: { select: { projectId: true } } } },
+      assembly: {
+        select: { configuration: { select: { id: true, projectId: true } } },
+      },
     },
   });
   if (row === null) {
@@ -443,6 +445,7 @@ export async function loadModuleInstanceForOwner(
   const { assembly, ...moduleInstanceRow } = row;
   return {
     moduleInstance: toModuleInstanceRecord(moduleInstanceRow),
+    configurationId: asMachineConfigurationId(assembly.configuration.id),
     projectId: asMachineProjectId(assembly.configuration.projectId),
   };
 }
@@ -557,21 +560,25 @@ export async function loadConfigurationTree(
 // --- Assembly ownership (Unit 2.8) ----------------------------------------
 
 /**
- * Whether an assembly belongs to `ownerId` (the filter walks assembly →
- * configuration → project → owner). Unit 2.8's `assignComponent` uses this to
- * authorize a manual/custom part assigned directly to an assembly — no
- * owning module instance to check via `loadModuleInstanceForOwner`, the same
- * gap `isConfigurationOwnedBy` fills for a machine-level provider value.
+ * Loads an assembly scoped to `ownerId` (the filter walks assembly →
+ * configuration → project → owner), or `null` when it does not exist or is not
+ * owned. Unit 2.8's `assignComponent` and Unit 2.5's `setParameterValue` use
+ * this to authorize a write that names an assembly — no owning module instance
+ * to check via `loadModuleInstanceForOwner`, the same gap
+ * `isConfigurationOwnedBy` fills for a machine-level provider value.
+ *
+ * It returns the record rather than a boolean because the caller also needs the
+ * assembly's `configurationId`: ownership alone does not prove the assembly
+ * belongs to the configuration the write claims to be scoped to.
  */
-export async function isAssemblyOwnedBy(
+export async function loadAssemblyForOwner(
   assemblyId: string,
   ownerId: UserId,
-): Promise<boolean> {
+): Promise<AssemblyRecord | null> {
   const id = parse(nonEmpty, assemblyId);
   const owner = parse(nonEmpty, ownerId);
   const row = await prisma.assembly.findFirst({
     where: { id, configuration: { project: { ownerId: owner } } },
-    select: { id: true },
   });
-  return row !== null;
+  return row === null ? null : toAssemblyRecord(row);
 }

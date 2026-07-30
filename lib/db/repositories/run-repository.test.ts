@@ -7,9 +7,7 @@
 // stored snapshot rejection, plus ownership isolation and summary derivation.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   ENGINE_SDK_VERSION,
@@ -24,9 +22,6 @@ import { getModulePackage } from "@/lib/modules";
 import { RUN_SNAPSHOT_FORMAT_VERSION } from "./run-types";
 import type { CalculationRunSnapshot } from "./run-types";
 import type { AssemblyId, ModuleInstanceId, UserId } from "./types";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(join(here, "..", "generated", "prisma"));
 
 const MODULE_ID = "example-scaffold";
 const MODULE_VERSION = "0.1.0";
@@ -61,7 +56,7 @@ function buildSnapshot(
   };
 }
 
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "run-repository (live database)",
   () => {
     let runs: typeof import("./run-repository");

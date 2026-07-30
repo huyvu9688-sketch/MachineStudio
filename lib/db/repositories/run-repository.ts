@@ -210,6 +210,11 @@ export async function loadCalculationRun(
 /**
  * Lists a module instance's runs (newest first) as search summaries, scoped to
  * the owner. Returns `[]` when the module instance is not owned by `ownerId`.
+ *
+ * The order is a total one (`createdAt`, then `id`): callers treat the first
+ * element as "the latest run" — `lib/application`'s execution service resolves
+ * a linked module-output value from it — so two runs sharing a `createdAt`
+ * must not resolve differently between queries.
  */
 export async function listRunsForModuleInstance(
   moduleInstanceId: ModuleInstanceId,
@@ -222,7 +227,7 @@ export async function listRunsForModuleInstance(
       moduleInstanceId: id,
       moduleInstance: { assembly: { configuration: { project: { ownerId: owner } } } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     omit: { snapshot: true, updatedAt: true },
   });
   return rows.map(toRunSummary);

@@ -11,9 +11,7 @@
 // primitive `markComponentAssignmentsStaleForModuleInstances`.
 
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { makeQuantity } from "@/lib/engine";
 import type { CalculationRunId } from "./run-types";
@@ -25,14 +23,11 @@ import type {
 } from "./types";
 import type { ManufacturerPartRevisionId } from "./catalog-types";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(join(here, "..", "generated", "prisma"));
-
 const MODULE_ID = "example-scaffold";
 const MODULE_VERSION = "0.1.0";
 const PAYLOAD_MASS = "motion.axis.payload_mass";
 
-describe.skipIf(!generatedClientAvailable)(
+describe.skipIf(!liveDatabaseAvailable)(
   "component-assignment-repository (live database)",
   () => {
     let assignments: typeof import("./component-assignment-repository");
