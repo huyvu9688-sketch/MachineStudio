@@ -179,8 +179,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
-- **2026-07-30 integrity-hardening pass (implemented locally, NOT yet
-  committed or CI-verified).** An external audit reported a set of findings
+- **2026-07-30 integrity-hardening pass — complete and verified in GitHub
+  Actions CI** (commit `a774c22`, run 30537557349 — every step green,
+  including "Deploy migrations" applying the new
+  `manufacturer_part_revisions_immutable_guard` trigger, and "Test" running
+  the full live-database suite for real, not skipped). An external audit
+  reported a set of findings
   against `main` at `22cdf64`; each was re-checked against the code in this
   repository and every one held. Note that the audit's own fixes never
   reached this repository — they were made in a different container and
@@ -263,17 +267,35 @@ Update this file after every meaningful implementation change.
     replacing 15 copies of a client-existence check. Previously the guard
     only checked for the generated Prisma client, so generating the client
     without a database turned 15 files red.
-  - **Verification (this machine).** `prisma generate` **succeeded here
-    today** — unlike every session since 2026-07-29, this network did not
-    block it — so typecheck and build are real local signals again: `npm run
-    lint` (0 warnings), `npm run typecheck`, `npm run build`, and `npm audit
-    --omit=dev` (0 vulnerabilities) all pass, with 396 tests green across 36
-    files. There is still **no local PostgreSQL** (no `psql`, no Docker), so
-    the 15 live-database files (125 tests) skip, including every test written
-    this session for the new rejections, the immutability trigger, and the
-    new migration. **Nothing has been committed or pushed, so CI has not run
-    at all on this work** — treat it as implemented-and-locally-checked, not
-    verified, until a push turns CI green.
+  - **Verification.** `prisma generate` **succeeded on this machine that
+    session** — unlike every session since 2026-07-29, this network did not
+    block it — so typecheck and build were real local signals: `npm run lint`
+    (0 warnings), `npm run typecheck`, `npm run build`, and `npm audit
+    --omit=dev` (0 vulnerabilities) all passed, with 396 tests green across 36
+    files. There is still **no local PostgreSQL** (no `psql`, no Docker) on
+    this machine, so the 15 live-database files (125 tests) always skip here,
+    including every test written this session for the new rejections, the
+    immutability trigger, and the new migration.
+    **Pushed and verified in GitHub Actions CI in two commits.** The first
+    (`54ca63d`) failed at the "Test" step: the new
+    `manufacturer_part_revisions_immutable_guard` trigger correctly rejected
+    a pre-existing test's `.update()`-based corruption bypass in
+    `catalog-repository.test.ts` ("rejects a corrupt stored attributes
+    payload on read") — the trigger was doing exactly its job, the test just
+    hadn't been updated for it. Fixed the same way
+    `baseline-repository.test.ts` already handles its own immutable table:
+    insert an already-corrupt row via a raw `INSERT` instead of corrupting an
+    existing one via `UPDATE`; also removed a duplicate immutability-trigger
+    test this session had accidentally introduced. Pushed as `a774c22`, run
+    30537557349 — every step green, including the full live-database suite
+    running for real (not skipped): the cross-configuration and
+    incompatible-link rejections in `stale-propagation.test.ts` and
+    `assign-component.test.ts`, the catalog conflict/immutability tests in
+    `catalog-repository.test.ts`/`import-catalog.test.ts`, and
+    `executeModuleInstance`'s new `stale_upstream` refusal via the
+    `example-relay` chain in `execute-module-instance.test.ts`. This
+    hardening pass is now complete and CI-verified, on the same footing as
+    every prior schema-touching Milestone 2 unit.
   - **Not attempted this session** (each is a design decision, not a bug fix,
     and is recorded under Open Questions): transactionally consistent
     baseline/execution snapshots; a module content hash covering compute
@@ -1528,16 +1550,14 @@ CI (2026-07-30 — Unit 2.8's initial push needed a test-cleanup fix, see
 Current Goal) and drop off this list. **Milestone 2 (Persistence and
 Application Services) is now complete.**
 
-1. **Push the 2026-07-30 integrity-hardening pass and get CI green** (see
-   Current Goal). It carries a new migration
-   (`20260730170000_immutable_part_revisions`) and changes 15 live-database
-   test files, none of which can run on this machine. Until CI runs, the
-   hardening is unverified.
-2. **Close the reopened Unit 0.3 quality-toolchain gap:** React Testing
+The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
+`a774c22`, run 30537557349 — see Current Goal) and drops off this list.
+
+1. **Close the reopened Unit 0.3 quality-toolchain gap:** React Testing
    Library, Playwright with an authenticated-route smoke strategy, coverage
    configuration for engine/modules, a `test:e2e` script, and the CI E2E step.
    Do not call Phase 0B complete until those checks execute.
-3. **Milestone 3 (generic UI)**, starting with Unit 3.1 (workspace shell).
+2. **Milestone 3 (generic UI)**, starting with Unit 3.1 (workspace shell).
    Then Milestone 4 (modules).
    - **RESOLVED (2026-07-30 hardening pass), superseding the deferral below:**
      semantic link compatibility is now enforced by `confirmParameterLink` in
@@ -1568,9 +1588,9 @@ Application Services) is now complete.**
      `rankCandidates`'s output to pass to `assignComponent`. Part 1
      deliberately did not guess which operator each attribute needs — see
      Current Goal and Architecture Decisions.
-4. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
+3. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
    fixtures once the user has real cases to compare against
-5. Downstream parameter groups (screw, guide, coupling, support-bearing,
+4. Downstream parameter groups (screw, guide, coupling, support-bearing,
    drive-train): NOT released in registry v1 — approved pending proposals to
    be released per module at its Stage-2 parameter contract (bumping the
    registry version). See `lib/engine/parameters/README.md` and Open Questions
@@ -2219,13 +2239,19 @@ Application Services) is now complete.**
   restated: the angular-power-algebra consequence of angle-as-a-base-dimension
   is real (direct test: `10 N·m × 100 rad/s` → `kg*m^2*s^-3*rad`, not `W`),
   and `format:check` fails on 124 files, not ~100. **`prisma generate`
-  succeeded on this network today**, so local typecheck/build are meaningful
-  signals again — but there is still no local PostgreSQL, so every
-  live-database test (including all of this session's new ones) and the new
-  migration remain CI-only. No commit or push was made, so **CI has not run
-  on this work at all**; the shared `tests/live-database.ts` gate was added
-  so those suites report *skipped* rather than failing once a client exists
-  without a database
+  succeeded on this network today**, so local typecheck/build were meaningful
+  signals — but there is still no local PostgreSQL, so every live-database
+  test (including all of this session's new ones) and the new migration
+  stayed CI-only. The shared `tests/live-database.ts` gate was added so those
+  suites report *skipped* rather than failing once a client exists without a
+  database. Committed and pushed on explicit instruction: the first push
+  (`54ca63d`) went red at "Test" — the new immutability trigger correctly
+  rejected a pre-existing test's `.update()`-based corruption bypass in
+  `catalog-repository.test.ts`, which needed the same raw-`INSERT` treatment
+  `baseline-repository.test.ts` already uses for its own immutable table.
+  Fixed and pushed as `a774c22`; run 30537557349 came back fully green,
+  including "Deploy migrations" and the complete live-database suite running
+  for real. The hardening pass is now CI-verified
 - Specification upgrade completed 2026-07-28
 - Start with Unit 0.1, not repository code, because validation evidence is
   required before production formulas
