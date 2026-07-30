@@ -54,6 +54,17 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      # Applies the committed migrations to the service container so the
+      # live-database repository tests (project/graph/run-repository.test.ts)
+      # have real tables to query, not just a reachable server. Without this
+      # step "Test" fails with "relation does not exist" even though the
+      # earlier steps (generate/lint/typecheck) all pass — discovered
+      # 2026-07-30 when the Unit 2.1–2.3 push (6cfb90c) turned CI red: those
+      # units were verified locally against a hand-provisioned database and
+      # never re-checked against this workflow.
+      - name: Deploy migrations
+        run: npx prisma migrate deploy
+
       - name: Lint
         run: npm run lint
 
