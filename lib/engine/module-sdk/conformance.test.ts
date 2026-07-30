@@ -6,7 +6,7 @@ import {
   type ConformanceReport,
   type ModuleSourceFile,
 } from "./conformance";
-import { sealModulePackage } from "./hash";
+import { moduleSourceHash, sealModulePackage } from "./hash";
 import { exampleThrustModule } from "./example-module";
 import { baseCompute, baseDraft } from "./test-support";
 import type { ModuleComputation } from "./types";
@@ -54,6 +54,25 @@ describe("runModuleConformance — a conforming module", () => {
     const report = runModuleConformance(exampleThrustModule, { sources });
     expect(checkStatus(report, "import-boundary")).toBe("pass");
   });
+
+  it("skips source-immutability when sources are given without an expected hash", () => {
+    const sources: ModuleSourceFile[] = [{ path: "compute.ts", contents: "// x" }];
+    const report = runModuleConformance(exampleThrustModule, { sources });
+    expect(checkStatus(report, "source-immutability")).toBe("skipped");
+  });
+
+  it("passes source-immutability when sources match the pinned hash", () => {
+    const sources: ModuleSourceFile[] = [
+      { path: "compute.ts", contents: "export const x = 1;" },
+      { path: "index.ts", contents: "export * from './compute';" },
+    ];
+    const report = runModuleConformance(exampleThrustModule, {
+      sources,
+      expectedSourceHash: moduleSourceHash(sources),
+    });
+    expect(checkStatus(report, "source-immutability")).toBe("pass");
+    expect(report.ok).toBe(true);
+  });
 });
 
 describe("runModuleConformance — non-conforming modules", () => {
@@ -97,6 +116,22 @@ describe("runModuleConformance — non-conforming modules", () => {
     ];
     const report = runModuleConformance(exampleThrustModule, { sources });
     expect(checkStatus(report, "import-boundary")).toBe("fail");
+  });
+
+  it("fails source-immutability when a source file changed since the pinned hash", () => {
+    const original: ModuleSourceFile[] = [
+      { path: "compute.ts", contents: "export const x = 1;" },
+    ];
+    const pinned = moduleSourceHash(original);
+    const edited: ModuleSourceFile[] = [
+      { path: "compute.ts", contents: "export const x = 2; // silently changed" },
+    ];
+    const report = runModuleConformance(exampleThrustModule, {
+      sources: edited,
+      expectedSourceHash: pinned,
+    });
+    expect(checkStatus(report, "source-immutability")).toBe("fail");
+    expect(report.ok).toBe(false);
   });
 });
 

@@ -423,6 +423,10 @@ attributes so catalog filtering can enforce market compatibility.
 - Every project has exactly one owner in the MVP.
 - Ownership is enforced on every project-related query and mutation.
 - Sharing, organization tenancy, and reviewer permissions are deferred.
+- Catalog data has no owner (it is shared, project-independent reference
+  data — see "lib/catalog/"). Any authenticated user may write to it, but
+  every write is attributed. A role-gated import policy is deferred to the
+  same reviewer-permissions work this section already defers.
 
 ## Invariants
 

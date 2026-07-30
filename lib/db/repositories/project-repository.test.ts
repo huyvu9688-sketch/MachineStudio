@@ -76,6 +76,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       const moduleInstance = await repo.createModuleInstance({
         assemblyId: grandchild.id,
+        configurationId: config.id,
         workflowInstanceId: workflow.id,
         modulePackageId: "example-linear-thrust",
         moduleVersion: "0.1.0",
@@ -147,6 +148,42 @@ describe.skipIf(!liveDatabaseAvailable)(
       ).rejects.toThrow();
     });
 
+    it("rejects a module instance whose configurationId does not match its assembly's real configuration (design-risk follow-up, DB-level same-configuration constraint)", async () => {
+      const ownerId = await newUser();
+      const project = await repo.createProject({
+        ownerId,
+        name: "Two configs",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const configA = await repo.createConfiguration({
+        projectId: project.id,
+        name: "Config A",
+      });
+      const configB = await repo.createConfiguration({
+        projectId: project.id,
+        name: "Config B",
+      });
+      const assemblyInA = await repo.createAssembly({
+        configurationId: configA.id,
+        name: "Assembly in A",
+      });
+
+      // assemblyInA genuinely belongs to configA — claiming configB here is
+      // exactly the bug the 2026-07-30 hardening pass closed at the service
+      // boundary; this proves the database itself now also refuses it via
+      // the composite foreign key on module_instances.assembly, not just a
+      // well-behaved caller's own checks.
+      await expect(
+        repo.createModuleInstance({
+          assemblyId: assemblyInA.id,
+          configurationId: configB.id,
+          modulePackageId: "example-linear-thrust",
+          moduleVersion: "0.1.0",
+          label: "Mismatched",
+        }),
+      ).rejects.toThrow();
+    });
+
     it("rejects invalid input at the persistence boundary", async () => {
       const ownerId = await newUser();
       await expect(
@@ -180,6 +217,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       await repo.createModuleInstance({
         assemblyId: root.id,
+        configurationId: config.id,
         workflowInstanceId: workflow.id,
         modulePackageId: "example-linear-thrust",
         moduleVersion: "0.1.0",
@@ -237,6 +275,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       await repo.createModuleInstance({
         assemblyId: child.id,
+        configurationId: config.id,
         modulePackageId: "example-linear-thrust",
         moduleVersion: "0.1.0",
         label: "m",
@@ -277,6 +316,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       const moduleInstance = await repo.createModuleInstance({
         assemblyId: root.id,
+        configurationId: config.id,
         workflowInstanceId: workflow.id,
         modulePackageId: "example-linear-thrust",
         moduleVersion: "0.1.0",

@@ -9,7 +9,13 @@
 // exact package it executed (context/architecture.md "Released package hashes
 // stored on runs"). Reuses the parameter registry's dependency-free hash.
 
-import { contentHash, stableStringify } from "../parameters";
+// Imports the specific file, not the "../parameters" barrel: this module
+// must stay importable under Node's native TypeScript execution (no
+// bundler), which cannot resolve a directory/barrel specifier — see
+// scripts/module-source-hash.mts, confirmed by direct test (the barrel
+// import raised Node's ERR_UNSUPPORTED_DIR_IMPORT there).
+import { contentHash, stableStringify } from "../parameters/hash.ts";
+import type { ModuleSourceFile } from "./conformance";
 import type {
   CatalogAdapter,
   ModuleManifest,
@@ -70,4 +76,38 @@ export function sealModulePackage(draft: ModulePackageDraft): ModulePackage {
     ...draft,
     manifest: { ...draft.manifest, contentHash: packageContentHash(draft) },
   };
+}
+
+/**
+ * A stable content hash over a module version's actual source files —
+ * exactly what {@link packageContentHash} excludes (`compute` and its
+ * helpers are not stably serializable). This closes the design gap
+ * `packageContentHash`'s own top comment names: two packages with
+ * identical manifests but different formulas hash the same, so a run's
+ * pinned `contentHash` cannot by itself prove which formula executed.
+ *
+ * Order-independent (sorted by `path`) and line-ending-independent
+ * (`\r\n`/`\r` normalized to `\n` before hashing) — confirmed necessary by
+ * direct test: this repository checks out with CRLF on Windows
+ * (`core.autocrlf=true`) but stores (and CI checks out) LF, so an
+ * un-normalized hash of raw `readFileSync` bytes computed on Windows would
+ * never match the same content re-hashed in CI.
+ *
+ * Pure — like `packageContentHash`, it takes already-read file contents
+ * rather than doing filesystem I/O, so it stays inside the engine-purity
+ * boundary; module code itself cannot read its own source files
+ * (`code-standards.md` "Module Packages": module code cannot import file
+ * storage), so the actual `fs.readFileSync` calls belong in a script or a
+ * test file, never in the module package itself. See
+ * `scripts/module-source-hash.mts` and
+ * `runModuleConformance`'s `source-immutability` check
+ * (`./conformance.ts`), which is what actually uses this at test time.
+ */
+export function moduleSourceHash(sources: readonly ModuleSourceFile[]): string {
+  const normalized = sources.map((file) => ({
+    path: file.path,
+    contents: file.contents.replace(/\r\n?/g, "\n"),
+  }));
+  const sorted = normalized.sort((a, b) => a.path.localeCompare(b.path));
+  return contentHash(stableStringify(sorted));
 }

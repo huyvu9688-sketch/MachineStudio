@@ -67,6 +67,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       const moduleInstance = await projects.createModuleInstance({
         assemblyId: assembly.id,
+        configurationId: config.id,
         modulePackageId: MODULE_ID,
         moduleVersion: MODULE_VERSION,
         label: "Screw sizing",
@@ -293,6 +294,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       const strangerModule = await projects.createModuleInstance({
         assemblyId: strangerAssembly.id,
+        configurationId: strangerConfig.id,
         modulePackageId: MODULE_ID,
         moduleVersion: MODULE_VERSION,
         label: "Stranger module",
@@ -330,6 +332,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       const f = await fixture();
       const otherModule = await projects.createModuleInstance({
         assemblyId: f.assemblyId,
+        configurationId: f.configId,
         modulePackageId: MODULE_ID,
         moduleVersion: MODULE_VERSION,
         label: "Other module",

@@ -94,6 +94,7 @@ const createWorkflowInstanceSchema = z.object({
 });
 const createModuleInstanceSchema = z.object({
   assemblyId: nonEmpty,
+  configurationId: nonEmpty,
   workflowInstanceId: nonEmpty.optional(),
   modulePackageId: nonEmpty,
   moduleVersion: nonEmpty,
@@ -154,6 +155,7 @@ interface WorkflowInstanceRow {
 interface ModuleInstanceRow {
   id: string;
   assemblyId: string;
+  configurationId: string;
   workflowInstanceId: string | null;
   modulePackageId: string;
   moduleVersion: string;
@@ -211,6 +213,7 @@ function toModuleInstanceRecord(row: ModuleInstanceRow): ModuleInstanceRecord {
   return {
     id: asModuleInstanceId(row.id),
     assemblyId: asAssemblyId(row.assemblyId),
+    configurationId: asMachineConfigurationId(row.configurationId),
     workflowInstanceId:
       row.workflowInstanceId === null
         ? null
@@ -295,6 +298,7 @@ export async function createModuleInstance(
   const row = await prisma.moduleInstance.create({
     data: {
       assemblyId: data.assemblyId,
+      configurationId: data.configurationId,
       modulePackageId: data.modulePackageId,
       moduleVersion: data.moduleVersion,
       label: data.label,
@@ -427,11 +431,12 @@ export async function deleteProject(
 export async function loadModuleInstanceForOwner(
   moduleInstanceId: ModuleInstanceId,
   ownerId: UserId,
+  client: DbClient = prisma,
 ): Promise<ModuleInstanceExecutionContext | null> {
   const id = parse(nonEmpty, moduleInstanceId);
   const owner = parse(nonEmpty, ownerId);
 
-  const row = await prisma.moduleInstance.findFirst({
+  const row = await client.moduleInstance.findFirst({
     where: { id, assembly: { configuration: { project: { ownerId: owner } } } },
     include: {
       assembly: {
@@ -505,11 +510,12 @@ export async function isConfigurationOwnedBy(
 export async function loadConfigurationForOwner(
   configurationId: MachineConfigurationId,
   ownerId: UserId,
+  client: DbClient = prisma,
 ): Promise<{ configuration: MachineConfigurationRecord; project: MachineProjectRecord } | null> {
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
 
-  const row = await prisma.machineConfiguration.findFirst({
+  const row = await client.machineConfiguration.findFirst({
     where: { id, project: { ownerId: owner } },
     include: { project: true },
   });
@@ -533,11 +539,12 @@ export async function loadConfigurationForOwner(
 export async function loadConfigurationTree(
   configurationId: MachineConfigurationId,
   ownerId: UserId,
+  client: DbClient = prisma,
 ): Promise<ConfigurationNode | null> {
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
 
-  const config = await prisma.machineConfiguration.findFirst({
+  const config = await client.machineConfiguration.findFirst({
     where: { id, project: { ownerId: owner } },
     include: {
       workflowInstances: { orderBy: { createdAt: "asc" } },

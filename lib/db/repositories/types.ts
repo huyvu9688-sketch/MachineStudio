@@ -111,6 +111,12 @@ export interface WorkflowInstanceRecord {
 export interface ModuleInstanceRecord {
   readonly id: ModuleInstanceId;
   readonly assemblyId: AssemblyId;
+  /**
+   * Denormalized from the owning assembly's `configurationId` (design-risk
+   * follow-up, 2026-07-30 — DB-level same-configuration constraints; see
+   * `prisma/schema.prisma`'s `ModuleInstance.configurationId` comment).
+   */
+  readonly configurationId: MachineConfigurationId;
   readonly workflowInstanceId: WorkflowInstanceId | null;
   readonly modulePackageId: string;
   readonly moduleVersion: string;
@@ -195,6 +201,13 @@ export interface CreateWorkflowInstanceInput {
 /** Input to create a `ModuleInstance`. */
 export interface CreateModuleInstanceInput {
   readonly assemblyId: AssemblyId;
+  /**
+   * The assembly's own configuration — caller-supplied and trusted, the same
+   * convention `CreateParameterValueInput`/`CreateParameterLinkInput` already
+   * establish (a mismatch is now rejected at the database level by the
+   * composite foreign key on `ModuleInstance.assembly`, not just trusted).
+   */
+  readonly configurationId: MachineConfigurationId;
   readonly workflowInstanceId?: WorkflowInstanceId;
   readonly modulePackageId: string;
   readonly moduleVersion: string;

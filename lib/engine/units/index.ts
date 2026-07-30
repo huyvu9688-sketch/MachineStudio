@@ -36,6 +36,9 @@ export {
   multiplyQuantities,
   divideQuantities,
   scaleQuantity,
+  rotationalPower,
+  torqueFromPower,
+  angularVelocityFromPower,
 } from "./arithmetic";
 
 export type { FormatQuantityOptions } from "./formatting";

@@ -49,6 +49,7 @@ import {
   prisma,
   BaselineRepositoryError,
   type AssemblyNode,
+  type DbClient,
   type MachineBaselineRecord,
   type MachineConfigurationId,
   type ModuleInstanceRecord,
@@ -133,6 +134,7 @@ function collectModuleInstances(nodes: readonly AssemblyNode[]): ModuleInstanceR
 async function loadCalculationRunRefs(
   moduleInstances: readonly ModuleInstanceRecord[],
   ownerId: UserId,
+  client: DbClient,
 ): Promise<BaselineCalculationRunRef[]> {
   const refs: BaselineCalculationRunRef[] = [];
   for (const moduleInstance of moduleInstances) {
@@ -140,6 +142,7 @@ async function loadCalculationRunRefs(
     const run = await loadCalculationRun(
       asCalculationRunId(moduleInstance.lastCalculationRunId),
       ownerId,
+      client,
     );
     if (run === null) continue;
     refs.push({
@@ -155,13 +158,34 @@ async function loadCalculationRunRefs(
   return refs;
 }
 
+/** What the inner transaction settles on — resolved to a `CreateBaselineResult` after it commits. */
+type CreateBaselineOutcome =
+  | { readonly kind: "unauthorized" }
+  | { readonly kind: "not_ready"; readonly blockers: readonly BaselineBlocker[] }
+  | { readonly kind: "created"; readonly baseline: MachineBaselineRecord };
+
 /**
  * Creates an immutable `MachineBaseline`, scoped to `ownerId`: authorizes the
  * configuration, freezes its current requirements, assumptions, load cases,
  * assembly/module tree, current parameter values and links, each module's
  * latest calculation run, and component assignments into a
- * `MachineBaselineSnapshot`, then persists it with an audit event in one
- * transaction.
+ * `MachineBaselineSnapshot`, then persists it with an audit event.
+ *
+ * **Every read and the final write happen inside one `RepeatableRead`
+ * transaction** (design-risk follow-up, 2026-07-30 — see
+ * context/progress-tracker.md): at the default isolation, each of the
+ * roughly-seven independent reads below could observe a different committed
+ * state under a concurrent edit (a value changed between reading parameter
+ * values and reading calculation runs, say), so the frozen snapshot could
+ * describe a configuration state that was never simultaneously true. A
+ * baseline is immutable once created, so this is exactly the place that
+ * consequence matters most. `RepeatableRead` gives every read in the
+ * transaction the same MVCC snapshot as of the transaction's start; if a
+ * concurrent transaction commits a conflicting change to something already
+ * read here, Postgres fails this transaction with a serialization error
+ * rather than silently mixing snapshots (a rare, retryable failure — not
+ * handled with a retry loop here, since nothing in this codebase has needed
+ * one yet; revisit if that changes in practice).
  *
  * Never throws for an expected domain failure (unauthorized, not ready, or a
  * malformed label the repository's validation rejects); an unexpected
@@ -171,163 +195,172 @@ export async function createBaseline(
   input: CreateBaselineInput,
   ownerId: UserId,
 ): Promise<CreateBaselineResult> {
-  const context = await loadConfigurationForOwner(input.configurationId, ownerId);
-  if (context === null) {
-    return {
-      ok: false,
-      error: { code: "unauthorized", message: "Configuration not found or not owned by this user." },
-    };
-  }
-  const tree = await loadConfigurationTree(input.configurationId, ownerId);
-  if (tree === null) {
-    return {
-      ok: false,
-      error: { code: "unauthorized", message: "Configuration not found or not owned by this user." },
-    };
-  }
-
-  const allModuleInstances = collectModuleInstances(tree.assemblies);
-  const [
-    requirementNodes,
-    designAssumptionRecords,
-    loadCaseRecords,
-    parameterValueRecords,
-    parameterLinkRecords,
-    assignmentRecords,
-    calculationRuns,
-  ] = await Promise.all([
-    listRequirements(input.configurationId, ownerId),
-    listDesignAssumptions(input.configurationId, ownerId),
-    listLoadCases(input.configurationId, ownerId),
-    listCurrentParameterValuesForConfiguration(input.configurationId, ownerId),
-    listParameterLinksForConfiguration(input.configurationId, ownerId),
-    listComponentAssignmentsForConfiguration(input.configurationId, ownerId),
-    loadCalculationRunRefs(allModuleInstances, ownerId),
-  ]);
-
-  const requirements: BaselineRequirement[] = requirementNodes.map((r) => ({
-    id: r.id,
-    assemblyId: r.assemblyId,
-    code: r.code,
-    statement: r.statement,
-    acceptanceCriteria: r.acceptanceCriteria.map((ac) => ({ id: ac.id, statement: ac.statement })),
-  }));
-  const designAssumptions: BaselineDesignAssumption[] = designAssumptionRecords.map((a) => ({
-    id: a.id,
-    assemblyId: a.assemblyId,
-    statement: a.statement,
-    rationale: a.rationale,
-  }));
-  const loadCases: BaselineLoadCase[] = loadCaseRecords.map((l) => ({
-    id: l.id,
-    category: l.category,
-    label: l.label,
-    description: l.description,
-  }));
-  const parameterValues: BaselineParameterValue[] = parameterValueRecords.map((v) => ({
-    id: v.id,
-    assemblyId: v.assemblyId,
-    moduleInstanceId: v.moduleInstanceId,
-    nodeKind: v.nodeKind,
-    parameterId: v.parameterId,
-    loadCase: v.loadCase,
-    source: v.source,
-    value: v.value,
-  }));
-  const parameterLinks: BaselineParameterLink[] = parameterLinkRecords.map((l) => ({
-    id: l.id,
-    targetModuleInstanceId: l.targetModuleInstanceId,
-    targetParameterId: l.targetParameterId,
-    targetLoadCase: l.targetLoadCase,
-    sourceKind: l.sourceKind,
-    sourceModuleInstanceId: l.sourceModuleInstanceId,
-    sourceAssemblyId: l.sourceAssemblyId,
-    sourceParameterId: l.sourceParameterId,
-    sourceLoadCase: l.sourceLoadCase,
-  }));
-  const componentAssignments: BaselineComponentAssignment[] = assignmentRecords.map((a) => ({
-    id: a.id,
-    targetKind: a.targetKind,
-    moduleInstanceId: a.moduleInstanceId,
-    assemblyId: a.assemblyId,
-    partSource: a.partSource,
-    manufacturerPartRevisionId: a.manufacturerPartRevisionId,
-    manualPartDetails: a.manualPartDetails,
-    quantity: a.quantity,
-    calculationRunId: a.calculationRunId,
-    stale: a.stale,
-  }));
-
-  const readiness = evaluateBaselineReadiness({
-    calculationRuns,
-    componentAssignments,
-    ...(input.acknowledgeWarnings !== undefined
-      ? { acknowledgeWarnings: input.acknowledgeWarnings }
-      : {}),
-  });
-  if (!readiness.ready) {
-    return {
-      ok: false,
-      error: {
-        code: "not_ready",
-        message: "Baseline creation is blocked by stale or failed items. Acknowledge to proceed.",
-        blockers: readiness.blockers,
-      },
-    };
-  }
-
-  const snapshot: MachineBaselineSnapshot = {
-    snapshotVersion: BASELINE_SNAPSHOT_FORMAT_VERSION,
-    projectId: context.project.id,
-    projectName: context.project.name,
-    configurationId: input.configurationId,
-    configurationName: context.configuration.name,
-    marketProfileKey: context.project.marketProfileKey,
-    requirements,
-    designAssumptions,
-    loadCases,
-    assemblies: tree.assemblies.map(toBaselineAssemblyNode),
-    parameterValues,
-    parameterLinks,
-    calculationRuns,
-    componentAssignments,
-    createdAt: new Date().toISOString(),
-    createdByUserId: ownerId,
-  };
-
+  let outcome: CreateBaselineOutcome;
   try {
-    const baseline = await prisma.$transaction(async (tx) => {
-      const created = await createMachineBaseline(
-        {
-          configurationId: input.configurationId,
-          label: input.label,
-          snapshot,
-          createdByUserId: ownerId,
-        },
-        tx,
-      );
-      await appendAuditEvent(
-        {
+    outcome = await prisma.$transaction(
+      async (tx): Promise<CreateBaselineOutcome> => {
+        const context = await loadConfigurationForOwner(input.configurationId, ownerId, tx);
+        if (context === null) {
+          return { kind: "unauthorized" };
+        }
+        const tree = await loadConfigurationTree(input.configurationId, ownerId, tx);
+        if (tree === null) {
+          return { kind: "unauthorized" };
+        }
+
+        const allModuleInstances = collectModuleInstances(tree.assemblies);
+        const [
+          requirementNodes,
+          designAssumptionRecords,
+          loadCaseRecords,
+          parameterValueRecords,
+          parameterLinkRecords,
+          assignmentRecords,
+          calculationRuns,
+        ] = await Promise.all([
+          listRequirements(input.configurationId, ownerId, tx),
+          listDesignAssumptions(input.configurationId, ownerId, tx),
+          listLoadCases(input.configurationId, ownerId, tx),
+          listCurrentParameterValuesForConfiguration(input.configurationId, ownerId, tx),
+          listParameterLinksForConfiguration(input.configurationId, ownerId, tx),
+          listComponentAssignmentsForConfiguration(input.configurationId, ownerId, tx),
+          loadCalculationRunRefs(allModuleInstances, ownerId, tx),
+        ]);
+
+        const requirements: BaselineRequirement[] = requirementNodes.map((r) => ({
+          id: r.id,
+          assemblyId: r.assemblyId,
+          code: r.code,
+          statement: r.statement,
+          acceptanceCriteria: r.acceptanceCriteria.map((ac) => ({ id: ac.id, statement: ac.statement })),
+        }));
+        const designAssumptions: BaselineDesignAssumption[] = designAssumptionRecords.map((a) => ({
+          id: a.id,
+          assemblyId: a.assemblyId,
+          statement: a.statement,
+          rationale: a.rationale,
+        }));
+        const loadCases: BaselineLoadCase[] = loadCaseRecords.map((l) => ({
+          id: l.id,
+          category: l.category,
+          label: l.label,
+          description: l.description,
+        }));
+        const parameterValues: BaselineParameterValue[] = parameterValueRecords.map((v) => ({
+          id: v.id,
+          assemblyId: v.assemblyId,
+          moduleInstanceId: v.moduleInstanceId,
+          nodeKind: v.nodeKind,
+          parameterId: v.parameterId,
+          loadCase: v.loadCase,
+          source: v.source,
+          value: v.value,
+        }));
+        const parameterLinks: BaselineParameterLink[] = parameterLinkRecords.map((l) => ({
+          id: l.id,
+          targetModuleInstanceId: l.targetModuleInstanceId,
+          targetParameterId: l.targetParameterId,
+          targetLoadCase: l.targetLoadCase,
+          sourceKind: l.sourceKind,
+          sourceModuleInstanceId: l.sourceModuleInstanceId,
+          sourceAssemblyId: l.sourceAssemblyId,
+          sourceParameterId: l.sourceParameterId,
+          sourceLoadCase: l.sourceLoadCase,
+        }));
+        const componentAssignments: BaselineComponentAssignment[] = assignmentRecords.map((a) => ({
+          id: a.id,
+          targetKind: a.targetKind,
+          moduleInstanceId: a.moduleInstanceId,
+          assemblyId: a.assemblyId,
+          partSource: a.partSource,
+          manufacturerPartRevisionId: a.manufacturerPartRevisionId,
+          manualPartDetails: a.manualPartDetails,
+          quantity: a.quantity,
+          calculationRunId: a.calculationRunId,
+          stale: a.stale,
+        }));
+
+        const readiness = evaluateBaselineReadiness({
+          calculationRuns,
+          componentAssignments,
+          ...(input.acknowledgeWarnings !== undefined
+            ? { acknowledgeWarnings: input.acknowledgeWarnings }
+            : {}),
+        });
+        if (!readiness.ready) {
+          return { kind: "not_ready", blockers: readiness.blockers };
+        }
+
+        const snapshot: MachineBaselineSnapshot = {
+          snapshotVersion: BASELINE_SNAPSHOT_FORMAT_VERSION,
           projectId: context.project.id,
-          eventType: "machine_baseline.created",
-          entityType: "MachineBaseline",
-          entityId: created.id,
-          userId: ownerId,
-          payload: {
+          projectName: context.project.name,
+          configurationId: input.configurationId,
+          configurationName: context.configuration.name,
+          marketProfileKey: context.project.marketProfileKey,
+          requirements,
+          designAssumptions,
+          loadCases,
+          assemblies: tree.assemblies.map(toBaselineAssemblyNode),
+          parameterValues,
+          parameterLinks,
+          calculationRuns,
+          componentAssignments,
+          createdAt: new Date().toISOString(),
+          createdByUserId: ownerId,
+        };
+
+        const created = await createMachineBaseline(
+          {
             configurationId: input.configurationId,
             label: input.label,
-            acknowledgedBlockers: readiness.blockers.map((b) => ({ kind: b.kind, id: b.id })),
+            snapshot,
+            createdByUserId: ownerId,
           },
-        },
-        tx,
-      );
-      return created;
-    });
-    return { ok: true, baseline };
+          tx,
+        );
+        await appendAuditEvent(
+          {
+            projectId: context.project.id,
+            eventType: "machine_baseline.created",
+            entityType: "MachineBaseline",
+            entityId: created.id,
+            userId: ownerId,
+            payload: {
+              configurationId: input.configurationId,
+              label: input.label,
+              acknowledgedBlockers: readiness.blockers.map((b) => ({ kind: b.kind, id: b.id })),
+            },
+          },
+          tx,
+        );
+        return { kind: "created", baseline: created };
+      },
+      { isolationLevel: "RepeatableRead" },
+    );
   } catch (error) {
     if (error instanceof BaselineRepositoryError) {
       return { ok: false, error: { code: "invalid_input", message: error.message } };
     }
     throw error;
+  }
+
+  switch (outcome.kind) {
+    case "unauthorized":
+      return {
+        ok: false,
+        error: { code: "unauthorized", message: "Configuration not found or not owned by this user." },
+      };
+    case "not_ready":
+      return {
+        ok: false,
+        error: {
+          code: "not_ready",
+          message: "Baseline creation is blocked by stale or failed items. Acknowledge to proceed.",
+          blockers: outcome.blockers,
+        },
+      };
+    case "created":
+      return { ok: true, baseline: outcome.baseline };
   }
 }

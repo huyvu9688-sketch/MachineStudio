@@ -58,7 +58,7 @@ export {
 
 export { ModuleSdkError, type ModuleSdkErrorCode } from "./errors";
 
-export { packageContentHash, sealModulePackage } from "./hash";
+export { packageContentHash, sealModulePackage, moduleSourceHash } from "./hash";
 export { validateModulePackage } from "./validate";
 export {
   executeModule,

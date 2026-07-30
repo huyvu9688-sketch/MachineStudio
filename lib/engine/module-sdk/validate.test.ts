@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { asParameterId } from "../parameters";
 import { ModuleSdkError } from "./errors";
-import { packageContentHash, sealModulePackage } from "./hash";
+import { makeQuantity } from "../units";
+import { moduleSourceHash, packageContentHash, sealModulePackage } from "./hash";
+import type { ModuleSourceFile } from "./conformance";
 import { validateModulePackage } from "./validate";
-import { baseDraft } from "./test-support";
+import { baseCompute, baseDraft } from "./test-support";
 import type { ModulePackage } from "./types";
 
 function expectSdkError(fn: () => unknown, code: ModuleSdkError["code"]): void {
@@ -128,5 +130,51 @@ describe("packageContentHash / sealModulePackage", () => {
     const draftB = baseDraft();
     const b = sealModulePackage({ ...draftB, manifest: { ...draftB.manifest, category: "changed" } });
     expect(b.manifest.contentHash).not.toBe(a.manifest.contentHash);
+  });
+
+  it("does not change when compute's behavior changes but the manifest does not", () => {
+    // This is the exact design gap moduleSourceHash exists to close:
+    // packageContentHash cannot see into `compute`.
+    const draft = baseDraft();
+    const a = sealModulePackage(draft);
+    const differentCompute: typeof draft.compute = () => ({
+      ...baseCompute(),
+      outputs: { out: makeQuantity(999, "N") },
+    });
+    const b = sealModulePackage({ ...draft, compute: differentCompute });
+    expect(b.manifest.contentHash).toBe(a.manifest.contentHash);
+  });
+});
+
+describe("moduleSourceHash", () => {
+  const fileA: ModuleSourceFile = { path: "compute.ts", contents: "export const x = 1;" };
+  const fileB: ModuleSourceFile = { path: "index.ts", contents: "export * from './compute';" };
+
+  it("is deterministic and order-independent", () => {
+    expect(moduleSourceHash([fileA, fileB])).toBe(moduleSourceHash([fileB, fileA]));
+  });
+
+  it("changes when a file's contents change", () => {
+    const changed: ModuleSourceFile = { ...fileA, contents: "export const x = 2;" };
+    expect(moduleSourceHash([changed, fileB])).not.toBe(moduleSourceHash([fileA, fileB]));
+  });
+
+  it("changes when a file is added or removed", () => {
+    expect(moduleSourceHash([fileA])).not.toBe(moduleSourceHash([fileA, fileB]));
+  });
+
+  it("changes when a file is renamed, even with identical contents", () => {
+    const renamed: ModuleSourceFile = { path: "renamed.ts", contents: fileA.contents };
+    expect(moduleSourceHash([renamed])).not.toBe(moduleSourceHash([fileA]));
+  });
+
+  it("treats CRLF and LF line endings as equivalent", () => {
+    // Regression guard, confirmed necessary by direct test: this repo checks
+    // out with CRLF on Windows (core.autocrlf=true) but stores LF, so a
+    // pinned hash computed on Windows must match one computed in CI (LF) for
+    // the same logical content.
+    const lf: ModuleSourceFile = { path: "compute.ts", contents: "line one\nline two\n" };
+    const crlf: ModuleSourceFile = { path: "compute.ts", contents: "line one\r\nline two\r\n" };
+    expect(moduleSourceHash([crlf])).toBe(moduleSourceHash([lf]));
   });
 });

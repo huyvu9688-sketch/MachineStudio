@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   addQuantities,
+  angularVelocityFromPower,
   divideQuantities,
   multiplyQuantities,
+  rotationalPower,
   scaleQuantity,
   subtractQuantities,
+  torqueFromPower,
 } from "./arithmetic";
 import { AffineUnitError, DimensionMismatchError, NonFiniteValueError } from "./errors";
 import { makeQuantity } from "./quantity";
@@ -100,6 +103,74 @@ describe("divideQuantities", () => {
     expect(() =>
       divideQuantities(makeQuantity(1, "m"), makeQuantity(0, "s")),
     ).toThrow(NonFiniteValueError);
+  });
+});
+
+describe("rotational-mechanics helpers (angle-cancelling exceptions)", () => {
+  it("confirms generic multiply cannot express torque x angular velocity as power", () => {
+    // Regression guard for the documented design risk: this is the exact
+    // case from context/progress-tracker.md's Open Questions. If this ever
+    // starts returning "W", the angle-dimension trade-off changed and the
+    // rotational-power helpers below may no longer be necessary.
+    const product = multiplyQuantities(
+      makeQuantity(10, "N*m"),
+      makeQuantity(100, "rad/s"),
+    );
+    expect(product.unit).not.toBe("W");
+    expect(product.unit).toBe("kg*m^2*s^-3*rad");
+    expect(product.value).toBeCloseTo(1000, 9);
+  });
+
+  it("computes rotational power from torque and angular velocity", () => {
+    const power = rotationalPower(makeQuantity(10, "N*m"), makeQuantity(100, "rad/s"));
+    expect(power.unit).toBe("W");
+    expect(power.value).toBeCloseTo(1000, 9);
+  });
+
+  it("normalizes operands to SI before combining", () => {
+    const power = rotationalPower(makeQuantity(10, "N*mm"), makeQuantity(1000, "rpm"));
+    expect(power.unit).toBe("W");
+    // 10 N*mm = 0.01 N*m; 1000 rpm = 1000 * 2*pi/60 rad/s
+    expect(power.value).toBeCloseTo(0.01 * ((1000 * 2 * Math.PI) / 60), 6);
+  });
+
+  it("rejects a non-torque first operand", () => {
+    expect(() =>
+      rotationalPower(makeQuantity(10, "N"), makeQuantity(100, "rad/s")),
+    ).toThrow(DimensionMismatchError);
+  });
+
+  it("rejects a non-angular-velocity second operand", () => {
+    expect(() =>
+      rotationalPower(makeQuantity(10, "N*m"), makeQuantity(100, "Hz")),
+    ).toThrow(DimensionMismatchError);
+  });
+
+  it("computes torque from power and angular velocity, inverting rotationalPower", () => {
+    const torque = torqueFromPower(makeQuantity(1000, "W"), makeQuantity(100, "rad/s"));
+    expect(torque.unit).toBe("N*m");
+    expect(torque.value).toBeCloseTo(10, 9);
+  });
+
+  it("computes angular velocity from power and torque, inverting rotationalPower", () => {
+    const omega = angularVelocityFromPower(
+      makeQuantity(1000, "W"),
+      makeQuantity(10, "N*m"),
+    );
+    expect(omega.unit).toBe("rad/s");
+    expect(omega.value).toBeCloseTo(100, 9);
+  });
+
+  it("rejects dividing by a zero angular velocity", () => {
+    expect(() =>
+      torqueFromPower(makeQuantity(1000, "W"), makeQuantity(0, "rad/s")),
+    ).toThrow(NonFiniteValueError);
+  });
+
+  it("rejects affine operands", () => {
+    expect(() =>
+      rotationalPower(makeQuantity(20, "degC"), makeQuantity(100, "rad/s")),
+    ).toThrow(AffineUnitError);
   });
 });
 

@@ -68,6 +68,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       const assembly = await projects.createAssembly({ configurationId: config.id, name: "X axis" });
       const moduleInstance = await projects.createModuleInstance({
         assemblyId: assembly.id,
+        configurationId: config.id,
         modulePackageId: MODULE_ID,
         moduleVersion: MODULE_VERSION,
         label: "Screw sizing",
@@ -249,6 +250,65 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(acknowledged.ok).toBe(true);
       if (!acknowledged.ok) return;
       expect(acknowledged.baseline.snapshot.calculationRuns[0]?.stale).toBe(true);
+    });
+
+    it("proves RepeatableRead: a concurrent commit mid-transaction is invisible to reads already inside it (design-risk follow-up, transactionally consistent read snapshots)", async () => {
+      // This does not exercise createBaseline directly — it proves the
+      // Postgres/Prisma guarantee createBaseline's own transaction now relies
+      // on (see its doc comment), using the same repository read
+      // (`listCurrentParameterValuesForConfiguration`) it calls internally.
+      const f = await fixture();
+
+      const before = await client.prisma.$transaction(
+        async (tx) => {
+          const firstRead = await graph.listCurrentParameterValuesForConfiguration(
+            f.configId,
+            f.ownerId,
+            tx,
+          );
+
+          // A fully separate, independent transaction (the default `prisma`
+          // singleton, not `tx`) commits a real change while `tx` is still
+          // open — the exact interleaving RepeatableRead exists to protect
+          // against.
+          const changed = await setParameterValue(
+            {
+              configurationId: f.configId,
+              moduleInstanceId: f.moduleInstanceId,
+              nodeKind: "module_input",
+              parameterId: PAYLOAD_MASS,
+              source: "manual",
+              value: makeQuantity(999, "kg"),
+            },
+            f.ownerId,
+          );
+          expect(changed.ok).toBe(true);
+
+          const secondRead = await graph.listCurrentParameterValuesForConfiguration(
+            f.configId,
+            f.ownerId,
+            tx,
+          );
+          // Still the pre-change snapshot: tx's view was fixed when the
+          // transaction started, not when each statement ran.
+          expect(secondRead).toEqual(firstRead);
+          return firstRead;
+        },
+        { isolationLevel: "RepeatableRead" },
+      );
+
+      const payloadBefore = before.find((v) => v.parameterId === PAYLOAD_MASS);
+      expect(payloadBefore?.value).toMatchObject({ value: 10 });
+
+      // Now that tx has committed, a fresh read (outside any transaction)
+      // sees the committed change — proving it really happened, just was not
+      // visible inside the earlier snapshot.
+      const after = await graph.listCurrentParameterValuesForConfiguration(
+        f.configId,
+        f.ownerId,
+      );
+      const payloadAfter = after.find((v) => v.parameterId === PAYLOAD_MASS);
+      expect(payloadAfter?.value).toMatchObject({ value: 999 });
     });
   },
 );

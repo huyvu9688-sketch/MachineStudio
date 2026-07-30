@@ -195,10 +195,11 @@ export async function createCalculationRun(
 export async function loadCalculationRun(
   runId: CalculationRunId,
   ownerId: UserId,
+  client: DbClient = prisma,
 ): Promise<CalculationRunRecord | null> {
   const id = parseId(runId);
   const owner = parseId(ownerId);
-  const row = await prisma.calculationRun.findFirst({
+  const row = await client.calculationRun.findFirst({
     where: {
       id,
       moduleInstance: { assembly: { configuration: { project: { ownerId: owner } } } },
@@ -219,10 +220,11 @@ export async function loadCalculationRun(
 export async function listRunsForModuleInstance(
   moduleInstanceId: ModuleInstanceId,
   ownerId: UserId,
+  client: DbClient = prisma,
 ): Promise<CalculationRunSummary[]> {
   const id = parseId(moduleInstanceId);
   const owner = parseId(ownerId);
-  const rows = await prisma.calculationRun.findMany({
+  const rows = await client.calculationRun.findMany({
     where: {
       moduleInstanceId: id,
       moduleInstance: { assembly: { configuration: { project: { ownerId: owner } } } },

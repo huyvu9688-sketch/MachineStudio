@@ -6,17 +6,24 @@
 // package conforms and so a CI script can gate registration.
 //
 // The implementation-map (context/implementation-map.md Unit 1.7) lists eight
-// conformance concerns; this runner covers them with four independent,
+// conformance concerns; this runner covers them with five independent,
 // individually-reported checks, reusing the SDK's own functions rather than
 // reimplementing their rules (single source of truth):
 //
-//   package-validation → validateModulePackage: manifest validity, stable
-//                        parameter references, generic UI/report schemas,
-//                        validation-record presence, and package-hash integrity
-//   import-boundary    → checkImportBoundary: pure package import boundary
-//   execution          → executeModule: input/output validation, trace
-//                        completeness, declared-source integrity
-//   determinism        → computeIsDeterministic: pure/deterministic compute
+//   package-validation   → validateModulePackage: manifest validity, stable
+//                          parameter references, generic UI/report schemas,
+//                          validation-record presence, and package-hash integrity
+//   import-boundary      → checkImportBoundary: pure package import boundary
+//   source-immutability  → moduleSourceHash: the module's actual source files
+//                          (compute and its helpers) match a pinned hash from
+//                          the last review — the design-risk follow-up
+//                          packageContentHash's own comment names (it excludes
+//                          `compute` because a function is not stably
+//                          serializable, so nothing else catches an in-place
+//                          edit to a released version's formula)
+//   execution            → executeModule: input/output validation, trace
+//                          completeness, declared-source integrity
+//   determinism          → computeIsDeterministic: pure/deterministic compute
 //
 // Each check is independent (one failure never blocks another) and the runner is
 // pure: it takes pre-read source files rather than doing filesystem I/O, so it
@@ -24,6 +31,7 @@
 
 import type { ParameterRegistry } from "../parameters";
 import { PARAMETER_REGISTRY } from "../parameters";
+import { moduleSourceHash } from "./hash";
 import { validateModulePackage } from "./validate";
 import { computeIsDeterministic, executeModule, resolveModuleInput } from "./execute";
 import { ENGINE_SDK_VERSION } from "./sdk";
@@ -80,10 +88,25 @@ export interface ConformanceOptions {
    */
   readonly sampleInputs?: readonly unknown[];
   /**
-   * Pre-read module source files. When provided, the import-boundary check runs
-   * against them; when absent, it is skipped.
+   * Pre-read module source files. When provided, the import-boundary and
+   * source-immutability checks run against them; when absent, both are
+   * skipped.
    */
   readonly sources?: readonly ModuleSourceFile[];
+  /**
+   * The module source hash ({@link moduleSourceHash}) recorded the last time
+   * this version was reviewed — a pinned fixture, the same pattern the
+   * parameter registry's own content hash uses (`lib/engine/parameters/hash.ts`).
+   * When provided together with `sources`, the source-immutability check
+   * fails if the current files no longer hash to this value: the module's
+   * `compute` (or any other implementation file) changed without a
+   * deliberate update to this pinned value, which is exactly the drift
+   * `packageContentHash` cannot detect on its own (it excludes `compute`).
+   * A real edit updates this value in the same commit as the change; an
+   * accidental edit to an already-released version does not, and the test
+   * catches it.
+   */
+  readonly expectedSourceHash?: string;
 }
 
 /**
@@ -217,6 +240,38 @@ export function runModuleConformance(
         "import-boundary",
         "Module sources import only the permitted engine boundaries.",
         "no source files provided",
+      ),
+    );
+  }
+
+  if (options.sources !== undefined && options.expectedSourceHash !== undefined) {
+    const sources = options.sources;
+    const expected = options.expectedSourceHash;
+    checks.push(
+      runCheck(
+        "source-immutability",
+        "Module source files (compute and its helpers) match the pinned hash from the last review.",
+        () => {
+          const actual = moduleSourceHash(sources);
+          if (actual !== expected) {
+            throw new Error(
+              `source hash "${actual}" does not match pinned "${expected}" — ` +
+                "if this is a deliberate change, update expectedSourceHash in the same commit " +
+                "(recompute with `npm run module:source-hash -- <module-id> <version>`); " +
+                "if not, an implementation file changed without review",
+            );
+          }
+        },
+      ),
+    );
+  } else {
+    checks.push(
+      skipped(
+        "source-immutability",
+        "Module source files (compute and its helpers) match the pinned hash from the last review.",
+        options.sources === undefined
+          ? "no source files provided"
+          : "no expectedSourceHash provided",
       ),
     );
   }

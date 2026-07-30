@@ -65,6 +65,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       const mi = await projects.createModuleInstance({
         assemblyId: assembly.id,
+        configurationId: config.id,
         modulePackageId: overrides.modulePackageId ?? MODULE_ID,
         moduleVersion: overrides.moduleVersion ?? MODULE_VERSION,
         label: "Thrust",
@@ -230,6 +231,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       // input").
       const downstream = await projects.createModuleInstance({
         assemblyId: upstream.assemblyId,
+        configurationId: upstream.configId,
         modulePackageId: MODULE_ID,
         moduleVersion: MODULE_VERSION,
         label: "Downstream",
@@ -278,6 +280,7 @@ describe.skipIf(!liveDatabaseAvailable)(
 
       const downstream = await projects.createModuleInstance({
         assemblyId: s.assemblyId,
+        configurationId: s.configId,
         modulePackageId: RELAY_ID,
         moduleVersion: RELAY_VERSION,
         label: "Downstream relay",

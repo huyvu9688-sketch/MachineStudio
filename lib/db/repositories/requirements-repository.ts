@@ -12,6 +12,7 @@ import "server-only";
 import { z } from "zod";
 import type { LoadCaseCategory } from "../../engine/parameters";
 import { prisma } from "../client";
+import type { DbClient } from "./db-client";
 import type { MachineConfigurationId, UserId } from "./types";
 import {
   asAssemblyId,
@@ -249,10 +250,11 @@ export async function createLoadCase(
 export async function listRequirements(
   configurationId: MachineConfigurationId,
   ownerId: UserId,
+  client: DbClient = prisma,
 ): Promise<RequirementNode[]> {
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
-  const rows = await prisma.requirement.findMany({
+  const rows = await client.requirement.findMany({
     where: { configurationId: id, configuration: { project: { ownerId: owner } } },
     orderBy: { createdAt: "asc" },
     include: { acceptanceCriteria: { orderBy: { createdAt: "asc" } } },
@@ -267,10 +269,11 @@ export async function listRequirements(
 export async function listDesignAssumptions(
   configurationId: MachineConfigurationId,
   ownerId: UserId,
+  client: DbClient = prisma,
 ): Promise<DesignAssumptionRecord[]> {
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
-  const rows = await prisma.designAssumption.findMany({
+  const rows = await client.designAssumption.findMany({
     where: { configurationId: id, configuration: { project: { ownerId: owner } } },
     orderBy: { createdAt: "asc" },
   });
@@ -281,10 +284,11 @@ export async function listDesignAssumptions(
 export async function listLoadCases(
   configurationId: MachineConfigurationId,
   ownerId: UserId,
+  client: DbClient = prisma,
 ): Promise<LoadCaseRecord[]> {
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
-  const rows = await prisma.loadCase.findMany({
+  const rows = await client.loadCase.findMany({
     where: { configurationId: id, configuration: { project: { ownerId: owner } } },
     orderBy: { createdAt: "asc" },
   });

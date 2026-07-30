@@ -78,6 +78,7 @@ describe.skipIf(!liveDatabaseAvailable)(
     ): Promise<{ moduleInstanceId: ModuleInstanceId; runId: CalculationRunId }> {
       const mi = await projects.createModuleInstance({
         assemblyId: s.assemblyId,
+        configurationId: s.configId,
         modulePackageId: MODULE_ID,
         moduleVersion: MODULE_VERSION,
         label,
@@ -128,6 +129,7 @@ describe.skipIf(!liveDatabaseAvailable)(
     ): Promise<ModuleInstanceId> {
       const mi = await projects.createModuleInstance({
         assemblyId: s.assemblyId,
+        configurationId: s.configId,
         modulePackageId: SCAFFOLD_ID,
         moduleVersion: SCAFFOLD_VERSION,
         label,
@@ -645,6 +647,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       const other = await otherConfiguration(s);
       const foreignSource = await projects.createModuleInstance({
         assemblyId: other.assemblyId,
+        configurationId: other.configId,
         modulePackageId: MODULE_ID,
         moduleVersion: MODULE_VERSION,
         label: "Source in another configuration",

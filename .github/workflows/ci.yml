@@ -87,3 +87,21 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Unit 0.3's E2E smoke test. Runs against `next dev`, not the
+      # production build above: Clerk's Next.js SDK only auto-provisions
+      # its no-keys "keyless" dev instance under `next dev`, and this
+      # project has no Clerk test-instance secrets configured yet (see
+      # playwright.config.ts and context/progress-tracker.md Open
+      # Questions) for a production-mode `next start` to authenticate
+      # against. `--with-deps` installs the OS libraries Chromium needs on
+      # the runner image, not only the browser binary — this step could not
+      # be verified on the primary dev machine, where a group policy blocks
+      # execution of any freshly downloaded browser binary (the same class
+      # of corporate-endpoint restriction already documented for
+      # binaries.prisma.sh).
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E smoke test
+        run: npm run test:e2e

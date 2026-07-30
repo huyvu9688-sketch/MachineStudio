@@ -4,11 +4,21 @@ import {
   makeQuantity,
   runModuleConformance,
 } from "@/lib/engine";
+import { readModuleSources } from "../../test-support";
 import modulePackage from "./index";
+
+// Pinned by `npm run module:source-hash -- example-relay 0.1.0` — see
+// lib/engine/module-sdk/conformance.ts's "source-immutability" check.
+// Update this value in the same commit as a deliberate change to this
+// directory's .ts files; an unreviewed change leaves it stale and the
+// check below fails.
+const EXPECTED_SOURCE_HASH = "7dcd096cdea41566";
 
 describe("example-relay conformance", () => {
   const report = runModuleConformance(modulePackage, {
     sampleInputs: [{ values: { thrust_force_in: makeQuantity(274, "N") } }],
+    sources: readModuleSources(import.meta.dirname),
+    expectedSourceHash: EXPECTED_SOURCE_HASH,
   });
 
   for (const check of report.checks) {

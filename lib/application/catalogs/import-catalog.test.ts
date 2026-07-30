@@ -21,6 +21,14 @@ import type {
   ComponentTypeId,
   ManufacturerId,
 } from "../../db/repositories/catalog-types";
+import type { UserId } from "../../db/repositories/types";
+
+// A bare attribution id, not a real `User` row: like every other
+// "byUserId" attribution field in this schema (AuditEvent.userId,
+// CalculationRun.createdByUserId, ComponentAssignment.assignedByUserId),
+// CatalogImportBatch.importedByUserId is not a foreign key, so nothing here
+// requires a matching users row to exist.
+const IMPORTED_BY_USER_ID = asUserId("test-catalog-importer");
 
 const ballScrewFields: ComponentAttributeFieldDefinition[] = [
   {
@@ -139,6 +147,30 @@ describe.skipIf(!liveDatabaseAvailable)(
       }
     });
 
+    it("rejects an import with no authenticated importer (design-risk follow-up: catalog import authorization)", async () => {
+      const s = await scaffold();
+      const result = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: s.mapping,
+          csvText: csvHeader + "\n",
+          sourceLabel: "test-catalog.csv",
+        },
+        asUserId("   "), // blank/whitespace-only, same as "not authenticated"
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) throw new Error("expected a failure");
+      expect(result.error.code).toBe("unauthenticated");
+
+      // Confirms the rejection happens before any write: no batch, no rows.
+      const persisted = await catalog.listManufacturerPartRevisionsByComponentType(
+        s.componentTypeId,
+      );
+      expect(persisted).toHaveLength(0);
+    });
+
     it("imports every valid row and reports every rejected row", async () => {
       const s = await scaffold();
       const csv =
@@ -148,14 +180,17 @@ describe.skipIf(!liveDatabaseAvailable)(
         "BSS1520-915,2026-catalog,not-a-number,15\n" + // invalid
         "BSS1520-916,2026-catalog,25,16\n"; // valid
 
-      const result = await application.importCatalog({
-        manufacturerId: s.manufacturerId,
-        componentTypeId: s.componentTypeId,
-        componentSchemaVersionId: s.schemaVersionId,
-        mapping: s.mapping,
-        csvText: csv,
-        sourceLabel: "test-catalog.csv",
-      });
+      const result = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: s.mapping,
+          csvText: csv,
+          sourceLabel: "test-catalog.csv",
+        },
+        IMPORTED_BY_USER_ID,
+      );
 
       expect(result.ok).toBe(true);
       if (!result.ok || result.dryRun)
@@ -194,26 +229,32 @@ describe.skipIf(!liveDatabaseAvailable)(
       const s = await scaffold();
       const csv = csvHeader + "\n" + "BSS1520-914,2026-catalog,20,15\n";
 
-      const firstRun = await application.importCatalog({
-        manufacturerId: s.manufacturerId,
-        componentTypeId: s.componentTypeId,
-        componentSchemaVersionId: s.schemaVersionId,
-        mapping: s.mapping,
-        csvText: csv,
-        sourceLabel: "test-catalog.csv",
-      });
+      const firstRun = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: s.mapping,
+          csvText: csv,
+          sourceLabel: "test-catalog.csv",
+        },
+        IMPORTED_BY_USER_ID,
+      );
       if (!firstRun.ok || firstRun.dryRun)
         throw new Error("expected an applied result");
       createdImportBatchIds.push(firstRun.batchId);
 
-      const secondRun = await application.importCatalog({
-        manufacturerId: s.manufacturerId,
-        componentTypeId: s.componentTypeId,
-        componentSchemaVersionId: s.schemaVersionId,
-        mapping: s.mapping,
-        csvText: csv,
-        sourceLabel: "test-catalog-again.csv",
-      });
+      const secondRun = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: s.mapping,
+          csvText: csv,
+          sourceLabel: "test-catalog-again.csv",
+        },
+        IMPORTED_BY_USER_ID,
+      );
       if (!secondRun.ok || secondRun.dryRun)
         throw new Error("expected an applied result");
       createdImportBatchIds.push(secondRun.batchId);
@@ -242,26 +283,32 @@ describe.skipIf(!liveDatabaseAvailable)(
       const revisedCsv =
         csvHeader + "\n" + "BSS1520-914,2026-catalog,22,15\n" + "BSS1520-916,2026-catalog,25,16\n";
 
-      const firstRun = await application.importCatalog({
-        manufacturerId: s.manufacturerId,
-        componentTypeId: s.componentTypeId,
-        componentSchemaVersionId: s.schemaVersionId,
-        mapping: s.mapping,
-        csvText: csv,
-        sourceLabel: "test-catalog.csv",
-      });
+      const firstRun = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: s.mapping,
+          csvText: csv,
+          sourceLabel: "test-catalog.csv",
+        },
+        IMPORTED_BY_USER_ID,
+      );
       if (!firstRun.ok || firstRun.dryRun)
         throw new Error("expected an applied result");
       createdImportBatchIds.push(firstRun.batchId);
 
-      const secondRun = await application.importCatalog({
-        manufacturerId: s.manufacturerId,
-        componentTypeId: s.componentTypeId,
-        componentSchemaVersionId: s.schemaVersionId,
-        mapping: s.mapping,
-        csvText: revisedCsv,
-        sourceLabel: "test-catalog-corrected.csv",
-      });
+      const secondRun = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: s.mapping,
+          csvText: revisedCsv,
+          sourceLabel: "test-catalog-corrected.csv",
+        },
+        IMPORTED_BY_USER_ID,
+      );
       if (!secondRun.ok || secondRun.dryRun)
         throw new Error("expected an applied result");
       createdImportBatchIds.push(secondRun.batchId);
@@ -287,14 +334,17 @@ describe.skipIf(!liveDatabaseAvailable)(
       const s = await scaffold();
       const csv = csvHeader + "\n" + "BSS1520-914,2026-catalog,20,15\n";
 
-      const run = await application.importCatalog({
-        manufacturerId: s.manufacturerId,
-        componentTypeId: s.componentTypeId,
-        componentSchemaVersionId: s.schemaVersionId,
-        mapping: s.mapping,
-        csvText: csv,
-        sourceLabel: "test-catalog.csv",
-      });
+      const run = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: s.mapping,
+          csvText: csv,
+          sourceLabel: "test-catalog.csv",
+        },
+        IMPORTED_BY_USER_ID,
+      );
       if (!run.ok || run.dryRun) throw new Error("expected an applied result");
       createdImportBatchIds.push(run.batchId);
 
@@ -307,15 +357,18 @@ describe.skipIf(!liveDatabaseAvailable)(
       const s = await scaffold();
       const csv = csvHeader + "\n" + "BSS1520-914,2026-catalog,20,15\n";
 
-      const result = await application.importCatalog({
-        manufacturerId: s.manufacturerId,
-        componentTypeId: s.componentTypeId,
-        componentSchemaVersionId: s.schemaVersionId,
-        mapping: s.mapping,
-        csvText: csv,
-        sourceLabel: "test-catalog.csv",
-        dryRun: true,
-      });
+      const result = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: s.mapping,
+          csvText: csv,
+          sourceLabel: "test-catalog.csv",
+          dryRun: true,
+        },
+        IMPORTED_BY_USER_ID,
+      );
 
       expect(result.ok).toBe(true);
       if (!result.ok || !result.dryRun)
@@ -331,14 +384,17 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     it("returns manufacturer_not_found for an unknown manufacturer", async () => {
       const s = await scaffold();
-      const result = await application.importCatalog({
-        manufacturerId: asManufacturerId("does-not-exist"),
-        componentTypeId: s.componentTypeId,
-        componentSchemaVersionId: s.schemaVersionId,
-        mapping: s.mapping,
-        csvText: csvHeader + "\n",
-        sourceLabel: "test-catalog.csv",
-      });
+      const result = await application.importCatalog(
+        {
+          manufacturerId: asManufacturerId("does-not-exist"),
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: s.mapping,
+          csvText: csvHeader + "\n",
+          sourceLabel: "test-catalog.csv",
+        },
+        IMPORTED_BY_USER_ID,
+      );
       expect(result.ok).toBe(false);
       if (result.ok) throw new Error("expected a failure");
       expect(result.error.code).toBe("manufacturer_not_found");
@@ -346,14 +402,17 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     it("returns component_schema_version_not_found for an unknown schema version", async () => {
       const s = await scaffold();
-      const result = await application.importCatalog({
-        manufacturerId: s.manufacturerId,
-        componentTypeId: s.componentTypeId,
-        componentSchemaVersionId: asComponentSchemaVersionId("does-not-exist"),
-        mapping: s.mapping,
-        csvText: csvHeader + "\n",
-        sourceLabel: "test-catalog.csv",
-      });
+      const result = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: asComponentSchemaVersionId("does-not-exist"),
+          mapping: s.mapping,
+          csvText: csvHeader + "\n",
+          sourceLabel: "test-catalog.csv",
+        },
+        IMPORTED_BY_USER_ID,
+      );
       expect(result.ok).toBe(false);
       if (result.ok) throw new Error("expected a failure");
       expect(result.error.code).toBe("component_schema_version_not_found");
@@ -367,14 +426,17 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       createdComponentTypeIds.push(otherType.id);
 
-      const result = await application.importCatalog({
-        manufacturerId: s.manufacturerId,
-        componentTypeId: otherType.id,
-        componentSchemaVersionId: s.schemaVersionId,
-        mapping: { ...s.mapping, componentTypeId: otherType.id },
-        csvText: csvHeader + "\n",
-        sourceLabel: "test-catalog.csv",
-      });
+      const result = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: otherType.id,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: { ...s.mapping, componentTypeId: otherType.id },
+          csvText: csvHeader + "\n",
+          sourceLabel: "test-catalog.csv",
+        },
+        IMPORTED_BY_USER_ID,
+      );
       expect(result.ok).toBe(false);
       if (result.ok) throw new Error("expected a failure");
       expect(result.error.code).toBe("component_type_mismatch");
@@ -382,17 +444,20 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     it("returns mapping_mismatch when the mapping targets a different schema version", async () => {
       const s = await scaffold();
-      const result = await application.importCatalog({
-        manufacturerId: s.manufacturerId,
-        componentTypeId: s.componentTypeId,
-        componentSchemaVersionId: s.schemaVersionId,
-        mapping: {
-          ...s.mapping,
-          componentSchemaVersionId: "some-other-version",
+      const result = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: {
+            ...s.mapping,
+            componentSchemaVersionId: "some-other-version",
+          },
+          csvText: csvHeader + "\n",
+          sourceLabel: "test-catalog.csv",
         },
-        csvText: csvHeader + "\n",
-        sourceLabel: "test-catalog.csv",
-      });
+        IMPORTED_BY_USER_ID,
+      );
       expect(result.ok).toBe(false);
       if (result.ok) throw new Error("expected a failure");
       expect(result.error.code).toBe("mapping_mismatch");
@@ -400,14 +465,17 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     it("returns invalid_csv_setup when the CSV has no header row", async () => {
       const s = await scaffold();
-      const result = await application.importCatalog({
-        manufacturerId: s.manufacturerId,
-        componentTypeId: s.componentTypeId,
-        componentSchemaVersionId: s.schemaVersionId,
-        mapping: s.mapping,
-        csvText: "",
-        sourceLabel: "test-catalog.csv",
-      });
+      const result = await application.importCatalog(
+        {
+          manufacturerId: s.manufacturerId,
+          componentTypeId: s.componentTypeId,
+          componentSchemaVersionId: s.schemaVersionId,
+          mapping: s.mapping,
+          csvText: "",
+          sourceLabel: "test-catalog.csv",
+        },
+        IMPORTED_BY_USER_ID,
+      );
       expect(result.ok).toBe(false);
       if (result.ok) throw new Error("expected a failure");
       expect(result.error.code).toBe("invalid_csv_setup");
@@ -420,4 +488,7 @@ function asManufacturerId(id: string): ManufacturerId {
 }
 function asComponentSchemaVersionId(id: string): ComponentSchemaVersionId {
   return id as ComponentSchemaVersionId;
+}
+function asUserId(id: string): UserId {
+  return id as UserId;
 }

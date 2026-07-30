@@ -116,6 +116,14 @@ implementation map explicitly treats them as one unit.
 ### Stage 6 — Release
 
 - Freeze module version and content hash
+- Pin the module's source-immutability hash: run `npm run module:source-hash
+  -- <module-id> <version>` and record the printed `expectedSourceHash` in
+  the module's own `<id>.test.ts`, passed to `runModuleConformance` together
+  with its source files (see `lib/modules/example-scaffold/0.1.0/
+  example-scaffold.test.ts` for the pattern). `packageContentHash` covers
+  only the manifest/ports/schemas — it cannot see into `compute`, so this is
+  what actually catches an in-place edit to a released version's formula
+  after release
 - Register the package
 - Update documentation and progress tracker
 - Confirm build and full test suite

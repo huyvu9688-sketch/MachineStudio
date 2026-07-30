@@ -88,6 +88,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       const mi = await projects.createModuleInstance({
         assemblyId: assembly.id,
+        configurationId: config.id,
         modulePackageId: MODULE_ID,
         moduleVersion: MODULE_VERSION,
         label: "Thrust",

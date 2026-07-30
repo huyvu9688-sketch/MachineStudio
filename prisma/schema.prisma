@@ -107,6 +107,13 @@ model Assembly {
 
   @@index([configurationId])
   @@index([parentId])
+  /// Lets `module_instances`, `parameter_values`, `parameter_links`, and
+  /// `component_assignments` composite-FK on `(assemblyId, configurationId)`
+  /// — the DB-level half of the same-configuration constraint (design-risk
+  /// follow-up, 2026-07-30; see context/progress-tracker.md). `id` alone is
+  /// already unique, so this adds no real new constraint on `Assembly`
+  /// itself, only a target other tables can reference.
+  @@unique([id, configurationId])
   @@map("assemblies")
 }
 
@@ -139,6 +146,21 @@ model WorkflowInstance {
 model ModuleInstance {
   id                 String   @id @default(cuid())
   assemblyId         String
+  /// Denormalized from `assembly.configurationId`, kept consistent by the
+  /// composite foreign key below (design-risk follow-up, 2026-07-30: "DB-level
+  /// same-configuration constraints" — see context/progress-tracker.md).
+  /// There is no "move a module to another assembly" operation anywhere in
+  /// this codebase, so this never needs an independent update path; it exists
+  /// so `parameter_values`, `parameter_links`, and `component_assignments`
+  /// can composite-FK against `(id, configurationId)` and have Postgres
+  /// itself reject a value/link/assignment whose `configurationId` disagrees
+  /// with its target module instance's real configuration — the same class
+  /// of bug the 2026-07-30 hardening pass closed at the service boundary,
+  /// now also closed at the database boundary (defense in depth, not a
+  /// replacement: the service-level checks stay, since they produce a typed
+  /// application error instead of a raw FK-violation for a well-behaved
+  /// caller).
+  configurationId    String
   workflowInstanceId String?
   /// Stable module ID from the module manifest, e.g. "example-linear-thrust".
   modulePackageId    String
@@ -159,7 +181,7 @@ model ModuleInstance {
   createdAt            DateTime     @default(now()) @db.Timestamptz(6)
   updatedAt            DateTime     @updatedAt @db.Timestamptz(6)
 
-  assembly             Assembly          @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  assembly             Assembly          @relation(fields: [assemblyId, configurationId], references: [id, configurationId], onDelete: Cascade)
   workflowInstance     WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: SetNull)
   parameterValues      ParameterValue[]
   targetOfLinks        ParameterLink[]   @relation("ParameterLinkTarget")
@@ -168,8 +190,13 @@ model ModuleInstance {
   componentAssignments ComponentAssignment[]
 
   @@index([assemblyId])
+  @@index([configurationId])
   @@index([workflowInstanceId])
   @@index([lastRunStatus])
+  /// Lets `parameter_values`, `parameter_links`, and `component_assignments`
+  /// composite-FK on `(moduleInstanceId, configurationId)` — see the
+  /// `configurationId` field comment above.
+  @@unique([id, configurationId])
   @@map("module_instances")
 }
 
@@ -313,8 +340,13 @@ model ParameterValue {
   updatedAt        DateTime             @updatedAt @db.Timestamptz(6)
 
   configuration  MachineConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
-  assembly       Assembly?            @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
-  moduleInstance ModuleInstance?      @relation(fields: [moduleInstanceId], references: [id], onDelete: Cascade)
+  /// Composite FK, not just `assemblyId -> Assembly.id`: forces
+  /// `configurationId` to match this row's real configuration at the
+  /// database level (design-risk follow-up, 2026-07-30 — see
+  /// `Assembly`'s `@@unique([id, configurationId])` comment).
+  assembly       Assembly?            @relation(fields: [assemblyId, configurationId], references: [id, configurationId], onDelete: Cascade)
+  /// Composite FK for the same reason, against `ModuleInstance`.
+  moduleInstance ModuleInstance?      @relation(fields: [moduleInstanceId, configurationId], references: [id, configurationId], onDelete: Cascade)
 
   @@index([configurationId])
   @@index([assemblyId])
@@ -349,10 +381,17 @@ model ParameterLink {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
 
+  // Every one of the following three relations is a composite FK against
+  // (id, configurationId), not just id: forces this link's configurationId
+  // to match both its target's and its source's real configuration at the
+  // database level (design-risk follow-up, 2026-07-30 — see `Assembly`'s
+  // `@@unique([id, configurationId])` comment). This is the DB-level half of
+  // the cross-configuration-write rejection the 2026-07-30 hardening pass
+  // added at the service boundary for `confirmParameterLink`.
   configuration        MachineConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
-  targetModuleInstance ModuleInstance       @relation("ParameterLinkTarget", fields: [targetModuleInstanceId], references: [id], onDelete: Cascade)
-  sourceModuleInstance ModuleInstance?      @relation("ParameterLinkSource", fields: [sourceModuleInstanceId], references: [id], onDelete: Cascade)
-  sourceAssembly       Assembly?            @relation(fields: [sourceAssemblyId], references: [id], onDelete: Cascade)
+  targetModuleInstance ModuleInstance       @relation("ParameterLinkTarget", fields: [targetModuleInstanceId, configurationId], references: [id, configurationId], onDelete: Cascade)
+  sourceModuleInstance ModuleInstance?      @relation("ParameterLinkSource", fields: [sourceModuleInstanceId, configurationId], references: [id, configurationId], onDelete: Cascade)
+  sourceAssembly       Assembly?            @relation(fields: [sourceAssemblyId, configurationId], references: [id, configurationId], onDelete: Cascade)
 
   @@unique([targetModuleInstanceId, targetParameterId, targetLoadCase])
   @@index([configurationId])
@@ -730,9 +769,12 @@ model ComponentAssignment {
   createdAt        DateTime @default(now()) @db.Timestamptz(6)
   updatedAt        DateTime @updatedAt @db.Timestamptz(6)
 
+  // moduleInstance/assembly are composite FKs against (id, configurationId)
+  // for the same design-risk-follow-up reason as ParameterValue/ParameterLink
+  // above.
   configuration            MachineConfiguration      @relation(fields: [configurationId], references: [id], onDelete: Cascade)
-  moduleInstance           ModuleInstance?           @relation(fields: [moduleInstanceId], references: [id], onDelete: Cascade)
-  assembly                 Assembly?                 @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+  moduleInstance           ModuleInstance?           @relation(fields: [moduleInstanceId, configurationId], references: [id, configurationId], onDelete: Cascade)
+  assembly                 Assembly?                 @relation(fields: [assemblyId, configurationId], references: [id, configurationId], onDelete: Cascade)
   manufacturerPartRevision ManufacturerPartRevision? @relation(fields: [manufacturerPartRevisionId], references: [id], onDelete: Restrict)
   calculationRun           CalculationRun?           @relation(fields: [calculationRunId], references: [id], onDelete: Restrict)
 

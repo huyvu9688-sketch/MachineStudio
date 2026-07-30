@@ -68,6 +68,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       const moduleInstance = await projects.createModuleInstance({
         assemblyId: assembly.id,
+        configurationId: config.id,
         modulePackageId: MODULE_ID,
         moduleVersion: MODULE_VERSION,
         label: "Screw sizing",
@@ -186,6 +187,25 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(loaded?.quantity).toBe(2);
       expect(loaded?.stale).toBe(false);
       expect(loaded?.manualPartDetails).toBeNull();
+    });
+
+    it("rejects an assignment whose moduleInstanceId belongs to another configuration (design-risk follow-up, DB-level same-configuration constraint)", async () => {
+      const f = await fixture();
+      const other = await fixture();
+      // other.moduleInstanceId is real, but scoped to other.configId, not
+      // f.configId — the composite foreign key on
+      // component_assignments.moduleInstance must reject this even though
+      // both IDs individually exist.
+      await expect(
+        assignments.createComponentAssignment({
+          configurationId: f.configId,
+          targetKind: "module_instance",
+          moduleInstanceId: other.moduleInstanceId,
+          partSource: "catalog",
+          manufacturerPartRevisionId: f.partRevisionId,
+          calculationRunId: f.runId,
+        }),
+      ).rejects.toThrow();
     });
 
     it("creates a manual-sourced assignment targeting a specific assembly, with no calculation run", async () => {

@@ -55,6 +55,7 @@ describe.skipIf(!liveDatabaseAvailable)(
       const assembly = await projects.createAssembly({ configurationId: config.id, name: "X axis" });
       const moduleInstance = await projects.createModuleInstance({
         assemblyId: assembly.id,
+        configurationId: config.id,
         modulePackageId: MODULE_ID,
         moduleVersion: MODULE_VERSION,
         label: "Screw sizing",

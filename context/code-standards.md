@@ -70,6 +70,10 @@ replace it.
 - Formula and check steps reference source IDs and method IDs
 - Module code cannot import app, database, authentication, file storage,
   or network packages
+- A released version's source files are pinned by a source-immutability
+  hash (`runModuleConformance`'s `source-immutability` check,
+  `npm run module:source-hash`) recorded in the module's own test file —
+  `packageContentHash` alone cannot detect an in-place edit to `compute`
 - Module-specific persisted data must fit the generic versioned snapshot
   schemas; do not add a database column for one module
 - Custom UI is an exception requiring an ADR
@@ -129,6 +133,12 @@ an ID, message, observed value, criterion, source, and severity.
 - The MVP has no company-approved-part workflow
 - A component assignment references an exact manufacturer part revision
   or an explicit manual/custom part record
+- Catalog data is shared and project-independent, so it has no owner to
+  authorize against; any authenticated user may import a catalog batch, but
+  every import is attributed (`CatalogImportBatch.importedByUserId`,
+  required, not client-suppliable — a service parameter, not an input
+  field). A stricter, role-gated import policy needs a role/reviewer
+  concept the MVP does not have (`architecture.md` "Auth and Access")
 
 ## Standards and Sources
 

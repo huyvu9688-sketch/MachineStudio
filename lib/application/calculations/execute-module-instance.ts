@@ -44,6 +44,7 @@ import {
   RUN_SNAPSHOT_FORMAT_VERSION,
   type CalculationRunSnapshot,
   type CalculationRunRecord,
+  type DbClient,
   type ModuleInstanceId,
   type UserId,
 } from "@/lib/db";
@@ -114,8 +115,9 @@ async function resolveModuleOutputValue(
   sourceParameterId: string,
   sourceLoadCase: LoadCaseCategory | null,
   ownerId: UserId,
+  client: DbClient,
 ): Promise<UpstreamValue> {
-  const sourceContext = await loadModuleInstanceForOwner(sourceModuleInstanceId, ownerId);
+  const sourceContext = await loadModuleInstanceForOwner(sourceModuleInstanceId, ownerId, client);
   if (sourceContext === null) {
     return { kind: "unresolved" };
   }
@@ -135,7 +137,7 @@ async function resolveModuleOutputValue(
     return { kind: "unresolved" };
   }
 
-  const summaries = await listRunsForModuleInstance(sourceModuleInstanceId, ownerId);
+  const summaries = await listRunsForModuleInstance(sourceModuleInstanceId, ownerId, client);
   const latest = summaries[0];
   if (latest === undefined) {
     return { kind: "unresolved" };
@@ -143,17 +145,36 @@ async function resolveModuleOutputValue(
   if (latest.stale) {
     return { kind: "stale", staleReason: latest.staleReason };
   }
-  const latestRun = await loadCalculationRun(latest.id, ownerId);
+  const latestRun = await loadCalculationRun(latest.id, ownerId, client);
   const value = latestRun?.snapshot.computation.outputs[outputPort.key];
   return value === undefined ? { kind: "unresolved" } : { kind: "value", value };
 }
+
+/** What the inner transaction settles on — resolved to an `ExecuteModuleInstanceResult` after it commits. */
+type ExecuteOutcome =
+  | { readonly kind: "unauthorized" }
+  | { readonly kind: "module_not_found"; readonly modulePackageId: string; readonly moduleVersion: string }
+  | { readonly kind: "stale_upstream"; readonly message: string }
+  | { readonly kind: "executed"; readonly run: CalculationRunRecord };
 
 /**
  * Executes a module instance end to end: authorizes the owner, loads the
  * pinned module package, resolves its declared input ports to values, runs
  * the pure compute function, and persists the result as a new immutable
  * calculation run — updating the module instance's status summary and
- * appending an audit event in the same transaction.
+ * appending an audit event.
+ *
+ * **Authorization, input resolution, compute, and persistence all happen
+ * inside one `RepeatableRead` transaction** (design-risk follow-up,
+ * 2026-07-30 — see context/progress-tracker.md, and
+ * `createBaseline`'s equivalent doc comment for the full reasoning). Input
+ * resolution alone can issue several reads (the module instance's own
+ * authored values/links, then — for every linked port whose source is
+ * another module's output — that source module's ownership, run list, and
+ * latest run snapshot): under the default isolation, a concurrent edit
+ * between any two of those reads could persist a run that never corresponds
+ * to a state the configuration was actually in. `RepeatableRead` gives every
+ * read here the same MVCC snapshot as of the transaction's start.
  *
  * Never throws for an expected domain failure (unauthorized, an unregistered
  * module version, inputs the module rejects, or a linked upstream result that
@@ -163,98 +184,135 @@ async function resolveModuleOutputValue(
 export async function executeModuleInstance(
   input: ExecuteModuleInstanceInput,
 ): Promise<ExecuteModuleInstanceResult> {
-  const context = await loadModuleInstanceForOwner(input.moduleInstanceId, input.ownerId);
-  if (context === null) {
-    return {
-      ok: false,
-      error: {
-        code: "unauthorized",
-        message: "Module instance not found or not owned by this user.",
-      },
-    };
-  }
-  const { moduleInstance, projectId } = context;
+  let outcome: ExecuteOutcome;
+  try {
+    outcome = await prisma.$transaction(
+      async (tx): Promise<ExecuteOutcome> => {
+        const context = await loadModuleInstanceForOwner(input.moduleInstanceId, input.ownerId, tx);
+        if (context === null) {
+          return { kind: "unauthorized" };
+        }
+        const { moduleInstance, projectId } = context;
 
-  const pkg = getModulePackage(moduleInstance.modulePackageId, moduleInstance.moduleVersion);
-  if (pkg === undefined) {
-    return {
-      ok: false,
-      error: {
-        code: "module_not_found",
-        message: `Module package "${moduleInstance.modulePackageId}@${moduleInstance.moduleVersion}" is not registered.`,
-      },
-    };
-  }
-
-  const resolvedPorts = await resolveModuleInputs(
-    input.moduleInstanceId,
-    input.ownerId,
-    pkg.ports.inputs.map((port) => ({
-      parameterId: port.parameterId,
-      ...(port.loadCase !== undefined ? { loadCase: port.loadCase } : {}),
-    })),
-  );
-  if (resolvedPorts === null) {
-    return {
-      ok: false,
-      error: {
-        code: "unauthorized",
-        message: "Module instance not found or not owned by this user.",
-      },
-    };
-  }
-
-  const values: Record<string, EngineeringValue> = {};
-  for (let i = 0; i < pkg.ports.inputs.length; i++) {
-    const port = pkg.ports.inputs[i];
-    const resolved = resolvedPorts[i].resolved;
-
-    let value: EngineeringValue | undefined;
-    if (resolved.source === "manual" || resolved.source === "workflow") {
-      value = resolved.value;
-    } else if (resolved.source === "linked") {
-      if (resolved.value !== null) {
-        value = resolved.value;
-      } else if (resolved.link.sourceModuleInstanceId !== null) {
-        const upstream = await resolveModuleOutputValue(
-          resolved.link.sourceModuleInstanceId,
-          resolved.link.sourceParameterId,
-          resolved.link.sourceLoadCase,
-          input.ownerId,
-        );
-        if (upstream.kind === "stale") {
+        const pkg = getModulePackage(moduleInstance.modulePackageId, moduleInstance.moduleVersion);
+        if (pkg === undefined) {
           return {
-            ok: false,
-            error: {
-              code: "stale_upstream",
-              message: `Input "${port.key}" is linked to a module output whose latest calculation run is stale${upstream.staleReason === null ? "" : ` (${upstream.staleReason})`}. Re-run the upstream module before executing this one.`,
-            },
+            kind: "module_not_found",
+            modulePackageId: moduleInstance.modulePackageId,
+            moduleVersion: moduleInstance.moduleVersion,
           };
         }
-        if (upstream.kind === "value") {
-          value = upstream.value;
+
+        const resolvedPorts = await resolveModuleInputs(
+          input.moduleInstanceId,
+          input.ownerId,
+          pkg.ports.inputs.map((port) => ({
+            parameterId: port.parameterId,
+            ...(port.loadCase !== undefined ? { loadCase: port.loadCase } : {}),
+          })),
+          tx,
+        );
+        if (resolvedPorts === null) {
+          return { kind: "unauthorized" };
         }
-      }
-    }
-    // "default": leave undefined — the SDK fills the constant default (or
-    // reports a clear missing-required-input error) exactly as it would for
-    // any other caller.
 
-    if (value !== undefined) {
-      values[port.key] = value;
-    }
-  }
+        const values: Record<string, EngineeringValue> = {};
+        for (let i = 0; i < pkg.ports.inputs.length; i++) {
+          const port = pkg.ports.inputs[i];
+          const resolved = resolvedPorts[i].resolved;
 
-  const rawInput: unknown = {
-    values,
-    ...(input.loadCaseId !== undefined ? { loadCaseId: input.loadCaseId } : {}),
-  };
+          let value: EngineeringValue | undefined;
+          if (resolved.source === "manual" || resolved.source === "workflow") {
+            value = resolved.value;
+          } else if (resolved.source === "linked") {
+            if (resolved.value !== null) {
+              value = resolved.value;
+            } else if (resolved.link.sourceModuleInstanceId !== null) {
+              const upstream = await resolveModuleOutputValue(
+                resolved.link.sourceModuleInstanceId,
+                resolved.link.sourceParameterId,
+                resolved.link.sourceLoadCase,
+                input.ownerId,
+                tx,
+              );
+              if (upstream.kind === "stale") {
+                return {
+                  kind: "stale_upstream",
+                  message: `Input "${port.key}" is linked to a module output whose latest calculation run is stale${upstream.staleReason === null ? "" : ` (${upstream.staleReason})`}. Re-run the upstream module before executing this one.`,
+                };
+              }
+              if (upstream.kind === "value") {
+                value = upstream.value;
+              }
+            }
+          }
+          // "default": leave undefined — the SDK fills the constant default (or
+          // reports a clear missing-required-input error) exactly as it would for
+          // any other caller.
 
-  let resolvedInput: ModuleInput;
-  let computation: ModuleComputation;
-  try {
-    resolvedInput = resolveModuleInput(pkg, rawInput);
-    computation = executeModule(pkg, rawInput);
+          if (value !== undefined) {
+            values[port.key] = value;
+          }
+        }
+
+        const rawInput: unknown = {
+          values,
+          ...(input.loadCaseId !== undefined ? { loadCaseId: input.loadCaseId } : {}),
+        };
+
+        // Throws ModuleSdkError on invalid input — deliberately uncaught here,
+        // so it propagates out of $transaction (rolling back cleanly, nothing
+        // was written yet) to the catch block below, the same place every
+        // other unexpected-vs-expected split in this function is made.
+        const resolvedInput: ModuleInput = resolveModuleInput(pkg, rawInput);
+        const computation: ModuleComputation = executeModule(pkg, rawInput);
+
+        const snapshot: CalculationRunSnapshot = {
+          snapshotVersion: RUN_SNAPSHOT_FORMAT_VERSION,
+          input: resolvedInput,
+          computation,
+          versions: {
+            engineSdkVersion: ENGINE_SDK_VERSION,
+            modulePackageId: pkg.manifest.id,
+            moduleVersion: pkg.manifest.version,
+            modulePackageHash: pkg.manifest.contentHash,
+            parameterRegistryVersion: pkg.manifest.parameterRegistryVersion,
+            sourceRevisionIds: [...pkg.manifest.sourceRevisionIds],
+          },
+          ranAt: new Date().toISOString(),
+          ranByUserId: input.ownerId,
+        };
+
+        const created = await createCalculationRun(
+          { moduleInstanceId: input.moduleInstanceId, snapshot },
+          tx,
+        );
+        await updateModuleInstanceRunStatus(
+          input.moduleInstanceId,
+          created.id,
+          created.status,
+          tx,
+        );
+        await appendAuditEvent(
+          {
+            projectId,
+            eventType: "calculation_run.created",
+            entityType: "CalculationRun",
+            entityId: created.id,
+            userId: input.ownerId,
+            payload: {
+              moduleInstanceId: input.moduleInstanceId,
+              modulePackageId: pkg.manifest.id,
+              moduleVersion: pkg.manifest.version,
+              status: created.status,
+            },
+          },
+          tx,
+        );
+        return { kind: "executed", run: created };
+      },
+      { isolationLevel: "RepeatableRead" },
+    );
   } catch (error) {
     if (error instanceof ModuleSdkError) {
       return { ok: false, error: { code: "invalid_input", message: error.message } };
@@ -262,53 +320,26 @@ export async function executeModuleInstance(
     throw error;
   }
 
-  const snapshot: CalculationRunSnapshot = {
-    snapshotVersion: RUN_SNAPSHOT_FORMAT_VERSION,
-    input: resolvedInput,
-    computation,
-    versions: {
-      engineSdkVersion: ENGINE_SDK_VERSION,
-      modulePackageId: pkg.manifest.id,
-      moduleVersion: pkg.manifest.version,
-      modulePackageHash: pkg.manifest.contentHash,
-      parameterRegistryVersion: pkg.manifest.parameterRegistryVersion,
-      sourceRevisionIds: [...pkg.manifest.sourceRevisionIds],
-    },
-    ranAt: new Date().toISOString(),
-    ranByUserId: input.ownerId,
-  };
-
-  // Run persistence, the module instance's status summary, and the audit
-  // event are atomic (context/code-standards.md "Application Services").
-  const run = await prisma.$transaction(async (tx) => {
-    const created = await createCalculationRun(
-      { moduleInstanceId: input.moduleInstanceId, snapshot },
-      tx,
-    );
-    await updateModuleInstanceRunStatus(
-      input.moduleInstanceId,
-      created.id,
-      created.status,
-      tx,
-    );
-    await appendAuditEvent(
-      {
-        projectId,
-        eventType: "calculation_run.created",
-        entityType: "CalculationRun",
-        entityId: created.id,
-        userId: input.ownerId,
-        payload: {
-          moduleInstanceId: input.moduleInstanceId,
-          modulePackageId: pkg.manifest.id,
-          moduleVersion: pkg.manifest.version,
-          status: created.status,
+  switch (outcome.kind) {
+    case "unauthorized":
+      return {
+        ok: false,
+        error: {
+          code: "unauthorized",
+          message: "Module instance not found or not owned by this user.",
         },
-      },
-      tx,
-    );
-    return created;
-  });
-
-  return { ok: true, run };
+      };
+    case "module_not_found":
+      return {
+        ok: false,
+        error: {
+          code: "module_not_found",
+          message: `Module package "${outcome.modulePackageId}@${outcome.moduleVersion}" is not registered.`,
+        },
+      };
+    case "stale_upstream":
+      return { ok: false, error: { code: "stale_upstream", message: outcome.message } };
+    case "executed":
+      return { ok: true, run: outcome.run };
+  }
 }

@@ -537,10 +537,11 @@ export async function deleteParameterLink(
 export async function listParameterLinksForConfiguration(
   configurationId: string,
   ownerId: UserId,
+  client: DbClient = prisma,
 ): Promise<ParameterLinkRecord[]> {
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
-  const rows: ParameterLinkRow[] = await prisma.parameterLink.findMany({
+  const rows: ParameterLinkRow[] = await client.parameterLink.findMany({
     where: { configurationId: id, configuration: { project: { ownerId: owner } } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
@@ -560,10 +561,11 @@ export async function listParameterLinksForConfiguration(
 export async function listCurrentParameterValuesForConfiguration(
   configurationId: string,
   ownerId: UserId,
+  client: DbClient = prisma,
 ): Promise<ParameterValueRecord[]> {
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
-  const rows: ParameterValueRow[] = await prisma.parameterValue.findMany({
+  const rows: ParameterValueRow[] = await client.parameterValue.findMany({
     where: { configurationId: id, configuration: { project: { ownerId: owner } } },
     // `createdAt` alone is not a total order: two rows written in the same
     // transaction (or inside the same clock tick) tie, and the tie is broken
@@ -606,11 +608,12 @@ export async function resolveModuleInputs(
   moduleInstanceId: ModuleInstanceId,
   ownerId: UserId,
   inputPorts: readonly ModuleInputPort[],
+  client: DbClient = prisma,
 ): Promise<ResolvedModuleInput[] | null> {
   const id = parse(nonEmpty, moduleInstanceId);
   const owner = parse(nonEmpty, ownerId);
 
-  const owned = await prisma.moduleInstance.findFirst({
+  const owned = await client.moduleInstance.findFirst({
     where: {
       id,
       assembly: { configuration: { project: { ownerId: owner } } },
@@ -621,10 +624,10 @@ export async function resolveModuleInputs(
     return null;
   }
 
-  const linkRows: ParameterLinkRow[] = await prisma.parameterLink.findMany({
+  const linkRows: ParameterLinkRow[] = await client.parameterLink.findMany({
     where: { targetModuleInstanceId: id },
   });
-  const valueRows: ParameterValueRow[] = await prisma.parameterValue.findMany({
+  const valueRows: ParameterValueRow[] = await client.parameterValue.findMany({
     where: { moduleInstanceId: id, nodeKind: "module_input" },
     // Authored values are append-only history (a change writes a new row), so
     // a port can have several. Ascending order means the last row written into
@@ -656,7 +659,7 @@ export async function resolveModuleInputs(
         resolved: {
           source: "linked",
           link: toParameterLinkRecord(link),
-          value: await resolveLinkedSourceValue(link),
+          value: await resolveLinkedSourceValue(link, client),
         },
       });
       continue;
@@ -696,11 +699,12 @@ export async function resolveModuleInputs(
  */
 async function resolveLinkedSourceValue(
   link: ParameterLinkRow,
+  client: DbClient,
 ): Promise<EngineeringValue | null> {
   if (link.sourceModuleInstanceId !== null) {
     return null;
   }
-  const provider = await prisma.parameterValue.findFirst({
+  const provider = await client.parameterValue.findFirst({
     where: {
       configurationId: link.configurationId,
       moduleInstanceId: null,

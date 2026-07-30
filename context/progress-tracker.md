@@ -4,6 +4,20 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
+- **2026-07-30 (new session): a design-risk follow-up pass closed all six
+  items the previous session's hardening pass listed under Open Questions as
+  "not attempted" / "architecture follow-ups" — each its own work unit with a
+  real decision recorded, per `context/ai-workflow-rules.md`'s Work-Unit
+  Rule: (1) Unit 0.3's Playwright/Testing Library/coverage gap, (2) the
+  angle-as-base-dimension power algebra gap, (3) the module content-hash gap,
+  (4) DB-level same-configuration constraints, (5) catalog import
+  authorization policy, (6) transactionally consistent read snapshots.**
+  Implemented and locally verified (lint/typecheck/test/build all green
+  throughout); this session did not commit or push, so **none of the six has
+  had a CI round trip yet** — units 1, 4, and 6 touch live-DB tests or a
+  migration and need one before being called fully verified, matching this
+  project's established convention for anything requiring a real Postgres.
+  See Current Goal for each item's full detail.
 - **2026-07-30: an integrity-hardening pass sits on top of Milestone 2,
   implemented locally and not yet CI-verified** (see Current Goal). It closed
   cross-configuration write paths, made link compatibility a server-side rule,
@@ -179,6 +193,458 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
+- **DESIGN-RISK FOLLOW-UP 1 of 6 (2026-07-30, new session): Unit 0.3's
+  Playwright/Testing Library/coverage gap — closed, locally verified,
+  Playwright itself pending a CI round trip.** Unit 0.3's deliverables list
+  (`implementation-map.md`) named Vitest, React Testing Library, Playwright,
+  and "coverage configuration for engine and modules" as required toolchain;
+  only Vitest and ESLint/Prettier had ever actually been added. Added:
+  - `@testing-library/react` + `@testing-library/jest-dom` +
+    `@testing-library/user-event`, wired through a new
+    `tests/setup.ts` (`test.setupFiles`) and exercised by a real test,
+    `app/page.test.tsx`, against the existing static `Home` placeholder
+    component (no Clerk/router context needed, so no provider wrapping).
+    **Per-file environment, not a blanket rule**: tried `test.environmentMatchGlobs`
+    first (the documented way to run only `*.test.tsx` files under jsdom
+    while everything else stays on the lighter `"node"` environment this
+    project's server-only DB tests need); **confirmed by direct test that
+    this vitest version (4.1.10) does not apply that option** — the render
+    call still threw `document is not defined` with it set. Replaced with a
+    per-file `// @vitest-environment jsdom` docblock instead (confirmed
+    working), so `vitest.config.ts` keeps `environment: "node"` as the
+    default.
+  - `@vitest/coverage-v8`, configured on `test.coverage` scoped to
+    `lib/engine/**` and `lib/modules/**` — the literal "engine and modules"
+    wording of the deliverable — rather than the whole repository: most
+    `lib/db`/`lib/application` coverage comes from live-database tests that
+    self-skip without a reachable Postgres (see the standing constraint
+    below), which would make a repo-wide number swing on network
+    availability rather than reflect real test gaps. Exposed via a new
+    `test:coverage` script (`vitest run --coverage`) — not one of the exact
+    script names `implementation-map.md` lists, added anyway because a
+    coverage configuration nobody can invoke is not a usable deliverable;
+    verified locally (`npx vitest run --coverage lib/engine/units`: 97%
+    statement coverage on that folder, confirming `include`/`exclude`
+    resolve correctly).
+  - `@playwright/test`, a new `playwright.config.ts`, and `e2e/smoke.spec.ts`
+    covering the two literal exit criteria Unit 0.4 defined but never had an
+    automated check for: the home page renders, and **an unauthenticated
+    user is redirected away from `/workspace`**. **Real design decision**:
+    the suite runs against `next dev`, not a production `next start` build.
+    Clerk's Next.js SDK auto-provisions a no-keys "keyless" dev instance
+    (already anticipated by this repo's gitignored `/.clerk/` entry and
+    `lib/env.ts`'s comment) only under `next dev`; a production build throws
+    without real `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`/`CLERK_SECRET_KEY`
+    values, and this project has never had a Clerk instance's keys
+    configured anywhere, dev or test. **The authenticated half of Unit
+    0.4's exit criteria ("authenticated user can access the empty
+    workspace") is deliberately NOT covered** — proving it needs a real
+    signed-in session, which needs Clerk test-instance credentials
+    (`@clerk/testing`'s testing-token flow) as CI secrets. That is a new
+    policy/cost decision — creating a Clerk test instance — not a bug fix,
+    so it is recorded below under Open Questions rather than silently
+    skipped or faked with a bypassed auth check.
+  - `.gitignore`: `/test-results/`, `/playwright-report/`, `/blob-report/`.
+  - `.github/workflows/ci.yml`: two new steps after "Build" —
+    `npx playwright install --with-deps chromium` then `npm run test:e2e` —
+    matching `implementation-map.md`'s literal CI step order (install, lint,
+    typecheck, unit tests, build, **then** E2E).
+  - **Verification differs for Playwright specifically.** `npm run lint`,
+    `npm run typecheck` (0 errors — the generated Prisma client is present
+    on this session's network, so this was a real signal, not the
+    usual missing-client cascade), `npm run test` (397/397 passed, up from
+    396 with the one new RTL test; the `e2e/` directory is excluded from
+    Vitest's own `include` globs so nothing double-runs), and `npm run
+    build` (Next.js production build) **all passed locally**. Chromium
+    itself downloaded successfully (this session's network reaches
+    `cdn.playwright.dev`, confirmed by a full `npx playwright install
+    chromium --with-deps`), but **launching it failed with "This program is
+    blocked by group policy"** (confirmed directly: running
+    `chrome-headless-shell.exe --version` from PowerShell, bypassing
+    Playwright entirely, hits the identical OS-level block) — a corporate
+    endpoint-protection policy on this dev machine blocking execution of a
+    freshly downloaded, unsigned browser binary. This is the same class of
+    local-machine-only restriction already documented for
+    `binaries.prisma.sh` (see the standing constraint below), just enforced
+    at process-launch instead of TLS. **Not attempted as a workaround**: no
+    policy or Defender exclusion was requested or changed. GitHub Actions'
+    `ubuntu-latest` runners carry no such policy, so — consistent with this
+    project's established pattern for anything this machine cannot verify —
+    CI is the actual verification environment for the two new Playwright
+    steps; this has not yet had a CI round trip (needs a commit and push,
+    which this session did not do without asking first).
+- **DESIGN-RISK FOLLOW-UP 2 of 6 (2026-07-30, new session): the
+  angle-as-base-dimension power algebra gap — closed, locally verified.**
+  Confirmed-by-test problem: `multiplyQuantities(10 N*m, 100 rad/s)` returns
+  `kg*m^2*s^-3*rad`, not `W` — because `Dimensions.torque` carries no angle
+  exponent while `Dimensions.angularVelocity` carries `angle: 1`, the
+  product's angle exponent never cancels. **Decision, from the three named
+  in Open Questions ("an explicit angle-cancelling rule in
+  multiply/divide, a dedicated power helper, or a documented convention")**:
+  a dedicated helper, not a change to generic `multiplyQuantities`/
+  `divideQuantities`. Loosening the generic algebra to auto-cancel angle
+  would defeat the reason angle is a base dimension at all
+  (`context/architecture.md` invariant 5, "semantic link safety") — it
+  would also silently cancel angle in cases the graph relies on keeping,
+  e.g. two angular velocities multiplied together, or `rad/s^2` drifting
+  toward reading as `s^-2`. Instead, `lib/engine/units/arithmetic.ts` gains
+  three new explicit, dimension-checked functions for the reviewed P = T*ω
+  relationship and its two inversions: `rotationalPower(torque,
+  angularVelocity)`, `torqueFromPower(power, angularVelocity)`,
+  `angularVelocityFromPower(power, torque)` — each validates both operand
+  dimensions with a new `requireDimension` helper (throwing the existing
+  `DimensionMismatchError`) and computes the SI result directly rather than
+  through `addDimensions`/`subtractDimensions`, so the angle exponent never
+  enters the calculation. This mirrors a convention this codebase already
+  has for other domain-specific relationships
+  (`code-standards.md`: "never infer force from mass or mass from force") —
+  extended here to angle. All three are exported from
+  `lib/engine/units/index.ts`. 8 new tests in `arithmetic.test.ts`,
+  including a regression guard that pins the exact broken
+  `multiplyQuantities` case from Open Questions so a future change to the
+  angle-dimension trade-off is caught rather than silently fixing (or
+  re-breaking) these helpers' reason to exist. **Deliberately not built**:
+  a linear/rotational helper (`v = r*ω`, the ball-screw/pulley conversion
+  Milestone 1B/1C will need) — same root cause, same "angle cancels by
+  reviewed physical law" shape, but a different relationship that was not
+  the one confirmed broken by test, and no module needs it yet; noted below
+  under Open Questions so it is a deliberate deferral, not a gap
+  rediscovered later. Verified locally: `npm run lint` (0 warnings),
+  `npm run typecheck` (0 errors — Prisma client present this session),
+  `npm run test` (406/406 passed, up from 397), `npm run build` all green.
+  No `lib/db` file touched, so — mirroring every prior pure-engine unit —
+  no CI round trip is needed for this one.
+- **DESIGN-RISK FOLLOW-UP 3 of 6 (2026-07-30, new session): the module
+  content-hash gap — closed, locally verified.** `packageContentHash`'s own
+  top comment already named the gap: it hashes the manifest/ports/schemas
+  but deliberately excludes `compute` (a function is not stably
+  serializable), so two module versions with identical manifests but
+  different formulas hash identically — a run's pinned `contentHash` cannot
+  by itself prove which formula actually executed, and nothing stopped an
+  in-place edit to an already-released version's `compute.ts` (forbidden by
+  convention, `ai-workflow-rules.md` "Protected Files and Records", but not
+  by tooling). **Constraint that shaped the design**: module code cannot do
+  its own file I/O to hash itself (`code-standards.md` "Module Packages": no
+  file-storage imports), and `lib/engine` must stay pure/portable — so the
+  hash cannot be computed automatically inside `sealModulePackage` at import
+  time the way `packageContentHash` is. Resolved with the same
+  external-tool split this project already uses for the scaffolder and
+  registry codegen (`scripts/module-new.mts`/`generate-registry.mts`: pure
+  logic in `lib/engine/module-sdk`, filesystem I/O in a `scripts/*.mts`
+  wrapper):
+  - `moduleSourceHash(sources: ModuleSourceFile[])` (new, in
+    `lib/engine/module-sdk/hash.ts`) — pure, takes pre-read files, sorts by
+    path. **Normalizes `\r\n`/`\r` to `\n` before hashing — confirmed
+    necessary by direct test**: this repo checks out with CRLF on Windows
+    (`core.autocrlf=true`) but stores (and CI checks out) LF, and a file
+    freshly written by an editor/tool (LF, bypassing git's checkout smudge
+    filter) sits alongside one `git checkout`-restored (CRLF) in the same
+    directory — an un-normalized hash computed here would never match CI's,
+    making the check spuriously fail on every module. Caught by adding a
+    dedicated regression test before this shipped, not discovered later.
+  - A new, fifth `runModuleConformance` check, `"source-immutability"`
+    (`lib/engine/module-sdk/conformance.ts`): given `options.sources` (the
+    same pre-read files the existing `import-boundary` check already
+    accepts) and a new `options.expectedSourceHash`, fails if
+    `moduleSourceHash(sources)` no longer matches — the same "pinned
+    fixture catches accidental edits" pattern
+    `lib/engine/parameters/hash.ts` already uses for the parameter
+    registry's own content hash, extended to modules. Skips (not fails)
+    when either input is missing, so existing callers are unaffected.
+  - `scripts/module-source-hash.mts` (new CLI, mirrors `module-new.mts`'s
+    pattern exactly): `npm run module:source-hash -- <module-id> <version>`
+    reads the version directory's non-test `.ts` files and prints the
+    hash to paste into that module's test file. **Had to change
+    `lib/engine/module-sdk/hash.ts`'s own import of `contentHash`/
+    `stableStringify` from the `../parameters` barrel to the specific file
+    `../parameters/hash.ts`, confirmed necessary by direct test**: Node's
+    native TypeScript execution (what every `scripts/*.mts` CLI runs
+    under, no bundler) cannot resolve a directory/barrel specifier and
+    failed with `ERR_UNSUPPORTED_DIR_IMPORT` before this change. Harmless
+    under the normal bundler/vitest path (same file, `tsconfig.json` already
+    sets `allowImportingTsExtensions: true`) — confirmed by the full
+    verification run below.
+  - **Stage 6 (Release) in `ai-workflow-rules.md` and `code-standards.md`
+    "Module Packages" updated**: pinning `expectedSourceHash` is now a
+    required release step, per Documentation Synchronization.
+  - **Wired into both existing example modules as the reference
+    implementation** (`lib/modules/example-scaffold/0.1.0/
+    example-scaffold.test.ts`, `lib/modules/example-relay/0.1.0/
+    example-relay.test.ts`), via a new shared test-only helper,
+    `lib/modules/test-support.ts`'s `readModuleSources` (Node `fs`, so it
+    can never be imported by module or engine production code — only a
+    module's own `<id>.test.ts`). This is not purely a demonstration: it
+    also activates `import-boundary`, which — discovered while wiring this
+    in — **no real module's test had ever actually run**; every module's
+    generated test template only ever passed `sampleInputs`, never
+    `sources`, so that check had been silently `skipped` for both example
+    modules since Unit 1.7. Both checks now genuinely `pass` for both
+    modules (confirmed via `--reporter=verbose`, not just an aggregate
+    `report.ok`).
+  - **Proved the check actually catches drift, not just that it can pass**:
+    temporarily edited `example-scaffold`'s `compute.ts`, confirmed
+    `source-immutability` (and the overall suite) failed with a clear
+    message naming the mismatched hashes, then reverted and confirmed green
+    again.
+  - **Deliberately not done**: retroactively enforcing this for every
+    future scaffolded module by baking it into `scaffold.ts`'s generated
+    test template. A freshly scaffolded module is mid-development (Stage
+    1–5, `TODO` markers throughout); pinning a hash of placeholder content
+    would add churn with no value before Stage 6 actually freezes anything.
+    This is a Stage 6 step by design, not a scaffold-time one.
+  - Verified locally: `npm run lint` (0 warnings), `npm run typecheck` (0
+    errors), `npm run test` (417/417 passed, up from 406), `npm run build`
+    all green. No `lib/db` file touched, so no CI round trip is needed for
+    this one either.
+- **DESIGN-RISK FOLLOW-UP 4 of 6 (2026-07-30, new session): DB-level
+  same-configuration constraints — implemented, locally checked, pending a
+  CI round trip.** The 2026-07-30 hardening pass closed cross-configuration
+  writes at the *service* boundary (`setParameterValue`,
+  `confirmParameterLink`, `assignComponent` all cross-check the target's real
+  configuration before writing), but the database itself would still accept
+  a `ParameterValue`, `ParameterLink`, or `ComponentAssignment` whose
+  `configurationId` disagreed with its assembly/module-instance target —
+  nothing enforced consistency below the application layer, so a bug in a
+  future caller (or a direct repository call bypassing the service, as the
+  new tests below do on purpose) could still write inconsistent data.
+  **Decision, the first of the two options Open Questions named ("composite
+  foreign keys or triggers")**: composite foreign keys, not triggers — purely
+  declarative, matches Postgres's standard "denormalized consistency" pattern
+  for this exact shape of problem, and needed no new PL/pgSQL function the
+  way the immutable-run/part-revision triggers did.
+  - **This session's network can reach `binaries.prisma.sh` for real**
+    (`npx prisma generate`/`validate` both ran clean against the edited
+    schema) — a first for this project mid-session, previously only ever
+    confirmed working in CI or on a since-unreproducible dev-machine network
+    (see the 2026-07-29/2026-07-30 Open Questions history below). Used this
+    to actually validate the composite-relation schema changes with the real
+    Prisma engine rather than guessing. **Still no local PostgreSQL/Docker**,
+    so `prisma migrate dev`'s shadow-database diff remains unavailable; tried
+    `prisma migrate diff --from-schema/--to-schema --script` (schema-to-schema,
+    no live database needed in principle) as a way to get a real generated
+    SQL diff to check the hand-written migration against, but it failed with
+    `spawn UNKNOWN` — the same class of corporate-endpoint block that stopped
+    Playwright's Chromium earlier this session ("This program is blocked by
+    group policy"), apparently also covering the schema-engine binary
+    `migrate diff` needs to spawn (never even reached the download step, no
+    cached binary found under `%LOCALAPPDATA%\ms-playwright`-style caches).
+    So the migration below is still hand-authored, matching every other
+    schema-touching unit's established pattern, just with a real
+    `prisma validate` pass this time instead of none.
+  - **Schema change** (`prisma/schema.prisma`): `ModuleInstance` gains a
+    denormalized `configurationId` column (its assembly's own
+    `configurationId` — there is no "move a module to another assembly"
+    operation anywhere in this codebase, so this never needs an independent
+    update path). `Assembly` and `ModuleInstance` each gain
+    `@@unique([id, configurationId])` (adds no new real constraint on either
+    table by itself — `id` alone is already unique — it only gives other
+    tables something to composite-FK against). Eight relations become
+    composite FKs on `(localId, configurationId)` instead of just `localId`:
+    `ModuleInstance.assembly`; `ParameterValue.assembly` and
+    `.moduleInstance`; `ParameterLink.targetModuleInstance`,
+    `.sourceModuleInstance`, and `.sourceAssembly`; `ComponentAssignment
+    .moduleInstance` and `.assembly`. Every nullable one of these (all except
+    `ModuleInstance.assembly` and `ParameterLink.targetModuleInstance`, both
+    required) relies on Postgres's default `MATCH SIMPLE`: the composite FK
+    is not checked when any of its columns is null, which is correct here —
+    null already means "not applicable" (machine-root scope, no linked
+    source) for every one of them, not "unchecked by accident."
+  - **Migration** `prisma/migrations/20260730180000_same_configuration_constraints`
+    (hand-authored): adds the column, backfills it from `assemblies` (a plain
+    `UPDATE ... FROM`, even though CI's database is always freshly empty —
+    written as if real data existed, since that is what an eventual
+    production rollout would need), sets it `NOT NULL`, adds the two unique
+    indexes, then drops and recreates each of the eight FKs above under the
+    **identical constraint name** Prisma's own naming convention already
+    produced for the single-column version (same drop-then-recreate-under-
+    the-same-name shape `20260730170000_immutable_part_revisions` used for
+    `manufacturer_part_revisions_importBatchId_fkey`).
+  - **One production call site needed updating**: `createModuleInstance`
+    (`lib/db/repositories/project-repository.ts`) now requires
+    `configurationId` on its input (`CreateModuleInstanceInput`,
+    `ModuleInstanceRecord` — both updated), caller-supplied and trusted, the
+    same convention `CreateParameterValueInput`/`CreateParameterLinkInput`
+    already establish (a mismatch is now rejected at the database level
+    instead of only trusted). Confirmed by `npm run typecheck` catching every
+    site that needed it: the repository's own `.create()` call, plus **17
+    test-fixture call sites across 9 test files** (every live-DB test file
+    that creates a `ModuleInstance`) — none of these are behavior changes,
+    each one just supplies the `configurationId` its existing assembly
+    already implied.
+  - **`loadModuleInstanceForOwner` was deliberately left as-is** even though
+    it could now read the new denormalized column directly instead of
+    joining through `assembly.configuration` — that join still returns the
+    identical, correct result (redundant, not wrong), and simplifying it is
+    an unrelated cleanup this unit's scope did not call for.
+  - **5 new tests proving the constraint actually rejects a genuine
+    mismatch**, not just that the schema compiles — matching this session's
+    "prove it, don't just claim it" pattern from follow-up 3: one in
+    `project-repository.test.ts` (`ModuleInstance.assembly`), three in
+    `graph-repository.test.ts` (`ParameterValue.assembly`,
+    `ParameterValue.moduleInstance`, `ParameterLink.targetModuleInstance`),
+    one in `component-assignment-repository.test.ts`
+    (`ComponentAssignment.moduleInstance`). Each creates a second, fully
+    legitimate configuration/assembly/module-instance (real IDs, correctly
+    scoped to each other) and then calls the **repository function
+    directly** — bypassing `lib/application`'s own service-level checks on
+    purpose — with a `configurationId` that does not match the real target,
+    asserting the raw call rejects. This is deliberately the same
+    "call the repository directly, not through the service" shape the FK
+    itself protects against: an application-layer bug or a future caller
+    that skips the service.
+  - **Verification differs from every other schema-touching unit this
+    session in one respect, and matches it in every other**: `npm run lint`
+    (0 warnings) and `npm run typecheck` (0 errors — real signal, the
+    generated client is present) both passed for real, not against the
+    usual missing-client cascade. `npm run test` (417/417 passed, 130
+    skipped — up from 125, the 5 new tests correctly registering as skipped
+    rather than silently absent) and `npm run build` also passed. Matching
+    every prior schema-touching unit: this session did not commit or push,
+    so **GitHub Actions CI has not yet run the new migration against a real
+    Postgres, and the 5 new negative-path tests have not yet executed for
+    real** (they only self-skip locally, proving they compile and register,
+    not that the constraint behaves as designed). Until that CI round trip,
+    this unit should be treated the same way Unit 2.8 part 2 was at the
+    equivalent stage: implemented and locally checked, not fully verified.
+- **DESIGN-RISK FOLLOW-UP 5 of 6 (2026-07-30, new session): catalog import
+  authorization policy — decided and implemented, locally verified.**
+  `importCatalog` took no owner and checked nothing; catalog data is
+  deliberately shared, project-independent reference data (Unit 2.6), so
+  "who may import" cannot be answered with the ownership query every other
+  application service uses. **The real policy decision**: any authenticated
+  user may import, and every import is attributed — not a role/admin gate.
+  Reasoning: this codebase has no role or reviewer concept anywhere yet
+  (`architecture.md` "Auth and Access" already defers "organization tenancy
+  and reviewer permissions"), so inventing an admin role here would be new
+  product behavior with no spec behind it, not a bug fix. "Attributed" was
+  already half-true (`CatalogImportBatch.importedByUserId` exists) but
+  unenforced — nothing required it be set, so today's `importCatalog` could
+  be called with no identified caller at all. That is what this closes.
+  - **`importedByUserId` moved from an optional field on `ImportCatalogInput`
+    to a required second parameter**, `importCatalog(input, importedByUserId:
+    UserId)` — matching the `(input, ownerId)` shape
+    `assignComponent`/`setParameterValue`/`confirmParameterLink`/
+    `createBaseline` already use (4 of the 5 existing application services;
+    `executeModuleInstance`, the first one ever written, is the one outlier
+    that still embeds `ownerId` in its input object — not touched here, out
+    of scope). The point of a separate parameter, not just a required input
+    field: an application-service *input* is caller-suppliable/untrusted,
+    while a second positional parameter is what every other service already
+    uses for the identity a route handler derives from the verified Clerk
+    session — so this reuses an existing, load-bearing distinction rather
+    than only tightening a type.
+  - A blank/whitespace-only `importedByUserId` returns a new `"unauthenticated"`
+    error code, checked before anything else in the function (including the
+    manufacturer/schema-version lookups) — proven by a new test that also
+    confirms zero rows are written when this fires.
+  - **Deliberately not added**: an `AuditEvent` for catalog imports — Unit
+    2.7 part 2 already found this impossible (`AuditEvent.projectId` is a
+    mandatory FK to `MachineProject`; catalog data has no project) and
+    settled on `CatalogImportBatch`'s own columns as the audit trail
+    instead. `importedByUserId` being mandatory now is what makes that
+    trail actually reliable, not a new mechanism.
+  - **No DB-level enforcement of `importedByUserId`** (no FK to `users`):
+    confirmed by inspecting `prisma/schema.prisma` that every "byUserId"
+    attribution column in this schema (`AuditEvent.userId`,
+    `CalculationRun.createdByUserId`, `ComponentAssignment.assignedByUserId`)
+    is already a bare, unenforced string, not a foreign key — matched that
+    existing convention rather than introducing a new one just for this
+    field.
+  - **`context/architecture.md` "Auth and Access" and `code-standards.md`
+    "Catalog" updated** with the policy and its reasoning, per Documentation
+    Synchronization — this is exactly the kind of decision that belongs in
+    a context file, not only a commit message.
+  - `import-catalog.test.ts`: all 12 existing `importCatalog` calls updated
+    to the new two-argument signature (a bare, non-DB-backed
+    `IMPORTED_BY_USER_ID` constant — no real `User` row needed, matching the
+    "not a foreign key" point above), plus the new unauthenticated-rejection
+    test. Verified locally: `npm run lint` (0 warnings), `npm run typecheck`
+    (0 errors — confirmed this was the *only* file needing changes: no
+    production code anywhere calls `importCatalog` yet, since no route or UI
+    exposes it), `npm run test` (417/417 passed, 131 skipped — up from 130
+    with the one new test), `npm run build` all green. No `lib/db` schema
+    file touched, so no CI round trip is needed for this one either.
+- **DESIGN-RISK FOLLOW-UP 6 of 6 (2026-07-30, new session): transactionally
+  consistent read snapshots — implemented, locally checked, pending a CI
+  round trip. All six design-risk follow-ups from the 2026-07-30 hardening
+  pass are now addressed.** `createBaseline` issued seven-plus independent
+  reads before persisting, and `executeModuleInstance` resolved inputs across
+  several reads (its own authored values/links, then — per linked port whose
+  source is another module's output — that source's ownership, run list, and
+  latest run snapshot); every one of those reads ran at the default
+  `READ COMMITTED` isolation, each able to observe a different committed
+  state under a concurrent edit. A baseline is immutable once created and a
+  run is the thing a report renders forever after, so either freezing or
+  computing from a mix of before-and-after states was a real, if narrow,
+  correctness gap — not simultaneous-in-reality data presented as if it were.
+  - **The fix, exactly as scoped in Open Questions**: "thread a transaction
+    client through the repository *read* surface and run those reads at
+    `RepeatableRead`." Nine repository read functions across four files
+    gained an optional `client: DbClient = prisma` trailing parameter — the
+    same type this project's write functions already use for the identical
+    reason, `db-client.ts`'s comment updated to say so — defaulting to the
+    singleton so every existing 2-argument call site keeps compiling
+    unchanged: `loadModuleInstanceForOwner`, `loadConfigurationForOwner`,
+    `loadConfigurationTree` (project-repository.ts); `listRequirements`,
+    `listDesignAssumptions`, `listLoadCases` (requirements-repository.ts);
+    `listCurrentParameterValuesForConfiguration`,
+    `listParameterLinksForConfiguration`, `resolveModuleInputs` and its
+    internal `resolveLinkedSourceValue` helper (graph-repository.ts);
+    `listComponentAssignmentsForConfiguration`
+    (component-assignment-repository.ts); `loadCalculationRun`,
+    `listRunsForModuleInstance` (run-repository.ts).
+  - **Both application services now wrap their entire body — authorization,
+    every read, readiness/compute, and the final write — in one
+    `prisma.$transaction(fn, { isolationLevel: "RepeatableRead" })`**, not
+    just their final persist step as before. Each returns a discriminated
+    "outcome" type from inside the transaction (`CreateBaselineOutcome` /
+    `ExecuteOutcome` — `unauthorized`, `not_ready`/`module_not_found`/
+    `stale_upstream`, or the success case) rather than returning early with
+    an HTTP-shaped result from inside the callback, then maps that outcome
+    to the real `CreateBaselineResult`/`ExecuteModuleInstanceResult` after
+    the transaction settles — the same shape `assign-component.ts` uses for
+    its authorize-then-act flow, adapted to also cover a whole read phase. A
+    thrown `ModuleSdkError`/`BaselineRepositoryError` still propagates out of
+    the callback uncaught, rolling the transaction back cleanly before being
+    caught outside exactly as before — no change to that behavior, only to
+    what happens before it.
+  - **Deliberately no retry-on-serialization-failure loop.** A concurrent
+    transaction committing a conflicting change to something this
+    transaction already read can make Postgres fail it with a serialization
+    error rather than silently mixing snapshots — the correct, intended
+    failure mode, not a bug to paper over. Nothing in this codebase retries a
+    transaction today (no precedent to extend), and inventing a generic retry
+    wrapper for a failure mode that cannot yet be observed (no concurrent
+    users exist) would be exactly the kind of speculative infrastructure
+    "no invented behavior" warns against. Revisit once real concurrent usage
+    makes this an actual, not hypothetical, operational question.
+  - **Proved the actual Postgres guarantee, not just that the code still
+    compiles**: a new test in `create-baseline.test.ts` opens a real
+    `RepeatableRead` transaction, reads current parameter values through it,
+    then — *while that transaction is still open* — commits a genuinely
+    concurrent, independent write via `setParameterValue` (the default
+    `prisma` singleton, a different Postgres session) and awaits its
+    completion, then reads again through the still-open transaction and
+    asserts the second read is byte-identical to the first (still the
+    pre-change value) — then, after the transaction commits, confirms a
+    fresh read outside it does see the change. This tests Postgres's own
+    isolation guarantee directly (the same primitive both application
+    services now rely on) rather than only re-running `createBaseline`'s
+    existing behavioral tests, which would exercise the new transaction
+    wrapping without proving the property it exists for.
+  - Verified locally: `npm run lint` (0 warnings), `npm run typecheck` (0
+    errors — confirmed across every changed repository and application-service
+    file), `npm run test` (417/417 passed, 132 skipped — up from 131 with the
+    one new concurrency test; every existing `createBaseline`/
+    `executeModuleInstance` test still passes unchanged, since the public
+    input/output shapes of both services did not change), `npm run build` all
+    green. **No `lib/db` schema file touched** (no migration — this unit only
+    changes how existing tables are *read*, not their shape), so — unlike
+    follow-up 4 — this one needs no migration-deploy round trip in CI, but the
+    new live-DB concurrency test has still only run against
+    `describe.skipIf` locally and needs a real CI pass before being called
+    fully verified, the same caveat every live-DB-test-adding unit this
+    session carries.
 - **2026-07-30 integrity-hardening pass — complete and verified in GitHub
   Actions CI** (commit `a774c22`, run 30537557349 — every step green,
   including "Deploy migrations" applying the new
@@ -1553,10 +2019,21 @@ Application Services) is now complete.**
 The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
 `a774c22`, run 30537557349 — see Current Goal) and drops off this list.
 
-1. **Close the reopened Unit 0.3 quality-toolchain gap:** React Testing
-   Library, Playwright with an authenticated-route smoke strategy, coverage
-   configuration for engine/modules, a `test:e2e` script, and the CI E2E step.
-   Do not call Phase 0B complete until those checks execute.
+1. **CLOSED (2026-07-30, new session — see Current Goal, "DESIGN-RISK
+   FOLLOW-UP 1 of 6"):** React Testing Library, Playwright, coverage
+   configuration for engine/modules, a `test:e2e` script, and the CI E2E
+   step are all added. **Not fully closed as specified**: Playwright covers
+   only the *unauthenticated*-route smoke strategy (home page renders, and
+   `/workspace` redirects an unauthenticated visitor) — the authenticated
+   half needs Clerk test-instance credentials this project has never had
+   configured, now tracked as its own Open Questions item. Playwright
+   itself has not had a CI round trip yet (this dev machine's group policy
+   blocks launching any freshly downloaded browser binary — see Current
+   Goal); everything else (lint/typecheck/test/build, all green locally) has
+   already been re-verified with the new files present. Phase 0B's gate
+   ("CI blocks lint, type, unit, and build failures") was already true
+   before this pass; the roadmap's own toolchain deliverable list is what
+   was incomplete, and that gap is now closed pending the CI round trip.
 2. **Milestone 3 (generic UI)**, starting with Unit 3.1 (workspace shell).
    Then Milestone 4 (modules).
    - **RESOLVED (2026-07-30 hardening pass), superseding the deferral below:**
@@ -1633,43 +2110,70 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
   worth checking before the repository is shared
 - ARCHITECTURE FOLLOW-UPS from the 2026-07-30 audit, each a design decision
   rather than a bug fix, none attempted in the hardening pass:
-  - **Transactionally consistent read snapshots.** Stale propagation now
-    computes impact inside its own transaction, but `createBaseline` performs
-    seven independent reads before persisting, and `executeModuleInstance`
-    resolves inputs across several reads — under concurrent edits either can
-    freeze or compute from mixed-time state. A baseline is immutable, so this
-    matters most there. The fix is to thread a transaction client through the
-    repository *read* surface and run those reads at `RepeatableRead`; that
-    touches many read signatures, so it deserves its own work unit
-  - **Module content hash covers declarative metadata only.**
-    `packageContentHash` deliberately excludes `compute` and helper source
-    (functions are not stably serializable), so two packages with identical
-    manifests but different formulas hash the same. A run pins that hash as
-    its reproducibility claim. Resolve before any production module is
-    released — most likely by hashing the module directory's source files at
-    release time
-  - **Angle as a base dimension breaks angular power algebra.** Confirmed by
-    direct test: `multiplyQuantities(10 N·m, 100 rad/s)` returns
-    `kg*m^2*s^-3*rad` — the magnitude is right, but the unit is not `W` and
-    will not convert to it. Angle is a base dimension on purpose (so `rad` ≠
-    ratio and `rad/s` ≠ `Hz`, which the graph relies on to reject wrong
-    links), so this is a real trade-off, not an oversight: modules doing
-    torque × angular velocity must construct the result explicitly rather
-    than rely on unit simplification. Decide the treatment (an explicit
-    angle-cancelling rule in `multiply`/`divide`, a dedicated power helper,
-    or a documented convention) before motion/drive-train modules ship
-  - **Same-configuration constraints exist only in the application services.**
-    The 2026-07-30 hardening pass closed the cross-configuration write paths
-    at the service boundary; the database would still accept a
-    `ParameterValue`, `ParameterLink`, or `ComponentAssignment` whose
-    configuration and target disagree. Composite foreign keys or triggers
-    would give defense in depth, matching the pattern the immutable-run and
-    part-revision triggers already establish
-  - **Shared catalog imports have no authorization at all.** `importCatalog`
-    takes no owner and checks nothing — catalog data is deliberately shared
-    reference data (Unit 2.6), so "who may import or overwrite it" is a
-    policy question with no answer yet. Nothing exposes it (no route or UI),
-    so this is not currently reachable; it must be settled before one exists
+  - **RESOLVED (2026-07-30, design-risk follow-up 6 of 6 — see Current
+    Goal), pending a CI round trip before it can be called fully verified.**
+    Nine repository read functions across four files gained an optional
+    `client: DbClient = prisma` parameter; `createBaseline` and
+    `executeModuleInstance` each now wrap their whole body — authorization,
+    every read, and the final write — in one `prisma.$transaction(fn, {
+    isolationLevel: "RepeatableRead" })`. A new live-DB test in
+    `create-baseline.test.ts` proves the actual Postgres guarantee (a
+    concurrent commit mid-transaction stays invisible to reads already
+    inside it), but has only run against `describe.skipIf` locally so far.
+    **All six design-risk follow-ups from the 2026-07-30 hardening pass are
+    now addressed** — every "Not attempted this session" item that pass
+    named is either resolved or, for Unit 0.3's Playwright authenticated-path
+    gap and the linear/rotational unit helper, explicitly re-deferred with a
+    stated reason above, not silently dropped.
+  - **RESOLVED (2026-07-30, design-risk follow-up 3 of 6 — see Current
+    Goal).** `packageContentHash` still deliberately excludes `compute` and
+    helper source (functions are not stably serializable) — that has not
+    changed, and a run's pinned `contentHash` still cannot by itself prove
+    which formula executed. What closes the gap is a separate mechanism,
+    external to `packageContentHash`: `moduleSourceHash` + a new
+    `runModuleConformance` "source-immutability" check + `npm run
+    module:source-hash`, wired into both example modules as the reference
+    pattern for Stage 6 release. See `ai-workflow-rules.md` Stage 6 and
+    `code-standards.md` "Module Packages" for the now-required release step.
+  - **RESOLVED (2026-07-30, design-risk follow-up 2 of 6 — see Current
+    Goal).** Angle is a base dimension on purpose (so `rad` ≠ ratio and
+    `rad/s` ≠ `Hz`, which the graph relies on to reject wrong links), so
+    generic `multiplyQuantities(10 N·m, 100 rad/s)` staying `kg*m^2*s^-3*rad`
+    rather than simplifying to `W` was a real trade-off, not an oversight.
+    Resolved with a dedicated helper (not a change to generic
+    multiply/divide): `rotationalPower`/`torqueFromPower`/
+    `angularVelocityFromPower` in `lib/engine/units/arithmetic.ts`. Modules
+    doing torque × angular velocity must call `rotationalPower`, not
+    `multiplyQuantities`.
+  - NEW, deferred (2026-07-30, same follow-up): the same "angle cancels by
+    reviewed physical law" shape also applies to `v = r*ω` (linear speed
+    from a radius/lead and an angular velocity) — the ball-screw and
+    pulley/roller conversions Milestone 1B/1C need. Not built yet: it is a
+    different relationship from the one confirmed broken by test, and no
+    module calls it yet. Add it as its own small helper (the same
+    `requireDimension` + direct-SI-computation pattern
+    `rotationalPower` uses) when Unit 1B's ball-screw or Unit 1C's servo
+    module first needs it, rather than guessing its exact signature now
+  - **IMPLEMENTED (2026-07-30, design-risk follow-up 4 of 6 — see Current
+    Goal), pending a CI round trip before it can be called resolved.**
+    Composite foreign keys (not triggers) on `ModuleInstance.assembly`,
+    `ParameterValue.assembly`/`.moduleInstance`,
+    `ParameterLink.targetModuleInstance`/`.sourceModuleInstance`/
+    `.sourceAssembly`, and `ComponentAssignment.moduleInstance`/`.assembly`
+    — migration `20260730180000_same_configuration_constraints`. 5 new
+    repository-level tests prove a genuine mismatch is rejected, but have
+    only run against `describe.skipIf` locally (no Postgres on this
+    machine); do not treat this as fully verified until CI's "Deploy
+    migrations" step and those 5 tests both go green
+  - **RESOLVED (2026-07-30, design-risk follow-up 5 of 6 — see Current
+    Goal).** Policy: any authenticated user may import catalog data (no
+    role/admin concept exists in this codebase to gate on, and inventing one
+    here would be new product behavior), but every import is now mandatorily
+    attributed — `importCatalog(input, importedByUserId: UserId)`, the
+    second parameter no longer optional. See `architecture.md` "Auth and
+    Access" and `code-standards.md` "Catalog" for the recorded policy. A
+    stricter, role-gated policy remains deferred to whenever this codebase
+    gets a role/reviewer concept (Phase 4)
   - **`format:check` is red on 124 files and is not in CI.** Most predate this
     work. A formatting-only commit would fix it, but mixing it into a
     behavior change makes review impossible — so it needs its own commit
@@ -1714,6 +2218,18 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
   commands directly on that machine — it is not fixed by anything done
   this session (see the Unit 0.4 session note immediately below for what
   *was* actually tested)
+- NEW (2026-07-30, Unit 0.3 design-risk follow-up): this project has never
+  had a Clerk instance's keys configured anywhere — dev runs on Clerk's
+  keyless auto-provisioned instance, and no CI secret exists either. That
+  is enough for the new `e2e/smoke.spec.ts` to prove the unauthenticated
+  half of Unit 0.4's exit criteria (redirect away from `/workspace`), but
+  not the authenticated half ("authenticated user can access the empty
+  workspace"), which needs a real signed-in session. Proving that in CI
+  needs a decision to create a Clerk test/dev instance and store its keys
+  (plus, for a non-interactive sign-in, `@clerk/testing`'s testing-token
+  flow) as GitHub Actions secrets — a policy/cost decision, not a bug fix.
+  Revisit once Milestone 3 UI work makes the authenticated path something
+  users actually exercise
 - shadcn/ui was configured by hand (Radix + "new-york" style) instead of
   via `npx shadcn init`, since that command's live init endpoint was
   unreachable; confirm the style/base choice once the CLI is reachable,
@@ -1765,6 +2281,24 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
   on 2026-07-29 not to attempt any TLS workaround; no bypass has been
   attempted in any session (no `NODE_TLS_REJECT_UNAUTHORIZED`, no CA-trust
   change).
+- UPDATE (2026-07-30, new session, design-risk follow-up 4 of 6): on
+  *this* session's network, `npx prisma generate` and `npx prisma validate`
+  both worked cleanly against the current schema — another data point (like
+  2026-07-29's) that this constraint varies by network/session, not by
+  something fixed in the repository. **New finding, narrower than the
+  binaries.prisma.sh TLS block above**: `npx prisma migrate diff --script`
+  (schema-to-schema, no live database required in principle) failed with
+  `spawn UNKNOWN`; running the downloaded Chromium binary directly (see the
+  Unit 0.3 entry, same session) had already shown this exact OS-level
+  message plainly: "This program is blocked by group policy." So on a
+  network where the TLS block is absent, a *different*, process-launch-level
+  corporate restriction can still block Prisma's schema-engine binary
+  specifically (needed for `migrate diff`/`migrate dev`, apparently not for
+  `generate`/`validate`) — two independent obstacles, not one. Still no
+  local PostgreSQL/Docker on this machine either way, so `prisma migrate
+  dev`'s shadow-database workflow remains unavailable regardless of which
+  obstacle is active; CI stays the actual verification environment for
+  migrations.
 
 ## Resolved Product Decisions
 

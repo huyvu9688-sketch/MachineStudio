@@ -61,6 +61,7 @@ describe.skipIf(!liveDatabaseAvailable)(
     ): Promise<ModuleInstanceId> {
       const mi = await projects.createModuleInstance({
         assemblyId: s.assemblyId,
+        configurationId: s.configId,
         modulePackageId: "example-linear-thrust",
         moduleVersion: "0.1.0",
         label,
@@ -140,6 +141,56 @@ describe.skipIf(!liveDatabaseAvailable)(
           { parameterId: "motion.axis.payload_mass" },
         ]),
       ).rejects.toMatchObject({ code: "invalid_snapshot" });
+    });
+
+    it("rejects a parameter value whose assemblyId belongs to another configuration (design-risk follow-up, DB-level same-configuration constraint)", async () => {
+      const s = await scaffold();
+      const other = await scaffold();
+      await expect(
+        graph.createParameterValue({
+          configurationId: s.configId,
+          // other.assemblyId is real, but scoped to other.configId, not
+          // s.configId — the composite foreign key on
+          // parameter_values.assembly must reject this even though both IDs
+          // individually exist.
+          assemblyId: other.assemblyId,
+          nodeKind: "assembly_parameter",
+          parameterId: "p.mismatched",
+          source: "manual",
+          value: kg(1),
+        }),
+      ).rejects.toThrow();
+    });
+
+    it("rejects a parameter value whose moduleInstanceId belongs to another configuration (design-risk follow-up, DB-level same-configuration constraint)", async () => {
+      const s = await scaffold();
+      const other = await scaffold();
+      const otherModuleId = await newModule(other, "Other");
+      await expect(
+        graph.createParameterValue({
+          configurationId: s.configId,
+          moduleInstanceId: otherModuleId,
+          nodeKind: "module_input",
+          parameterId: "p.mismatched",
+          source: "manual",
+          value: kg(1),
+        }),
+      ).rejects.toThrow();
+    });
+
+    it("rejects a parameter link whose targetModuleInstanceId belongs to another configuration (design-risk follow-up, DB-level same-configuration constraint)", async () => {
+      const s = await scaffold();
+      const other = await scaffold();
+      const otherModuleId = await newModule(other, "Other target");
+      await expect(
+        graph.createParameterLink({
+          configurationId: s.configId,
+          targetModuleInstanceId: otherModuleId,
+          targetParameterId: "p.mismatched",
+          sourceKind: "machine_requirement",
+          sourceParameterId: "p.provider",
+        }),
+      ).rejects.toThrow();
     });
 
     it("resolves manual, workflow, linked, and default input sources", async () => {

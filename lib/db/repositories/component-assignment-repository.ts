@@ -273,10 +273,11 @@ export async function loadComponentAssignmentForOwner(
 export async function listComponentAssignmentsForConfiguration(
   configurationId: string,
   ownerId: UserId,
+  client: DbClient = prisma,
 ): Promise<ComponentAssignmentRecord[]> {
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
-  const rows = await prisma.componentAssignment.findMany({
+  const rows = await client.componentAssignment.findMany({
     where: { configurationId: id, configuration: { project: { ownerId: owner } } },
     // A total order (`id` breaks same-timestamp ties): Unit 2.9's baseline
     // snapshot freezes this list, so two baselines of unchanged data must

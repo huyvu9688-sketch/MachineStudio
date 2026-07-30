@@ -49,13 +49,13 @@ export interface ImportCatalogInput {
   readonly csvText: string;
   /** Human-readable batch provenance, e.g. an uploaded filename. */
   readonly sourceLabel: string;
-  readonly importedByUserId?: UserId;
   /** When true, parses and validates but never writes to the database. */
   readonly dryRun?: boolean;
 }
 
 /** Machine-readable classification of an `importCatalog` setup failure. */
 export type ImportCatalogErrorCode =
+  | "unauthenticated"
   | "manufacturer_not_found"
   | "component_schema_version_not_found"
   | "component_type_mismatch"
@@ -134,6 +134,26 @@ export type ImportCatalogResult =
  * than overwriting it (ADR-0006 — a part revision is immutable, so corrected
  * data belongs under a new source revision).
  *
+ * **Authorization policy (design-risk follow-up, 2026-07-30 — see
+ * context/progress-tracker.md)**: catalog data is deliberately shared,
+ * project-independent reference data (Unit 2.6 architecture decision), so
+ * there is no *owner* to check the way every other application service
+ * checks one — "who may import" cannot be answered with an ownership query.
+ * The MVP has no role/reviewer/admin system at all yet
+ * (context/architecture.md "Auth and Access": "Sharing, organization
+ * tenancy, and reviewer permissions are deferred"), so gating this behind an
+ * invented admin role would be new product behavior with no spec behind it.
+ * The policy this settles on instead: **any authenticated user may import,
+ * and every import is attributed** — `importedByUserId` moves from an
+ * optional input field to a required second parameter (matching
+ * `assignComponent`/`setParameterValue`/`confirmParameterLink`'s
+ * `(input, ownerId)` shape, not a client-suppliable field trusted from
+ * `input`), so a caller can no longer mutate shared reference data
+ * anonymously. `CatalogImportBatch.importedByUserId` already persists this;
+ * previously nothing required it be set. A stricter, role-gated policy is
+ * deferred to whenever Phase 4 ("Review states and multi-user permissions")
+ * gives this codebase a role concept to gate on — not invented here.
+ *
  * Never throws for a bad data row (already resolved by `parseCatalogCsv` into a
  * per-row error), a conflicting row, or a broken import setup (returned as
  * `{ ok: false }`); an unexpected repository error still throws — that is a
@@ -141,7 +161,18 @@ export type ImportCatalogResult =
  */
 export async function importCatalog(
   input: ImportCatalogInput,
+  importedByUserId: UserId,
 ): Promise<ImportCatalogResult> {
+  if (importedByUserId.trim().length === 0) {
+    return {
+      ok: false,
+      error: {
+        code: "unauthenticated",
+        message: "importCatalog requires an authenticated importedByUserId.",
+      },
+    };
+  }
+
   const manufacturer = await loadManufacturer(input.manufacturerId);
   if (manufacturer === null) {
     return {
@@ -232,9 +263,7 @@ export async function importCatalog(
           componentTypeId: input.componentTypeId,
           manufacturerId: input.manufacturerId,
           sourceLabel: input.sourceLabel,
-          ...(input.importedByUserId !== undefined
-            ? { importedByUserId: input.importedByUserId }
-            : {}),
+          importedByUserId,
           importMappingId: input.mapping.id,
           importMappingVersion: input.mapping.version,
           totalRowCount: report.totalRows,
