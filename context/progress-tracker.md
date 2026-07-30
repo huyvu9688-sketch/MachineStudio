@@ -103,8 +103,14 @@ Update this file after every meaningful implementation change.
   (proven in both part 1's pure tests and part 2's end-to-end test). Verified
   locally: lint (0 warnings), full suite (334/334, 69 skipped — up from 58 with
   the 11 new live-DB tests), typecheck confirmed to introduce no new errors
-  beyond the pre-existing missing-generated-client cascade. Not yet verified in
-  CI this turn — see Current Goal.
+  beyond the pre-existing missing-generated-client cascade. Verified **in
+  GitHub Actions CI** (commit `398047c`, run 30510736610): every step green,
+  including "Deploy migrations" (confirming the hand-authored
+  `CatalogImportBatch` ALTER TABLE applies cleanly) and all 11 new live-DB
+  tests — notably proving the `manufacturerId_partNumber_sourceRevision`
+  compound-unique-key name `upsertManufacturerPartRevision` assumed (Prisma's
+  default naming for an unnamed `@@unique([...])`, guessed without being able
+  to generate the client locally) is correct.
 
 ## Current Goal
 
@@ -114,8 +120,9 @@ Update this file after every meaningful implementation change.
   mapping + parser + row validation + unit normalization) is complete and
   verified in GitHub Actions CI** (2026-07-30, commit `484c733`, run
   30509515278 — every step green). **Unit 2.7 part 2 (persistence +
-  orchestration) is complete** (2026-07-30, not yet pushed/CI-verified this
-  turn) — see the Completed entry. **Unit 2.7 as a whole is now done.**
+  orchestration) is complete and verified in GitHub Actions CI** (2026-07-30,
+  commit `398047c`, run 30510736610 — every step green, including migration
+  deploy) — see the Completed entry. **Unit 2.7 as a whole is now done.**
   - **SPLIT DECISION (2026-07-30, Unit 2.7):** the implementation map's Unit
     2.7 ("Catalog CSV import service") deliverables — import mapping schema,
     CSV parser, unit normalization, row validation, dry-run mode, error
@@ -1057,13 +1064,13 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-Unit 2.6 and both parts of Unit 2.7 are done (2026-07-30, see Current Goal —
-part 2's plan-correction note explains why the batch summary landed on new
-`CatalogImportBatch` columns instead of the originally-planned `AuditEvent`
-reuse) and drop off this list. Unit 2.6 and part 1 are verified green in CI;
-part 2 is not pushed/CI-verified yet as of this entry. This session had no
-local database at all — CI remains the verification path for anything
-touching Postgres until a future session confirms local access again.
+Unit 2.6 and both parts of Unit 2.7 are done and verified green in GitHub
+Actions CI (2026-07-30, see Current Goal — part 2's plan-correction note
+explains why the batch summary landed on new `CatalogImportBatch` columns
+instead of the originally-planned `AuditEvent` reuse) and drop off this list.
+This session had no local database at all — CI remains the verification path
+for anything touching Postgres until a future session confirms local access
+again.
 
 1. **Unit 2.8 (catalog matching and component assignment)** — next. Per
    `context/implementation-map.md`: hard-filter engine, transparent ranking
