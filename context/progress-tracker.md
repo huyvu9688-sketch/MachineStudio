@@ -65,23 +65,24 @@ Update this file after every meaningful implementation change.
   new `lib/db/repositories/catalog-repository.ts`, and the first real content
   in the previously-placeholder `lib/catalog/` boundary (component-type
   attribute schema contracts, reusing the Unit 1.1 `EngineeringValue` types).
-  See the Completed entry for detail. Verification this session was lint +
-  test only (local database access is blocked again, see Current Goal below);
-  typecheck/build/live-DB tests are deferred to CI.
+  See the Completed entry for detail. Verified **in GitHub Actions CI**
+  (commit `8dd8800`, run 30508278042): lint, typecheck, test (10 new live-DB
+  catalog tests included), and build all green, with the hand-authored
+  migration deployed cleanly to the live Postgres service container.
 
 ## Current Goal
 
 - Milestone 2 in progress. **Unit 2.6 (manufacturer catalog schema) is
-  complete** (2026-07-30) — see the Completed entry. **Next work unit: Unit
-  2.7 (catalog CSV import service)** — import mapping schema, CSV parser, unit
-  normalization, row validation, dry-run mode, error report, import batch
+  complete and verified in GitHub Actions CI** (2026-07-30, commit `8dd8800`,
+  run 30508278042 — every step green: install, generate, deploy migrations,
+  lint, typecheck, test, build) — see the Completed entry. **Next work unit:
+  Unit 2.7 (catalog CSV import service)** — import mapping schema, CSV parser,
+  unit normalization, row validation, dry-run mode, error report, import batch
   summary, and idempotent upsert rules on top of Unit 2.6's
   `CatalogImportBatch`/`ManufacturerPartRevision` models (exit criterion: a
   manufacturer catalog fixture imports reproducibly and reports every rejected
   row). Then Units 2.8–2.9; Milestone 3 (generic UI) and Milestone 4 (modules)
-  follow. This session's work (Unit 2.6) has not yet been verified in CI — see
-  below — so confirming that before starting 2.7 is the first thing the next
-  session should do.
+  follow.
   - DEFERRED within Unit 2.6 (documented in `lib/catalog/types.ts` and the
     Unit 2.6 Completed entry, not a gap to silently carry forward): matching a
     specific `ManufacturerPartRevision.attributes` payload against its
@@ -116,7 +117,14 @@ Update this file after every meaningful implementation change.
   imports Prisma types, plus its downstream `TS7006` implicit-any errors in
   unrelated pre-existing files) — confirmed no new error class was introduced
   by this unit's changes. Full verification (typecheck, build, migration
-  deploy, and the 10 new live-DB tests) is deferred to GitHub Actions CI.
+  deploy, and the 10 new live-DB tests) ran in GitHub Actions CI after pushing
+  — all green (see the updated Current Goal entry above). **Note for future
+  sessions**: the `gh` CLI is not installed in this environment, but the
+  GitHub REST API is reachable over plain `curl` even though
+  `binaries.prisma.sh` is blocked (only that specific host is intercepted) —
+  `curl -s "https://api.github.com/repos/<owner>/<repo>/actions/runs?branch=main&per_page=3"`
+  and `.../actions/runs/<id>/jobs` are enough to confirm a push's CI result
+  without waiting on the user or fabricating a result.
 - IMPORTANT UPDATE (2026-07-29) to the long-standing `prisma generate`
   constraint: on a fresh clone this session, `prisma generate`, `typecheck`,
   and `build` **all succeed on a local dev machine** — because the schema uses
@@ -983,10 +991,10 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-Unit 2.6 is done (2026-07-30) and drops off this list; it is not yet verified
-in CI (see Current Goal). This session had no local database at all — CI is
-the verification path until a future session confirms local Postgres access
-again.
+Unit 2.6 is done and verified green in GitHub Actions CI (2026-07-30, see
+Current Goal) and drops off this list. This session had no local database at
+all — CI remains the verification path until a future session confirms local
+Postgres access again.
 
 1. **Unit 2.7 (catalog CSV import service)** — next. Deliverables per the
    implementation map: import mapping schema, CSV parser, unit normalization
