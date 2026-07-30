@@ -146,6 +146,28 @@ Update this file after every meaningful implementation change.
   migration deploy, and the new live-DB tests) has not yet run in CI** — that
   needs a commit and push, which this session did not do without asking
   first (see Current Goal).
+  **UPDATE (2026-07-30, next session): Unit 2.8 part 2 was committed and
+  pushed (`07ac049`) and GitHub Actions CI came back red** — not a
+  production bug, a **test-cleanup bug**: the two new live-DB test files
+  (`assign-component.test.ts`, `component-assignment-repository.test.ts`)
+  never tracked or deleted the `ManufacturerPartRevision` rows their
+  `fixture()` creates, and deleted their `ComponentType` before it —
+  violating the `onDelete: Restrict` FK from `ManufacturerPartRevision`
+  (deliberate, Unit 2.6) and, for the one test that also created a
+  `ComponentAssignment` against that revision, the identical `Restrict` FK
+  from `ComponentAssignment.manufacturerPartRevisionId`. This only surfaces
+  against a real Postgres (CI), not locally, where these tests self-skip
+  without a generated Prisma client — so it was invisible until the push.
+  `catalog-repository.test.ts` (Unit 2.6, already green in CI) already
+  established the correct cleanup order (part revision → import batch →
+  component type → manufacturer); the two new files just didn't follow it.
+  Fixed by tracking `createdPartRevisionIds` and deleting the referencing
+  `ComponentAssignment` rows, then the part revision, before
+  `ComponentType`/`Manufacturer`, in both files — no production code
+  changed. Verified **in GitHub Actions CI** (commit `ec7b5f7`, run
+  confirmed green via the Checks API). **Unit 2.8 is now fully complete and
+  CI-verified**, closing out the one open item from the previous session.
+  See Next Up for Unit 2.9.
 
 ## Current Goal
 
@@ -322,9 +344,88 @@ Update this file after every meaningful implementation change.
       runs, this part should be treated as implemented-and-locally-checked,
       not fully verified — unlike Units 2.1–2.7, which all reached a
       "verified in GitHub Actions CI" state before being called done.
-  - **Next work unit: Unit 2.9** (baseline + audit services), once Unit 2.8
-    part 2 is committed and CI-verified. Milestone 3 (generic UI) and
-    Milestone 4 (modules) follow.
+  - **Unit 2.8 is now committed, pushed, and verified green in GitHub Actions
+    CI** (commit `ec7b5f7`, after the test-cleanup fix — see the Completed
+    entry above this section). Unit 2.8 as a whole is done.
+  - **SPLIT DECISION (2026-07-30, Unit 2.9):** the implementation map's Unit
+    2.9 ("Baseline and audit services") deliverables — `MachineBaseline`
+    snapshot, baseline item references, baseline creation checks, baseline
+    comparison, and `AuditEvent` query surfaces — span the same shape of
+    boundary split Units 2.7/2.8 used: a pure, DB-free snapshot/comparison
+    contract (the new `lib/configuration/` boundary,
+    context/architecture.md: "Draft configurations, immutable baselines,
+    baseline comparison") versus persistence (`MachineBaseline` schema +
+    repository, `lib/db`) and orchestration (`createBaseline`/
+    `compareBaselines`, `lib/application`). Split the same way: **part 1**
+    (`lib/configuration` only, this session) and **part 2** (`lib/db` +
+    `lib/application`, not yet started — the `AuditEvent` query-surface
+    addition folds into the already-counted `lib/db` boundary, the same way
+    Unit 2.8 part 2 folded a small `lib/catalog` addition into its
+    `lib/db`+`lib/application` count rather than treating it as a third
+    boundary).
+  - **Part 1 delivered** (2026-07-30): the new `lib/configuration/` boundary
+    — `types.ts` (`MachineBaselineSnapshot` and its nested contracts,
+    `BASELINE_SNAPSHOT_FORMAT_VERSION = 1`), `schemas.ts`
+    (`MachineBaselineSnapshotSchema`, composing the engine's own
+    `EngineeringValueSchema` and `lib/catalog`'s `ManualPartDetailsSchema` so
+    the envelope stays in lockstep with those contracts, the same approach
+    `run-snapshot.ts` takes for `CalculationRunSnapshot`), `readiness.ts`
+    (`evaluateBaselineReadiness` — the "Baseline creation checks"
+    deliverable), and `comparison.ts` (`compareBaselineSnapshots` — the
+    "baseline comparison" deliverable). 30 new tests, all pure; `npm run
+    lint`/`test` clean (386/386 passed, up from 356), `typecheck` confirmed
+    to introduce no new error beyond the pre-existing 14-error
+    missing-generated-client cascade (exact count matched before and after).
+    No `lib/db` file touched, so — mirroring Unit 2.8 part 1's own note —
+    this part needs no CI round trip; local verification is the complete
+    verification story for a pure boundary.
+    - **Every ID in the snapshot contract is a plain `string`, not a branded
+      type imported from `lib/db`.** `lib/configuration` must never import
+      `lib/db` (a schema change to the persisted row shape must not ripple
+      into the pure snapshot contract, and vice versa) — the same
+      generic-and-decoupled pattern `lib/catalog`'s `CandidatePart.id: string`
+      already established in Unit 2.8 part 1, rather than reusing
+      `AssemblyId`/`ModuleInstanceId`/etc.
+    - **BOM scope decision**: the implementation map lists "BOM" as part of
+      the baseline snapshot, but no `BomItem` model exists yet (Milestone 5,
+      Unit 5.1, not yet built). Per "no invented behavior," this snapshot does
+      not fabricate a BOM shape ahead of its owning unit — `componentAssignments`
+      (already required separately by the implementation map, and named in
+      project-overview.md as "required for BOM generation") is what a BOM is
+      generated *from*; freezing it here is what keeps a future BOM
+      reproducible from this baseline. A literal frozen `BomItem[]` is
+      deferred to Unit 5.1, which can extend the snapshot (a new format
+      version) once that model exists. Documented in `types.ts`'s top comment,
+      not silently dropped.
+    - **`ParameterValue` and `CalculationRun` are diffed/frozen by logical
+      slot, not raw row id.** A `ParameterValue` is append-only history (Unit
+      2.2/2.5: changing a value creates a new row, never edits one), and a
+      module instance gets a new `CalculationRun` row each execution — so the
+      snapshot's own `BaselineParameterValue`/`BaselineCalculationRunRef`
+      entries are the *resolved current* row per node/module instance (the
+      snapshot builder's job, Unit 2.9 part 2), and `compareBaselineSnapshots`
+      diffs them by graph-node key / `moduleInstanceId` rather than by their
+      row `id` — otherwise a value literally changing from 10 kg to 12 kg
+      would show as an opaque "row X removed, row Y added" instead of a
+      genuine "changed" entry. Every other category (`Requirement`,
+      `DesignAssumption`, `LoadCase`, `ParameterLink`, `ComponentAssignment`)
+      has no update path in `lib/db` today, so diffing those by `id` is exact
+      — `ComponentAssignment`'s `stale` flag flipping in place is still caught
+      correctly this way, since the `id` is unchanged but the frozen content
+      differs between two baselines.
+    - **Baseline creation checks are a soft gate, not a hard block.** A
+      baseline can legitimately freeze a known-imperfect design for review
+      (project-overview.md: a baseline supports "design review or release," not
+      only a finished release) — so `evaluateBaselineReadiness` always reports
+      every blocker it finds (`stale_run`, `failed_run` for `status` `"fail"`
+      or `"invalid_input"`, `stale_assignment`), and `ready` is `true` either
+      when there are none or when the caller passes `acknowledgeWarnings: true`
+      — mirroring Unit 3.8's named UI flow ("Pre-baseline validation summary" +
+      "Warning acknowledgement") rather than inventing a different UX.
+  - **Next work unit: Unit 2.9 part 2** (`MachineBaseline` schema +
+    repository in `lib/db`, `AuditEvent` query surfaces, and
+    `createBaseline`/`compareBaselines` in `lib/application`), then Milestone
+    3 (generic UI) and Milestone 4 (modules).
   - DEFERRED within Unit 2.6, RESOLVED in Unit 2.7 part 1 (documented in
     `lib/catalog/types.ts`'s Unit 2.6 comment and `csv-import.ts`'s top
     comment): matching a specific `ManufacturerPartRevision.attributes`
@@ -1231,27 +1332,23 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-Unit 2.6, both parts of Unit 2.7, and both parts of Unit 2.8 are implemented
-(2026-07-30, see Current Goal) and drop off this list. Unit 2.6/2.7 are
-verified green in GitHub Actions CI. Unit 2.8 part 1 needed no CI round trip
-(pure `lib/catalog`, no database touched). **Unit 2.8 part 2 touches the
-Prisma schema and has NOT yet been committed, pushed, or CI-verified** — that
-is the immediate next action, ahead of starting Unit 2.9, per this project's
-established convention that a schema-touching unit is not "done" (only
-"implemented and locally checked") until GitHub Actions confirms the
-migration and the new live-DB tests. See Current Goal for exactly what is
-locally verified and what is not.
+Units 2.6, 2.7 (both parts), and 2.8 (both parts) are complete and verified
+green in GitHub Actions CI (2026-07-30 — Unit 2.8's initial push needed a
+test-cleanup fix, see Current Goal) and drop off this list. Unit 2.9 part 1
+(`lib/configuration`, pure) is also complete, needing no CI round trip (no
+`lib/db` file touched, same as Unit 2.8 part 1's precedent). See Current Goal
+for detail.
 
-1. **Get Unit 2.8 part 2 committed, pushed, and green in CI** — the
-   immediate next action, not a new unit. Nothing about the implementation is
-   expected to change; this is the same verification step every prior
-   schema-touching unit (2.1–2.7) already went through.
-2. **Unit 2.9 (baseline + audit services)** — next real unit, once Unit 2.8
-   is fully verified. Per `context/implementation-map.md`: `MachineBaseline`
-   snapshot, baseline item references, baseline creation checks, baseline
-   comparison, and the append-only `AuditEvent` query surfaces (Unit 2.4 only
-   added the minimal "append an event" shape). Then Milestone 3 (generic UI)
-   and Milestone 4 (modules) follow.
+1. **Unit 2.9 part 2** (`MachineBaseline` schema + repository in `lib/db`,
+   `AuditEvent` query surfaces, and `createBaseline`/`compareBaselines` in
+   `lib/application`) — the immediate next action. Per
+   `context/implementation-map.md`: baseline item references (covered by part
+   1's snapshot contract), baseline creation checks (part 1's
+   `evaluateBaselineReadiness`, wired to real project data here), baseline
+   comparison (part 1's `compareBaselineSnapshots`, wired to two loaded
+   baselines here), and the append-only `AuditEvent` query surfaces (Unit 2.4
+   only added the minimal "append an event" shape). Then Milestone 3 (generic
+   UI) and Milestone 4 (modules) follow.
    - Deferred to the confirm/suggestion flow (NOT Unit 2.2): **semantic link
      compatibility** (`evaluateLinkCompatibility`). Unit 2.2 persists an
      already-confirmed link and rejects cycles (a structural rule independent
@@ -1278,9 +1375,9 @@ locally verified and what is not.
      `rankCandidates`'s output to pass to `assignComponent`. Part 1
      deliberately did not guess which operator each attribute needs — see
      Current Goal and Architecture Decisions.
-3. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
+2. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
    fixtures once the user has real cases to compare against
-4. Downstream parameter groups (screw, guide, coupling, support-bearing,
+3. Downstream parameter groups (screw, guide, coupling, support-bearing,
    drive-train): NOT released in registry v1 — approved pending proposals to
    be released per module at its Stage-2 parameter contract (bumping the
    registry version). See `lib/engine/parameters/README.md` and Open Questions
