@@ -19,6 +19,7 @@ import { overallCheckStatus, type CheckResult, type CheckStatus } from "../../en
 import { getDimensionOf, hasUnit, isDimensionless } from "../../engine/units";
 import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "../client";
+import type { DbClient } from "./db-client";
 import type { CalculationRunId } from "./run-types";
 import { asCalculationRunId } from "./run-types";
 import type {
@@ -143,10 +144,15 @@ function toRunRecord(row: RunRow): CalculationRunRecord {
  * is written; `status` and `criticalMargin` are derived from its checks and the
  * version pins are normalized into columns.
  *
+ * Pass `client` (a `$transaction` callback's `tx`) to make this atomic with
+ * other writes — e.g. Unit 2.4's `executeModuleInstance`, which also updates
+ * the module instance's status summary and appends an audit event.
+ *
  * @throws {@link RunRepositoryError} with code `invalid_input` on a malformed snapshot.
  */
 export async function createCalculationRun(
   input: CreateCalculationRunInput,
+  client: DbClient = prisma,
 ): Promise<CalculationRunRecord> {
   const moduleInstanceId = parseId(input.moduleInstanceId);
   const parsed = safeParseRunSnapshot(input.snapshot);
@@ -160,7 +166,7 @@ export async function createCalculationRun(
   }
   const snapshot = parsed.data;
 
-  const row = await prisma.calculationRun.create({
+  const row = await client.calculationRun.create({
     data: {
       moduleInstanceId,
       engineSdkVersion: snapshot.versions.engineSdkVersion,

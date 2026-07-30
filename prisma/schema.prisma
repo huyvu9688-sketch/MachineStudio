@@ -53,6 +53,7 @@ model MachineProject {
 
   owner          User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   configurations MachineConfiguration[]
+  auditEvents    AuditEvent[]
 
   @@index([ownerId])
   @@map("machine_projects")
@@ -141,8 +142,19 @@ model ModuleInstance {
   /// Semantic version of the released module package, e.g. "0.1.0".
   moduleVersion      String
   label              String
-  createdAt          DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt          DateTime @updatedAt @db.Timestamptz(6)
+  /// Normalized summary of the latest calculation run, set atomically with
+  /// run persistence (Unit 2.4's `executeModuleInstance`) — the same
+  /// "search-critical summary normalized into a column" pattern
+  /// `CalculationRun.status` uses, one level up, so the module tree can
+  /// render a status badge without joining every run. A plain scalar (not a
+  /// Prisma relation) since `CalculationRun.moduleInstanceId` already owns
+  /// the relation in the other direction. Null before any run exists (module
+  /// status "not configured"/"ready", computed elsewhere from input
+  /// completeness — context/ui-context.md "Status Model").
+  lastCalculationRunId String?
+  lastRunStatus        CheckStatus?
+  createdAt            DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime     @updatedAt @db.Timestamptz(6)
 
   assembly         Assembly          @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
   workflowInstance WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: SetNull)
@@ -153,6 +165,7 @@ model ModuleInstance {
 
   @@index([assemblyId])
   @@index([workflowInstanceId])
+  @@index([lastRunStatus])
   @@map("module_instances")
 }
 
@@ -402,4 +415,37 @@ model CalculationRun {
   @@index([moduleInstanceId])
   @@index([stale])
   @@map("calculation_runs")
+}
+
+// --- Unit 2.4: append-only audit events ----------------------------------
+
+/// An append-only engineering audit event (context/architecture.md "Audit":
+/// `AuditEvent`), scoped to the owning project so it cascades and lists with
+/// it. Minimal shape sufficient for Unit 2.4's "append an audit event" step;
+/// the full audit *service* (query surfaces, `ChangeReason`) is Unit 2.9. No
+/// update or delete path is exposed at the repository — invariant
+/// "append-only" is a service rule here (no engineering field survives to
+/// protect with a DB trigger the way `CalculationRun` does).
+model AuditEvent {
+  id String @id @default(cuid())
+
+  projectId String
+  /// Stable dotted event type, e.g. "calculation_run.created".
+  eventType String
+  /// The kind of record the event concerns, e.g. "CalculationRun".
+  entityType String
+  entityId   String
+  /// Clerk user ID of who performed the action; null when unattributed.
+  userId String?
+  /// Small descriptive JSONB payload. Never the full engineering snapshot —
+  /// that stays on the entity's own immutable record; this is a summary.
+  payload Json
+
+  occurredAt DateTime @default(now()) @db.Timestamptz(6)
+
+  project MachineProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([entityType, entityId])
+  @@map("audit_events")
 }

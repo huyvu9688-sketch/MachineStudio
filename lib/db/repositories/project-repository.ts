@@ -15,7 +15,9 @@
 
 import "server-only";
 import { z } from "zod";
+import type { CheckStatus } from "../../engine/trace";
 import { prisma } from "../client";
+import type { DbClient } from "./db-client";
 import type {
   AssemblyNode,
   AssemblyRecord,
@@ -28,6 +30,8 @@ import type {
   MachineConfigurationRecord,
   MachineProjectId,
   MachineProjectRecord,
+  ModuleInstanceExecutionContext,
+  ModuleInstanceId,
   ModuleInstanceRecord,
   ProjectTree,
   UserId,
@@ -153,6 +157,8 @@ interface ModuleInstanceRow {
   modulePackageId: string;
   moduleVersion: string;
   label: string;
+  lastCalculationRunId: string | null;
+  lastRunStatus: CheckStatus | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -211,6 +217,8 @@ function toModuleInstanceRecord(row: ModuleInstanceRow): ModuleInstanceRecord {
     modulePackageId: row.modulePackageId,
     moduleVersion: row.moduleVersion,
     label: row.label,
+    lastCalculationRunId: row.lastCalculationRunId,
+    lastRunStatus: row.lastRunStatus,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -403,4 +411,57 @@ export async function deleteProject(
     where: { id, ownerId: owner },
   });
   return result.count > 0;
+}
+
+// --- Module-instance execution support (Unit 2.4) ------------------------
+
+/**
+ * Loads a module instance and the project it belongs to, scoped to the owner
+ * (the filter walks assembly → configuration → project → owner). Returns
+ * `null` when the module instance does not exist or is not owned by
+ * `ownerId` — the application layer treats both alike (invariant "Auth and
+ * Access": ownership is enforced on every project-related query, and a
+ * uniform `null` avoids leaking which case occurred).
+ */
+export async function loadModuleInstanceForOwner(
+  moduleInstanceId: ModuleInstanceId,
+  ownerId: UserId,
+): Promise<ModuleInstanceExecutionContext | null> {
+  const id = parse(nonEmpty, moduleInstanceId);
+  const owner = parse(nonEmpty, ownerId);
+
+  const row = await prisma.moduleInstance.findFirst({
+    where: { id, assembly: { configuration: { project: { ownerId: owner } } } },
+    include: {
+      assembly: { select: { configuration: { select: { projectId: true } } } },
+    },
+  });
+  if (row === null) {
+    return null;
+  }
+  const { assembly, ...moduleInstanceRow } = row;
+  return {
+    moduleInstance: toModuleInstanceRecord(moduleInstanceRow),
+    projectId: asMachineProjectId(assembly.configuration.projectId),
+  };
+}
+
+/**
+ * Sets a module instance's normalized last-run summary. The only mutation of
+ * these two columns; called by Unit 2.4's `executeModuleInstance` right after
+ * `createCalculationRun`, in the same transaction. Ownership is authorized by
+ * that caller (which just created the run for this exact module instance),
+ * matching `markRunStale`'s convention for the run's own single-field mutation.
+ */
+export async function updateModuleInstanceRunStatus(
+  moduleInstanceId: ModuleInstanceId,
+  lastCalculationRunId: string,
+  lastRunStatus: CheckStatus,
+  client: DbClient = prisma,
+): Promise<void> {
+  const id = parse(nonEmpty, moduleInstanceId);
+  await client.moduleInstance.update({
+    where: { id },
+    data: { lastCalculationRunId, lastRunStatus },
+  });
 }

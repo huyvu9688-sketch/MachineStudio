@@ -7,6 +7,8 @@
 // single documented place a raw string is narrowed to a branded ID — they
 // are identity at runtime, matching lib/engine/graph's convention.
 
+import type { CheckStatus } from "../../engine/trace";
+
 /** A Clerk user ID used as the local ownership reference. */
 export type UserId = string & { readonly __brand: "UserId" };
 /** A `MachineProject` ID. */
@@ -113,8 +115,26 @@ export interface ModuleInstanceRecord {
   readonly modulePackageId: string;
   readonly moduleVersion: string;
   readonly label: string;
+  /**
+   * Normalized summary of the latest calculation run (Unit 2.4), null before
+   * any run exists. A plain string, not a branded `CalculationRunId` —
+   * importing run-types.ts here would cycle back against its own dependency
+   * on this file for `ModuleInstanceId`.
+   */
+  readonly lastCalculationRunId: string | null;
+  readonly lastRunStatus: CheckStatus | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+}
+
+/**
+ * A module instance plus the project it ultimately belongs to. Unit 2.4's
+ * `executeModuleInstance` needs the owning project id to attribute the audit
+ * event it appends, one join further than `ModuleInstanceRecord` alone carries.
+ */
+export interface ModuleInstanceExecutionContext {
+  readonly moduleInstance: ModuleInstanceRecord;
+  readonly projectId: MachineProjectId;
 }
 
 // --- Loaded tree (nested, ownership-scoped) ------------------------------

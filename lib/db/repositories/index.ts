@@ -4,6 +4,7 @@
 // that imports Prisma (context/architecture.md "lib/db/").
 
 export * from "./types";
+export type { DbClient } from "./db-client";
 export {
   ProjectRepositoryError,
   upsertUser,
@@ -15,6 +16,8 @@ export {
   listProjectsByOwner,
   loadProjectTree,
   deleteProject,
+  loadModuleInstanceForOwner,
+  updateModuleInstanceRunStatus,
 } from "./project-repository";
 export type { ProjectRepositoryErrorCode } from "./project-repository";
 
@@ -51,3 +54,8 @@ export {
   markRunStale,
 } from "./run-repository";
 export type { RunRepositoryErrorCode } from "./run-repository";
+
+// Append-only audit events (Unit 2.4).
+export * from "./audit-types";
+export { AuditRepositoryError, appendAuditEvent } from "./audit-repository";
+export type { AuditRepositoryErrorCode } from "./audit-repository";
