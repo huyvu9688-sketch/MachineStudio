@@ -6,8 +6,14 @@ import type { AuditEntityType, AuditEventInput, AuditEventType } from "./types";
 
 const nonEmpty = z.string().trim().min(1);
 
-const auditEventTypeSchema: z.ZodType<AuditEventType> = z.enum(["calculation_run.created"]);
-const auditEntityTypeSchema: z.ZodType<AuditEntityType> = z.enum(["CalculationRun"]);
+const auditEventTypeSchema: z.ZodType<AuditEventType> = z.enum([
+  "calculation_run.created",
+  "machine_baseline.created",
+]);
+const auditEntityTypeSchema: z.ZodType<AuditEntityType> = z.enum([
+  "CalculationRun",
+  "MachineBaseline",
+]);
 
 /** Validates an unknown value as a well-formed {@link AuditEventInput}. */
 export const AuditEventInputSchema: z.ZodType<AuditEventInput> = z

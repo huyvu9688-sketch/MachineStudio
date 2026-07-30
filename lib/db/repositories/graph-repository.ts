@@ -513,6 +513,62 @@ export async function deleteParameterLink(
   return result.count > 0;
 }
 
+// --- Configuration-wide reads (Unit 2.9) ----------------------------------
+
+/**
+ * Lists a configuration's confirmed parameter links, scoped to the owner.
+ * Unlike `ParameterValue`, a link is never edited in place (only created or
+ * deleted), so every row returned is exactly the current state — no
+ * latest-per-node resolution needed, unlike
+ * {@link listCurrentParameterValuesForConfiguration}. Returns `[]` when the
+ * configuration is not owned by `ownerId`.
+ */
+export async function listParameterLinksForConfiguration(
+  configurationId: string,
+  ownerId: UserId,
+): Promise<ParameterLinkRecord[]> {
+  const id = parse(nonEmpty, configurationId);
+  const owner = parse(nonEmpty, ownerId);
+  const rows: ParameterLinkRow[] = await prisma.parameterLink.findMany({
+    where: { configurationId: id, configuration: { project: { ownerId: owner } } },
+    orderBy: { createdAt: "asc" },
+  });
+  return rows.map(toParameterLinkRecord);
+}
+
+/**
+ * Lists the *current* value at every graph node in a configuration, scoped to
+ * the owner. `ParameterValue` rows are append-only history (Unit 2.2/2.5:
+ * changing a value creates a new row rather than editing one), so this
+ * resolves each node (identified the same way {@link parameterGraphNodeId}
+ * would) to its single latest row rather than returning the full history —
+ * the shape Unit 2.9's baseline snapshot needs ("parameter values ... in
+ * effect at baseline creation"). Returns `[]` when the configuration is not
+ * owned by `ownerId`.
+ */
+export async function listCurrentParameterValuesForConfiguration(
+  configurationId: string,
+  ownerId: UserId,
+): Promise<ParameterValueRecord[]> {
+  const id = parse(nonEmpty, configurationId);
+  const owner = parse(nonEmpty, ownerId);
+  const rows: ParameterValueRow[] = await prisma.parameterValue.findMany({
+    where: { configurationId: id, configuration: { project: { ownerId: owner } } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const latestByNode = new Map<string, ParameterValueRow>();
+  for (const row of rows) {
+    const key = `${row.nodeKind}|${row.moduleInstanceId ?? ""}|${row.assemblyId ?? ""}|${row.parameterId}|${row.loadCase ?? ""}`;
+    // Rows are ordered newest first, so the first row seen per node is the
+    // current one; later duplicates are superseded history.
+    if (!latestByNode.has(key)) {
+      latestByNode.set(key, row);
+    }
+  }
+  return [...latestByNode.values()].map(toParameterValueRecord);
+}
+
 // --- Input resolution (ownership-scoped) ---------------------------------
 
 function portKey(parameterId: string, loadCase: LoadCaseCategory | null): string {

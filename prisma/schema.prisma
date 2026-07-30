@@ -77,6 +77,7 @@ model MachineConfiguration {
   parameterValues      ParameterValue[]
   parameterLinks       ParameterLink[]
   componentAssignments ComponentAssignment[]
+  baselines            MachineBaseline[]
 
   @@index([projectId])
   @@map("machine_configurations")
@@ -735,4 +736,37 @@ model ComponentAssignment {
   @@index([manufacturerPartRevisionId])
   @@index([calculationRunId])
   @@map("component_assignments")
+}
+
+// --- Unit 2.9: machine baselines ------------------------------------------
+
+/// An immutable machine baseline (context/architecture.md "Core Domain
+/// Model": `MachineBaseline`; ADR-0002 "Immutable calculation runs and
+/// baselines"; invariant 11 "Baseline immutability"). Freezes the
+/// requirements/assumptions, assembly/module tree, parameter values and
+/// links, calculation-run IDs and package hashes, and component assignments
+/// in effect at creation, as a versioned JSONB `MachineBaselineSnapshot`
+/// (lib/configuration, Unit 2.9 part 1), validated on write and read like
+/// every other stored snapshot in this schema. Unlike `CalculationRun`,
+/// nothing on a baseline is ever mutable — not even a stale flag — so there
+/// is no legitimate UPDATE path at all; the migration's immutability-guard
+/// trigger rejects every UPDATE unconditionally, one step stricter than
+/// `calculation_runs_immutable_guard`, which still allows the stale-state
+/// columns to change.
+model MachineBaseline {
+  id              String @id @default(cuid())
+  configurationId String
+  /// Human-readable label shown in the baseline list (Unit 3.8 UI), e.g.
+  /// "Design review 1" or "v1.0 release".
+  label           String
+  /// Full immutable snapshot (lib/configuration `MachineBaselineSnapshot`),
+  /// validated with lib/configuration's schema on write and read.
+  snapshot        Json
+  createdByUserId String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  configuration MachineConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+
+  @@index([configurationId])
+  @@map("machine_baselines")
 }

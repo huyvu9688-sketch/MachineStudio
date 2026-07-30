@@ -92,5 +92,41 @@ describe.skipIf(!generatedClientAvailable)(
       const row = await client.prisma.auditEvent.findUnique({ where: { id: event.id } });
       expect(row).toBeNull();
     });
+
+    it("lists a project's audit events newest first, scoped to the owner (Unit 2.9)", async () => {
+      const s = await scaffold();
+      const first = await audit.appendAuditEvent({
+        projectId: s.projectId,
+        eventType: "calculation_run.created",
+        entityType: "CalculationRun",
+        entityId: "run-1",
+        payload: {},
+      });
+      const second = await audit.appendAuditEvent({
+        projectId: s.projectId,
+        eventType: "machine_baseline.created",
+        entityType: "MachineBaseline",
+        entityId: "baseline-1",
+        payload: { label: "Review 1" },
+      });
+
+      const listed = await audit.listAuditEventsForProject(s.projectId, s.ownerId);
+      expect(listed.map((e) => e.id)).toEqual([second.id, first.id]);
+    });
+
+    it("returns an empty list for a project not owned by the caller", async () => {
+      const s = await scaffold();
+      await audit.appendAuditEvent({
+        projectId: s.projectId,
+        eventType: "calculation_run.created",
+        entityType: "CalculationRun",
+        entityId: "run-1",
+        payload: {},
+      });
+      const stranger = await projects.upsertUser(`test-user-${randomUUID()}`);
+      createdUserIds.push(stranger.id);
+
+      expect(await audit.listAuditEventsForProject(s.projectId, stranger.id)).toEqual([]);
+    });
   },
 );

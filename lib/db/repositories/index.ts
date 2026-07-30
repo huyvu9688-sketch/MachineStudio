@@ -20,6 +20,8 @@ export {
   updateModuleInstanceRunStatus,
   isConfigurationOwnedBy,
   isAssemblyOwnedBy,
+  loadConfigurationForOwner,
+  loadConfigurationTree,
 } from "./project-repository";
 export type { ProjectRepositoryErrorCode } from "./project-repository";
 
@@ -46,6 +48,8 @@ export {
   parameterGraphNodeId,
   loadParameterLinkForOwner,
   deleteParameterLink,
+  listParameterLinksForConfiguration,
+  listCurrentParameterValuesForConfiguration,
 } from "./graph-repository";
 export type {
   GraphRepositoryErrorCode,
@@ -68,9 +72,13 @@ export {
 } from "./run-repository";
 export type { RunRepositoryErrorCode } from "./run-repository";
 
-// Append-only audit events (Unit 2.4).
+// Append-only audit events (Unit 2.4; query surface Unit 2.9).
 export * from "./audit-types";
-export { AuditRepositoryError, appendAuditEvent } from "./audit-repository";
+export {
+  AuditRepositoryError,
+  appendAuditEvent,
+  listAuditEventsForProject,
+} from "./audit-repository";
 export type { AuditRepositoryErrorCode } from "./audit-repository";
 
 // Manufacturer catalog (Unit 2.6; upsert + import-batch summary Unit 2.7 part 2).
@@ -102,3 +110,13 @@ export {
   markComponentAssignmentsStaleForModuleInstances,
 } from "./component-assignment-repository";
 export type { ComponentAssignmentRepositoryErrorCode } from "./component-assignment-repository";
+
+// Machine baselines (Unit 2.9 part 2).
+export * from "./baseline-types";
+export {
+  BaselineRepositoryError,
+  createMachineBaseline,
+  loadMachineBaseline,
+  listMachineBaselinesForConfiguration,
+} from "./baseline-repository";
+export type { BaselineRepositoryErrorCode } from "./baseline-repository";

@@ -41,3 +41,18 @@ export {
   type AssignComponentError,
   type AssignComponentErrorCode,
 } from "./catalogs/assign-component";
+
+export {
+  createBaseline,
+  type CreateBaselineInput,
+  type CreateBaselineResult,
+  type CreateBaselineError,
+  type CreateBaselineErrorCode,
+} from "./configurations/create-baseline";
+
+export {
+  compareBaselines,
+  type CompareBaselinesResult,
+  type CompareBaselinesError,
+  type CompareBaselinesErrorCode,
+} from "./configurations/compare-baselines";

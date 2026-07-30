@@ -9,16 +9,37 @@
 // service can make it atomic with the write it documents (Unit 2.4's
 // `executeModuleInstance`: run persistence + module-status update + audit
 // event, context/code-standards.md "Application Services").
+//
+// `listAuditEventsForProject` (Unit 2.9) is the query surface Unit 2.4
+// deliberately left out ("the full audit *service* — query surfaces,
+// `ChangeReason` — is Unit 2.9"): a project's append-only history,
+// ownership-scoped and newest first.
 
 import "server-only";
+import { z } from "zod";
 import { AuditEventInputSchema } from "../../audit";
 import type { AuditEntityType, AuditEventType } from "../../audit";
 import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "../client";
 import type { DbClient } from "./db-client";
 import { asMachineProjectId, asUserId } from "./types";
+import type { MachineProjectId, UserId } from "./types";
 import type { AuditEventRecord, CreateAuditEventInput } from "./audit-types";
 import { asAuditEventId } from "./audit-types";
+
+const nonEmpty = z.string().trim().min(1);
+
+function parseId(input: unknown): string {
+  const result = nonEmpty.safeParse(input);
+  if (!result.success) {
+    throw new AuditRepositoryError(
+      `Invalid repository input: ${result.error.issues
+        .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+        .join("; ")}`,
+    );
+  }
+  return result.data;
+}
 
 /** Machine-readable classification of an audit-repository failure. */
 export type AuditRepositoryErrorCode = "invalid_input";
@@ -95,4 +116,23 @@ export async function appendAuditEvent(
     },
   });
   return toAuditEventRecord(row);
+}
+
+/**
+ * Lists a project's audit events (newest first), scoped to the owner. Returns
+ * `[]` when the project does not exist or is not owned by `ownerId` — the
+ * append-only counterpart to every other ownership-scoped list in this
+ * package.
+ */
+export async function listAuditEventsForProject(
+  projectId: MachineProjectId,
+  ownerId: UserId,
+): Promise<AuditEventRecord[]> {
+  const id = parseId(projectId);
+  const owner = parseId(ownerId);
+  const rows = await prisma.auditEvent.findMany({
+    where: { projectId: id, project: { ownerId: owner } },
+    orderBy: { occurredAt: "desc" },
+  });
+  return rows.map(toAuditEventRecord);
 }

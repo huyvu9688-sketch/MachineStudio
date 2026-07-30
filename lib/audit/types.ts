@@ -12,10 +12,10 @@
  * recording; never change the meaning of an existing value (immutable
  * records read this back verbatim).
  */
-export type AuditEventType = "calculation_run.created";
+export type AuditEventType = "calculation_run.created" | "machine_baseline.created";
 
 /** The kind of record an audit event concerns. */
-export type AuditEntityType = "CalculationRun";
+export type AuditEntityType = "CalculationRun" | "MachineBaseline";
 
 /**
  * An engineering audit event to append. Once written, an audit event is

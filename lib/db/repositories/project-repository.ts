@@ -27,6 +27,7 @@ import type {
   CreateModuleInstanceInput,
   CreateProjectInput,
   CreateWorkflowInstanceInput,
+  MachineConfigurationId,
   MachineConfigurationRecord,
   MachineProjectId,
   MachineProjectRecord,
@@ -486,6 +487,71 @@ export async function isConfigurationOwnedBy(
     select: { id: true },
   });
   return row !== null;
+}
+
+// --- Configuration + project resolution (Unit 2.9) ------------------------
+
+/**
+ * Loads a configuration and the project it belongs to, scoped to the owner
+ * (the filter walks configuration → project → owner). Returns `null` when
+ * the configuration does not exist or is not owned by `ownerId`. Unit 2.9's
+ * `createBaseline` needs the owning project's `id`/`name`/`marketProfileKey`
+ * to populate the baseline snapshot — the configuration-level counterpart to
+ * `loadModuleInstanceForOwner`'s module-instance-plus-project shape.
+ */
+export async function loadConfigurationForOwner(
+  configurationId: MachineConfigurationId,
+  ownerId: UserId,
+): Promise<{ configuration: MachineConfigurationRecord; project: MachineProjectRecord } | null> {
+  const id = parse(nonEmpty, configurationId);
+  const owner = parse(nonEmpty, ownerId);
+
+  const row = await prisma.machineConfiguration.findFirst({
+    where: { id, project: { ownerId: owner } },
+    include: { project: true },
+  });
+  if (row === null) {
+    return null;
+  }
+  const { project, ...configurationRow } = row;
+  return {
+    configuration: toConfigurationRecord(configurationRow),
+    project: toProjectRecord(project),
+  };
+}
+
+/**
+ * Loads one configuration's assembly/module tree, scoped to the owner.
+ * Returns `null` when the configuration does not exist or is not owned by
+ * `ownerId`. The single-configuration counterpart to `loadProjectTree`'s
+ * per-project `configurations` array — Unit 2.9's baseline snapshot freezes
+ * exactly one configuration's tree, not its whole project.
+ */
+export async function loadConfigurationTree(
+  configurationId: MachineConfigurationId,
+  ownerId: UserId,
+): Promise<ConfigurationNode | null> {
+  const id = parse(nonEmpty, configurationId);
+  const owner = parse(nonEmpty, ownerId);
+
+  const config = await prisma.machineConfiguration.findFirst({
+    where: { id, project: { ownerId: owner } },
+    include: {
+      workflowInstances: { orderBy: { createdAt: "asc" } },
+      assemblies: {
+        orderBy: { createdAt: "asc" },
+        include: { moduleInstances: { orderBy: { createdAt: "asc" } } },
+      },
+    },
+  });
+  if (config === null) {
+    return null;
+  }
+  return {
+    ...toConfigurationRecord(config),
+    workflowInstances: config.workflowInstances.map(toWorkflowInstanceRecord),
+    assemblies: buildAssemblyForest(config.assemblies),
+  };
 }
 
 // --- Assembly ownership (Unit 2.8) ----------------------------------------

@@ -422,10 +422,86 @@ Update this file after every meaningful implementation change.
       when there are none or when the caller passes `acknowledgeWarnings: true`
       — mirroring Unit 3.8's named UI flow ("Pre-baseline validation summary" +
       "Warning acknowledgement") rather than inventing a different UX.
-  - **Next work unit: Unit 2.9 part 2** (`MachineBaseline` schema +
-    repository in `lib/db`, `AuditEvent` query surfaces, and
-    `createBaseline`/`compareBaselines` in `lib/application`), then Milestone
-    3 (generic UI) and Milestone 4 (modules).
+  - **Part 2 delivered** (2026-07-30): the `MachineBaseline` model in
+    `prisma/schema.prisma` (one new relation on `MachineConfiguration`); the
+    migration `prisma/migrations/20260730160000_machine_baselines`
+    (**hand-authored** — `npx prisma generate` was re-tried fresh this
+    session and hit the identical corporate-TLS `binaries.prisma.sh` block
+    every prior schema-touching session documents); the new
+    `lib/db/repositories/baseline-types.ts` + `baseline-repository.ts`
+    (`createMachineBaseline`, ownership-scoped `loadMachineBaseline`/
+    `listMachineBaselinesForConfiguration`); the `AuditEvent` query surface
+    (`listAuditEventsForProject`, added to the existing `audit-repository.ts`)
+    and a `machine_baseline.created`/`MachineBaseline` extension to
+    `lib/audit`'s `AuditEventType`/`AuditEntityType` unions; two small
+    `project-repository.ts` additions (`loadConfigurationForOwner` — the
+    configuration-plus-owning-project shape the snapshot builder needs, and
+    `loadConfigurationTree` — one configuration's assembly/module forest,
+    the single-configuration counterpart to `loadProjectTree`); two new
+    `graph-repository.ts` reads (`listParameterLinksForConfiguration`, and
+    `listCurrentParameterValuesForConfiguration` — resolves every graph node
+    to its single latest `ParameterValue` row, since those are append-only
+    history); and `lib/application/configurations/create-baseline.ts`
+    (`createBaseline`) + `compare-baselines.ts` (`compareBaselines`).
+    - **`MachineBaseline` has no update path at all — stricter than
+      `CalculationRun`.** A calculation run still legitimately mutates its
+      `stale`/`staleReason` columns; a baseline has no mutable field
+      whatsoever (invariant "Baseline immutability"), so the migration's
+      `machine_baselines_immutable_guard` trigger rejects every `UPDATE`
+      unconditionally, rather than allowing specific columns through the way
+      `calculation_runs_immutable_guard` (Unit 2.3) does. Proved with a
+      live-DB test expecting any `UPDATE` — even a harmless `label` rename —
+      to raise.
+    - **`createBaseline` composes seven reads into one snapshot, then
+      persists atomically.** Authorizes the configuration
+      (`loadConfigurationForOwner`), loads its assembly/module tree
+      (`loadConfigurationTree`), requirements/assumptions/load cases,
+      current parameter values and links, each module's latest calculation
+      run (skipping modules that have never run — a baseline of a
+      partial/WIP design is legitimate, so an unrun module is simply absent
+      from `calculationRuns`, not a blocker), and component assignments —
+      then runs part 1's `evaluateBaselineReadiness` before persisting the
+      `MachineBaselineSnapshot` and an audit event together in one
+      `prisma.$transaction`.
+    - **The "failed_run" readiness blocker is untestable end to end on
+      purpose, and that is fine.** `example-scaffold`'s placeholder compute
+      (`result = mass * 0`) can never fail its own "result is non-negative"
+      check, and forcing a fake `status: "fail"` onto a real persisted run is
+      impossible by design — `calculation_runs_immutable_guard` rejects any
+      change to a run's `status` column. Part 1's `readiness.test.ts` already
+      covers `failed_run` exhaustively as a pure unit test; the live
+      `create-baseline.test.ts` instead proves the wiring with a scenario
+      that genuinely occurs (`stale_run` + the dependent `stale_assignment`,
+      triggered together by Unit 2.5/2.8's existing stale-propagation), and
+      documents the "failed_run" gap explicitly rather than fabricating a
+      fake failing run to force coverage.
+    - 17 new live-DB tests (all self-skipping locally, no generated Prisma
+      client on this network): `baseline-repository.test.ts` (round trip,
+      invalid snapshot/label on write, corrupt-snapshot-on-read via a raw
+      `INSERT` — the immutability trigger blocks the usual `.update()`
+      bypass other repositories' corrupt-on-read tests use, so this table's
+      test simulates pre-existing bad data instead — the immutability
+      trigger itself, ownership isolation, summary-list shape, and cascade
+      delete); two new `audit-repository.test.ts` tests
+      (`listAuditEventsForProject` newest-first and ownership isolation);
+      `create-baseline.test.ts` (full snapshot content, atomic audit event,
+      unauthorized, and the stale/acknowledge gate); `compare-baselines.test.ts`
+      (a real changed-value-and-changed-run comparison across two live
+      baselines, plus both `not_found` cases). Verified locally: `npm run
+      lint` (0 warnings), `npm run test` (386/386 passed, 112 skipped — up
+      from 95), `npm run typecheck` introduces exactly two new occurrences of
+      the pre-existing error classes (one `TS7006` "tx implicitly any" in
+      `create-baseline.ts`'s `$transaction` callback, one `TS2307` missing
+      generated-client import in `baseline-repository.ts` — both already
+      present elsewhere for the identical root cause), and `npm run build`
+      fails at the same pre-existing `execute-module-instance.ts:247` error
+      it already failed at before this session's changes (Next.js stops at
+      the first type error, so this confirms no new error class without
+      needing to see past that known blocker). **Unit 2.9 is now fully
+      implemented; full verification (typecheck, build, migration deploy,
+      and the 17 new live-DB tests) is deferred to GitHub Actions CI.**
+  - **Next work unit**: Milestone 3 (generic UI), starting with Unit 3.1
+    (workspace shell), then Milestone 4 (modules).
   - DEFERRED within Unit 2.6, RESOLVED in Unit 2.7 part 1 (documented in
     `lib/catalog/types.ts`'s Unit 2.6 comment and `csv-import.ts`'s top
     comment): matching a specific `ManufacturerPartRevision.attributes`
@@ -1334,21 +1410,18 @@ Update this file after every meaningful implementation change.
 
 Units 2.6, 2.7 (both parts), and 2.8 (both parts) are complete and verified
 green in GitHub Actions CI (2026-07-30 — Unit 2.8's initial push needed a
-test-cleanup fix, see Current Goal) and drop off this list. Unit 2.9 part 1
-(`lib/configuration`, pure) is also complete, needing no CI round trip (no
-`lib/db` file touched, same as Unit 2.8 part 1's precedent). See Current Goal
-for detail.
+test-cleanup fix, see Current Goal) and drop off this list. **Unit 2.9 (both
+parts) is now fully implemented** (2026-07-30, see Current Goal) — part 1
+needed no CI round trip (pure `lib/configuration`); part 2 touches the Prisma
+schema, so it is implemented-and-locally-checked until a push confirms it
+green in GitHub Actions CI, the same convention every prior schema-touching
+unit followed.
 
-1. **Unit 2.9 part 2** (`MachineBaseline` schema + repository in `lib/db`,
-   `AuditEvent` query surfaces, and `createBaseline`/`compareBaselines` in
-   `lib/application`) — the immediate next action. Per
-   `context/implementation-map.md`: baseline item references (covered by part
-   1's snapshot contract), baseline creation checks (part 1's
-   `evaluateBaselineReadiness`, wired to real project data here), baseline
-   comparison (part 1's `compareBaselineSnapshots`, wired to two loaded
-   baselines here), and the append-only `AuditEvent` query surfaces (Unit 2.4
-   only added the minimal "append an event" shape). Then Milestone 3 (generic
-   UI) and Milestone 4 (modules) follow.
+1. **Get Unit 2.9 part 2 pushed and green in CI** — the immediate next
+   action, not a new unit. Same verification step every prior schema-touching
+   unit (2.1–2.8) already went through.
+2. **Milestone 3 (generic UI)**, starting with Unit 3.1 (workspace shell),
+   once Unit 2.9 is fully verified. Then Milestone 4 (modules).
    - Deferred to the confirm/suggestion flow (NOT Unit 2.2): **semantic link
      compatibility** (`evaluateLinkCompatibility`). Unit 2.2 persists an
      already-confirmed link and rejects cycles (a structural rule independent
@@ -1375,9 +1448,9 @@ for detail.
      `rankCandidates`'s output to pass to `assignComponent`. Part 1
      deliberately did not guess which operator each attribute needs — see
      Current Goal and Architecture Decisions.
-2. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
+3. LATER (deferred): Unit 0.1 — structure ID39 + ID42 into validation
    fixtures once the user has real cases to compare against
-3. Downstream parameter groups (screw, guide, coupling, support-bearing,
+4. Downstream parameter groups (screw, guide, coupling, support-bearing,
    drive-train): NOT released in registry v1 — approved pending proposals to
    be released per module at its Stage-2 parameter contract (bumping the
    registry version). See `lib/engine/parameters/README.md` and Open Questions
