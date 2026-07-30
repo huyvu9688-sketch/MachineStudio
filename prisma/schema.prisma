@@ -514,16 +514,31 @@ model ComponentSchemaVersion {
 }
 
 /// A batch of manufacturer part revisions imported together (context/
-/// architecture.md "Catalog and BOM": `CatalogImportBatch`). This unit records
-/// only batch identity/provenance; parsing, row validation, dry-run mode, and
-/// the error report are Unit 2.7 (Catalog CSV import service).
+/// architecture.md "Catalog and BOM": `CatalogImportBatch`). Unit 2.6 recorded
+/// only batch identity/provenance; Unit 2.7 part 2 adds the import-mapping
+/// identity and row-count summary, computed once (this MVP imports
+/// synchronously, not via a job queue) and written together with the batch —
+/// nullable because a batch conceptually could exist before its summary is
+/// known if that changes later, mirroring `ModuleInstance.lastRunStatus`'s
+/// "null until computed" convention. The full per-row error report is
+/// intentionally NOT persisted here (no UI reads historical import errors
+/// yet) — `lib/application/catalogs/import-catalog.ts` returns it directly to
+/// its caller instead.
 model CatalogImportBatch {
   id               String   @id @default(cuid())
   componentTypeId  String
   manufacturerId   String
   sourceLabel      String
   importedByUserId String?
-  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  /// Identity of the `lib/catalog` `ImportMapping` used, for the
+  /// "idempotent by manufacturer, part number, source revision, and import
+  /// mapping" traceability requirement (context/code-standards.md "Catalog").
+  importMappingId      String?
+  importMappingVersion String?
+  totalRowCount        Int?
+  validRowCount        Int?
+  invalidRowCount      Int?
+  createdAt            DateTime @default(now()) @db.Timestamptz(6)
 
   componentType ComponentType              @relation(fields: [componentTypeId], references: [id], onDelete: Restrict)
   manufacturer  Manufacturer               @relation(fields: [manufacturerId], references: [id], onDelete: Restrict)

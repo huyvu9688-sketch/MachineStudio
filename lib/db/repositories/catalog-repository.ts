@@ -22,7 +22,10 @@ import {
   ComponentAttributeFieldListSchema,
   ComponentAttributesSchema,
 } from "../../catalog";
-import type { ComponentAttributeFieldDefinition, ComponentAttributes } from "../../catalog";
+import type {
+  ComponentAttributeFieldDefinition,
+  ComponentAttributes,
+} from "../../catalog";
 import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "../client";
 import type { DbClient } from "./db-client";
@@ -64,7 +67,10 @@ export type CatalogRepositoryErrorCode = "invalid_input" | "invalid_snapshot";
 export class CatalogRepositoryError extends Error {
   readonly code: CatalogRepositoryErrorCode;
 
-  constructor(message: string, code: CatalogRepositoryErrorCode = "invalid_input") {
+  constructor(
+    message: string,
+    code: CatalogRepositoryErrorCode = "invalid_input",
+  ) {
     super(message);
     this.name = "CatalogRepositoryError";
     this.code = code;
@@ -100,6 +106,11 @@ const createCatalogImportBatchSchema = z.object({
   manufacturerId: nonEmpty,
   sourceLabel: nonEmpty,
   importedByUserId: nonEmpty.optional(),
+  importMappingId: nonEmpty.optional(),
+  importMappingVersion: nonEmpty.optional(),
+  totalRowCount: z.number().int().nonnegative().optional(),
+  validRowCount: z.number().int().nonnegative().optional(),
+  invalidRowCount: z.number().int().nonnegative().optional(),
 });
 const createManufacturerPartRevisionSchema = z.object({
   manufacturerId: nonEmpty,
@@ -209,6 +220,11 @@ interface CatalogImportBatchRow {
   manufacturerId: string;
   sourceLabel: string;
   importedByUserId: string | null;
+  importMappingId: string | null;
+  importMappingVersion: string | null;
+  totalRowCount: number | null;
+  validRowCount: number | null;
+  invalidRowCount: number | null;
   createdAt: Date;
 }
 interface ManufacturerPartRevisionRow {
@@ -265,18 +281,30 @@ function toComponentSchemaVersionRecord(
     componentTypeId: asComponentTypeId(row.componentTypeId),
     version: row.version,
     // Re-validate the JSONB on read (never trust stored payloads).
-    fields: parseFields(row.fields, `component_schema_version ${row.id}`, "invalid_snapshot"),
+    fields: parseFields(
+      row.fields,
+      `component_schema_version ${row.id}`,
+      "invalid_snapshot",
+    ),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
 }
-function toCatalogImportBatchRecord(row: CatalogImportBatchRow): CatalogImportBatchRecord {
+function toCatalogImportBatchRecord(
+  row: CatalogImportBatchRow,
+): CatalogImportBatchRecord {
   return {
     id: asCatalogImportBatchId(row.id),
     componentTypeId: asComponentTypeId(row.componentTypeId),
     manufacturerId: asManufacturerId(row.manufacturerId),
     sourceLabel: row.sourceLabel,
-    importedByUserId: row.importedByUserId === null ? null : asUserId(row.importedByUserId),
+    importedByUserId:
+      row.importedByUserId === null ? null : asUserId(row.importedByUserId),
+    importMappingId: row.importMappingId,
+    importMappingVersion: row.importMappingVersion,
+    totalRowCount: row.totalRowCount,
+    validRowCount: row.validRowCount,
+    invalidRowCount: row.invalidRowCount,
     createdAt: row.createdAt,
   };
 }
@@ -287,7 +315,9 @@ function toManufacturerPartRevisionRecord(
     id: asManufacturerPartRevisionId(row.id),
     manufacturerId: asManufacturerId(row.manufacturerId),
     componentTypeId: asComponentTypeId(row.componentTypeId),
-    componentSchemaVersionId: asComponentSchemaVersionId(row.componentSchemaVersionId),
+    componentSchemaVersionId: asComponentSchemaVersionId(
+      row.componentSchemaVersionId,
+    ),
     partNumber: row.partNumber,
     sourceRevision: row.sourceRevision,
     sourceLink: row.sourceLink,
@@ -300,22 +330,30 @@ function toManufacturerPartRevisionRecord(
       `manufacturer_part_revision ${row.id}`,
       "invalid_snapshot",
     ),
-    importBatchId: row.importBatchId === null ? null : asCatalogImportBatchId(row.importBatchId),
+    importBatchId:
+      row.importBatchId === null
+        ? null
+        : asCatalogImportBatchId(row.importBatchId),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
 }
-function toDatasheetAttachmentRecord(row: DatasheetAttachmentRow): DatasheetAttachmentRecord {
+function toDatasheetAttachmentRecord(
+  row: DatasheetAttachmentRow,
+): DatasheetAttachmentRecord {
   return {
     id: asDatasheetAttachmentId(row.id),
-    manufacturerPartRevisionId: asManufacturerPartRevisionId(row.manufacturerPartRevisionId),
+    manufacturerPartRevisionId: asManufacturerPartRevisionId(
+      row.manufacturerPartRevisionId,
+    ),
     fileName: row.fileName,
     mimeType: row.mimeType,
     sizeBytes: row.sizeBytes,
     checksum: row.checksum,
     storageKey: row.storageKey,
     uploadSource: row.uploadSource,
-    uploadedByUserId: row.uploadedByUserId === null ? null : asUserId(row.uploadedByUserId),
+    uploadedByUserId:
+      row.uploadedByUserId === null ? null : asUserId(row.uploadedByUserId),
     createdAt: row.createdAt,
   };
 }
@@ -339,7 +377,11 @@ export async function createComponentType(
 ): Promise<ComponentTypeRecord> {
   const data = parse(createComponentTypeSchema, input);
   const row = await client.componentType.create({
-    data: { id: data.id, name: data.name, description: data.description ?? null },
+    data: {
+      id: data.id,
+      name: data.name,
+      description: data.description ?? null,
+    },
   });
   return toComponentTypeRecord(row);
 }
@@ -354,7 +396,11 @@ export async function createComponentSchemaVersion(
   client: DbClient = prisma,
 ): Promise<ComponentSchemaVersionRecord> {
   const data = parse(createComponentSchemaVersionSchema, input);
-  const fields = parseFields(input.fields, "createComponentSchemaVersion", "invalid_input");
+  const fields = parseFields(
+    input.fields,
+    "createComponentSchemaVersion",
+    "invalid_input",
+  );
   const row = await client.componentSchemaVersion.create({
     data: {
       componentTypeId: data.componentTypeId,
@@ -365,7 +411,12 @@ export async function createComponentSchemaVersion(
   return toComponentSchemaVersionRecord(row);
 }
 
-/** Creates a `CatalogImportBatch` recording provenance for a later import. */
+/**
+ * Creates a `CatalogImportBatch` recording provenance for an import, plus its
+ * row-count summary when the caller already knows it (Unit 2.7 part 2's
+ * `lib/application/catalogs/import-catalog.ts` computes it from
+ * `parseCatalogCsv`'s report before calling this).
+ */
 export async function createCatalogImportBatch(
   input: CreateCatalogImportBatchInput,
   client: DbClient = prisma,
@@ -377,6 +428,11 @@ export async function createCatalogImportBatch(
       manufacturerId: data.manufacturerId,
       sourceLabel: data.sourceLabel,
       importedByUserId: data.importedByUserId ?? null,
+      importMappingId: data.importMappingId ?? null,
+      importMappingVersion: data.importMappingVersion ?? null,
+      totalRowCount: data.totalRowCount ?? null,
+      validRowCount: data.validRowCount ?? null,
+      invalidRowCount: data.invalidRowCount ?? null,
     },
   });
   return toCatalogImportBatchRecord(row);
@@ -417,6 +473,57 @@ export async function createManufacturerPartRevision(
   return toManufacturerPartRevisionRecord(row);
 }
 
+/**
+ * Creates or updates a `ManufacturerPartRevision` by its
+ * `(manufacturerId, partNumber, sourceRevision)` identity — the idempotent
+ * upsert `code-standards.md` "Catalog" requires for imports ("Imports are
+ * idempotent by manufacturer, part number, source revision, and import
+ * mapping"). Re-importing the same identity updates the existing row in
+ * place (attributes, lifecycle, data-quality, attaching it to the new import
+ * batch) rather than rejecting it as a duplicate — unlike
+ * {@link createManufacturerPartRevision}, which is for manual/one-off entry
+ * where a duplicate should surface as an error. `input.attributes` is
+ * validated identically to the create path.
+ */
+export async function upsertManufacturerPartRevision(
+  input: CreateManufacturerPartRevisionInput,
+  client: DbClient = prisma,
+): Promise<ManufacturerPartRevisionRecord> {
+  const data = parse(createManufacturerPartRevisionSchema, input);
+  const attributes = parseAttributes(
+    input.attributes,
+    "upsertManufacturerPartRevision",
+    "invalid_input",
+  );
+  const shared = {
+    componentTypeId: data.componentTypeId,
+    componentSchemaVersionId: data.componentSchemaVersionId,
+    sourceLink: data.sourceLink ?? null,
+    lifecycleStatus: data.lifecycleStatus ?? null,
+    dataQualityStatus: data.dataQualityStatus ?? "valid",
+    validationErrors: [...(data.validationErrors ?? [])],
+    attributes: attributes as unknown as Prisma.InputJsonValue,
+    importBatchId: data.importBatchId ?? null,
+  };
+  const row = await client.manufacturerPartRevision.upsert({
+    where: {
+      manufacturerId_partNumber_sourceRevision: {
+        manufacturerId: data.manufacturerId,
+        partNumber: data.partNumber,
+        sourceRevision: data.sourceRevision,
+      },
+    },
+    create: {
+      manufacturerId: data.manufacturerId,
+      partNumber: data.partNumber,
+      sourceRevision: data.sourceRevision,
+      ...shared,
+    },
+    update: shared,
+  });
+  return toManufacturerPartRevisionRecord(row);
+}
+
 /** Creates a `DatasheetAttachment` for a manufacturer part revision. */
 export async function createDatasheetAttachment(
   input: CreateDatasheetAttachmentInput,
@@ -441,7 +548,9 @@ export async function createDatasheetAttachment(
 // --- Reads (shared reference data — no owner scope) --------------------------
 
 /** Loads a `Manufacturer` by id, or `null` when it does not exist. */
-export async function loadManufacturer(id: ManufacturerId): Promise<ManufacturerRecord | null> {
+export async function loadManufacturer(
+  id: ManufacturerId,
+): Promise<ManufacturerRecord | null> {
   const parsedId = parse(nonEmpty, id);
   const row = await prisma.manufacturer.findUnique({ where: { id: parsedId } });
   return row === null ? null : toManufacturerRecord(row);
@@ -452,7 +561,9 @@ export async function loadCatalogImportBatch(
   id: CatalogImportBatchId,
 ): Promise<CatalogImportBatchRecord | null> {
   const parsedId = parse(nonEmpty, id);
-  const row = await prisma.catalogImportBatch.findUnique({ where: { id: parsedId } });
+  const row = await prisma.catalogImportBatch.findUnique({
+    where: { id: parsedId },
+  });
   return row === null ? null : toCatalogImportBatchRecord(row);
 }
 
@@ -461,7 +572,9 @@ export async function loadComponentSchemaVersion(
   id: ComponentSchemaVersionId,
 ): Promise<ComponentSchemaVersionRecord | null> {
   const parsedId = parse(nonEmpty, id);
-  const row = await prisma.componentSchemaVersion.findUnique({ where: { id: parsedId } });
+  const row = await prisma.componentSchemaVersion.findUnique({
+    where: { id: parsedId },
+  });
   return row === null ? null : toComponentSchemaVersionRecord(row);
 }
 
@@ -470,7 +583,9 @@ export async function loadManufacturerPartRevision(
   id: ManufacturerPartRevisionId,
 ): Promise<ManufacturerPartRevisionRecord | null> {
   const parsedId = parse(nonEmpty, id);
-  const row = await prisma.manufacturerPartRevision.findUnique({ where: { id: parsedId } });
+  const row = await prisma.manufacturerPartRevision.findUnique({
+    where: { id: parsedId },
+  });
   return row === null ? null : toManufacturerPartRevisionRecord(row);
 }
 

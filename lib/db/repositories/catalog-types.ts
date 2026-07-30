@@ -107,13 +107,22 @@ export interface ComponentSchemaVersionRecord {
   readonly updatedAt: Date;
 }
 
-/** A persisted `CatalogImportBatch` row. */
+/**
+ * A persisted `CatalogImportBatch` row. The five summary fields are null
+ * until an import service (`lib/application/catalogs/import-catalog.ts`)
+ * computes and writes them at creation time.
+ */
 export interface CatalogImportBatchRecord {
   readonly id: CatalogImportBatchId;
   readonly componentTypeId: ComponentTypeId;
   readonly manufacturerId: ManufacturerId;
   readonly sourceLabel: string;
   readonly importedByUserId: UserId | null;
+  readonly importMappingId: string | null;
+  readonly importMappingVersion: string | null;
+  readonly totalRowCount: number | null;
+  readonly validRowCount: number | null;
+  readonly invalidRowCount: number | null;
   readonly createdAt: Date;
 }
 
@@ -170,12 +179,20 @@ export interface CreateComponentSchemaVersionInput {
   readonly fields: readonly ComponentAttributeFieldDefinition[];
 }
 
-/** Input to create a `CatalogImportBatch`. */
+/**
+ * Input to create a `CatalogImportBatch`. The summary fields are omitted for
+ * a batch whose row outcomes are not yet known.
+ */
 export interface CreateCatalogImportBatchInput {
   readonly componentTypeId: ComponentTypeId;
   readonly manufacturerId: ManufacturerId;
   readonly sourceLabel: string;
   readonly importedByUserId?: UserId;
+  readonly importMappingId?: string;
+  readonly importMappingVersion?: string;
+  readonly totalRowCount?: number;
+  readonly validRowCount?: number;
+  readonly invalidRowCount?: number;
 }
 
 /** Input to create a `ManufacturerPartRevision`. `attributes` is validated before write. */

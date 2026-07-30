@@ -81,6 +81,30 @@ Update this file after every meaningful implementation change.
   (334/334, 58 skipped unchanged), and build all green — this part needed no
   migration, so this is the first Milestone-2-era unit confirmed green without
   a "Deploy migrations" step doing any work.
+  **Unit 2.7 part 2 (catalog import persistence + orchestration) complete**
+  (2026-07-30), closing out Unit 2.7. Adds five nullable summary columns to
+  `CatalogImportBatch` (migration
+  `prisma/migrations/20260730140000_catalog_import_batch_summary`),
+  `upsertManufacturerPartRevision` in `catalog-repository.ts`, and the new
+  `lib/application/catalogs/import-catalog.ts` service (`importCatalog`) that
+  composes part 1's `parseCatalogCsv` with these writes inside one
+  transaction. **Plan correction**: the part-1-era plan to record the batch
+  summary via `lib/audit`'s `AuditEvent` was reversed — `AuditEvent.projectId`
+  is a mandatory FK to `MachineProject`, fundamentally incompatible with
+  catalog data being project-independent (Unit 2.6's own architecture
+  decision). `CatalogImportBatch` summary columns are the correct fit instead
+  — still within the already-counted `lib/db` boundary, not a new one. See the
+  Completed and Architecture Decisions entries. 8 new live-DB tests in
+  `lib/application/catalogs/import-catalog.test.ts` plus 3 more in
+  `catalog-repository.test.ts` (batch summary round-trip, upsert-create,
+  upsert-update). **Unit 2.7 is now fully complete**; both parts' Unit 2.6
+  exit criterion is satisfied: a manufacturer catalog fixture imports
+  reproducibly (idempotent upsert, proven live) and reports every rejected row
+  (proven in both part 1's pure tests and part 2's end-to-end test). Verified
+  locally: lint (0 warnings), full suite (334/334, 69 skipped — up from 58 with
+  the 11 new live-DB tests), typecheck confirmed to introduce no new errors
+  beyond the pre-existing missing-generated-client cascade. Not yet verified in
+  CI this turn — see Current Goal.
 
 ## Current Goal
 
@@ -89,7 +113,9 @@ Update this file after every meaningful implementation change.
   run 30508278042 — every step green). **Unit 2.7 part 1 (catalog CSV import:
   mapping + parser + row validation + unit normalization) is complete and
   verified in GitHub Actions CI** (2026-07-30, commit `484c733`, run
-  30509515278 — every step green) — see the Completed entry.
+  30509515278 — every step green). **Unit 2.7 part 2 (persistence +
+  orchestration) is complete** (2026-07-30, not yet pushed/CI-verified this
+  turn) — see the Completed entry. **Unit 2.7 as a whole is now done.**
   - **SPLIT DECISION (2026-07-30, Unit 2.7):** the implementation map's Unit
     2.7 ("Catalog CSV import service") deliverables — import mapping schema,
     CSV parser, unit normalization, row validation, dry-run mode, error
@@ -106,27 +132,25 @@ Update this file after every meaningful implementation change.
     (`lib/db` + `lib/application`, exactly two boundaries, the same count Unit
     2.4 used as one unit delivered via two commits — precedent for keeping
     part 2 as a single unit rather than splitting further).
-  - **Next work unit: Unit 2.7 part 2** — a new
-    `lib/db/repositories/catalog-repository.ts` idempotent-upsert function
-    (using the `(manufacturerId, partNumber, sourceRevision)` unique
-    constraint Unit 2.6 already created) and a new
-    `lib/application/catalogs/import-catalog.ts` service that calls part 1's
-    `parseCatalogCsv`, persists every valid row inside one transaction, and
-    records the import batch summary (row/success/error counts) — reusing
-    `lib/audit`'s `AuditEvent` (extending its `AuditEventType`/`AuditEntityType`
-    unions) rather than adding new `CatalogImportBatch` columns, since a
-    second schema change in the same map-unit would itself be a split-rule
-    trigger. Also implement here: the Unit 2.6-deferred cross-validation of a
-    resolved row's attributes against its schema version's field list is
-    **already done in part 1** (`parseCatalogCsv` uses
-    `ComponentAttributesSchema` plus the mapping/schema-field consistency
-    checks in `validateMappingAgainstSchema`) — part 2 only needs to persist,
-    not re-validate. Exit criterion (shared with part 1): a manufacturer
-    catalog fixture imports reproducibly and reports every rejected row —
-    part 1 proves the "reports every rejected row" half; part 2 proves
-    "imports reproducibly" against real Postgres. Then Unit 2.8 (catalog
-    matching + `ComponentAssignment`), Unit 2.9 (baseline + audit services);
-    Milestone 3 (generic UI) and Milestone 4 (modules) follow.
+  - **Part 2 delivered** (2026-07-30): `upsertManufacturerPartRevision` (a
+    genuine Prisma `.upsert()` on the `manufacturerId_partNumber_sourceRevision`
+    compound unique key) and `lib/application/catalogs/import-catalog.ts`
+    (`importCatalog`), which loads/cross-checks the manufacturer, schema
+    version, and mapping identity, calls part 1's `parseCatalogCsv`, and — for
+    a real (non-dry-run) import — creates the `CatalogImportBatch` (with its
+    row-count summary already known) and upserts every valid row atomically.
+    **The batch-summary plan changed from what was written here**: originally
+    planned to reuse `lib/audit`'s `AuditEvent`, but `AuditEvent.projectId` is
+    a mandatory FK to `MachineProject` — catalog data has no project, so that
+    never could have worked. Five nullable summary columns were added to
+    `CatalogImportBatch` instead (migration
+    `20260730140000_catalog_import_batch_summary`) — still inside the
+    already-counted `lib/db` boundary, not a new one, so the split-rule count
+    (`lib/catalog` + `lib/db` + `lib/application` = 3, split into part-1's 1 +
+    part-2's 2) still holds. See Architecture Decisions. **Next work unit:
+    Unit 2.8 (catalog matching + `ComponentAssignment`)**, then Unit 2.9
+    (baseline + audit services); Milestone 3 (generic UI) and Milestone 4
+    (modules) follow.
   - DEFERRED within Unit 2.6, RESOLVED in Unit 2.7 part 1 (documented in
     `lib/catalog/types.ts`'s Unit 2.6 comment and `csv-import.ts`'s top
     comment): matching a specific `ManufacturerPartRevision.attributes`
@@ -1033,25 +1057,29 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-Unit 2.6 (verified green in CI) and Unit 2.7 part 1 (pure CSV import logic)
-are both done (2026-07-30, see Current Goal) and drop off this list. This
-session had no local database at all — CI remains the verification path for
-anything touching Postgres until a future session confirms local access again.
+Unit 2.6 and both parts of Unit 2.7 are done (2026-07-30, see Current Goal —
+part 2's plan-correction note explains why the batch summary landed on new
+`CatalogImportBatch` columns instead of the originally-planned `AuditEvent`
+reuse) and drop off this list. Unit 2.6 and part 1 are verified green in CI;
+part 2 is not pushed/CI-verified yet as of this entry. This session had no
+local database at all — CI remains the verification path for anything
+touching Postgres until a future session confirms local access again.
 
-1. **Unit 2.7 part 2 (catalog import persistence + orchestration)** — next.
-   See Current Goal's "SPLIT DECISION" entry for the full split rationale.
-   Deliverables: an idempotent-upsert repository function in
-   `lib/db/repositories/catalog-repository.ts` and a new
-   `lib/application/catalogs/import-catalog.ts` service (parse via part 1's
-   `parseCatalogCsv` → persist every valid row transactionally → record the
-   import batch summary, reusing `lib/audit`'s `AuditEvent` for
-   rowCount/successCount/errorCount + import-mapping provenance rather than a
-   second Unit 2.6 schema change). Exit criterion (shared with part 1): a
-   manufacturer catalog fixture imports reproducibly and reports every
-   rejected row — part 2 proves the "imports reproducibly" half against real
-   Postgres. Then Unit 2.8 (catalog matching + `ComponentAssignment`) and Unit
-   2.9 (baseline + audit services). Milestone 3 (generic UI) and Milestone 4
-   (modules) follow.
+1. **Unit 2.8 (catalog matching and component assignment)** — next. Per
+   `context/implementation-map.md`: hard-filter engine, transparent ranking
+   result, rejection reasons, required-spec output, `ComponentAssignment`
+   persistence (target project/assembly/module, manufacturer part revision or
+   manual/custom part payload, quantity, supporting calculation run,
+   assignment timestamp/user, stale state), and manual/custom part assignment.
+   This is also where `ComponentAssignment` — needed by Unit 2.5's deferred
+   fourth stale-propagation use case — finally exists. Exit criterion: assigned
+   parts can populate the BOM without an approval or selection workflow
+   subsystem. Likely spans `lib/catalog` (hard filters + ranking, pure) +
+   `lib/db` (schema + `ComponentAssignment` persistence) + `lib/application`
+   (assignment orchestration) again — check the same "more than two system
+   boundaries" split question before starting, the way Unit 2.7 was split.
+   Then Unit 2.9 (baseline + audit services); Milestone 3 (generic UI) and
+   Milestone 4 (modules) follow.
    - Deferred to the confirm/suggestion flow (NOT Unit 2.2): **semantic link
      compatibility** (`evaluateLinkCompatibility`). Unit 2.2 persists an
      already-confirmed link and rejects cycles (a structural rule independent
@@ -1227,12 +1255,31 @@ anything touching Postgres until a future session confirms local access again.
   two system boundaries" split trigger. Part 1 (this session): `lib/catalog`
   only — `ImportMapping` contract, CSV tokenizer, row validation, unit
   normalization via `lib/engine/units`, all pure and DB-free, so
-  `parseCatalogCsv` alone already *is* dry-run mode. Part 2 (next session):
-  `lib/db` (idempotent upsert) + `lib/application/catalogs/` (orchestration
-  transaction, batch summary) — exactly two boundaries, mirroring Unit 2.4's
-  precedent of delivering a `lib/db` + `lib/application` pair as one unit via
-  two commits rather than splitting further. See Current Goal and Next Up for
-  the full breakdown.
+  `parseCatalogCsv` alone already *is* dry-run mode. Part 2 (delivered later
+  the same session, continued on user request): `lib/db` (idempotent upsert)
+  together with `lib/application/catalogs/` (orchestration transaction, batch
+  summary) — exactly two boundaries, mirroring Unit 2.4's precedent of
+  delivering a `lib/db` + `lib/application` pair as one unit via two commits
+  rather than splitting further. See Current Goal and Next Up for the full
+  breakdown.
+- (2026-07-30, Unit 2.7 part 2) Catalog import batch summary lands on
+  `CatalogImportBatch` columns, not `AuditEvent`. Part 1's session had planned
+  to reuse `lib/audit`'s `AuditEvent` for the row-count summary — that plan
+  did not survive contact with the actual schema: `AuditEvent.projectId` is a
+  mandatory FK to `MachineProject`, and catalog data is deliberately
+  project-independent (the Unit 2.6 architecture decision above), so there is
+  no project to attribute a catalog-import audit event to. Five nullable
+  columns (`importMappingId`, `importMappingVersion`, `totalRowCount`,
+  `validRowCount`, `invalidRowCount`) were added to `CatalogImportBatch`
+  instead (migration `20260730140000_catalog_import_batch_summary`) — a
+  second migration within Unit 2.7, but not a second *system boundary*: it
+  stays inside `lib/db`, which part 2's boundary count already included. The
+  full per-row error report is still NOT persisted anywhere (no UI reads
+  historical import errors yet) — `importCatalog` returns it directly to its
+  caller. `upsertManufacturerPartRevision` uses a genuine Prisma
+  `.upsert()` on the `manufacturerId_partNumber_sourceRevision` compound
+  unique key (not a read-then-write check), so a re-import is atomic and
+  idempotent at the database level, not just at the application layer.
 - (2026-07-30, Unit 2.7) Moved `PartLifecycleStatus`/`DataQualityStatus` from
   `lib/db/repositories/catalog-types.ts` (hand-rolled there in Unit 2.6) to
   `lib/catalog/types.ts` (domain-owned), with `lib/db` now importing them —

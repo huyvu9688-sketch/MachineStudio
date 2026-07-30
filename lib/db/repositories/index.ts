@@ -53,7 +53,10 @@ export type {
 
 // Immutable calculation runs (Unit 2.3).
 export * from "./run-types";
-export { CalculationRunSnapshotSchema, safeParseRunSnapshot } from "./run-snapshot";
+export {
+  CalculationRunSnapshotSchema,
+  safeParseRunSnapshot,
+} from "./run-snapshot";
 export {
   RunRepositoryError,
   createCalculationRun,
@@ -69,7 +72,7 @@ export * from "./audit-types";
 export { AuditRepositoryError, appendAuditEvent } from "./audit-repository";
 export type { AuditRepositoryErrorCode } from "./audit-repository";
 
-// Manufacturer catalog (Unit 2.6).
+// Manufacturer catalog (Unit 2.6; upsert + import-batch summary Unit 2.7 part 2).
 export * from "./catalog-types";
 export {
   CatalogRepositoryError,
@@ -78,6 +81,7 @@ export {
   createComponentSchemaVersion,
   createCatalogImportBatch,
   createManufacturerPartRevision,
+  upsertManufacturerPartRevision,
   createDatasheetAttachment,
   loadManufacturer,
   loadCatalogImportBatch,

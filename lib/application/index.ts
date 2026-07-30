@@ -21,3 +21,14 @@ export {
   type StalePropagationError,
   type StalePropagationErrorCode,
 } from "./parameters";
+
+export {
+  importCatalog,
+  type ImportCatalogInput,
+  type ImportCatalogResult,
+  type ImportCatalogDryRunResult,
+  type ImportCatalogAppliedResult,
+  type ImportCatalogRowOutcome,
+  type ImportCatalogError,
+  type ImportCatalogErrorCode,
+} from "./catalogs/import-catalog";

@@ -23,15 +23,29 @@ import type {
 } from "./catalog-types";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const generatedClientAvailable = existsSync(join(here, "..", "generated", "prisma"));
+const generatedClientAvailable = existsSync(
+  join(here, "..", "generated", "prisma"),
+);
 
 function quantity(value: number, unit: string): Quantity {
   return { v: SERIALIZATION_FORMAT_VERSION, kind: "quantity", value, unit };
 }
 
 const ballScrewFields: ComponentAttributeFieldDefinition[] = [
-  { key: "lead", label: "Lead", valueKind: "quantity", required: true, unit: "mm" },
-  { key: "diameter", label: "Diameter", valueKind: "quantity", required: true, unit: "mm" },
+  {
+    key: "lead",
+    label: "Lead",
+    valueKind: "quantity",
+    required: true,
+    unit: "mm",
+  },
+  {
+    key: "diameter",
+    label: "Diameter",
+    valueKind: "quantity",
+    required: true,
+    unit: "mm",
+  },
 ];
 
 const servoMotorFields: ComponentAttributeFieldDefinition[] = [
@@ -42,7 +56,13 @@ const servoMotorFields: ComponentAttributeFieldDefinition[] = [
     required: true,
     unit: "N*m",
   },
-  { key: "ratedSpeed", label: "Rated Speed", valueKind: "quantity", required: true, unit: "rpm" },
+  {
+    key: "ratedSpeed",
+    label: "Rated Speed",
+    valueKind: "quantity",
+    required: true,
+    unit: "rpm",
+  },
 ];
 
 describe.skipIf(!generatedClientAvailable)(
@@ -80,7 +100,10 @@ describe.skipIf(!generatedClientAvailable)(
         version: "1.0.0",
         fields,
       });
-      return { componentTypeId: componentType.id, schemaVersionId: schemaVersion.id };
+      return {
+        componentTypeId: componentType.id,
+        schemaVersionId: schemaVersion.id,
+      };
     }
 
     beforeAll(async () => {
@@ -143,13 +166,17 @@ describe.skipIf(!generatedClientAvailable)(
       expect(loaded?.dataQualityStatus).toBe("valid");
       expect(loaded?.lifecycleStatus).toBeNull();
 
-      const loadedSchemaVersion = await catalog.loadComponentSchemaVersion(schemaVersionId);
+      const loadedSchemaVersion =
+        await catalog.loadComponentSchemaVersion(schemaVersionId);
       expect(loadedSchemaVersion?.fields).toEqual(ballScrewFields);
     });
 
     it("creates a catalog import batch and loads it back", async () => {
       const manufacturerId = await newManufacturer();
-      const { componentTypeId } = await newComponentType("ball-screw", ballScrewFields);
+      const { componentTypeId } = await newComponentType(
+        "ball-screw",
+        ballScrewFields,
+      );
 
       const batch = await catalog.createCatalogImportBatch({
         componentTypeId,
@@ -163,12 +190,44 @@ describe.skipIf(!generatedClientAvailable)(
       expect(loaded?.manufacturerId).toBe(manufacturerId);
       expect(loaded?.sourceLabel).toBe("2026-07 ball screw catalog.csv");
       expect(loaded?.importedByUserId).toBeNull();
+      expect(loaded?.importMappingId).toBeNull();
+      expect(loaded?.totalRowCount).toBeNull();
+    });
+
+    it("records a catalog import batch's row-count summary and mapping identity", async () => {
+      const manufacturerId = await newManufacturer();
+      const { componentTypeId } = await newComponentType(
+        "ball-screw",
+        ballScrewFields,
+      );
+
+      const batch = await catalog.createCatalogImportBatch({
+        componentTypeId,
+        manufacturerId,
+        sourceLabel: "2026-07 ball screw catalog.csv",
+        importMappingId: "ball-screw-basic",
+        importMappingVersion: "1.0.0",
+        totalRowCount: 10,
+        validRowCount: 8,
+        invalidRowCount: 2,
+      });
+      createdImportBatchIds.push(batch.id);
+
+      const loaded = await catalog.loadCatalogImportBatch(batch.id);
+      expect(loaded?.importMappingId).toBe("ball-screw-basic");
+      expect(loaded?.importMappingVersion).toBe("1.0.0");
+      expect(loaded?.totalRowCount).toBe(10);
+      expect(loaded?.validRowCount).toBe(8);
+      expect(loaded?.invalidRowCount).toBe(2);
     });
 
     it("lets two component types with different attributes coexist without a Prisma schema change", async () => {
       const manufacturerId = await newManufacturer();
       const ballScrew = await newComponentType("ball-screw", ballScrewFields);
-      const servoMotor = await newComponentType("servo-motor", servoMotorFields);
+      const servoMotor = await newComponentType(
+        "servo-motor",
+        servoMotorFields,
+      );
 
       const screwRevision = await catalog.createManufacturerPartRevision({
         manufacturerId,
@@ -186,19 +245,24 @@ describe.skipIf(!generatedClientAvailable)(
         componentSchemaVersionId: servoMotor.schemaVersionId,
         partNumber: "SV2-B040AS",
         sourceRevision: "2026-catalog",
-        attributes: { ratedTorque: quantity(1.3, "N*m"), ratedSpeed: quantity(3000, "rpm") },
+        attributes: {
+          ratedTorque: quantity(1.3, "N*m"),
+          ratedSpeed: quantity(3000, "rpm"),
+        },
       });
       createdPartRevisionIds.push(motorRevision.id);
 
       // Both rows live in the same generic `manufacturer_part_revisions` table
       // and `attributes` column — no schema change was needed for the second
       // component type's different attribute shape (Unit 2.6 exit criterion).
-      const screwList = await catalog.listManufacturerPartRevisionsByComponentType(
-        ballScrew.componentTypeId,
-      );
-      const motorList = await catalog.listManufacturerPartRevisionsByComponentType(
-        servoMotor.componentTypeId,
-      );
+      const screwList =
+        await catalog.listManufacturerPartRevisionsByComponentType(
+          ballScrew.componentTypeId,
+        );
+      const motorList =
+        await catalog.listManufacturerPartRevisionsByComponentType(
+          servoMotor.componentTypeId,
+        );
       expect(screwList.map((r) => r.id)).toEqual([screwRevision.id]);
       expect(motorList.map((r) => r.id)).toEqual([motorRevision.id]);
       expect(screwList[0]?.attributes).toEqual({
@@ -212,14 +276,28 @@ describe.skipIf(!generatedClientAvailable)(
     });
 
     it("rejects a component schema version with duplicate field keys", async () => {
-      const { componentTypeId } = await newComponentType("ball-screw", ballScrewFields);
+      const { componentTypeId } = await newComponentType(
+        "ball-screw",
+        ballScrewFields,
+      );
       await expect(
         catalog.createComponentSchemaVersion({
           componentTypeId,
           version: "1.0.1",
           fields: [
-            { key: "lead", label: "Lead", valueKind: "quantity", required: true, unit: "mm" },
-            { key: "lead", label: "Lead again", valueKind: "quantity", required: false },
+            {
+              key: "lead",
+              label: "Lead",
+              valueKind: "quantity",
+              required: true,
+              unit: "mm",
+            },
+            {
+              key: "lead",
+              label: "Lead again",
+              valueKind: "quantity",
+              required: false,
+            },
           ],
         }),
       ).rejects.toMatchObject({ code: "invalid_input" });
@@ -238,8 +316,14 @@ describe.skipIf(!generatedClientAvailable)(
           componentSchemaVersionId: schemaVersionId,
           partNumber: "BSS1520-914",
           sourceRevision: "2026-catalog",
-          // @ts-expect-error deliberately malformed: a quantity with no unit
-          attributes: { lead: { v: SERIALIZATION_FORMAT_VERSION, kind: "quantity", value: 20 } },
+          attributes: {
+            // @ts-expect-error deliberately malformed: a quantity with no unit
+            lead: {
+              v: SERIALIZATION_FORMAT_VERSION,
+              kind: "quantity",
+              value: 20,
+            },
+          },
         }),
       ).rejects.toMatchObject({ code: "invalid_input" });
     });
@@ -266,7 +350,9 @@ describe.skipIf(!generatedClientAvailable)(
         data: { attributes: { lead: { kind: "not-a-real-kind" } } },
       });
 
-      await expect(catalog.loadManufacturerPartRevision(revision.id)).rejects.toMatchObject({
+      await expect(
+        catalog.loadManufacturerPartRevision(revision.id),
+      ).rejects.toMatchObject({
         code: "invalid_snapshot",
       });
     });
@@ -288,7 +374,68 @@ describe.skipIf(!generatedClientAvailable)(
       const first = await catalog.createManufacturerPartRevision(input);
       createdPartRevisionIds.push(first.id);
 
-      await expect(catalog.createManufacturerPartRevision(input)).rejects.toThrow();
+      await expect(
+        catalog.createManufacturerPartRevision(input),
+      ).rejects.toThrow();
+    });
+
+    it("upsertManufacturerPartRevision creates when no matching identity exists", async () => {
+      const manufacturerId = await newManufacturer();
+      const { componentTypeId, schemaVersionId } = await newComponentType(
+        "ball-screw",
+        ballScrewFields,
+      );
+      const revision = await catalog.upsertManufacturerPartRevision({
+        manufacturerId,
+        componentTypeId,
+        componentSchemaVersionId: schemaVersionId,
+        partNumber: "BSS1520-914",
+        sourceRevision: "2026-catalog",
+        attributes: { lead: quantity(20, "mm") },
+      });
+      createdPartRevisionIds.push(revision.id);
+      expect(revision.attributes).toEqual({ lead: quantity(20, "mm") });
+    });
+
+    it("upsertManufacturerPartRevision updates the existing row in place on a repeat import (idempotent)", async () => {
+      const manufacturerId = await newManufacturer();
+      const { componentTypeId, schemaVersionId } = await newComponentType(
+        "ball-screw",
+        ballScrewFields,
+      );
+      const identity = {
+        manufacturerId,
+        componentTypeId,
+        componentSchemaVersionId: schemaVersionId,
+        partNumber: "BSS1520-914",
+        sourceRevision: "2026-catalog",
+      };
+
+      const first = await catalog.upsertManufacturerPartRevision({
+        ...identity,
+        attributes: { lead: quantity(20, "mm") },
+        dataQualityStatus: "warning",
+      });
+      createdPartRevisionIds.push(first.id);
+
+      // Re-importing the same manufacturer + part number + source revision
+      // (e.g. a corrected re-run of the same catalog file) updates the row in
+      // place rather than duplicating or rejecting it.
+      const second = await catalog.upsertManufacturerPartRevision({
+        ...identity,
+        attributes: { lead: quantity(25, "mm") },
+        dataQualityStatus: "valid",
+      });
+
+      expect(second.id).toBe(first.id);
+      expect(second.attributes).toEqual({ lead: quantity(25, "mm") });
+      expect(second.dataQualityStatus).toBe("valid");
+
+      const all =
+        await catalog.listManufacturerPartRevisionsByComponentType(
+          componentTypeId,
+        );
+      expect(all.map((r) => r.id)).toEqual([first.id]);
     });
 
     it("cascades datasheet attachments when their part revision is deleted", async () => {
@@ -316,7 +463,9 @@ describe.skipIf(!generatedClientAvailable)(
         uploadSource: "manual",
       });
 
-      await client.prisma.manufacturerPartRevision.delete({ where: { id: revision.id } });
+      await client.prisma.manufacturerPartRevision.delete({
+        where: { id: revision.id },
+      });
 
       const row = await client.prisma.datasheetAttachment.findUnique({
         where: { id: attachment.id },
