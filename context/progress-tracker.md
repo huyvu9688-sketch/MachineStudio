@@ -273,7 +273,29 @@ Update this file after every meaningful implementation change.
     CI is the actual verification environment for the two new Playwright
     steps; this has not yet had a CI round trip (needs a commit and push,
     which this session did not do without asking first).
-- **DESIGN-RISK FOLLOW-UP 2 of 6 (2026-07-30, new session): the
+  - **UPDATE: pushed as commit `282200d`, CI run 30545399216 — everything
+    green except "E2E smoke test," which failed after almost exactly 120.0s
+    (13:08:02–13:10:03 UTC).** That is an exact match to
+    `playwright.config.ts`'s `webServer.timeout: 120_000`. Job logs were not
+    fetchable (`GET .../actions/jobs/<id>/logs` returned 403 "Must have
+    admin rights" — this session has no GitHub token, only anonymous `curl`
+    against the public REST API, which is enough for run/job status but not
+    log content). Root-caused instead by direct local repro: started `next
+    dev --port 3100` on this dev machine and `curl`'d both routes — `/`
+    (200, contains "MachineStudio"/"Repository initialized") and `/workspace`
+    (302 to `/sign-in?redirect_url=...`, exactly the redirect the test
+    asserts) both served correctly within ~15s, so the server and route logic
+    are not the bug. The exact timeout match plus a working server points at
+    a slower cold start on a shared GitHub Actions runner (Turbopack's first
+    compile, the `next/font/google` fetch, npm/node startup overhead) rather
+    than anything wrong with the app. **Fix**: `webServer.timeout` raised to
+    `300_000`; the default per-test timeout raised from Playwright's 30s to
+    `90_000` (test 2's first navigation to `/workspace` compiles a route the
+    webServer readiness check never touched, since that check only GETs
+    `/`); `webServer.stdout`/`stderr` changed from the default (silently
+    dropped) to `"pipe"`, so a future failure's real cause appears in the CI
+    step output directly instead of requiring another guess-and-repro cycle
+    like this one. Not yet re-verified in CI — needs another push.
   angle-as-base-dimension power algebra gap — closed, locally verified.**
   Confirmed-by-test problem: `multiplyQuantities(10 N*m, 100 rad/s)` returns
   `kg*m^2*s^-3*rad`, not `W` — because `Dimensions.torque` carries no angle
