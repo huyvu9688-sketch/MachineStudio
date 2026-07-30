@@ -44,6 +44,7 @@ describe.skipIf(!generatedClientAvailable)(
     const createdUserIds: string[] = [];
     const createdManufacturerIds: string[] = [];
     const createdComponentTypeIds: string[] = [];
+    const createdPartRevisionIds: string[] = [];
 
     interface Fixture {
       readonly ownerId: UserId;
@@ -116,6 +117,7 @@ describe.skipIf(!generatedClientAvailable)(
         sourceRevision: "2026-catalog",
         attributes: { lead: makeQuantity(20, "mm") },
       });
+      createdPartRevisionIds.push(partRevision.id);
 
       return {
         ownerId: user.id,
@@ -139,6 +141,20 @@ describe.skipIf(!generatedClientAvailable)(
     });
 
     afterEach(async () => {
+      if (createdPartRevisionIds.length > 0) {
+        const ids = createdPartRevisionIds.splice(0);
+        // ComponentAssignment.manufacturerPartRevisionId is onDelete: Restrict
+        // (Unit 2.8); a catalog-sourced assignment created by a test must be
+        // removed before its part revision, and the part revision before its
+        // ComponentType/Manufacturer (mirrors catalog-repository.test.ts's
+        // established cleanup order).
+        await client.prisma.componentAssignment.deleteMany({
+          where: { manufacturerPartRevisionId: { in: ids } },
+        });
+        await client.prisma.manufacturerPartRevision.deleteMany({
+          where: { id: { in: ids } },
+        });
+      }
       if (createdComponentTypeIds.length > 0) {
         await client.prisma.componentType.deleteMany({
           where: { id: { in: createdComponentTypeIds.splice(0) } },
