@@ -103,5 +103,30 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      # Diagnostic step for the webServer-never-becomes-ready failures on
+      # 282200d/49c1038/5659bfb (see context/progress-tracker.md): the
+      # `job logs` and `actions/runs/.../logs` REST endpoints both return 403
+      # "Must have admin rights" for an unauthenticated request, and this
+      # session has no GitHub token — every prior fix attempt was root-caused
+      # by exact-timeout pattern matching and local repro alone, with zero
+      # visibility into what actually happened in the CI container. This
+      # writes `npm run test:e2e`'s full output (which already includes
+      # `next dev`'s piped stdout/stderr per playwright.config.ts) to a file
+      # and uploads it as a build artifact — artifact downloads may not be
+      # gated by the same permission check as log downloads, worth testing
+      # before concluding this genuinely needs a human with repository access
+      # to read.
       - name: E2E smoke test
-        run: npm run test:e2e
+        run: npm run test:e2e 2>&1 | tee /tmp/e2e-output.log
+
+      - name: Upload E2E diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-diagnostics
+          path: |
+            /tmp/e2e-output.log
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 3
