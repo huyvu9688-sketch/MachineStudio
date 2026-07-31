@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -174,14 +174,36 @@ function StaticRow({ icon: Icon, label }: { readonly icon: LucideIcon; readonly 
  * native to `<button>` and would not fire on a `role="button"` span without
  * hand-rolling key handlers (ui-context.md "Interaction States":
  * keyboard-first, every action reachable by keyboard).
+ *
+ * Every call site passes this as a Dialog's `trigger` prop (`asChild`, e.g.
+ * `<CreateAssemblyDialog trigger={<IconButton .../>} />`). Radix's
+ * `DialogTrigger asChild` clones extra props — `onClick`, `aria-expanded`,
+ * `aria-haspopup`, `data-state`, `ref` — onto whatever element it is given.
+ * Because `<IconButton .../>` is a *custom component* element (not a raw
+ * `<button>`), those cloned props land on `IconButton`'s own props object,
+ * not on the DOM node, unless `IconButton` explicitly forwards them — which
+ * an earlier version of this function did not do, silently dropping
+ * `onClick` and leaving every one of these buttons inert (a real bug this
+ * project's own component tests never caught, since they only asserted the
+ * buttons existed, not that clicking one actually opened its dialog).
  */
-function IconButton({ icon: Icon, label }: { readonly icon: LucideIcon; readonly label: string }) {
+function IconButton({
+  icon: Icon,
+  label,
+  ref,
+  ...rest
+}: {
+  readonly icon: LucideIcon;
+  readonly label: string;
+} & ComponentProps<"button">) {
   return (
     <button
+      ref={ref}
       type="button"
       aria-label={label}
       title={label}
       className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors duration-150 ease-out hover:bg-surface-selected hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary"
+      {...rest}
     >
       <Icon aria-hidden="true" className="h-3.5 w-3.5" />
     </button>

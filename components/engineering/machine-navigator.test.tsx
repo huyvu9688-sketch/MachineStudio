@@ -168,6 +168,35 @@ describe("MachineNavigator", () => {
     expect(screen.getByRole("button", { name: "Rename X axis" })).toBeInTheDocument();
   });
 
+  // Regression test for a real bug: every prior test above only asserted
+  // these buttons exist, never that clicking one actually opens its dialog.
+  // `IconButton` didn't forward the `onClick`/`ref`/aria-* props Radix's
+  // `DialogTrigger asChild` clones onto it (it destructured only
+  // `icon`/`label` and never spread the rest), so every icon button in the
+  // navigator was inert in a real browser despite rendering correctly.
+  it("actually opens the assembly actions' dialogs on click, not just renders the buttons", async () => {
+    const user = userEvent.setup();
+    render(
+      <MachineNavigator
+        projectName="Palletizer axis"
+        configuration={configuration}
+        modulePackages={MODULE_PACKAGES}
+        selectedModuleInstanceId={null}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Add sub-assembly to X axis" }));
+    expect(screen.getByRole("heading", { name: "New sub-assembly" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Add module to X axis" }));
+    expect(screen.getByRole("heading", { name: "Add module instance" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Rename X axis" }));
+    expect(screen.getByRole("heading", { name: "Rename assembly" })).toBeInTheDocument();
+  });
+
   it("renders the Requirements/BOM/Reports sections as non-interactive placeholders", () => {
     render(
       <MachineNavigator
