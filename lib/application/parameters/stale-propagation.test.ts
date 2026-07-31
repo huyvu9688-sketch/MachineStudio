@@ -393,6 +393,68 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(linkRow).toBeNull();
     });
 
+    // --- previewRemoveParameterLinkImpact (Unit 3.4) --------------------------
+
+    it("previews the same downstream impact removeParameterLink would actually cause, without deleting the link", async () => {
+      const s = await scaffold();
+      const a = await newModuleWithRun(s, "A");
+      const b = await newModuleWithRun(s, "B");
+      const confirmed = await stalePropagation.confirmParameterLink(
+        linkInput(s, a.moduleInstanceId, b.moduleInstanceId),
+        s.ownerId,
+      );
+      expect(confirmed.ok).toBe(true);
+      if (!confirmed.ok) return;
+      await resetRunFresh(b.runId);
+
+      const preview = await stalePropagation.previewRemoveParameterLinkImpact(
+        confirmed.link.id,
+        s.ownerId,
+      );
+      expect(preview.ok).toBe(true);
+      if (!preview.ok) return;
+      expect(preview.staleModuleInstanceIds).toContain(b.moduleInstanceId);
+
+      // The preview must not have written anything: the link still exists,
+      // and the run it would stale is still marked fresh from the reset above.
+      const linkRow = await client.prisma.parameterLink.findUnique({
+        where: { id: confirmed.link.id },
+      });
+      expect(linkRow).not.toBeNull();
+      expect(await isRunStale(b.runId)).toBe(false);
+
+      // Actually removing it now causes exactly the previewed impact.
+      const removed = await stalePropagation.removeParameterLink(confirmed.link.id, s.ownerId);
+      expect(removed.ok).toBe(true);
+      if (!removed.ok) return;
+      expect(new Set(removed.staleModuleInstanceIds)).toEqual(
+        new Set(preview.staleModuleInstanceIds),
+      );
+    });
+
+    it("reports unauthorized for previewRemoveParameterLinkImpact on another owner's link", async () => {
+      const s = await scaffold();
+      const a = await newModuleWithRun(s, "A");
+      const b = await newModuleWithRun(s, "B");
+      const confirmed = await stalePropagation.confirmParameterLink(
+        linkInput(s, a.moduleInstanceId, b.moduleInstanceId),
+        s.ownerId,
+      );
+      expect(confirmed.ok).toBe(true);
+      if (!confirmed.ok) return;
+
+      const stranger = await projects.upsertUser(`test-user-${randomUUID()}`);
+      createdUserIds.push(stranger.id);
+
+      const preview = await stalePropagation.previewRemoveParameterLinkImpact(
+        confirmed.link.id,
+        stranger.id,
+      );
+      expect(preview.ok).toBe(false);
+      if (preview.ok) return;
+      expect(preview.error.code).toBe("unauthorized");
+    });
+
     it("authorizes a provider (machine_requirement) value change via configuration ownership", async () => {
       const s = await scaffold();
       const result = await stalePropagation.setParameterValue(

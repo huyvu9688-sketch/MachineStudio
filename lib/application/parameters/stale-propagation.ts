@@ -487,6 +487,56 @@ export async function confirmParameterLink(
   }
 }
 
+/** Result of {@link previewRemoveParameterLinkImpact}. */
+export type PreviewRemoveParameterLinkImpactResult =
+  | { readonly ok: true; readonly staleModuleInstanceIds: readonly ModuleInstanceId[] }
+  | { readonly ok: false; readonly error: StalePropagationError };
+
+/**
+ * Read-only preview of {@link removeParameterLink}'s downstream impact,
+ * without deleting the link — Unit 3.4's "Downstream stale-impact warning on
+ * removal" (implementation-map.md), shown before the user confirms removal
+ * (ui-context.md "Modals and Errors": "Confirmation required for ...  link
+ * removal with downstream impact"). Reuses the identical impact computation
+ * {@link removeParameterLink} performs, just outside a transaction and
+ * without the delete.
+ */
+export async function previewRemoveParameterLinkImpact(
+  linkId: ParameterLinkId,
+  ownerId: UserId,
+): Promise<PreviewRemoveParameterLinkImpactResult> {
+  const link = await loadParameterLinkForOwner(linkId, ownerId);
+  if (link === null) {
+    return unauthorized("Parameter link not found or not owned by this user.");
+  }
+
+  const context = await loadModuleInstanceForOwner(link.targetModuleInstanceId, ownerId);
+  const extraNodes =
+    context === null
+      ? []
+      : moduleInstancePortDescriptors(
+          link.targetModuleInstanceId,
+          context.moduleInstance.modulePackageId,
+          context.moduleInstance.moduleVersion,
+        );
+
+  const targetDescriptor: GraphNodeDescriptor = {
+    kind: "module_input",
+    moduleInstanceId: link.targetModuleInstanceId,
+    assemblyId: null,
+    parameterId: link.targetParameterId,
+    loadCase: link.targetLoadCase,
+  };
+
+  const staleModuleInstanceIds = await computeImpact(
+    link.configurationId,
+    targetDescriptor,
+    extraNodes,
+    prisma,
+  );
+  return { ok: true, staleModuleInstanceIds };
+}
+
 /**
  * Removes a confirmed `ParameterLink` and marks every downstream calculation
  * run stale in the same transaction — the target module's resolved input
