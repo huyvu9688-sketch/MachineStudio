@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /*
  * Design tokens from context/ui-context.md. Light mode only in the MVP;
@@ -25,6 +26,47 @@
   --motion-instant: 100ms;
   --motion-fast: 150ms;
   --motion-normal: 200ms;
+
+  /*
+   * Interactive-surface tints (Unit 3.1). Not in the original ui-context.md
+   * token table — added because the navigator/menu hover and selected states
+   * need a subtle fill and the table had no such role yet. Both are
+   * translucent tints of --accent-primary so they work over any surface.
+   * Documented in ui-context.md's Colors table alongside the rest.
+   */
+  --surface-hover: rgba(21, 101, 192, 0.06);
+  --surface-selected: rgba(21, 101, 192, 0.1);
+
+  /*
+   * shadcn/ui theme contract (Unit 3.1). shadcn-generated components under
+   * components/ui/* are protected/not-hand-edited (context/code-standards.md
+   * "Protected Files") and reference these standard semantic variable names
+   * (--background, --primary, etc.), not our named ui-context.md tokens
+   * directly. Aliasing them here — instead of overriding generated
+   * component source — is the supported shadcn customization path, so every
+   * generated primitive automatically renders in the locked palette above
+   * with no per-component edits.
+   */
+  --background: var(--bg-surface);
+  --foreground: var(--text-primary);
+  --card: var(--bg-surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-surface);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent-primary);
+  --primary-foreground: var(--text-on-accent);
+  --secondary: var(--bg-base);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--bg-base);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--surface-hover);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--state-error);
+  --destructive-foreground: var(--text-on-accent);
+  --border: var(--border-default);
+  --input: var(--border-default);
+  --ring: var(--accent-primary);
+  --radius: 0.5rem;
 }
 
 @theme inline {
@@ -42,15 +84,60 @@
   --color-state-stale: var(--state-stale);
   --color-state-info: var(--state-info);
   --color-state-neutral: var(--state-neutral);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-selected: var(--surface-selected);
 
   --shadow-sm: var(--shadow-sm);
 
   --font-sans: var(--font-ibm-plex-sans);
   --font-mono: var(--font-ibm-plex-mono);
+
+  /* shadcn semantic aliases (see the :root block above for the mapping). */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 body {
   background-color: var(--bg-base);
   color: var(--text-primary);
   font-family: var(--font-sans);
+}
+
+/*
+ * ui-context.md "Motion": "Every animation must have a
+ * prefers-reduced-motion: reduce alternative (crossfade or instant)." One
+ * rule covers every animation in the app, including tw-animate-css's
+ * animate-in/animate-out utilities above, rather than opting in per
+ * component.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
