@@ -16,6 +16,8 @@ export {
   listProjectsByOwner,
   loadProjectTree,
   deleteProject,
+  renameProject,
+  renameAssembly,
   loadModuleInstanceForOwner,
   updateModuleInstanceRunStatus,
   isConfigurationOwnedBy,

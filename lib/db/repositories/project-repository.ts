@@ -19,6 +19,7 @@ import type { CheckStatus } from "../../engine/trace";
 import { prisma } from "../client";
 import type { DbClient } from "./db-client";
 import type {
+  AssemblyId,
   AssemblyNode,
   AssemblyRecord,
   ConfigurationNode,
@@ -241,21 +242,29 @@ export async function upsertUser(id: string): Promise<UserRecord> {
   return toUserRecord(row);
 }
 
-/** Creates a `MachineProject` owned by `input.ownerId`. */
+/**
+ * Creates a `MachineProject` owned by `input.ownerId`. Accepts an optional
+ * transaction `client` (Unit 3.2: `createMachineProject` creates a project
+ * and its initial configuration together, atomically) — the same trailing-
+ * client convention the 2026-07-30 design-risk follow-up established for
+ * reads, now extended to these two creates.
+ */
 export async function createProject(
   input: CreateProjectInput,
+  client: DbClient = prisma,
 ): Promise<MachineProjectRecord> {
   const data = parse(createProjectSchema, input);
-  const row = await prisma.machineProject.create({ data });
+  const row = await client.machineProject.create({ data });
   return toProjectRecord(row);
 }
 
-/** Creates a `MachineConfiguration` under a project. */
+/** Creates a `MachineConfiguration` under a project. See {@link createProject} on `client`. */
 export async function createConfiguration(
   input: CreateConfigurationInput,
+  client: DbClient = prisma,
 ): Promise<MachineConfigurationRecord> {
   const data = parse(createConfigurationSchema, input);
-  const row = await prisma.machineConfiguration.create({ data });
+  const row = await client.machineConfiguration.create({ data });
   return toConfigurationRecord(row);
 }
 
@@ -414,6 +423,48 @@ export async function deleteProject(
   const owner = parse(nonEmpty, ownerId);
   const result = await prisma.machineProject.deleteMany({
     where: { id, ownerId: owner },
+  });
+  return result.count > 0;
+}
+
+// --- Rename (ownership-scoped) --------------------------------------------
+//
+// Same ownership-scoped-bulk-write shape as deleteProject: the WHERE clause
+// itself is the authorization check (an update that matches 0 rows because
+// of a wrong owner is indistinguishable from one that matches 0 rows because
+// the id is unknown — the same uniform-null-on-either-case reasoning
+// loadModuleInstanceForOwner documents). Returns whether a row changed, not
+// the row itself: every caller re-reads the tree afterward
+// (loadWorkspaceView), so a second fetched copy here would go unused.
+
+/** Renames a `MachineProject` owned by `ownerId`. Unit 3.2. */
+export async function renameProject(
+  projectId: MachineProjectId,
+  ownerId: UserId,
+  name: string,
+): Promise<boolean> {
+  const id = parse(nonEmpty, projectId);
+  const owner = parse(nonEmpty, ownerId);
+  const newName = parse(nonEmpty, name);
+  const result = await prisma.machineProject.updateMany({
+    where: { id, ownerId: owner },
+    data: { name: newName },
+  });
+  return result.count > 0;
+}
+
+/** Renames an `Assembly` owned by `ownerId`. Unit 3.2. */
+export async function renameAssembly(
+  assemblyId: AssemblyId,
+  ownerId: UserId,
+  name: string,
+): Promise<boolean> {
+  const id = parse(nonEmpty, assemblyId);
+  const owner = parse(nonEmpty, ownerId);
+  const newName = parse(nonEmpty, name);
+  const result = await prisma.assembly.updateMany({
+    where: { id, configuration: { project: { ownerId: owner } } },
+    data: { name: newName },
   });
   return result.count > 0;
 }

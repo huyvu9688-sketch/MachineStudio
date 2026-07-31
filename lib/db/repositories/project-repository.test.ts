@@ -331,6 +331,52 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(reloaded).not.toBeNull();
       expect(reloaded?.workflowInstanceId).toBeNull();
     });
+
+    it("renames a project owned by the caller, and reports false for a wrong owner or unknown id (Unit 3.2)", async () => {
+      const ownerId = await newUser();
+      const strangerId = await newUser();
+      const project = await repo.createProject({
+        ownerId,
+        name: "Original name",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+
+      expect(await repo.renameProject(project.id, ownerId, "Renamed")).toBe(true);
+      const reloaded = await repo.loadProjectTree(project.id, ownerId);
+      expect(reloaded?.name).toBe("Renamed");
+
+      expect(await repo.renameProject(project.id, strangerId, "Hijacked")).toBe(false);
+      expect((await repo.loadProjectTree(project.id, ownerId))?.name).toBe("Renamed");
+
+      expect(
+        await repo.renameProject(
+          repoAsMachineProjectId(`unknown-${randomUUID()}`),
+          ownerId,
+          "Nothing",
+        ),
+      ).toBe(false);
+    });
+
+    it("renames an assembly owned by the caller, and reports false for a wrong owner or unknown id (Unit 3.2)", async () => {
+      const ownerId = await newUser();
+      const strangerId = await newUser();
+      const project = await repo.createProject({
+        ownerId,
+        name: "Axis",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const config = await repo.createConfiguration({ projectId: project.id, name: "cfg" });
+      const assembly = await repo.createAssembly({ configurationId: config.id, name: "Original" });
+
+      expect(await repo.renameAssembly(assembly.id, ownerId, "Renamed assembly")).toBe(true);
+      const reloaded = await repo.loadConfigurationTree(config.id, ownerId);
+      expect(reloaded?.assemblies[0]?.name).toBe("Renamed assembly");
+
+      expect(await repo.renameAssembly(assembly.id, strangerId, "Hijacked")).toBe(false);
+      expect(
+        (await repo.loadConfigurationTree(config.id, ownerId))?.assemblies[0]?.name,
+      ).toBe("Renamed assembly");
+    });
   },
 );
 
@@ -339,4 +385,7 @@ describe.skipIf(!liveDatabaseAvailable)(
 // health.test.ts). Identity at runtime.
 function repoAsUserId(id: string): import("./types").UserId {
   return id as import("./types").UserId;
+}
+function repoAsMachineProjectId(id: string): import("./types").MachineProjectId {
+  return id as import("./types").MachineProjectId;
 }
