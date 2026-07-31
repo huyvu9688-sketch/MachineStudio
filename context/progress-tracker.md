@@ -4,6 +4,43 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
+- **2026-07-31 (same session, continued — the user's first real
+  click-through of the running app): a real, app-wide correctness bug
+  found and fixed — no `User` row was ever created for a real Clerk
+  user, so `createMachineProject` violated `machine_projects_ownerId_
+  fkey` on every first "New project" click.** Also: this session's own
+  prior dev-server verification step (`rm -rf .next` while the user's
+  `next dev` was already running) corrupted Turbopack's persistent cache
+  and produced the "stuck Compiling…" symptom the user actually reported
+  — a session-caused environment incident, not a code bug, fixed by
+  killing the orphaned processes and restarting clean with the correct
+  env vars. Full detail (root cause, why the fix lives in
+  `createMachineProject` rather than the auth middleware, verification)
+  is in `context/progress/unit-3.md` Current Goal — this is a
+  cross-cutting correctness fix, not scoped to Milestone 3, so it is
+  summarized here too. `npm run verify` green against the live database
+  (650/650 tests, 0 skipped).
+- **2026-07-31 (same session, continued): local dev environment fully
+  working end-to-end for the first time — real Clerk auth, real PostgreSQL
+  (Neon), 632/633 tests passing against a live database locally.** Not a
+  roadmap unit; an environment/infrastructure fix triggered by the user
+  actually running the app in a browser after Unit 3.4. See Current Goal
+  for full detail (the corporate-network root cause, the `lib/db/client.ts`
+  Neon-adapter addition, and the one Neon-latency-induced test timeout that
+  is not a code defect). `npm run verify` reconfirmed green after the
+  `lib/db/client.ts` change (lint 0 warnings, typecheck 0 errors, 466/466
+  tests passed with `DATABASE_URL` unset — unchanged from before — build
+  green); separately, with `DATABASE_URL`/`NODE_EXTRA_CA_CERTS` set, the
+  previously-always-skipped live-DB suites ran for real: 632/633 passed.
+- **Milestone 3 (Generic User Experience) is under way: Units 3.1–3.5 are
+  complete** (workspace shell, project/assembly management UI, generic
+  module input renderer, link suggestion UI, generic result and trace
+  renderer — 2026-07-30 through 2026-07-31). Unit 3.5 is also the first
+  time this project's full test suite ran 100% green against a live
+  database with zero skips (650/650, `--testTimeout=30000`). Next: Unit 3.6
+  (catalog matching and assignment UI). Full history, decisions, and the
+  Unit 3.6 brief now live in `context/progress/unit-3.md` — read that file
+  for normal Unit 3 continuation work instead of scrolling this one.
 - **2026-07-30 (new session): a design-risk follow-up pass closed all six
   items the previous session's hardening pass listed under Open Questions as
   "not attempted" / "architecture follow-ups" — each its own work unit with a
@@ -193,6 +230,100 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
+- **LOCAL DEV ENVIRONMENT (2026-07-31, same session, continued — the user
+  opened the app in a real browser after the Unit 3.4 summary and hit a
+  blank page): full local dev stack working for the first time.** Not a
+  roadmap unit — triggered by the user actually trying the app, which no
+  session before this one had a working Clerk instance or reachable
+  Postgres to attempt.
+  - **Root cause 1 — Clerk's API is behind the same corporate TLS-
+    inspection block already known for `ui.shadcn.com`/`binaries.prisma.sh`
+    (see the `corporate-network-tls-block` memory)**: this dev machine's
+    network (Ashley Furniture Industries) intercepts outbound HTTPS with
+    its own root CA, which Node does not trust by default (the OS/browser
+    trust store does, which is why Clerk's browser-side widget partially
+    worked before the server-side fix — sign-in itself completed, but every
+    subsequent middleware session check silently timed out and bounced back
+    to `/sign-in`, since the *server* couldn't verify the session against
+    Clerk's API). **Fix**: exported the actual intercepting cert chain via
+    a raw `SslStream`/`X509Chain` probe (PowerShell), saved to
+    `%USERPROFILE%\.certs\ashley-corporate-ca.pem`, and set
+    `NODE_EXTRA_CA_CERTS` before starting `next dev` — scoped to this one
+    process's TLS verification, not a global trust-store change, and
+    `NODE_TLS_REJECT_UNAUTHORIZED` was never touched. **Asked the user
+    explicitly before keeping this** (`AskUserQuestion`), per this
+    project's own standing instruction (in memory) not to trust a
+    corporate CA in Node without explicit authorization — confirmed "yes,
+    keep it."
+  - **Root cause 2 — a second, unrelated block on the same network**: raw
+    PostgreSQL wire protocol (TCP:5432) is dropped outbound entirely,
+    confirmed by a raw-socket test (TCP handshake succeeds; the server
+    never responds to the Postgres `SSLRequest` packet; the connection
+    times out). Confirmed NOT a TLS/cert issue — identical failure with
+    `rejectUnauthorized: false`. This has nothing to do with Root cause 1;
+    the user had already created a free Neon Postgres project (chosen over
+    installing Docker/native Postgres, since this machine has neither and
+    installing either needs admin rights this session didn't want to
+    assume), and HTTPS:443 to that same Neon host worked fine once the
+    Root-cause-1 CA fix was applied. **Fix**: `lib/db/client.ts` now
+    selects between two Prisma driver adapters by `DATABASE_URL`'s host —
+    `@prisma/adapter-pg` (the existing default, plain Postgres-over-TCP,
+    still what docker-compose.yml/CI/a native install speak) stays default;
+    `@prisma/adapter-neon` (new dependency, wraps
+    `@neondatabase/serverless`'s WebSocket-over-443 driver) is used only
+    when the host ends in `.neon.tech`. Purely additive — no existing path
+    changes. `npm audit --omit=dev`: 0 vulnerabilities before and after.
+  - **Migrations applied without `prisma migrate deploy`**: that command
+    itself spawns `schema-engine-windows.exe`, which failed with "This
+    program is blocked by group policy" — the exact same class of
+    OS-level execution block already documented for Playwright's
+    downloaded Chromium binary, confirmed directly (both `bash` and a
+    native PowerShell invocation of the `.exe` fail identically). Worked
+    around with a one-off script (not committed — deleted after running)
+    that read each `prisma/migrations/*/migration.sql` in order and
+    executed it via `@neondatabase/serverless`'s `Client`, recording each
+    in a hand-created `_prisma_migrations` table matching Prisma's own
+    schema (id/checksum/migration_name/finished_at) so `prisma migrate
+    deploy`/`status` recognize the database as up to date afterward, same
+    as if the real CLI had run. All 10 migrations applied cleanly; the
+    resulting schema (22 tables) matches `prisma/schema.prisma` exactly.
+  - **A real, incidental finding**: the Clerk keys the user pasted first
+    landed in the wrong `.env` variables (`NEXT_PUBLIC_CLERK_SIGN_IN_URL`/
+    `_SIGN_UP_URL` got the publishable/secret key values, leaving
+    `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`/`CLERK_SECRET_KEY` empty) — caught
+    by reading `.env` directly rather than trusting the user's "I pasted
+    the keys" at face value, fixed by moving each value to its correct
+    variable and restoring the two URL vars to `/sign-in`/`/sign-up`.
+  - **First-ever real local live-database verification for this project**:
+    with `DATABASE_URL` and `NODE_EXTRA_CA_CERTS` both set, `npm run test`
+    ran every previously-always-skipped live-DB suite for real: 632/633
+    passed. The one failure (`stale-propagation.test.ts`, "marks a
+    multi-level dependency chain stale") was a `Test timed out in 5000ms`
+    immediately followed by a `deadlock detected` in its `afterEach`
+    cleanup — confirmed to be Neon free-tier latency (plus this network's
+    extra WebSocket/TLS hop) exceeding Vitest's 5s default on the single
+    heaviest test in the suite, not a code defect: re-run alone with
+    `--testTimeout=30000` passes cleanly in 5.5s. Not chased further, and
+    no test file was edited to accommodate this one local database choice
+    — this project's existing "CI is the authoritative environment for
+    anything DB-related" posture already covers exactly this case, and
+    GitHub Actions' dedicated `postgres:16-alpine` service container has no
+    reason to share Neon free-tier's latency characteristics.
+  - Every prior session's "self-skips locally, GitHub Actions CI is the
+    actual verification environment" language throughout this file was a
+    real, load-bearing constraint, not caution for its own sake — this is
+    the first session it was ever actually possible to do otherwise.
+  - See the `corporate-network-tls-block` memory for the full technical
+    detail (exact cert chain, exact error signatures) kept for whichever
+    future session runs on this same machine again.
+- **UNITS 3.1–3.5 (2026-07-30 through 2026-07-31): workspace shell, project
+  and assembly management UI, generic module input renderer, link
+  suggestion UI, and generic result and trace renderer — all complete,
+  verified against a live database.** Full detail (scope decisions, read
+  models, UI components, tests, verification results) has been relocated to
+  `context/progress/unit-3.md` to keep this file focused on cross-cutting
+  history — nothing here was summarized or lost, it moved. Next: Unit 3.6
+  (catalog matching and assignment UI), whose brief is also in that file.
 - **DESIGN-RISK FOLLOW-UP 1 of 6 (2026-07-30, new session): Unit 0.3's
   Playwright/Testing Library/coverage gap — closed, locally verified,
   Playwright itself pending a CI round trip.** Unit 0.3's deliverables list
@@ -2079,19 +2210,11 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
    ("CI blocks lint, type, unit, and build failures") was already true
    before this pass; the roadmap's own toolchain deliverable list is what
    was incomplete, and that gap is now closed pending the CI round trip.
-2. **Milestone 3 (generic UI)**, starting with Unit 3.1 (workspace shell).
-   Then Milestone 4 (modules).
-   - **RESOLVED (2026-07-30 hardening pass), superseding the deferral below:**
-     semantic link compatibility is now enforced by `confirmParameterLink` in
-     `lib/application/parameters/`, alongside declared-port verification and
-     both-endpoint configuration scoping. Unit 3.4's suggestion UI must reuse
-     that service; it may pre-filter candidates for usability, but the server
-     boundary is what makes a link safe. The original deferral (kept for the
-     record): compatibility gating was to live only in the suggest-and-confirm
-     flow, because it needs both endpoints to be registered canonical
-     parameters plus the approved-mapping set. That reasoning was sound about
-     *what* the check needs and wrong about *where* it belongs — a UI-only
-     gate leaves the write path open.
+2. **Milestone 3 (Generic User Experience) is under way; Units 3.1–3.5 are
+   complete.** See `context/progress/unit-3.md` for full unit-by-unit
+   history, the Unit 3.2/3.5 architecture decisions, the curve-editor
+   deferral, and the Unit 3.6 brief (next: catalog matching and assignment
+   UI).
    - Deferred as its own future unit (NOT Unit 2.8): "change an
      assigned-component feedback input" stale-propagation use case — an
      assignment acting as a *source* of a value other calculations consume
@@ -2118,6 +2241,11 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
    registry version). See `lib/engine/parameters/README.md` and Open Questions
 
 ## Open Questions
+
+- **RESOLVED (2026-07-31, Unit 3.3) — read-model half only; the curve/
+  `vector_quantity` editor half remains a standing deferral.** Full detail,
+  the revisit trigger, and the original blocker text are relocated to
+  `context/progress/unit-3.md` Open Questions.
 
 - Unit 1.3 SCOPE DECISION (2026-07-28): the implementation map lists 10 initial
   parameter groups for Unit 1.3, but the screw/guide/coupling/support-bearing/
@@ -2368,6 +2496,12 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
 
 ## Architecture Decisions
 
+- (2026-07-30/07-31, Units 3.2 and 3.5) Four Unit 3.x architecture
+  decisions — Unit 3.2's auto-created initial `MachineConfiguration` and
+  module-instance creation validated against the real module registry; Unit
+  3.5's previous-run-comparison scope (latest vs. immediately-prior run
+  only) and the Result/Input pane stacked-column layout — are relocated to
+  `context/progress/unit-3.md` Architecture Decisions.
 - (2026-07-30 hardening pass) **Manufacturer part revisions are write-once
   engineering records — ADR-0006.** An exact repeat import reuses the existing
   row and leaves its provenance with the batch that first produced it; changed

@@ -48,6 +48,11 @@ Before implementation, read:
 9. `implementation-map.md`
 10. `progress-tracker.md`
 
+For normal Unit 3.x (Milestone 3) continuation work, read
+`progress/unit-3.md` instead of the full progress tracker — it holds
+complete Unit 3.1+ history, decisions, and the next Unit 3 brief. Read
+both files for a full project audit.
+
 Read relevant ADRs and validation records before changing affected
 behavior.
 
@@ -216,7 +221,8 @@ Update documentation whenever implementation changes:
 - UI patterns
 - Implementation sequence
 
-Update `progress-tracker.md` after every meaningful implementation unit.
+Update `progress-tracker.md` after every meaningful implementation unit;
+update `progress/unit-3.md` instead for a Unit 3.x change.
 
 ## Required Verification Before Completing a Unit
 

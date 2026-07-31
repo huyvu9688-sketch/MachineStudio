@@ -231,10 +231,18 @@ function toModuleInstanceRecord(row: ModuleInstanceRow): ModuleInstanceRecord {
 
 // --- Creates -------------------------------------------------------------
 
-/** Creates (or, if it already exists, returns) a `User` ownership reference. */
-export async function upsertUser(id: string): Promise<UserRecord> {
+/**
+ * Creates (or, if it already exists, returns) a `User` ownership reference.
+ * Accepts the same optional trailing `client` as every other create in this
+ * file, so a caller can compose it inside its own transaction —
+ * `createMachineProject` (Unit 3.2) does exactly this, upserting the caller
+ * as the first statement in the same transaction that creates their first
+ * project, since a real (non-test) Clerk user has no other entry point that
+ * would have created their `User` row first.
+ */
+export async function upsertUser(id: string, client: DbClient = prisma): Promise<UserRecord> {
   const userId = parse(nonEmpty, id);
-  const row = await prisma.user.upsert({
+  const row = await client.user.upsert({
     where: { id: userId },
     create: { id: userId },
     update: {},

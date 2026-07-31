@@ -18,11 +18,16 @@ architectural decision:
 9. `context/implementation-map.md` — detailed ordered execution plan
 10. `context/progress-tracker.md` — current state and next work unit
 
+For normal Unit 3.x (Milestone 3) continuation work, read
+`context/progress/unit-3.md` instead of the full progress tracker — it
+holds complete Unit 3.1+ history, decisions, and the next Unit 3 brief.
+Read both files for a full project audit.
+
 Also read relevant files under `context/adr/` and `validation/` before
 changing affected behavior.
 
 Update `context/progress-tracker.md` after every meaningful implementation
-change.
+change; update `context/progress/unit-3.md` instead for a Unit 3.x change.
 
 If implementation changes architecture, scope, standards policy, module
 contracts, parameter semantics, UI conventions, or roadmap order, update
