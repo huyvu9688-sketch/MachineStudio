@@ -3,7 +3,7 @@
 // safe to register and execute (context/architecture.md "Module Consistency
 // Mechanisms"; context/code-standards.md "Module Packages"):
 //  - well-formed manifest, ports, UI/report schemas, and validation record
-//  - a well-formed SDK range and a matching parameter-registry version
+//  - a well-formed SDK range and a compatible parameter-registry version
 //  - unique input/output port keys
 //  - every port references a registered canonical parameter
 //  - every UI field references a declared input port
@@ -12,8 +12,7 @@
 // This is the registration-time gate. Run-time input/output/trace validation
 // lives in ./execute.
 
-import type { ParameterRegistry } from "../parameters";
-import { PARAMETER_REGISTRY } from "../parameters";
+import { PARAMETER_REGISTRY, type ParameterRegistry } from "../parameters";
 import { ModuleSdkError } from "./errors";
 import { packageContentHash } from "./hash";
 import {
@@ -26,7 +25,11 @@ import {
 import { isValidSdkRange } from "./sdk";
 import type { ModulePackage } from "./types";
 
-function fail(code: ModuleSdkError["code"], message: string, subjectId?: string): never {
+function fail(
+  code: ModuleSdkError["code"],
+  message: string,
+  subjectId?: string,
+): never {
   throw new ModuleSdkError(code, message, subjectId);
 }
 
@@ -51,23 +54,35 @@ export function validateModulePackage(
 ): void {
   const manifest = ModuleManifestSchema.safeParse(pkg.manifest);
   if (!manifest.success) {
-    fail("invalid_manifest", `Malformed manifest: ${manifest.error.message}`, pkg.manifest.id);
+    fail(
+      "invalid_manifest",
+      `Malformed manifest: ${manifest.error.message}`,
+      pkg.manifest.id,
+    );
   }
   const id = manifest.data.id;
 
   if (!isValidSdkRange(manifest.data.sdkRange)) {
-    fail("invalid_sdk_range", `Module "${id}" declares a malformed SDK range.`, id);
+    fail(
+      "invalid_sdk_range",
+      `Module "${id}" declares a malformed SDK range.`,
+      id,
+    );
   }
 
   const ports = ModulePortsSchema.safeParse(pkg.ports);
   if (!ports.success) {
-    fail("invalid_manifest", `Module "${id}" has malformed ports: ${ports.error.message}`, id);
+    fail(
+      "invalid_manifest",
+      `Module "${id}" has malformed ports: ${ports.error.message}`,
+      id,
+    );
   }
 
-  if (manifest.data.parameterRegistryVersion !== registry.version) {
+  if (!registry.supportsVersion(manifest.data.parameterRegistryVersion)) {
     fail(
       "registry_version_mismatch",
-      `Module "${id}" targets registry ${manifest.data.parameterRegistryVersion}, but the registry is ${registry.version}.`,
+      `Module "${id}" targets unsupported registry ${manifest.data.parameterRegistryVersion}; the active registry is ${registry.version}.`,
       id,
     );
   }
@@ -76,11 +91,19 @@ export function validateModulePackage(
   const outputKeys = pkg.ports.outputs.map((p) => p.key);
   const dupInput = uniqueKeys(inputKeys);
   if (dupInput !== undefined) {
-    fail("duplicate_port_key", `Module "${id}" has duplicate input port key "${dupInput}".`, id);
+    fail(
+      "duplicate_port_key",
+      `Module "${id}" has duplicate input port key "${dupInput}".`,
+      id,
+    );
   }
   const dupOutput = uniqueKeys(outputKeys);
   if (dupOutput !== undefined) {
-    fail("duplicate_port_key", `Module "${id}" has duplicate output port key "${dupOutput}".`, id);
+    fail(
+      "duplicate_port_key",
+      `Module "${id}" has duplicate output port key "${dupOutput}".`,
+      id,
+    );
   }
 
   for (const port of [...pkg.ports.inputs, ...pkg.ports.outputs]) {
@@ -89,6 +112,19 @@ export function validateModulePackage(
         "unknown_parameter",
         `Module "${id}" port "${port.key}" references unknown parameter "${port.parameterId}".`,
         port.parameterId,
+      );
+    }
+
+    const definition = registry.get(port.parameterId);
+    if (
+      port.loadCase !== undefined &&
+      (definition?.loadCases === undefined ||
+        !definition.loadCases.includes(port.loadCase))
+    ) {
+      fail(
+        "invalid_port_load_case",
+        `Module "${id}" port "${port.key}" declares load case "${port.loadCase}", but parameter "${port.parameterId}" does not admit it.`,
+        port.key,
       );
     }
   }
@@ -100,7 +136,11 @@ export function validateModulePackage(
   const groupIds = ui.data.groups.map((g) => g.id);
   const dupGroup = uniqueKeys(groupIds);
   if (dupGroup !== undefined) {
-    fail("invalid_ui_schema", `Module "${id}" has duplicate UI group ID "${dupGroup}".`, id);
+    fail(
+      "invalid_ui_schema",
+      `Module "${id}" has duplicate UI group ID "${dupGroup}".`,
+      id,
+    );
   }
   const inputKeySet = new Set(inputKeys);
   for (const group of ui.data.groups) {
@@ -117,20 +157,39 @@ export function validateModulePackage(
 
   const report = ModuleReportSchemaSchema.safeParse(pkg.reportSchema);
   if (!report.success) {
-    fail("invalid_report_schema", `Module "${id}" has a malformed report schema.`, id);
+    fail(
+      "invalid_report_schema",
+      `Module "${id}" has a malformed report schema.`,
+      id,
+    );
   }
   const dupSection = uniqueKeys(report.data.sections.map((s) => s.id));
   if (dupSection !== undefined) {
-    fail("invalid_report_schema", `Module "${id}" has duplicate report section ID "${dupSection}".`, id);
+    fail(
+      "invalid_report_schema",
+      `Module "${id}" has duplicate report section ID "${dupSection}".`,
+      id,
+    );
   }
 
   const validation = ValidationRecordSchema.safeParse(pkg.validation);
   if (!validation.success) {
-    fail("invalid_validation_record", `Module "${id}" has a malformed validation record.`, id);
+    fail(
+      "invalid_validation_record",
+      `Module "${id}" has a malformed validation record.`,
+      id,
+    );
   }
 
-  if (pkg.catalogAdapter !== undefined && pkg.catalogAdapter.componentType.trim() === "") {
-    fail("invalid_catalog_adapter", `Module "${id}" catalog adapter has an empty component type.`, id);
+  if (
+    pkg.catalogAdapter !== undefined &&
+    pkg.catalogAdapter.componentType.trim() === ""
+  ) {
+    fail(
+      "invalid_catalog_adapter",
+      `Module "${id}" catalog adapter has an empty component type.`,
+      id,
+    );
   }
 
   const expectedHash = packageContentHash(pkg);

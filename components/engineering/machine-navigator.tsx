@@ -9,6 +9,7 @@ import {
   FileText,
   Folder,
   GitBranch,
+  GitCompareArrows,
   Layers,
   ListChecks,
   PackagePlus,
@@ -24,11 +25,18 @@ import {
 import { EmptyState } from "./empty-state";
 import { StatusBadge } from "./status-badge";
 import { CreateAssemblyDialog } from "./create-assembly-dialog";
-import { AddModuleInstanceDialog, type ModulePackageOption } from "./add-module-instance-dialog";
+import {
+  AddModuleInstanceDialog,
+  type ModulePackageOption,
+} from "./add-module-instance-dialog";
 import { RenameDialog } from "./rename-dialog";
 import { renameAssemblyAction } from "@/app/(workspace)/workspace/actions";
 import { cn } from "@/lib/utils";
-import type { AssemblyNode, ConfigurationNode, ModuleInstanceRecord } from "@/lib/db";
+import type {
+  AssemblyNode,
+  ConfigurationNode,
+  ModuleInstanceRecord,
+} from "@/lib/db";
 
 export interface MachineNavigatorProps {
   readonly projectName: string;
@@ -37,7 +45,7 @@ export interface MachineNavigatorProps {
   /** The module instance the `?module=` deep link currently selects, if any. */
   readonly selectedModuleInstanceId: string | null;
   /** The static-row panel the `?panel=` deep link currently selects, if any. */
-  readonly selectedPanel: "requirements" | null;
+  readonly selectedPanel: "requirements" | "baselines" | null;
 }
 
 /**
@@ -45,9 +53,9 @@ export interface MachineNavigatorProps {
  * "machine, assemblies, workflows, modules, requirements, BOM, and
  * reports"). Assembly rows are interactive (real expand/collapse, plus
  * add-sub-assembly/add-module/rename actions, Unit 3.2); module rows are
- * real deep links (Unit 3.3). Requirements is now a real deep link too
- * (Unit 3.7, `?...&panel=requirements`); BOM/Reports stay informational
- * only, since nothing they would open exists yet (Milestone 5).
+ * real deep links (Unit 3.3). Requirements and Baselines are configuration
+ * deep links (Units 3.7 and 3.8); BOM/Reports stay informational only, since
+ * nothing they would open exists yet (Milestone 5).
  */
 export function MachineNavigator({
   projectName,
@@ -87,7 +95,9 @@ export function MachineNavigator({
               }
             >
               {configuration.assemblies.length === 0 ? (
-                <p className="px-3 py-1.5 text-[12px] text-text-muted">No assemblies yet.</p>
+                <p className="px-3 py-1.5 text-[12px] text-text-muted">
+                  No assemblies yet.
+                </p>
               ) : (
                 configuration.assemblies.map((assembly) => (
                   <AssemblyRow
@@ -103,7 +113,9 @@ export function MachineNavigator({
 
             <Section label="Workflows">
               {configuration.workflowInstances.length === 0 ? (
-                <p className="px-3 py-1.5 text-[12px] text-text-muted">No workflows yet.</p>
+                <p className="px-3 py-1.5 text-[12px] text-text-muted">
+                  No workflows yet.
+                </p>
               ) : (
                 configuration.workflowInstances.map((workflow) => (
                   <div
@@ -130,13 +142,23 @@ export function MachineNavigator({
 
       <div className="shrink-0 border-t border-border-default py-1.5">
         {configuration === null ? (
-          <StaticRow icon={ListChecks} label="Requirements" />
+          <>
+            <StaticRow icon={ListChecks} label="Requirements" />
+            <StaticRow icon={GitCompareArrows} label="Baselines" />
+          </>
         ) : (
-          <RequirementsRow
-            projectId={configuration.projectId}
-            configurationId={configuration.id}
-            selected={selectedPanel === "requirements"}
-          />
+          <>
+            <RequirementsRow
+              projectId={configuration.projectId}
+              configurationId={configuration.id}
+              selected={selectedPanel === "requirements"}
+            />
+            <BaselinesRow
+              projectId={configuration.projectId}
+              configurationId={configuration.id}
+              selected={selectedPanel === "baselines"}
+            />
+          </>
         )}
         <StaticRow icon={Layers} label="BOM" />
         <StaticRow icon={FileText} label="Reports" />
@@ -167,7 +189,13 @@ function Section({
   );
 }
 
-function StaticRow({ icon: Icon, label }: { readonly icon: LucideIcon; readonly label: string }) {
+function StaticRow({
+  icon: Icon,
+  label,
+}: {
+  readonly icon: LucideIcon;
+  readonly label: string;
+}) {
   return (
     <div
       className="flex cursor-not-allowed items-center gap-2 px-3 py-1.5 text-[13px] text-text-muted/50"
@@ -234,7 +262,8 @@ function AssemblyRow({
   readonly selectedModuleInstanceId: string | null;
 }) {
   const [open, setOpen] = useState(true);
-  const hasChildren = assembly.children.length > 0 || assembly.moduleInstances.length > 0;
+  const hasChildren =
+    assembly.children.length > 0 || assembly.moduleInstances.length > 0;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -255,7 +284,10 @@ function AssemblyRow({
               !hasChildren && "invisible",
             )}
           />
-          <Folder aria-hidden="true" className="h-4 w-4 shrink-0 text-text-muted" />
+          <Folder
+            aria-hidden="true"
+            className="h-4 w-4 shrink-0 text-text-muted"
+          />
           <span className="truncate">{assembly.name}</span>
         </CollapsibleTrigger>
 
@@ -263,13 +295,23 @@ function AssemblyRow({
           <CreateAssemblyDialog
             configurationId={assembly.configurationId}
             parentId={assembly.id}
-            trigger={<IconButton icon={Plus} label={`Add sub-assembly to ${assembly.name}`} />}
+            trigger={
+              <IconButton
+                icon={Plus}
+                label={`Add sub-assembly to ${assembly.name}`}
+              />
+            }
           />
           <AddModuleInstanceDialog
             assemblyId={assembly.id}
             configurationId={assembly.configurationId}
             modulePackages={modulePackages}
-            trigger={<IconButton icon={PackagePlus} label={`Add module to ${assembly.name}`} />}
+            trigger={
+              <IconButton
+                icon={PackagePlus}
+                label={`Add module to ${assembly.name}`}
+              />
+            }
           />
           <RenameDialog
             title="Rename assembly"
@@ -277,7 +319,9 @@ function AssemblyRow({
             idFieldName="assemblyId"
             idValue={assembly.id}
             currentName={assembly.name}
-            trigger={<IconButton icon={Pencil} label={`Rename ${assembly.name}`} />}
+            trigger={
+              <IconButton icon={Pencil} label={`Rename ${assembly.name}`} />
+            }
           />
         </div>
       </div>
@@ -335,8 +379,43 @@ function RequirementsRow({
         selected ? "bg-surface-selected" : "hover:bg-surface-hover",
       )}
     >
-      <ListChecks aria-hidden="true" className="h-4 w-4 shrink-0 text-text-muted" />
+      <ListChecks
+        aria-hidden="true"
+        className="h-4 w-4 shrink-0 text-text-muted"
+      />
       Requirements
+    </Link>
+  );
+}
+
+/** A configuration-level deep link to Unit 3.8's immutable baseline workspace. */
+function BaselinesRow({
+  projectId,
+  configurationId,
+  selected,
+}: {
+  readonly projectId: string;
+  readonly configurationId: string;
+  readonly selected: boolean;
+}) {
+  const pathname = usePathname();
+  const href = `${pathname}?project=${encodeURIComponent(projectId)}&configuration=${encodeURIComponent(configurationId)}&panel=baselines`;
+
+  return (
+    <Link
+      href={href}
+      aria-current={selected ? "true" : undefined}
+      className={cn(
+        "flex items-center gap-2 px-3 py-1.5 text-[13px] text-text-primary",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary",
+        selected ? "bg-surface-selected" : "hover:bg-surface-hover",
+      )}
+    >
+      <GitCompareArrows
+        aria-hidden="true"
+        className="h-4 w-4 shrink-0 text-text-muted"
+      />
+      Baselines
     </Link>
   );
 }
@@ -369,8 +448,14 @@ function ModuleRow({
         selected ? "bg-surface-selected" : "hover:bg-surface-hover",
       )}
     >
-      <Boxes aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-text-muted" />
-      <StatusBadge status={moduleInstance.lastRunStatus ?? "not_configured"} iconOnly />
+      <Boxes
+        aria-hidden="true"
+        className="h-3.5 w-3.5 shrink-0 text-text-muted"
+      />
+      <StatusBadge
+        status={moduleInstance.lastRunStatus ?? "not_configured"}
+        iconOnly
+      />
       <span className="truncate">{moduleInstance.label}</span>
     </Link>
   );

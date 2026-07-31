@@ -29,7 +29,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 const MODULE_PACKAGES: ModulePackageOption[] = [
-  { modulePackageId: "example-scaffold", moduleVersion: "0.1.0", category: "example" },
+  {
+    modulePackageId: "example-scaffold",
+    moduleVersion: "0.1.0",
+    category: "example",
+  },
 ];
 
 function moduleInstance(
@@ -164,12 +168,18 @@ describe("MachineNavigator", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Add root assembly" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add root assembly" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Add sub-assembly to X axis" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add module to X axis" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Rename X axis" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add module to X axis" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Rename X axis" }),
+    ).toBeInTheDocument();
   });
 
   // Regression test for a real bug: every prior test above only asserted
@@ -190,16 +200,26 @@ describe("MachineNavigator", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Add sub-assembly to X axis" }));
-    expect(screen.getByRole("heading", { name: "New sub-assembly" })).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Add sub-assembly to X axis" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "New sub-assembly" }),
+    ).toBeInTheDocument();
     await user.keyboard("{Escape}");
 
-    await user.click(screen.getByRole("button", { name: "Add module to X axis" }));
-    expect(screen.getByRole("heading", { name: "Add module instance" })).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Add module to X axis" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Add module instance" }),
+    ).toBeInTheDocument();
     await user.keyboard("{Escape}");
 
     await user.click(screen.getByRole("button", { name: "Rename X axis" }));
-    expect(screen.getByRole("heading", { name: "Rename assembly" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Rename assembly" }),
+    ).toBeInTheDocument();
   });
 
   it("renders the BOM/Reports sections as non-interactive placeholders", () => {
@@ -230,7 +250,10 @@ describe("MachineNavigator", () => {
       />,
     );
 
-    expect(screen.getByText("Requirements")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByText("Requirements")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 
   it("renders Requirements as a real deep link to ?...&panel=requirements once a configuration exists", () => {
@@ -252,6 +275,25 @@ describe("MachineNavigator", () => {
     expect(link).not.toHaveAttribute("aria-current");
   });
 
+  it("renders Baselines as a real deep link to ?...&panel=baselines once a configuration exists", () => {
+    render(
+      <MachineNavigator
+        projectName="Palletizer axis"
+        configuration={configuration}
+        modulePackages={MODULE_PACKAGES}
+        selectedModuleInstanceId={null}
+        selectedPanel={null}
+      />,
+    );
+
+    const link = screen.getByRole("link", { name: "Baselines" });
+    expect(link).toHaveAttribute(
+      "href",
+      "/workspace?project=project&configuration=config&panel=baselines",
+    );
+    expect(link).not.toHaveAttribute("aria-current");
+  });
+
   it("marks the Requirements link current when ?panel=requirements is selected", () => {
     render(
       <MachineNavigator
@@ -264,6 +306,23 @@ describe("MachineNavigator", () => {
     );
 
     expect(screen.getByRole("link", { name: "Requirements" })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+  });
+
+  it("marks the Baselines link current when ?panel=baselines is selected", () => {
+    render(
+      <MachineNavigator
+        projectName="Palletizer axis"
+        configuration={configuration}
+        modulePackages={MODULE_PACKAGES}
+        selectedModuleInstanceId={null}
+        selectedPanel="baselines"
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Baselines" })).toHaveAttribute(
       "aria-current",
       "true",
     );

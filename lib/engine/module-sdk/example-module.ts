@@ -11,7 +11,6 @@ import {
   buildCalculationTrace,
   makeQuantity,
   ModuleInputSchema,
-  PARAMETER_REGISTRY_VERSION,
   sealModulePackage,
   type ModuleComputation,
   type ModuleInput,
@@ -50,7 +49,11 @@ function compute(input: ModuleInput): ModuleComputation {
           methodId: "axis.friction_thrust",
           expression: "F_a = μ · m · g",
           inputs: [
-            { label: "μ", value: friction, ref: "motion.axis.friction_coefficient" },
+            {
+              label: "μ",
+              value: friction,
+              ref: "motion.axis.friction_coefficient",
+            },
             { label: "m", value: mass, ref: "motion.axis.payload_mass" },
             { label: "g", value: gravity, ref: "motion.axis.gravity" },
           ],
@@ -98,7 +101,8 @@ const draft: ModulePackageDraft = {
     id: "example-linear-thrust",
     version: "0.1.0",
     sdkRange: { min: "1.0.0" },
-    parameterRegistryVersion: PARAMETER_REGISTRY_VERSION,
+    // Test/proof fixture authored against the first released registry.
+    parameterRegistryVersion: "1.0.0",
     category: "motion",
     tags: ["example", "linear-axis"],
     workflowRoles: ["linear-axis.example"],
@@ -108,15 +112,25 @@ const draft: ModulePackageDraft = {
   },
   ports: {
     inputs: [
-      { key: "payload_mass", parameterId: asParameterId("motion.axis.payload_mass"), required: true },
+      {
+        key: "payload_mass",
+        parameterId: asParameterId("motion.axis.payload_mass"),
+        required: true,
+      },
       {
         key: "friction_coefficient",
         parameterId: asParameterId("motion.axis.friction_coefficient"),
         required: true,
       },
-      { key: "gravity", parameterId: asParameterId("motion.axis.gravity"), required: true },
+      {
+        key: "gravity",
+        parameterId: asParameterId("motion.axis.gravity"),
+        required: true,
+      },
     ],
-    outputs: [{ key: "thrust", parameterId: asParameterId("motion.axis.thrust_force") }],
+    outputs: [
+      { key: "thrust", parameterId: asParameterId("motion.axis.thrust_force") },
+    ],
   },
   inputSchema: ModuleInputSchema,
   compute,
@@ -125,7 +139,10 @@ const draft: ModulePackageDraft = {
       {
         id: "loads",
         title: "Loads",
-        fields: [{ portKey: "payload_mass" }, { portKey: "friction_coefficient" }],
+        fields: [
+          { portKey: "payload_mass" },
+          { portKey: "friction_coefficient" },
+        ],
       },
     ],
   },

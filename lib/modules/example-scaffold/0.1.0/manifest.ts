@@ -4,7 +4,6 @@
 // the source revisions the module's methods are based on.
 
 import {
-  PARAMETER_REGISTRY_VERSION,
   asParameterId,
   type ModuleManifest,
   type ModulePorts,
@@ -14,7 +13,9 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   id: "example-scaffold",
   version: "0.1.0",
   sdkRange: { min: "1.0.0" },
-  parameterRegistryVersion: PARAMETER_REGISTRY_VERSION,
+  // This development demonstration was authored against registry v1.0.0.
+  // Keep the target literal so later registry releases cannot rewrite it.
+  parameterRegistryVersion: "1.0.0",
   category: "TODO",
   tags: [],
   workflowRoles: [],

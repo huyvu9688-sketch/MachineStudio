@@ -4,6 +4,30 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
+- **2026-07-31 (continued after Unit 3.8): Unit 4.1 Stage 1 is complete and
+  its first Stage 2 contract increment is implemented, but no production
+  module is registered or released.** `context/axis-load-cases-stage-1-spec.md`
+  records `axis.v1`, method evidence, historical-fixture provenance, and the
+  validation gate. `context/axis-load-cases-stage-2-contract.md` records the
+  additive parameter registry v1.1 contract, method-source metadata, the
+  generic load-case validation guard, and the unregistered pure SI kernel with
+  ID39/ID42 regression coverage. The raw packets remain draft evidence: their
+  original revisions, confirmed final selections/corrections, third historical
+  fixture, and independent benchmark are still absent. The final module port
+  map is therefore intentionally incomplete: vector applied-force/moment and
+  resolved-output parameter semantics, vector authoring, result load-case
+  labels, and cross-case graph compatibility remain separate generic/product
+  work. Review before acceptance also caught a registry-version immutability
+  gap: the two registered development fixtures now pin their literal v1.0.0
+  authoring targets, while v1.1 explicitly declares the historic registry
+  targets it supports rather than silently rewriting those packages. Verification:
+  Prettier, `git diff --check`, typecheck, and 529 runnable tests (200
+  database-gated skips) pass. Sandbox build attempts could not fetch IBM Plex
+  Sans and IBM Plex Mono from `fonts.googleapis.com`, but the complete
+  `npm run verify` pipeline passed once its production build was allowed its
+  normal network access; no app/font code was changed in this unit. Next: finish
+  the Stage 2 port decisions before attempting a Stage 3 package and trace.
+
 - **2026-07-31 (same session, continued — the user's first real
   click-through of the running app): a real, app-wide correctness bug
   found and fixed — no `User` row was ever created for a real Clerk
@@ -2254,6 +2278,14 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
    drive-train): NOT released in registry v1 — approved pending proposals to
    be released per module at its Stage-2 parameter contract (bumping the
    registry version). See `lib/engine/parameters/README.md` and Open Questions
+
+5. **BLOCKED (evidence required): Unit 4.1 Stage 2 / production package.**
+   `context/axis-load-cases-stage-1-spec.md` records the source-based method,
+   but the release gate still needs sanitized horizontal and vertical historical
+   fixtures, an independent numerical benchmark, and decisions for guide
+   resistance, holding/emergency-stop case semantics, signed acceleration,
+   resolved moments, and derating. It also depends on separately planned
+   generic vector authoring and output load-case-labeling capabilities.
 
 ## Open Questions
 

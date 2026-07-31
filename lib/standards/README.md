@@ -69,5 +69,7 @@ context/us-market-profile.md and context/jp-market-profile.md).
    where an edition replaces an earlier one. A new edition is a **new** revision,
    never an edit of an existing one.
 3. Reference it from the relevant `MarketProfile` entry with its applicability
-   and use.
+   and use when it is a market baseline. A calculation-method source can be
+   registered without changing a market profile when it is module-specific
+   evidence rather than a jurisdictional requirement.
 4. Extend the registry tests.

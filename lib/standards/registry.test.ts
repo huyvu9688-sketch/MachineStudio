@@ -32,7 +32,11 @@ function doc(id: string, over: Partial<SourceDocument> = {}): SourceDocument {
   };
 }
 
-function rev(id: string, documentId: string, over: Partial<SourceRevision> = {}): SourceRevision {
+function rev(
+  id: string,
+  documentId: string,
+  over: Partial<SourceRevision> = {},
+): SourceRevision {
   return {
     id: asSourceRevisionId(id),
     documentId: asSourceDocumentId(documentId),
@@ -65,30 +69,59 @@ function expectBuildError(
 
 describe("released source registry", () => {
   it("loads all US and JP documents, revisions, and profiles", () => {
-    expect(SOURCE_REGISTRY.listDocuments().length).toBe(SOURCE_DOCUMENTS.length);
-    expect(SOURCE_REGISTRY.listRevisions().length).toBe(SOURCE_REVISIONS.length);
+    expect(SOURCE_REGISTRY.listDocuments().length).toBe(
+      SOURCE_DOCUMENTS.length,
+    );
+    expect(SOURCE_REGISTRY.listRevisions().length).toBe(
+      SOURCE_REVISIONS.length,
+    );
     expect(SOURCE_REGISTRY.listProfiles().length).toBe(MARKET_PROFILES.length);
   });
 
   it("exposes both market profiles", () => {
-    expect(SOURCE_REGISTRY.getProfile("US-General-Industrial-Machinery")).toBeDefined();
-    expect(SOURCE_REGISTRY.getProfile("JP-General-Industrial-Machinery")).toBeDefined();
+    expect(
+      SOURCE_REGISTRY.getProfile("US-General-Industrial-Machinery"),
+    ).toBeDefined();
+    expect(
+      SOURCE_REGISTRY.getProfile("JP-General-Industrial-Machinery"),
+    ).toBeDefined();
   });
 
   it("includes the JP administrative_guidance source with a bilingual title", () => {
-    const guideline = SOURCE_REGISTRY.getDocument("jp.mhlw.machinery_safety_guideline");
+    const guideline = SOURCE_REGISTRY.getDocument(
+      "jp.mhlw.machinery_safety_guideline",
+    );
     expect(guideline?.classification).toBe("administrative_guidance");
     expect(guideline?.originalTitle).toBe("機械の包括的な安全基準に関する指針");
     expect(guideline?.originalLanguage).toBe("ja");
   });
 
   it("records the Japanese statute with its authoritative original title", () => {
-    expect(SOURCE_REGISTRY.getDocument("jp.isha")?.originalTitle).toBe("労働安全衛生法");
+    expect(SOURCE_REGISTRY.getDocument("jp.isha")?.originalTitle).toBe(
+      "労働安全衛生法",
+    );
   });
 
   it("registers NFPA 70 as a document with no baseline revision (project/AHJ edition)", () => {
     expect(SOURCE_REGISTRY.getDocument("us.nfpa.70")).toBeDefined();
     expect(SOURCE_REGISTRY.revisionsOf("us.nfpa.70")).toHaveLength(0);
+  });
+
+  it("registers the axis-load method sources at their exact revisions", () => {
+    expect(
+      SOURCE_REGISTRY.getRevision("us.nist.sp811@web-2026-07-31"),
+    ).toBeDefined();
+    expect(
+      SOURCE_REGISTRY.getRevision("jp.thk.ball_screw_general_catalog@515-1e"),
+    ).toBeDefined();
+    expect(
+      SOURCE_REGISTRY.getRevision("jp.thk.example_ball_screw_selection@515-1e"),
+    ).toBeDefined();
+    expect(
+      SOURCE_REGISTRY.getRevision(
+        "jp.oriental_motor.linear_actuator_moment@web-2026-07-31",
+      ),
+    ).toBeDefined();
   });
 
   it("stores no excerpt on any licensed source (licensing policy)", () => {
@@ -101,7 +134,9 @@ describe("released source registry", () => {
   });
 
   it("derives the profile key in id@major form", () => {
-    expect(marketProfileKey(usProfile)).toBe("US-General-Industrial-Machinery@1");
+    expect(marketProfileKey(usProfile)).toBe(
+      "US-General-Industrial-Machinery@1",
+    );
   });
 });
 
@@ -138,7 +173,10 @@ describe("clause reference resolution (exit criterion)", () => {
 
 describe("unique IDs", () => {
   it("rejects duplicate document IDs", () => {
-    expectBuildError(() => build([doc("a"), doc("a")], []), "duplicate_document_id");
+    expectBuildError(
+      () => build([doc("a"), doc("a")], []),
+      "duplicate_document_id",
+    );
   });
 
   it("rejects duplicate revision IDs", () => {
@@ -159,13 +197,19 @@ describe("unique IDs", () => {
       disclaimer: "d",
       entries: [],
     };
-    expectBuildError(() => build([], [], [profile, profile]), "duplicate_profile_id");
+    expectBuildError(
+      () => build([], [], [profile, profile]),
+      "duplicate_profile_id",
+    );
   });
 });
 
 describe("revision validity", () => {
   it("rejects a revision of an unknown document", () => {
-    expectBuildError(() => build([], [rev("x@1", "missing")]), "unknown_document");
+    expectBuildError(
+      () => build([], [rev("x@1", "missing")]),
+      "unknown_document",
+    );
   });
 
   it("rejects a whitespace-only edition", () => {
@@ -188,7 +232,10 @@ describe("revision validity", () => {
 
   it("allows an excerpt on a public document", () => {
     expect(() =>
-      build([doc("a", { access: "public" })], [rev("a@1", "a", { excerpt: "ok" })]),
+      build(
+        [doc("a", { access: "public" })],
+        [rev("a@1", "a", { excerpt: "ok" })],
+      ),
     ).not.toThrow();
   });
 });
@@ -197,21 +244,32 @@ describe("supersession", () => {
   it("accepts a valid supersession chain", () => {
     const registry = build(
       [doc("a")],
-      [rev("a@1", "a"), rev("a@2", "a", { supersedes: asSourceRevisionId("a@1") })],
+      [
+        rev("a@1", "a"),
+        rev("a@2", "a", { supersedes: asSourceRevisionId("a@1") }),
+      ],
     );
     expect(registry.getRevision("a@2")?.supersedes).toBe("a@1");
   });
 
   it("rejects a self-supersession", () => {
     expectBuildError(
-      () => build([doc("a")], [rev("a@1", "a", { supersedes: asSourceRevisionId("a@1") })]),
+      () =>
+        build(
+          [doc("a")],
+          [rev("a@1", "a", { supersedes: asSourceRevisionId("a@1") })],
+        ),
       "self_supersession",
     );
   });
 
   it("rejects a supersession of an unknown revision", () => {
     expectBuildError(
-      () => build([doc("a")], [rev("a@2", "a", { supersedes: asSourceRevisionId("a@1") })]),
+      () =>
+        build(
+          [doc("a")],
+          [rev("a@2", "a", { supersedes: asSourceRevisionId("a@1") })],
+        ),
       "unknown_supersession",
     );
   });
@@ -249,6 +307,9 @@ describe("profile source references", () => {
         },
       ],
     };
-    expectBuildError(() => build([doc("a")], [rev("a@1", "a")], [profile]), "unknown_profile_source");
+    expectBuildError(
+      () => build([doc("a")], [rev("a@1", "a")], [profile]),
+      "unknown_profile_source",
+    );
   });
 });

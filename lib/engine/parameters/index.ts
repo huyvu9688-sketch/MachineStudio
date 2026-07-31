@@ -21,10 +21,7 @@ export { asParameterId } from "./types";
 export type { ParameterSpec } from "./define";
 export { defineParameter } from "./define";
 
-export {
-  ParameterDefinitionSchema,
-  parseParameterDefinition,
-} from "./schemas";
+export { ParameterDefinitionSchema, parseParameterDefinition } from "./schemas";
 
 export {
   ParameterRegistryError,
@@ -44,6 +41,7 @@ export {
 export {
   PARAMETER_REGISTRY,
   PARAMETER_REGISTRY_HASH,
+  PARAMETER_REGISTRY_SUPPORTED_VERSIONS,
   getParameter,
   hasParameter,
   listParameters,

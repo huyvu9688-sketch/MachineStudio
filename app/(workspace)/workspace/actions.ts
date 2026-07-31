@@ -1,8 +1,8 @@
 "use server";
 
-// Server Actions backing Unit 3.2's create/rename/add-module forms. Each
-// action: authorize via Clerk, parse FormData, call exactly one application
-// service, and map its typed result to the ActionState shape
+// Server Actions backing the workspace's mutation forms. Each action:
+// authorizes via Clerk, parses FormData, calls exactly one application
+// service, and maps its typed result to the ActionState shape
 // `useActionState` renders inline (context/code-standards.md "Next.js":
 // "Server Actions follow the same validation and ownership rules as API
 // routes"). Real validation and ownership checks live in the application
@@ -16,6 +16,7 @@ import {
   assignComponent,
   confirmParameterLink,
   createMachineAssembly,
+  createBaseline,
   createMachineDesignAssumption,
   createMachineLoadCase,
   createMachineProject,
@@ -100,8 +101,12 @@ export async function createAssemblyAction(
   const parentIdRaw = fieldValue(formData, "parentId");
   const result = await createMachineAssembly(
     {
-      configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
-      ...(parentIdRaw.length > 0 ? { parentId: asAssemblyId(parentIdRaw) } : {}),
+      configurationId: asMachineConfigurationId(
+        fieldValue(formData, "configurationId"),
+      ),
+      ...(parentIdRaw.length > 0
+        ? { parentId: asAssemblyId(parentIdRaw) }
+        : {}),
       name: fieldValue(formData, "name"),
     },
     asUserId(userId),
@@ -131,7 +136,12 @@ export async function renameAssemblyAction(
   return { status: "success" };
 }
 
-const LOAD_CASE_CATEGORIES = ["normal", "peak", "holding", "emergency_stop"] as const;
+const LOAD_CASE_CATEGORIES = [
+  "normal",
+  "peak",
+  "holding",
+  "emergency_stop",
+] as const;
 
 /** Parses a load-case field, ignoring anything outside the declared set. */
 function parseLoadCase(raw: string): LoadCaseCategory | undefined {
@@ -167,7 +177,10 @@ export async function setModuleInputValueAction(
   let value: EngineeringValue;
   if (valueKind === "quantity") {
     if (definition.canonicalUnit === undefined) {
-      return { status: "error", message: "This parameter has no canonical unit." };
+      return {
+        status: "error",
+        message: "This parameter has no canonical unit.",
+      };
     }
     const magnitude = Number(fieldValue(formData, "magnitude"));
     if (!Number.isFinite(magnitude)) {
@@ -181,17 +194,28 @@ export async function setModuleInputValueAction(
         unit,
       );
     } catch {
-      return { status: "error", message: `Unit "${unit}" is not valid for this value.` };
+      return {
+        status: "error",
+        message: `Unit "${unit}" is not valid for this value.`,
+      };
     }
   } else if (valueKind === "enum") {
     if (definition.enumId === undefined) {
-      return { status: "error", message: "This parameter is not an enumeration." };
+      return {
+        status: "error",
+        message: "This parameter is not an enumeration.",
+      };
     }
     const option = fieldValue(formData, "option");
     if (!(definition.enumOptions ?? []).includes(option)) {
       return { status: "error", message: "Select a valid option." };
     }
-    value = { v: SERIALIZATION_FORMAT_VERSION, kind: "enum", enumId: definition.enumId, value: option };
+    value = {
+      v: SERIALIZATION_FORMAT_VERSION,
+      kind: "enum",
+      enumId: definition.enumId,
+      value: option,
+    };
   } else if (valueKind === "boolean") {
     value = {
       v: SERIALIZATION_FORMAT_VERSION,
@@ -199,14 +223,21 @@ export async function setModuleInputValueAction(
       value: fieldValue(formData, "checked") === "true",
     };
   } else {
-    return { status: "error", message: `Unsupported value kind "${valueKind}".` };
+    return {
+      status: "error",
+      message: `Unsupported value kind "${valueKind}".`,
+    };
   }
 
   const loadCase = parseLoadCase(fieldValue(formData, "loadCase"));
   const result = await setParameterValue(
     {
-      configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
-      moduleInstanceId: asModuleInstanceId(fieldValue(formData, "moduleInstanceId")),
+      configurationId: asMachineConfigurationId(
+        fieldValue(formData, "configurationId"),
+      ),
+      moduleInstanceId: asModuleInstanceId(
+        fieldValue(formData, "moduleInstanceId"),
+      ),
       nodeKind: "module_input",
       parameterId,
       ...(loadCase !== undefined ? { loadCase } : {}),
@@ -236,7 +267,9 @@ export async function runModuleInstanceAction(
 ): Promise<ActionState> {
   const { userId } = await auth.protect();
   const result = await executeModuleInstance({
-    moduleInstanceId: asModuleInstanceId(fieldValue(formData, "moduleInstanceId")),
+    moduleInstanceId: asModuleInstanceId(
+      fieldValue(formData, "moduleInstanceId"),
+    ),
     ownerId: asUserId(userId),
   });
   if (!result.ok) {
@@ -260,14 +293,18 @@ export async function addModuleInstanceAction(
   const modulePackageKey = fieldValue(formData, "modulePackageKey");
   const separatorIndex = modulePackageKey.indexOf("@");
   const modulePackageId =
-    separatorIndex === -1 ? modulePackageKey : modulePackageKey.slice(0, separatorIndex);
+    separatorIndex === -1
+      ? modulePackageKey
+      : modulePackageKey.slice(0, separatorIndex);
   const moduleVersion =
     separatorIndex === -1 ? "" : modulePackageKey.slice(separatorIndex + 1);
 
   const result = await addModuleInstance(
     {
       assemblyId: asAssemblyId(fieldValue(formData, "assemblyId")),
-      configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
+      configurationId: asMachineConfigurationId(
+        fieldValue(formData, "configurationId"),
+      ),
       modulePackageId,
       moduleVersion,
       label: fieldValue(formData, "label"),
@@ -319,15 +356,21 @@ export async function confirmSuggestedLinkAction(
 
   const result = await confirmParameterLink(
     {
-      configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
-      targetModuleInstanceId: asModuleInstanceId(fieldValue(formData, "targetModuleInstanceId")),
+      configurationId: asMachineConfigurationId(
+        fieldValue(formData, "configurationId"),
+      ),
+      targetModuleInstanceId: asModuleInstanceId(
+        fieldValue(formData, "targetModuleInstanceId"),
+      ),
       targetParameterId: fieldValue(formData, "targetParameterId"),
       ...(targetLoadCase !== undefined ? { targetLoadCase } : {}),
       sourceKind,
       ...(sourceModuleInstanceId.length > 0
         ? { sourceModuleInstanceId: asModuleInstanceId(sourceModuleInstanceId) }
         : {}),
-      ...(sourceAssemblyId.length > 0 ? { sourceAssemblyId: asAssemblyId(sourceAssemblyId) } : {}),
+      ...(sourceAssemblyId.length > 0
+        ? { sourceAssemblyId: asAssemblyId(sourceAssemblyId) }
+        : {}),
       sourceParameterId: fieldValue(formData, "sourceParameterId"),
       ...(sourceLoadCase !== undefined ? { sourceLoadCase } : {}),
     },
@@ -386,28 +429,39 @@ export async function assignComponentAction(
 
   const partSource = fieldValue(formData, "partSource");
   if (partSource !== "catalog" && partSource !== "manual") {
-    return { status: "error", message: "Select a catalog part or a manual part." };
+    return {
+      status: "error",
+      message: "Select a catalog part or a manual part.",
+    };
   }
 
   const quantity = parseQuantity(fieldValue(formData, "quantity"));
   if (Number.isNaN(quantity)) {
-    return { status: "error", message: "Quantity must be a whole number greater than zero." };
+    return {
+      status: "error",
+      message: "Quantity must be a whole number greater than zero.",
+    };
   }
 
   const calculationRunId = fieldValue(formData, "calculationRunId");
   if (calculationRunId.length === 0) {
     return {
       status: "error",
-      message: "Run this module before assigning a part — a calculated component needs a supporting run.",
+      message:
+        "Run this module before assigning a part — a calculated component needs a supporting run.",
     };
   }
 
   let partFields: Parameters<typeof assignComponent>[0];
   const common = {
-    configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
+    configurationId: asMachineConfigurationId(
+      fieldValue(formData, "configurationId"),
+    ),
     target: {
       kind: "module_instance" as const,
-      moduleInstanceId: asModuleInstanceId(fieldValue(formData, "moduleInstanceId")),
+      moduleInstanceId: asModuleInstanceId(
+        fieldValue(formData, "moduleInstanceId"),
+      ),
     },
     calculationRunId: asCalculationRunId(calculationRunId),
     ...(quantity !== undefined ? { quantity } : {}),
@@ -416,7 +470,10 @@ export async function assignComponentAction(
   if (partSource === "catalog") {
     const revisionId = fieldValue(formData, "manufacturerPartRevisionId");
     if (revisionId.length === 0) {
-      return { status: "error", message: "Select a manufacturer part to assign." };
+      return {
+        status: "error",
+        message: "Select a manufacturer part to assign.",
+      };
     }
     partFields = {
       ...common,
@@ -426,7 +483,10 @@ export async function assignComponentAction(
   } else {
     const description = fieldValue(formData, "description").trim();
     if (description.length === 0) {
-      return { status: "error", message: "Describe the manual or custom part." };
+      return {
+        status: "error",
+        message: "Describe the manual or custom part.",
+      };
     }
     const manufacturerName = fieldValue(formData, "manufacturerName").trim();
     const partNumber = fieldValue(formData, "partNumber").trim();
@@ -465,8 +525,12 @@ export async function createRequirementAction(
   const assemblyIdRaw = fieldValue(formData, "assemblyId");
   const result = await createMachineRequirement(
     {
-      configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
-      ...(assemblyIdRaw.length > 0 ? { assemblyId: asAssemblyId(assemblyIdRaw) } : {}),
+      configurationId: asMachineConfigurationId(
+        fieldValue(formData, "configurationId"),
+      ),
+      ...(assemblyIdRaw.length > 0
+        ? { assemblyId: asAssemblyId(assemblyIdRaw) }
+        : {}),
       code: fieldValue(formData, "code"),
       statement: fieldValue(formData, "statement"),
     },
@@ -509,8 +573,12 @@ export async function createDesignAssumptionAction(
   const rationale = fieldValue(formData, "rationale");
   const result = await createMachineDesignAssumption(
     {
-      configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
-      ...(assemblyIdRaw.length > 0 ? { assemblyId: asAssemblyId(assemblyIdRaw) } : {}),
+      configurationId: asMachineConfigurationId(
+        fieldValue(formData, "configurationId"),
+      ),
+      ...(assemblyIdRaw.length > 0
+        ? { assemblyId: asAssemblyId(assemblyIdRaw) }
+        : {}),
       statement: fieldValue(formData, "statement"),
       ...(rationale.length > 0 ? { rationale } : {}),
     },
@@ -536,7 +604,9 @@ export async function createLoadCaseAction(
   const description = fieldValue(formData, "description");
   const result = await createMachineLoadCase(
     {
-      configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
+      configurationId: asMachineConfigurationId(
+        fieldValue(formData, "configurationId"),
+      ),
       category,
       label: fieldValue(formData, "label"),
       ...(description.length > 0 ? { description } : {}),
@@ -544,6 +614,37 @@ export async function createLoadCaseAction(
     asUserId(userId),
   );
   if (!result.ok) {
+    return { status: "error", message: result.error.message };
+  }
+  revalidatePath("/workspace");
+  return { status: "success" };
+}
+
+/** Creates an immutable configuration baseline after the service's atomic readiness review. */
+export async function createBaselineAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth.protect();
+  const result = await createBaseline(
+    {
+      configurationId: asMachineConfigurationId(
+        fieldValue(formData, "configurationId"),
+      ),
+      label: fieldValue(formData, "label"),
+      acknowledgeWarnings:
+        fieldValue(formData, "acknowledgeWarnings") === "true",
+    },
+    asUserId(userId),
+  );
+  if (!result.ok) {
+    // The advisory readiness view may have become stale between the initial
+    // render and this atomic service check. Refresh it so newly found
+    // blockers and their acknowledgement control appear without a manual
+    // page reload.
+    if (result.error.code === "not_ready") {
+      revalidatePath("/workspace");
+    }
     return { status: "error", message: result.error.message };
   }
   revalidatePath("/workspace");

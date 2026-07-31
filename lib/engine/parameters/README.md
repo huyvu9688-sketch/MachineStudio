@@ -43,9 +43,17 @@ version**: bump `PARAMETER_REGISTRY_VERSION`, add the definitions, and update th
 pinned hash fixture in `hash.test.ts`. Old released calculation runs keep
 referencing the registry version they were computed against.
 
-## v1 scope and deferred groups
+An immutable module manifest records the exact registry version its ports were
+authored against as a **literal**, never by importing the mutable current-version
+constant. The module SDK accepts it only when the active registry explicitly
+declares that historical target compatible; it does not infer compatibility from
+same-major semver alone. Add a historical version to
+`PARAMETER_REGISTRY_SUPPORTED_VERSIONS` only after reviewing that every referenced
+parameter's meaning and ID remain compatible.
 
-Registry v1 releases the groups Phase 1A concretely needs:
+## v1.1 scope and deferred groups
+
+Registry v1.0 releases the groups Phase 1A concretely needs:
 
 - **Project and environment** — supply frequency/voltage class, ambient temperature.
 - **Axis application and load cases** (`motion.axis.*`) — orientation, geometry,
@@ -56,7 +64,7 @@ Registry v1 releases the groups Phase 1A concretely needs:
 
 The **screw, guide, coupling, support-bearing, and drive-train** result groups
 (named as initial groups in context/implementation-map.md Unit 1.3) are **not**
-released in v1. Their exact ports depend on each module's Stage-1 engineering
+released in v1.0. Their exact ports depend on each module's Stage-1 engineering
 specification, which does not exist yet; releasing immutable IDs before the
 semantics are pinned would be inventing behavior. They are **approved pending
 proposals**, released per module at its Stage-2 parameter contract (see
@@ -65,6 +73,15 @@ above already serve as those modules' shared input ports.
 
 The `curve`, `load_spectrum`, `table`, `material_ref`, and `component_ref` value
 families are likewise modeled as parameters only when a module first needs them.
+
+Registry v1.1 adds the first axis-load-case contract refinements without
+changing any released v1 definition: signed moving-case acceleration, explicit
+travel direction, and guide/seal resistance distinct from Coulomb friction.
+They apply only to `normal`, `peak`, and `emergency_stop`; a holding case is
+stationary and must not receive an invented friction credit. The existing
+external force/moment parameters remain normal/peak-only. Axis-frame external
+vectors and resolved force/moment outputs are deferred until their source-backed
+semantics are ready for a later registry release.
 
 ## Parameter proposal checklist
 

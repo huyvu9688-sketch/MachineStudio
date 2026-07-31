@@ -5,7 +5,7 @@ import { PARAMETER_REGISTRY, PARAMETER_REGISTRY_HASH } from "./registered";
 // Pinned content fixture: any change to a released parameter changes this hash.
 // If this fails after an intentional, reviewed registry change, update the value
 // AND bump PARAMETER_REGISTRY_VERSION.
-const EXPECTED_REGISTRY_HASH = "bc1997a5cc36864b";
+const EXPECTED_REGISTRY_HASH = "0ba945cfaf5232d1";
 
 describe("contentHash", () => {
   it("is deterministic for the same input", () => {
@@ -23,7 +23,9 @@ describe("contentHash", () => {
 
 describe("stableStringify", () => {
   it("is independent of object key insertion order", () => {
-    expect(stableStringify({ a: 1, b: 2 })).toBe(stableStringify({ b: 2, a: 1 }));
+    expect(stableStringify({ a: 1, b: 2 })).toBe(
+      stableStringify({ b: 2, a: 1 }),
+    );
   });
 
   it("preserves array order", () => {
@@ -31,7 +33,9 @@ describe("stableStringify", () => {
   });
 
   it("omits undefined-valued keys", () => {
-    expect(stableStringify({ a: 1, b: undefined })).toBe(stableStringify({ a: 1 }));
+    expect(stableStringify({ a: 1, b: undefined })).toBe(
+      stableStringify({ a: 1 }),
+    );
   });
 });
 

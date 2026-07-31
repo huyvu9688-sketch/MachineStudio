@@ -95,6 +95,16 @@ export {
 } from "./configurations/compare-baselines";
 
 export {
+  loadBaselineWorkspaceView,
+  type BaselineListItemView,
+  type BaselineOutputChangeView,
+  type BaselineCheckChangeView,
+  type BaselineRunDetailUnavailableView,
+  type BaselineComparisonView,
+  type BaselineWorkspaceView,
+} from "./configurations/load-baseline-workspace-view";
+
+export {
   loadWorkspaceView,
   type WorkspaceView,
   createMachineProject,

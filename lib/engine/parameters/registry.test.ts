@@ -55,10 +55,26 @@ describe("parameterScope", () => {
   });
 });
 
+describe("parameter registry compatibility", () => {
+  it("supports only explicitly declared historical registry targets", () => {
+    const registry = buildParameterRegistry([], "1.1.0", ["1.0.0", "1.1.0"]);
+
+    expect(registry.supportsVersion("1.0.0")).toBe(true);
+    expect(registry.supportsVersion("1.1.0")).toBe(true);
+    expect(registry.supportsVersion("1.0.1")).toBe(false);
+    expect(registry.supportsVersion("2.0.0")).toBe(false);
+  });
+});
+
 describe("released registry", () => {
-  it("loads every seed definition and is version 1.0.0", () => {
-    expect(PARAMETER_REGISTRY.version).toBe("1.0.0");
+  it("loads every seed definition and is version 1.1.0", () => {
+    expect(PARAMETER_REGISTRY.version).toBe("1.1.0");
     expect(listParameters().length).toBe(PARAMETER_DEFINITIONS.length);
+  });
+
+  it("explicitly supports packages authored against registry v1.0.0", () => {
+    expect(PARAMETER_REGISTRY.supportsVersion("1.0.0")).toBe(true);
+    expect(PARAMETER_REGISTRY.supportsVersion("1.0.1")).toBe(false);
   });
 
   it("looks up by stable ID", () => {
@@ -93,6 +109,9 @@ describe("released registry", () => {
       "motion.axis.friction_coefficient",
       "motion.axis.gravity",
       "motion.axis.duty_cycle",
+      "motion.axis.case_travel_direction",
+      "motion.axis.case_axial_acceleration",
+      "motion.axis.guide_resistance_force",
       "motion.axis.external_force",
       "motion.axis.external_moment",
       "motion.axis.gravitational_force",
@@ -112,6 +131,29 @@ describe("released registry", () => {
     }
   });
 
+  it("gives the Stage 2 axis-load inputs precise moving-case semantics", () => {
+    const direction = getParameter("motion.axis.case_travel_direction");
+    const acceleration = getParameter("motion.axis.case_axial_acceleration");
+    const resistance = getParameter("motion.axis.guide_resistance_force");
+
+    expect(direction?.valueType).toBe("enum");
+    expect(direction?.enumOptions).toEqual(["positive", "negative"]);
+    expect(direction?.loadCases).toEqual(["normal", "peak", "emergency_stop"]);
+    expect(acceleration?.canonicalUnit).toBe("m/s^2");
+    expect(acceleration?.qualifiers).toEqual({
+      bound: "required",
+      loadNature: "dynamic",
+    });
+    expect(acceleration?.loadCases).toEqual([
+      "normal",
+      "peak",
+      "emergency_stop",
+    ]);
+    expect(resistance?.canonicalUnit).toBe("N");
+    expect(resistance?.range).toEqual({ min: 0, unit: "N" });
+    expect(resistance?.loadCases).toEqual(["normal", "peak", "emergency_stop"]);
+  });
+
   it("carries a registered canonical unit and dimension-compatible display units for every physical parameter", () => {
     // Also exercised structurally by build validation; asserted explicitly here.
     for (const def of listParameters()) {
@@ -125,7 +167,10 @@ describe("released registry", () => {
 
 describe("unique IDs", () => {
   it("rejects a duplicate parameter ID", () => {
-    expectBuildError([validQuantity, { ...validQuantity, symbol: "m2" }], "duplicate_id");
+    expectBuildError(
+      [validQuantity, { ...validQuantity, symbol: "m2" }],
+      "duplicate_id",
+    );
   });
 });
 
@@ -316,7 +361,9 @@ describe("value-type shape", () => {
 
 describe("constant defaults", () => {
   it("accepts a dimension-compatible quantity default (e.g. gravity)", () => {
-    expect(getParameter("motion.axis.gravity")?.defaultPolicy.kind).toBe("constant");
+    expect(getParameter("motion.axis.gravity")?.defaultPolicy.kind).toBe(
+      "constant",
+    );
   });
 
   it("rejects a default whose value kind mismatches the parameter", () => {
@@ -368,7 +415,12 @@ describe("constant defaults", () => {
           enumOptions: ["a", "b"],
           defaultPolicy: {
             kind: "constant",
-            value: { v: SERIALIZATION_FORMAT_VERSION, kind: "enum", enumId: "e", value: "c" },
+            value: {
+              v: SERIALIZATION_FORMAT_VERSION,
+              kind: "enum",
+              enumId: "e",
+              value: "c",
+            },
           },
         }),
       ],

@@ -51,7 +51,11 @@ export interface ModuleManifest {
   readonly contentHash: string;
   /** Engine SDK compatibility range this module is validated against. */
   readonly sdkRange: SdkRange;
-  /** Canonical parameter-registry version the module's ports target. */
+  /**
+   * Exact canonical-parameter registry version this immutable package was
+   * authored against. The SDK may accept it only when the active registry
+   * explicitly declares that historical target compatible.
+   */
   readonly parameterRegistryVersion: string;
   /** Module category, e.g. `"motion"`, `"transmission"`, `"drive-train"`. */
   readonly category: string;

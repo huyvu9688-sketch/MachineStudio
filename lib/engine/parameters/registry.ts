@@ -25,6 +25,12 @@ export interface ParameterRegistry {
   readonly version: string;
   /** Deterministic content fingerprint of the definitions (drift detection). */
   readonly hash: string;
+  /**
+   * Whether this registry explicitly supports a module package authored against
+   * `version`. Compatibility is declared by a registry release rather than
+   * inferred from semver alone.
+   */
+  supportsVersion(version: string): boolean;
   /** Returns the definition for `id`, or `undefined` when unknown. */
   get(id: string): ParameterDefinition | undefined;
   /** True when `id` is a registered parameter. */
@@ -96,12 +102,20 @@ function validatePhysical(def: ParameterDefinition): void {
     );
   }
   if (!hasUnit(canonicalUnit)) {
-    fail("unknown_unit", `Parameter "${id}" uses unknown unit "${canonicalUnit}".`, id);
+    fail(
+      "unknown_unit",
+      `Parameter "${id}" uses unknown unit "${canonicalUnit}".`,
+      id,
+    );
   }
   const canonicalDimension = getUnit(canonicalUnit).dimension;
   for (const unit of displayUnits) {
     if (!hasUnit(unit)) {
-      fail("unknown_unit", `Parameter "${id}" uses unknown display unit "${unit}".`, id);
+      fail(
+        "unknown_unit",
+        `Parameter "${id}" uses unknown display unit "${unit}".`,
+        id,
+      );
     }
     if (!dimensionsEqual(getUnit(unit).dimension, canonicalDimension)) {
       fail(
@@ -113,7 +127,11 @@ function validatePhysical(def: ParameterDefinition): void {
   }
   if (range !== undefined) {
     if (!hasUnit(range.unit)) {
-      fail("unknown_unit", `Range of "${id}" uses unknown unit "${range.unit}".`, id);
+      fail(
+        "unknown_unit",
+        `Range of "${id}" uses unknown unit "${range.unit}".`,
+        id,
+      );
     }
     if (!dimensionsEqual(getUnit(range.unit).dimension, canonicalDimension)) {
       fail(
@@ -122,7 +140,11 @@ function validatePhysical(def: ParameterDefinition): void {
         id,
       );
     }
-    if (range.min !== undefined && range.max !== undefined && range.min > range.max) {
+    if (
+      range.min !== undefined &&
+      range.max !== undefined &&
+      range.min > range.max
+    ) {
       fail("invalid_range", `Range of "${id}" has min greater than max.`, id);
     }
   }
@@ -142,7 +164,11 @@ function validateEnum(def: ParameterDefinition): void {
     );
   }
   if (enumId === undefined || enumOptions === undefined) {
-    fail("invalid_enum", `Enum parameter "${id}" must declare enumId and options.`, id);
+    fail(
+      "invalid_enum",
+      `Enum parameter "${id}" must declare enumId and options.`,
+      id,
+    );
   }
   if (new Set(enumOptions).size !== enumOptions.length) {
     fail("invalid_enum", `Enum parameter "${id}" has duplicate options.`, id);
@@ -185,7 +211,12 @@ function validateDefault(def: ParameterDefinition): void {
     if (unit === undefined || !hasUnit(unit)) {
       fail("invalid_default", `Default of "${id}" uses an unknown unit.`, id);
     }
-    if (!dimensionsEqual(getUnit(unit).dimension, getUnit(canonicalUnit).dimension)) {
+    if (
+      !dimensionsEqual(
+        getUnit(unit).dimension,
+        getUnit(canonicalUnit).dimension,
+      )
+    ) {
       fail(
         "invalid_default",
         `Default of "${id}" is not dimension-compatible with "${canonicalUnit}".`,
@@ -194,8 +225,15 @@ function validateDefault(def: ParameterDefinition): void {
     }
   }
   if (valueType === "enum" && value.kind === "enum") {
-    if (value.enumId !== def.enumId || !def.enumOptions?.includes(value.value)) {
-      fail("invalid_default", `Default of "${id}" is not a valid option of its enum.`, id);
+    if (
+      value.enumId !== def.enumId ||
+      !def.enumOptions?.includes(value.value)
+    ) {
+      fail(
+        "invalid_default",
+        `Default of "${id}" is not a valid option of its enum.`,
+        id,
+      );
     }
   }
 }
@@ -214,13 +252,19 @@ function validateDefinition(def: ParameterDefinition): void {
       break;
     default: {
       const exhaustive: never = def.valueType;
-      fail("invalid_shape", `Unhandled value type: ${String(exhaustive)}`, def.id);
+      fail(
+        "invalid_shape",
+        `Unhandled value type: ${String(exhaustive)}`,
+        def.id,
+      );
     }
   }
   validateDefault(def);
 }
 
-function validateDeprecations(byId: ReadonlyMap<string, ParameterDefinition>): void {
+function validateDeprecations(
+  byId: ReadonlyMap<string, ParameterDefinition>,
+): void {
   for (const def of byId.values()) {
     if (def.lifecycle !== "deprecated") {
       if (def.replacedBy !== undefined) {
@@ -253,7 +297,11 @@ function validateDeprecations(byId: ReadonlyMap<string, ParameterDefinition>): v
         );
       }
       if (seen.has(next.id)) {
-        fail("deprecation_cycle", `Deprecation cycle involving "${def.id}".`, def.id);
+        fail(
+          "deprecation_cycle",
+          `Deprecation cycle involving "${def.id}".`,
+          def.id,
+        );
       }
       seen.add(next.id);
       current = next;
@@ -270,6 +318,7 @@ function validateDeprecations(byId: ReadonlyMap<string, ParameterDefinition>): v
 export function buildParameterRegistry(
   definitions: readonly ParameterDefinition[],
   version: string,
+  supportedVersions: readonly string[] = [version],
 ): ParameterRegistry {
   const byId = new Map<string, ParameterDefinition>();
   const bySymbolInScope = new Map<string, string>();
@@ -295,12 +344,17 @@ export function buildParameterRegistry(
 
   validateDeprecations(byId);
 
-  const sorted = [...byId.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const sorted = [...byId.values()].sort((a, b) =>
+    a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
+  );
   const hash = contentHash(stableStringify(sorted));
+  const compatibleVersions = new Set(supportedVersions);
+  compatibleVersions.add(version);
 
   return {
     version,
     hash,
+    supportsVersion: (candidate) => compatibleVersions.has(candidate),
     get: (id) => byId.get(id),
     has: (id) => byId.has(id),
     list: () => sorted,
@@ -317,7 +371,11 @@ export function buildParameterRegistry(
         seen.add(def.id);
         const next = byId.get(def.replacedBy as ParameterId);
         if (next === undefined) {
-          fail("unknown_replacement", `Unknown replacement for "${def.id}".`, def.id);
+          fail(
+            "unknown_replacement",
+            `Unknown replacement for "${def.id}".`,
+            def.id,
+          );
         }
         def = next;
       }

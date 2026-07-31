@@ -1,12 +1,18 @@
 import { auth } from "@clerk/nextjs/server";
 import {
   loadComponentAssignmentView,
+  loadBaselineWorkspaceView,
   loadModuleResultView,
   loadModuleWorkspaceView,
   loadRequirementsView,
   loadWorkspaceView,
 } from "@/lib/application";
-import { asMachineConfigurationId, asMachineProjectId, asModuleInstanceId, asUserId } from "@/lib/db";
+import {
+  asMachineConfigurationId,
+  asMachineProjectId,
+  asModuleInstanceId,
+  asUserId,
+} from "@/lib/db";
 import { listModulePackages } from "@/lib/modules";
 import { marketProfileKey, SOURCE_REGISTRY } from "@/lib/standards";
 import { WorkspaceShell } from "@/components/engineering/workspace-shell";
@@ -20,6 +26,8 @@ interface WorkspacePageProps {
     readonly configuration?: string;
     readonly module?: string;
     readonly panel?: string;
+    readonly before?: string;
+    readonly after?: string;
   }>;
 }
 
@@ -47,7 +55,9 @@ function modulePackageOptions(): readonly ModulePackageOption[] {
  * loading/error states; this file only needs to cover the empty-data state,
  * which is a normal render, not a thrown error.
  */
-export default async function WorkspacePage({ searchParams }: WorkspacePageProps) {
+export default async function WorkspacePage({
+  searchParams,
+}: WorkspacePageProps) {
   const { userId } = await auth.protect();
   const params = await searchParams;
 
@@ -60,7 +70,13 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
   const modulePackages = modulePackageOptions();
 
   if (view.selectedProject === null) {
-    return <WorkspaceShell status="empty" marketProfiles={marketProfiles} modulePackages={modulePackages} />;
+    return (
+      <WorkspaceShell
+        status="empty"
+        marketProfiles={marketProfiles}
+        modulePackages={modulePackages}
+      />
+    );
   }
 
   const selectedConfiguration =
@@ -71,19 +87,41 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
     null;
 
   const moduleWorkspace = params.module
-    ? await loadModuleWorkspaceView(asModuleInstanceId(params.module), asUserId(userId))
+    ? await loadModuleWorkspaceView(
+        asModuleInstanceId(params.module),
+        asUserId(userId),
+      )
     : null;
   const moduleResult = params.module
-    ? await loadModuleResultView(asModuleInstanceId(params.module), asUserId(userId))
+    ? await loadModuleResultView(
+        asModuleInstanceId(params.module),
+        asUserId(userId),
+      )
     : null;
   const componentAssignment = params.module
-    ? await loadComponentAssignmentView(asModuleInstanceId(params.module), asUserId(userId))
+    ? await loadComponentAssignmentView(
+        asModuleInstanceId(params.module),
+        asUserId(userId),
+      )
     : null;
+  // A module deep link owns the main canvas. Ignore a conflicting static
+  // panel parameter so the navigator cannot highlight Baselines/Requirements
+  // while the shell renders a module workspace.
+  const selectedPanel = params.module ? undefined : params.panel;
   const requirements =
-    params.panel === "requirements" && selectedConfiguration !== null
+    selectedPanel === "requirements" && selectedConfiguration !== null
       ? await loadRequirementsView(
           asMachineConfigurationId(selectedConfiguration.id),
           asUserId(userId),
+        )
+      : null;
+  const baselines =
+    selectedPanel === "baselines" && selectedConfiguration !== null
+      ? await loadBaselineWorkspaceView(
+          asMachineConfigurationId(selectedConfiguration.id),
+          asUserId(userId),
+          params.before,
+          params.after,
         )
       : null;
 
@@ -98,6 +136,7 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
       moduleResult={moduleResult}
       componentAssignment={componentAssignment}
       requirements={requirements}
+      baselines={baselines}
       summary={summarizeModuleStatuses(selectedConfiguration?.assemblies ?? [])}
       marketProfiles={marketProfiles}
       modulePackages={modulePackages}

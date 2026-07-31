@@ -7,7 +7,12 @@ import { summarizeModuleStatuses } from "./module-status-summary";
 import type { MarketProfileOption } from "./create-project-dialog";
 import type { ModulePackageOption } from "./add-module-instance-dialog";
 import type { MachineProjectRecord, ProjectTree } from "@/lib/db";
-import type { ModuleResultView, ModuleWorkspaceView, RequirementsView } from "@/lib/application";
+import type {
+  BaselineWorkspaceView,
+  ModuleResultView,
+  ModuleWorkspaceView,
+  RequirementsView,
+} from "@/lib/application";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/workspace",
@@ -32,13 +37,18 @@ vi.mock("@/app/(workspace)/workspace/actions", () => ({
   createAcceptanceCriterionAction: vi.fn(),
   createDesignAssumptionAction: vi.fn(),
   createLoadCaseAction: vi.fn(),
+  createBaselineAction: vi.fn(),
 }));
 
 const MARKET_PROFILES: MarketProfileOption[] = [
   { key: "US-General-Industrial-Machinery@1", displayName: "United States" },
 ];
 const MODULE_PACKAGES: ModulePackageOption[] = [
-  { modulePackageId: "example-scaffold", moduleVersion: "0.1.0", category: "example" },
+  {
+    modulePackageId: "example-scaffold",
+    moduleVersion: "0.1.0",
+    category: "example",
+  },
 ];
 
 const projectTree: ProjectTree = {
@@ -68,8 +78,10 @@ const projectTree: ProjectTree = {
           moduleInstances: [
             {
               id: "m1" as ProjectTree["configurations"][number]["assemblies"][number]["moduleInstances"][number]["id"],
-              assemblyId: "a1" as ProjectTree["configurations"][number]["assemblies"][number]["id"],
-              configurationId: "c1" as ProjectTree["configurations"][number]["id"],
+              assemblyId:
+                "a1" as ProjectTree["configurations"][number]["assemblies"][number]["id"],
+              configurationId:
+                "c1" as ProjectTree["configurations"][number]["id"],
               workflowInstanceId: null,
               modulePackageId: "example-scaffold",
               moduleVersion: "0.1.0",
@@ -101,7 +113,9 @@ describe("WorkspaceShell", () => {
     expect(screen.getByText("MachineStudio")).toBeInTheDocument();
     expect(screen.getByText("No project selected")).toBeInTheDocument();
     // Both the navigator slot and the canvas render the empty message.
-    expect(screen.getAllByText("No machine projects yet").length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("No machine projects yet").length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("renders the full shell for a loaded project", () => {
@@ -116,19 +130,30 @@ describe("WorkspaceShell", () => {
         moduleResult={null}
         componentAssignment={null}
         requirements={null}
-        summary={summarizeModuleStatuses(projectTree.configurations[0].assemblies)}
+        baselines={null}
+        summary={summarizeModuleStatuses(
+          projectTree.configurations[0].assemblies,
+        )}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
       />,
     );
 
-    expect(screen.getByRole("button", { name: /Palletizer axis/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Palletizer axis/ }),
+    ).toBeInTheDocument();
     // Appears in both the context action bar and the app bar's configuration picker.
-    expect(screen.getAllByText("Baseline configuration").length).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getAllByText("Baseline configuration").length,
+    ).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("X axis")).toBeInTheDocument();
     expect(screen.getByText("Thrust check")).toBeInTheDocument();
-    expect(screen.getByText("Select an item in the navigator")).toBeInTheDocument();
-    expect(screen.getByText("US-General-Industrial-Machinery@1")).toBeInTheDocument();
+    expect(
+      screen.getByText("Select an item in the navigator"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("US-General-Industrial-Machinery@1"),
+    ).toBeInTheDocument();
   });
 
   it("renders the module input workspace in the canvas when ?module= resolves", () => {
@@ -136,7 +161,8 @@ describe("WorkspaceShell", () => {
       moduleInstance: {
         id: "m1" as ModuleWorkspaceView["moduleInstance"]["id"],
         assemblyId: "a1" as ModuleWorkspaceView["moduleInstance"]["assemblyId"],
-        configurationId: "c1" as ModuleWorkspaceView["moduleInstance"]["configurationId"],
+        configurationId:
+          "c1" as ModuleWorkspaceView["moduleInstance"]["configurationId"],
         label: "Thrust check",
         modulePackageId: "example-scaffold",
         moduleVersion: "0.1.0",
@@ -155,7 +181,11 @@ describe("WorkspaceShell", () => {
               help: null,
               required: true,
               loadCase: null,
-              field: { kind: "quantity", canonicalUnit: "kg", displayUnits: ["kg", "g", "lbm"] },
+              field: {
+                kind: "quantity",
+                canonicalUnit: "kg",
+                displayUnits: ["kg", "g", "lbm"],
+              },
               resolved: { source: "default" },
               suggestions: [],
               linkRemovalImpact: null,
@@ -169,7 +199,8 @@ describe("WorkspaceShell", () => {
       moduleInstance: {
         id: "m1" as ModuleResultView["moduleInstance"]["id"],
         assemblyId: "a1" as ModuleResultView["moduleInstance"]["assemblyId"],
-        configurationId: "c1" as ModuleResultView["moduleInstance"]["configurationId"],
+        configurationId:
+          "c1" as ModuleResultView["moduleInstance"]["configurationId"],
         label: "Thrust check",
       },
       run: null,
@@ -193,19 +224,26 @@ describe("WorkspaceShell", () => {
         moduleResult={moduleResult}
         componentAssignment={null}
         requirements={null}
-        summary={summarizeModuleStatuses(projectTree.configurations[0].assemblies)}
+        baselines={null}
+        summary={summarizeModuleStatuses(
+          projectTree.configurations[0].assemblies,
+        )}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
       />,
     );
 
     // The renderer's own heading, not the navigator's identically-labeled row.
-    expect(screen.getByRole("heading", { name: "Thrust check" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Thrust check" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("example-scaffold@0.1.0")).toBeInTheDocument();
     // The result panel renders alongside the input panel (Unit 3.5).
     expect(screen.getByText("Not run yet")).toBeInTheDocument();
     expect(screen.getByText("Payload mass")).toBeInTheDocument();
-    expect(screen.queryByText("Select an item in the navigator")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Select an item in the navigator"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the requirements workspace in the canvas when ?panel=requirements resolves", () => {
@@ -227,14 +265,61 @@ describe("WorkspaceShell", () => {
         moduleResult={null}
         componentAssignment={null}
         requirements={requirements}
-        summary={summarizeModuleStatuses(projectTree.configurations[0].assemblies)}
+        baselines={null}
+        summary={summarizeModuleStatuses(
+          projectTree.configurations[0].assemblies,
+        )}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Requirements & design intent" })).toBeInTheDocument();
-    expect(screen.queryByText("Select an item in the navigator")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Requirements & design intent" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Select an item in the navigator"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the baseline workspace in the canvas when ?panel=baselines resolves", () => {
+    const baselines: BaselineWorkspaceView = {
+      projectId: "p1",
+      configurationId: "c1" as BaselineWorkspaceView["configurationId"],
+      blockers: [],
+      baselines: [],
+      selectedBeforeBaselineId: null,
+      selectedAfterBaselineId: null,
+      comparison: null,
+      comparisonError: null,
+    };
+
+    render(
+      <WorkspaceShell
+        status="loaded"
+        projects={projects}
+        selectedProject={projectTree}
+        selectedConfigurationId="c1"
+        selectedModuleInstanceId={null}
+        moduleWorkspace={null}
+        moduleResult={null}
+        componentAssignment={null}
+        requirements={null}
+        baselines={baselines}
+        summary={summarizeModuleStatuses(
+          projectTree.configurations[0].assemblies,
+        )}
+        marketProfiles={MARKET_PROFILES}
+        modulePackages={MODULE_PACKAGES}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Baselines & comparison" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Select an item in the navigator"),
+    ).not.toBeInTheDocument();
   });
 
   it("hides the navigator panel when the collapse toggle is clicked", async () => {
@@ -250,14 +335,19 @@ describe("WorkspaceShell", () => {
         moduleResult={null}
         componentAssignment={null}
         requirements={null}
-        summary={summarizeModuleStatuses(projectTree.configurations[0].assemblies)}
+        baselines={null}
+        summary={summarizeModuleStatuses(
+          projectTree.configurations[0].assemblies,
+        )}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
       />,
     );
 
     expect(screen.getByText("X axis")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Hide machine navigator" }));
+    await user.click(
+      screen.getByRole("button", { name: "Hide machine navigator" }),
+    );
     expect(screen.queryByText("X axis")).not.toBeInTheDocument();
   });
 });

@@ -17,7 +17,6 @@
 // `npm run module:new`.
 
 import {
-  PARAMETER_REGISTRY_VERSION,
   asParameterId,
   type ModuleManifest,
   type ModulePorts,
@@ -27,7 +26,9 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   id: "example-relay",
   version: "0.1.0",
   sdkRange: { min: "1.0.0" },
-  parameterRegistryVersion: PARAMETER_REGISTRY_VERSION,
+  // This development fixture was authored against registry v1.0.0. Keep its
+  // immutable target literal instead of importing the mutable current version.
+  parameterRegistryVersion: "1.0.0",
   category: "development-fixture",
   tags: ["fixture"],
   workflowRoles: [],

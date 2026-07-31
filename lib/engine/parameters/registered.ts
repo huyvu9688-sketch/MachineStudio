@@ -4,14 +4,28 @@
 // singleton; tests that need to exercise invariants with fixtures use
 // `buildParameterRegistry` directly.
 
-import { PARAMETER_DEFINITIONS, PARAMETER_REGISTRY_VERSION } from "./definitions";
+import {
+  PARAMETER_DEFINITIONS,
+  PARAMETER_REGISTRY_VERSION,
+} from "./definitions";
 import { buildParameterRegistry, type ParameterRegistry } from "./registry";
 import type { ParameterDefinition } from "./types";
+
+/**
+ * Exact historical registry targets the current additive registry can serve to
+ * immutable module packages. Add a version only after reviewing that every
+ * referenced definition remains semantically compatible.
+ */
+export const PARAMETER_REGISTRY_SUPPORTED_VERSIONS = [
+  "1.0.0",
+  "1.1.0",
+] as const;
 
 /** The released canonical parameter registry. */
 export const PARAMETER_REGISTRY: ParameterRegistry = buildParameterRegistry(
   PARAMETER_DEFINITIONS,
   PARAMETER_REGISTRY_VERSION,
+  PARAMETER_REGISTRY_SUPPORTED_VERSIONS,
 );
 
 /** Content fingerprint of the released registry (drift detection). */

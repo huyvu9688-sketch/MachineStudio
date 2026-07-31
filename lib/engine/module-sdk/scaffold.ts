@@ -32,34 +32,43 @@ export interface ScaffoldOptions {
   readonly moduleId: string;
   /** Semantic version of the initial package. Defaults to `"0.1.0"`. */
   readonly version?: string;
+  /**
+   * Exact parameter-registry version recorded in the generated manifest.
+   * Defaults to the current registry target, but is emitted as a literal.
+   */
+  readonly parameterRegistryVersion?: string;
 }
 
 const MODULE_ID_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
+// Keep this aligned with the released parameter registry. It is intentionally
+// duplicated here because this generator must stay directly runnable by Node,
+// and generated module manifests must not import a mutable current-version value.
+const DEFAULT_PARAMETER_REGISTRY_VERSION = "1.1.0";
 
 /** Converts a kebab-case module ID to a camelCase identifier. */
 function toCamelCase(moduleId: string): string {
   return moduleId.replace(/-([a-z0-9])/g, (_, ch: string) => ch.toUpperCase());
 }
 
-function manifestFile(moduleId: string, version: string): string {
+function manifestFile(
+  moduleId: string,
+  version: string,
+  parameterRegistryVersion: string,
+): string {
   return `// Manifest and ports for the ${moduleId} module.
 // TODO: set category/tags/workflowRoles/validity envelope, declare the real
 // input and output ports (mapping to released canonical parameters), and list
 // the source revisions the module's methods are based on.
 
-import {
-  PARAMETER_REGISTRY_VERSION,
-  asParameterId,
-  type ModuleManifest,
-  type ModulePorts,
-} from "@/lib/engine";
+import { asParameterId, type ModuleManifest, type ModulePorts } from "@/lib/engine";
 
 export const manifest: Omit<ModuleManifest, "contentHash"> = {
   id: "${moduleId}",
   version: "${version}",
   sdkRange: { min: "1.0.0" },
-  parameterRegistryVersion: PARAMETER_REGISTRY_VERSION,
+  // Keep the authoring target immutable; never import the mutable current registry version.
+  parameterRegistryVersion: "${parameterRegistryVersion}",
   category: "TODO",
   tags: [],
   workflowRoles: [],
@@ -306,9 +315,13 @@ describe("${moduleId} conformance", () => {
  * version, then returns the files to write. Throws on an invalid module ID or
  * version.
  */
-export function generateModuleScaffold(options: ScaffoldOptions): ScaffoldResult {
+export function generateModuleScaffold(
+  options: ScaffoldOptions,
+): ScaffoldResult {
   const moduleId = options.moduleId;
   const version = options.version ?? "0.1.0";
+  const parameterRegistryVersion =
+    options.parameterRegistryVersion ?? DEFAULT_PARAMETER_REGISTRY_VERSION;
 
   if (!MODULE_ID_PATTERN.test(moduleId)) {
     throw new Error(
@@ -317,6 +330,11 @@ export function generateModuleScaffold(options: ScaffoldOptions): ScaffoldResult
   }
   if (!VERSION_PATTERN.test(version)) {
     throw new Error(`Invalid version "${version}": expected "x.y.z".`);
+  }
+  if (!VERSION_PATTERN.test(parameterRegistryVersion)) {
+    throw new Error(
+      `Invalid parameter registry version "${parameterRegistryVersion}": expected "x.y.z".`,
+    );
   }
 
   const camelId = toCamelCase(moduleId);
@@ -331,7 +349,10 @@ export function generateModuleScaffold(options: ScaffoldOptions): ScaffoldResult
     version,
     moduleDir,
     files: [
-      file("manifest.ts", manifestFile(moduleId, version)),
+      file(
+        "manifest.ts",
+        manifestFile(moduleId, version, parameterRegistryVersion),
+      ),
       file("trace.ts", traceFile(moduleId)),
       file("checks.ts", checksFile(moduleId)),
       file("compute.ts", computeFile(moduleId)),

@@ -1,7 +1,7 @@
 # Unit 3 Progress Context
 
 Milestone 3 — Generic User Experience. This file holds the full Unit
-3.1–3.5 history, standing deferrals, decisions, and the Unit 3.6 brief,
+3.1–3.8 history, standing deferrals, decisions, and the Unit 3.6 brief,
 split out of `context/progress-tracker.md` on 2026-07-31 (see
 `docs/superpowers/specs/2026-07-31-progress-tracker-unit-3-extraction-design.md`)
 to keep normal Unit 3 continuation work small to read.
@@ -13,6 +13,20 @@ after every meaningful Unit 3.x change, per
 
 ## Current Phase
 
+- **2026-07-31 (new session — user said "pull project from github ... start
+  build next step"): Unit 3.8 (baseline and comparison UI) complete and
+  locally verified.** Added the configuration-level `?panel=baselines`
+  workspace, readiness summary plus explicit acknowledgement, baseline
+  creation/history, and snapshot-only comparison for requirements, inputs,
+  outputs, checks, and part assignments. Detailed output/check diffs load
+  only the immutable calculation runs pinned by each baseline; they include
+  added/removed ports and checks plus check-source provenance, and never
+  re-execute a module or depend on a currently installed package. Local
+  verification: Prettier on touched files, lint, typecheck, 513 passed / 200
+  correctly skipped database-dependent tests (713 total), and production
+  build all green. The local environment is Node 24 although `package.json`
+  declares Node >=26; npm emitted its engine warning, but all listed checks
+  completed successfully.
 - **2026-07-31 (new session — user said "read claude.md and context files,
   build next task"): Unit 3.7 (requirements, assumptions, and load-case UI)
   complete, verified against the live database.** `npm run verify`-equivalent
@@ -1102,7 +1116,7 @@ after every meaningful Unit 3.x change, per
     (no migration), so — unlike every Milestone-2-era unit — no CI round
     trip is required before calling this fully verified.
 
-## Next Up — Unit 3.8
+## Next Up — Milestone 4
 
 - **Units 3.1 (workspace shell) and 3.2 (project and assembly management
   UI) are complete** (2026-07-30, same session — see Current Goal) and drop
@@ -1174,18 +1188,22 @@ after every meaningful Unit 3.x change, per
   authoring-completeness only (acceptance criteria recorded or not) —
   a real requirement-to-run link is Milestone 5's Unit 5.3 to build.
 
-  **Next: Unit 3.8 (baseline and comparison UI)**, the last Milestone 3
-  unit, then Milestone 4 (modules). Per `implementation-map.md`:
-  - **Deliverables**: Pre-baseline validation summary, Warning
-    acknowledgement, Baseline creation, Baseline list, Changed
-    requirement/input/output/check/part comparison.
-  - **Exit criterion**: User can identify what changed between two design
-    states.
-  - `createBaseline`/`compareBaselines` (`lib/application/configurations/`)
-    already exist from Unit 2.9 — check their current shape (inputs,
-    outputs, what a baseline snapshot already records) before building a
-    read model or UI; this unit likely needs its own read model the way
-    every prior Unit 3.x panel did.
+  **Unit 3.8 (baseline and comparison UI) is complete** (2026-07-31, new
+  session — see Current Phase) and closes Milestone 3. It reuses the existing
+  atomic `createBaseline`/`compareBaselines` services through a new
+  configuration-level read model; readiness remains advisory until the
+  creation service rechecks it inside its transaction. Baseline output/check
+  detail comes from the stored run snapshots referenced by two immutable
+  baseline snapshots, with stable port-key fallback labels rather than a
+  recalculation or current module-package dependency.
+
+  **Next: Unit 4.1 — Axis application and load-case module.** Begin the
+  first production engineering module only after reading its implementation
+  map and validation gate. It owns orientation/incline, payload/moving mass,
+  center-of-mass offsets, external forces/moments, friction, duty cycle,
+  load cases, and derating inputs; it must make coordinate frames and sign
+  conventions explicit in the trace/report and validate horizontal and
+  vertical historical cases before release.
 
 ## Open Questions
 
@@ -1213,6 +1231,19 @@ after every meaningful Unit 3.x change, per
 
 ## Architecture Decisions
 
+- (2026-07-31, Unit 3.8) **A baseline comparison reads the immutable run
+  snapshots referenced by the two baseline snapshots; it never re-executes a
+  module or reads current module metadata to fill historical output/check
+  details.** `MachineBaselineSnapshot` intentionally stores run references,
+  not duplicate output/check payloads, because `CalculationRun.snapshot` is
+  already immutable and permanently renderable. The new read model first
+  uses `compareBaselines` for the structural snapshot diff, then loads only
+  its selected, owner-scoped stored runs to compare output port keys and check
+  IDs. Additions/removals are visible, and check equality includes status,
+  values, messages, criteria, and normalized source citations. A missing
+  stored run produces an explicit unavailable-detail notice rather than an
+  invented recalculation. Revisit only if baseline snapshot format changes
+  to embed run payloads in a future compatibility version.
 - (2026-07-31, Unit 3.7) **"Verification status" reports only whether a
   requirement has recorded acceptance criteria — not whether a calculation
   run demonstrates it — and no `VerificationLink` model was added.**

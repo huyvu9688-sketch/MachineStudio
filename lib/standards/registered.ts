@@ -6,6 +6,10 @@
 
 import { jpDocuments, jpProfile, jpRevisions } from "./profiles/jp";
 import { usDocuments, usProfile, usRevisions } from "./profiles/us";
+import {
+  engineeringMethodDocuments,
+  engineeringMethodRevisions,
+} from "./engineering-sources";
 import { buildSourceRegistry, type SourceRegistry } from "./registry";
 import type { MarketProfile, SourceDocument, SourceRevision } from "./types";
 
@@ -13,12 +17,14 @@ import type { MarketProfile, SourceDocument, SourceRevision } from "./types";
 export const SOURCE_DOCUMENTS: readonly SourceDocument[] = [
   ...usDocuments,
   ...jpDocuments,
+  ...engineeringMethodDocuments,
 ];
 
 /** All released source revisions (US + JP), in seed order. */
 export const SOURCE_REVISIONS: readonly SourceRevision[] = [
   ...usRevisions,
   ...jpRevisions,
+  ...engineeringMethodRevisions,
 ];
 
 /** All released market profiles. */

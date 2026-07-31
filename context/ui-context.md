@@ -486,10 +486,17 @@ matrix" (Unit 5.3) to build, not invented here as a UI-only mapping.
 ## Reports and Baselines
 
 - Reports render the same calculation trace shown in the workspace
-- Baseline creation displays stale, failed, invalid, and unassigned items
-- User must acknowledge warnings before baseline creation
+- Baseline creation displays current stale, failed/invalid calculation runs
+  and stale component assignments; the user explicitly acknowledges them
+  before proceeding
 - Baseline comparison shows changed requirements, inputs, outputs,
-  checks, assigned parts, and BOM quantities
+  checks (including cited source provenance), and assigned parts. The baseline
+  panel is a configuration-level deep link (`?panel=baselines`): it lists
+  immutable snapshots and compares only the snapshots and their pinned,
+  immutable calculation runs — it never re-executes a module to explain a
+  historical result. Port keys remain visible when current module metadata is
+  unavailable. Frozen BOM quantities are deferred with Unit 5.1's `BomItem`
+  model; the current baseline freezes component assignments instead.
 
 ## Tables and Numeric Inputs
 

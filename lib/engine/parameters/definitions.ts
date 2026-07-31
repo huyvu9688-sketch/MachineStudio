@@ -1,6 +1,7 @@
-// Released seed definitions for the canonical parameter registry v1 (Unit 1.3).
+// Released seed definitions for the canonical parameter registry v1.1 (Units
+// 1.3 and 4.1 Stage 2).
 //
-// Scope of v1: the parameter groups that Phase 1A (axis application + motion
+// Scope of v1.0: the parameter groups that Phase 1A (axis application + motion
 // profile) concretely needs, plus the shared project/environment group. These
 // are the immediate next modules (Units 4.1 and 4.2) and their input/output
 // ports are described in context/implementation-map.md.
@@ -20,13 +21,14 @@ import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.0.0";
+export const PARAMETER_REGISTRY_VERSION = "1.1.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
 const lengthDisplay = ["mm", "cm", "m", "in"] as const;
 const speedDisplay = ["m/s", "mm/s", "in/s"] as const;
 const accelDisplay = ["m/s^2", "mm/s^2", "in/s^2"] as const;
+const movingLoadCases = ["normal", "peak", "emergency_stop"] as const;
 
 // --- Project and environment ------------------------------------------------
 
@@ -193,6 +195,47 @@ const axisApplication: readonly ParameterDefinition[] = [
     range: { min: 0, max: 1, unit: "ratio" },
   }),
   defineParameter({
+    id: "motion.axis.case_travel_direction",
+    displayName: "Load-case travel direction",
+    symbol: "dir_case",
+    definition:
+      "Direction of travel for a moving axis load case relative to the declared +X axis direction. Positive means velocity in +X; negative means velocity in -X. Holding is stationary and intentionally has no direction port.",
+    valueType: "enum",
+    enumId: "axis_travel_direction",
+    enumOptions: ["positive", "negative"],
+    frame: "axis",
+    loadCases: movingLoadCases,
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motion.axis.case_axial_acceleration",
+    displayName: "Load-case axial acceleration",
+    symbol: "a_case",
+    definition:
+      "Signed translational acceleration of the moving assembly along +X for a declared moving load case. Its sign is independent of travel direction; negative denotes acceleration toward -X.",
+    valueType: "quantity",
+    canonicalUnit: "m/s^2",
+    displayUnits: [...accelDisplay],
+    qualifiers: { bound: "required", loadNature: "dynamic" },
+    frame: "axis",
+    loadCases: movingLoadCases,
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motion.axis.guide_resistance_force",
+    displayName: "Additional guide resistance force",
+    symbol: "F_r",
+    definition:
+      "Non-negative additional running resistance magnitude from guides, seals, or other documented sources, exclusive of the Coulomb-friction term mu times normal load. It opposes the declared moving travel direction; enter zero explicitly when the documented method has none.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    frame: "axis",
+    loadCases: movingLoadCases,
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
     id: "motion.axis.external_force",
     displayName: "External process force",
     symbol: "F_ext",
@@ -346,7 +389,7 @@ const motionProfile: readonly ParameterDefinition[] = [
   }),
 ];
 
-/** All released parameter definitions for registry v1, in authored order. */
+/** All released parameter definitions for registry v1.1, in authored order. */
 export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...projectAndEnvironment,
   ...axisApplication,

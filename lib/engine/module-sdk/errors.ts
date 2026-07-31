@@ -16,6 +16,8 @@ export type ModuleSdkErrorCode =
   | "duplicate_port_key"
   /** A port references a parameter ID not in the registry. */
   | "unknown_parameter"
+  /** A port's declared load case is not admitted by its canonical parameter. */
+  | "invalid_port_load_case"
   /** The manifest's parameter-registry version does not match the registry. */
   | "registry_version_mismatch"
   /** The manifest's declared content hash does not match the package content. */
