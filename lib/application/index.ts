@@ -12,14 +12,42 @@ export {
 } from "./calculations/execute-module-instance";
 
 export {
+  loadModuleWorkspaceView,
+  type ModuleWorkspaceView,
+  type ModuleWorkspaceModuleSummary,
+  type ModuleInputGroupView,
+  type ModuleInputFieldView,
+  type ModuleInputFieldDescriptor,
+} from "./calculations/load-module-workspace-view";
+
+export {
+  loadModuleResultView,
+  type ModuleResultView,
+  type ModuleResultRunSummary,
+  type RunOutputView,
+  type SourceReferenceView,
+  type ChangedOutputView,
+  type ChangedCheckView,
+  type RunComparisonView,
+} from "./calculations/load-module-result-view";
+
+export {
   setParameterValue,
   confirmParameterLink,
   removeParameterLink,
+  previewRemoveParameterLinkImpact,
   type SetParameterValueResult,
   type ConfirmParameterLinkResult,
   type RemoveParameterLinkResult,
+  type PreviewRemoveParameterLinkImpactResult,
   type StalePropagationError,
   type StalePropagationErrorCode,
+  buildConfigurationSuggestionIndex,
+  describeLinkSuggestions,
+  MAX_LINK_SUGGESTIONS_PER_FIELD,
+  type ConfigurationSuggestionIndex,
+  type LinkSuggestionSourceView,
+  type LinkSuggestionSourceKind,
 } from "./parameters";
 
 export {
@@ -56,3 +84,30 @@ export {
   type CompareBaselinesError,
   type CompareBaselinesErrorCode,
 } from "./configurations/compare-baselines";
+
+export {
+  loadWorkspaceView,
+  type WorkspaceView,
+  createMachineProject,
+  INITIAL_CONFIGURATION_NAME,
+  type CreateMachineProjectInput,
+  type CreateMachineProjectResult,
+  type CreateMachineProjectError,
+  type CreateMachineProjectErrorCode,
+  renameMachineProject,
+  type RenameMachineProjectResult,
+  type RenameMachineProjectError,
+  type RenameMachineProjectErrorCode,
+  createMachineAssembly,
+  renameMachineAssembly,
+  type CreateMachineAssemblyInput,
+  type CreateMachineAssemblyResult,
+  type RenameMachineAssemblyResult,
+  type ManageAssemblyError,
+  type ManageAssemblyErrorCode,
+  addModuleInstance,
+  type AddModuleInstanceInput,
+  type AddModuleInstanceResult,
+  type AddModuleInstanceError,
+  type AddModuleInstanceErrorCode,
+} from "./projects";
