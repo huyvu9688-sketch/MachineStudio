@@ -120,3 +120,28 @@ export {
   type AddModuleInstanceError,
   type AddModuleInstanceErrorCode,
 } from "./projects";
+
+export {
+  createMachineRequirement,
+  createRequirementAcceptanceCriterion,
+  type CreateMachineRequirementInput,
+  type CreateMachineRequirementResult,
+  type CreateRequirementAcceptanceCriterionInput,
+  type CreateRequirementAcceptanceCriterionResult,
+  type ManageRequirementsError,
+  type ManageRequirementsErrorCode,
+  createMachineLoadCase,
+  type CreateMachineLoadCaseInput,
+  type CreateMachineLoadCaseResult,
+  type ManageLoadCasesError,
+  type ManageLoadCasesErrorCode,
+  createMachineDesignAssumption,
+  type CreateMachineDesignAssumptionInput,
+  type CreateMachineDesignAssumptionResult,
+  type ManageDesignAssumptionsError,
+  type ManageDesignAssumptionsErrorCode,
+  loadRequirementsView,
+  type RequirementsView,
+  type RequirementView,
+  type RequirementVerificationStatus,
+} from "./requirements";

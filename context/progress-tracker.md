@@ -32,13 +32,14 @@ Update this file after every meaningful implementation change.
   tests passed with `DATABASE_URL` unset — unchanged from before — build
   green); separately, with `DATABASE_URL`/`NODE_EXTRA_CA_CERTS` set, the
   previously-always-skipped live-DB suites ran for real: 632/633 passed.
-- **Milestone 3 (Generic User Experience) is under way: Units 3.1–3.6 are
+- **Milestone 3 (Generic User Experience) is under way: Units 3.1–3.7 are
   complete** (workspace shell, project/assembly management UI, generic
   module input renderer, link suggestion UI, generic result and trace
-  renderer, catalog matching and assignment UI — 2026-07-30 through
-  2026-07-31), with 665/665 tests green against a live database and zero
-  skips. Next: Unit 3.7 (requirements, assumptions, and load-case UI). Full
-  history, decisions, and the Unit 3.7 brief now live in
+  renderer, catalog matching and assignment UI, requirements/assumptions/
+  load-case UI — 2026-07-30 through 2026-07-31), with 701/701 tests green
+  against a live database and zero skips. Next: Unit 3.8 (baseline and
+  comparison UI, the last Milestone 3 unit). Full history, decisions, and
+  the Unit 3.8 brief now live in
   `context/progress/unit-3.md` — read that file for normal Unit 3
   continuation work instead of scrolling this one.
 - **2026-07-31: the whole Milestone 3 backlog was finally committed.** Units
@@ -2220,13 +2221,15 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
    ("CI blocks lint, type, unit, and build failures") was already true
    before this pass; the roadmap's own toolchain deliverable list is what
    was incomplete, and that gap is now closed pending the CI round trip.
-2. **Milestone 3 (Generic User Experience) is under way; Units 3.1–3.6 are
+2. **Milestone 3 (Generic User Experience) is under way; Units 3.1–3.7 are
    complete.** See `context/progress/unit-3.md` for full unit-by-unit
-   history, the Unit 3.2/3.5/3.6 architecture decisions, the curve-editor
+   history, the Unit 3.2/3.5/3.6/3.7 architecture decisions, the curve-editor
    deferral, Unit 3.6's `matchingAvailable: false` deferral (the
    `requiredSpec()`-to-`MatchCriterion` operator mapping stays Milestone
-   4's), and the Unit 3.7 brief (next: requirements, assumptions, and
-   load-case UI).
+   4's), Unit 3.7's verification-status scope (authoring completeness only,
+   not a real requirement-to-run link — that stays Milestone 5's Unit 5.3),
+   and the Unit 3.8 brief (next: baseline and comparison UI, the last
+   Milestone 3 unit).
    - Deferred as its own future unit (NOT Unit 2.8): "change an
      assigned-component feedback input" stale-propagation use case — an
      assignment acting as a *source* of a value other calculations consume

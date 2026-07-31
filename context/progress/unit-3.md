@@ -14,6 +14,19 @@ after every meaningful Unit 3.x change, per
 ## Current Phase
 
 - **2026-07-31 (new session — user said "read claude.md and context files,
+  build next task"): Unit 3.7 (requirements, assumptions, and load-case UI)
+  complete, verified against the live database.** `npm run verify`-equivalent
+  all green: lint 0 warnings, typecheck 0 errors, 701/701 tests passed
+  against the live Neon database with 0 skipped (up from 701/701 with 200
+  skipped locally, `DATABASE_URL` unset — the live-DB run added no new
+  count since it re-runs the same suite for real rather than adding tests),
+  build clean, `/workspace` still correctly dynamic. See Current Goal for
+  full detail, including the standing decision that "verification status"
+  reports only whether acceptance criteria are recorded, not whether a
+  calculation run demonstrates a requirement — the same "state the honest
+  scope, defer the schema-needing feature" posture Unit 3.6 established for
+  `matchingAvailable: false`.
+- **2026-07-31 (new session — user said "read claude.md and context files,
   start build next task"): Unit 3.6 (catalog matching and assignment UI)
   complete, verified against the live database.** Also, before starting it,
   this session committed the entire uncommitted Units 3.1–3.5 + bug-fix
@@ -108,6 +121,136 @@ after every meaningful Unit 3.x change, per
 
 ## Current Goal
 
+- **UNIT 3.7 (2026-07-31, new session): requirements, assumptions, and
+  load-case UI — complete, verified against the live database.**
+  `implementation-map.md` Unit 3.7: "Requirement editor", "Acceptance
+  criteria", "Load-case table", "Assumption register", "Verification
+  status." Exit criterion: "Axis design intent is stored before downstream
+  modules are run."
+  - **Scope check before starting, per this file's own Unit 3.7 brief**: the
+    `Requirement`/`AcceptanceCriterion`/`DesignAssumption`/`LoadCase` Prisma
+    models and their repository (`lib/db/repositories/requirements-
+    repository.ts`: creates plus ownership-scoped `listRequirements`/
+    `listDesignAssumptions`/`listLoadCases`) already existed from Unit 2.2 —
+    confirmed by reading the repository and its test file before writing
+    anything. No `lib/application/requirements/` boundary existed yet, so
+    this unit built one from scratch, the same "no read model, no write
+    services yet" starting point Unit 3.6 had for `lib/application/
+    catalogs/`.
+  - **The one new `lib/db` function**: `loadRequirementForOwner`
+    (ownership-scoped single-record read, mirroring `loadAssemblyForOwner`)
+    — needed so `createRequirementAcceptanceCriterion` can authorize against
+    a requirement id alone, without a `configurationId` in its input. No
+    schema change, so no migration — the same "one new repository function"
+    shape Unit 3.6 used for `listComponentAssignmentsForModuleInstance`.
+  - **Four new application services** (`lib/application/requirements/`):
+    `createMachineRequirement` and `createRequirementAcceptanceCriterion`
+    (`manage-requirements.ts`), `createMachineLoadCase`
+    (`manage-load-cases.ts`), `createMachineDesignAssumption`
+    (`manage-design-assumptions.ts`) — all apply the "target ownership plus
+    configuration membership" rule the 2026-07-30 hardening pass established
+    for every write (`progress-tracker.md` Architecture Decisions),
+    matching `createMachineAssembly`'s shape exactly for the two entities
+    with an optional `assemblyId` (`Requirement`, `DesignAssumption`): a
+    given assembly must belong to the same configuration, checked before any
+    write. `LoadCase` has no `assemblyId` at all (architecture.md: a load
+    case is a configuration-level concept), so it only needs the
+    configuration-ownership check.
+  - **THE CENTRAL SCOPE DECISION — "verification status" reports only
+    whether acceptance criteria are recorded, not whether a calculation run
+    demonstrates the requirement, and no `VerificationLink` model was
+    added.** `architecture.md`'s domain model names a `VerificationLink`
+    class under "Design intent," but Unit 2.2 never built it (its own
+    deliverable list names Requirement/AcceptanceCriterion/
+    DesignAssumption/LoadCase/ParameterValue/ParameterLink only), and
+    Milestone 5's "Requirements verification matrix" (Unit 5.3) is the
+    roadmap unit that actually needs a real requirement-to-run link. Adding
+    that model now would combine a Prisma schema change with a UI unit —
+    exactly what `ai-workflow-rules.md`'s Split Rule forbids — and deciding
+    *which* run or check satisfies *which* requirement is real engineering
+    judgment no released contract records, the same shape of problem Unit
+    3.6 hit with `CatalogAdapter.requiredSpec()`'s missing operator. This
+    decision was made directly (not asked to the user) because the
+    precedent from Units 3.3 and 3.6 — ship the real, buildable behavior
+    now, state the gap honestly, defer the schema-needing feature to the
+    roadmap unit that owns it — was already unambiguous for this exact
+    shape of gap. So `loadRequirementsView` computes
+    `verificationStatus: "criteria_defined" | "no_criteria_yet"` per
+    requirement from data that already exists (acceptance-criteria count),
+    and the panel states the distinction plainly via a fixed info notice
+    rather than implying a requirement is "verified" when nothing has
+    actually checked it (`code-standards.md` "Standards and Sources": "Do
+    not label a result generally compliant" — the same non-overclaim
+    posture, applied here to a requirement's status).
+  - **`RequirementsWorkspace`** (`components/engineering/
+    requirements-workspace.tsx`, new): renders at the configuration level,
+    independent of any module instance — the first main-canvas surface in
+    this codebase that is. Three sections in one scrollable column (the
+    same narrow-column pattern every prior panel unit kept, per Unit 3.5's
+    layout decision): a requirement editor (add form plus a card per
+    requirement showing its code, scope, statement, verification-status
+    badge, recorded acceptance criteria, and an inline add-criterion form),
+    a load-case table (add form plus a table row per load case), and a
+    design-assumption register (add form plus a list). The scope picker
+    (`AssemblyScopeField`) flattens the configuration's assembly tree into
+    an indented-path list ("X axis / Drive train") shared by both the
+    requirement and assumption forms. **A real accessibility fix caught by
+    the component's own tests, not a runtime bug**: the requirement form's
+    and the assumption form's "Statement" and "Scope" fields originally
+    shared identical label text; since both forms render simultaneously on
+    one page, `getByLabelText` failed on multiple matches and — more
+    importantly — two same-labelled fields on one view is exactly what WCAG
+    guidance advises against. Relabelled to "Requirement statement"/
+    "Requirement scope" and "Assumption statement"/"Assumption scope."
+  - **Routing**: the Requirements navigator row (`machine-navigator.tsx`,
+    previously a disabled `StaticRow` since Unit 3.1) is now a real
+    `<Link>` to `?project=&configuration=&panel=requirements`, the same
+    deep-link pattern as the project/configuration pickers and module rows.
+    `workspace/page.tsx` reads the new `?panel=` query param and calls
+    `loadRequirementsView` only when it equals `"requirements"` and a
+    configuration is selected; `WorkspaceShell` renders
+    `RequirementsWorkspace` in the main canvas whenever that view resolves,
+    mutually exclusive with the module workspace/result/assignment stack
+    (both read from the same `props.status === "loaded"` branch, so a
+    `?module=` deep link still takes its own path unchanged).
+  - **Tests**: one new live-DB test in `requirements-repository.test.ts`
+    (`loadRequirementForOwner` ownership isolation);
+    `manage-requirements.test.ts` (8 live-DB tests — machine-level and
+    assembly-scoped creation, cross-configuration assembly rejection,
+    unowned-configuration rejection, blank code/statement rejection, adding
+    an acceptance criterion, and rejecting one against a requirement the
+    caller does not own); `manage-load-cases.test.ts` (5 live-DB tests);
+    `manage-design-assumptions.test.ts` (6 live-DB tests, the same
+    cross-configuration/unowned/blank-statement shape as
+    manage-requirements.test.ts); `load-requirements-view.test.ts` (4
+    live-DB tests — null for unowned/unknown, every list empty for a fresh
+    configuration, the verification-status split proven against one
+    requirement with a recorded criterion and one without, and design
+    assumptions/load cases both round-tripping); `requirements-workspace.
+    test.tsx` (9 component tests covering every empty state, the
+    verification-status badge in both states, load-case table rendering,
+    design-assumption rendering with rationale, nested-assembly scope
+    options, and all four add-forms' submit paths, each new Server Action
+    mocked the same way every other component test in this directory mocks
+    the `"use server"` file); `workspace-shell.test.tsx` (new required
+    `requirements` prop on every "loaded" fixture, plus a new test proving
+    `RequirementsWorkspace` renders when `?panel=requirements` resolves);
+    `machine-navigator.test.tsx` (new required `selectedPanel` prop; the
+    former "Requirements/BOM/Reports are all placeholders" test split into
+    a BOM/Reports-only placeholder test, a "no configuration" placeholder
+    test for Requirements, a real-link-with-correct-href test, and an
+    `aria-current` test).
+  - **What could not be verified on this dev machine**: no live signed-in
+    browser click-through of adding a requirement/criterion/assumption/load
+    case (same standing Clerk-keyless/Chromium-group-policy constraint as
+    every prior UI-adjacent unit). Covered instead by the live-database
+    read-model/service tests, the component tests, and a full `npm run
+    build` production compile.
+  - Verified: `npm run lint` (0 warnings), `npm run typecheck` (0 errors),
+    `npm run test` with `DATABASE_URL` unset (501/501 passed, 200 skipped)
+    and against the live Neon database (**701/701 passed, 0 skipped**,
+    `--testTimeout=30000`), `npm run build` (clean, `/workspace` still
+    correctly dynamic).
 - **UNIT 3.6 (2026-07-31, new session): catalog matching and assignment UI —
   complete, verified against the live database.** `implementation-map.md`
   Unit 3.6: "Required-spec panel", "Filtered candidate table", "Rejection
@@ -959,7 +1102,7 @@ after every meaningful Unit 3.x change, per
     (no migration), so — unlike every Milestone-2-era unit — no CI round
     trip is required before calling this fully verified.
 
-## Next Up — Unit 3.6
+## Next Up — Unit 3.8
 
 - **Units 3.1 (workspace shell) and 3.2 (project and assembly management
   UI) are complete** (2026-07-30, same session — see Current Goal) and drop
@@ -1023,20 +1166,26 @@ after every meaningful Unit 3.x change, per
   `requiredSpec()`-to-`MatchCriterion` operator mapping is Unit 2.8's
   recorded Milestone 4 deferral, deliberately not invented in a UI unit.
 
-  **Next: Unit 3.7 (requirements, assumptions, and load-case UI)**,
-  continuing through Milestone 3 in `implementation-map.md` order, then Unit
-  3.8 (baseline and comparison UI), then Milestone 4 (modules). Per
-  `implementation-map.md`:
-  - **Deliverables**: Requirement editor, Acceptance criteria, Load-case
-    table, Assumption register, Verification status.
-  - **Exit criterion**: Axis design intent is stored before downstream
-    modules are run.
-  - `lib/requirements/` does not exist yet as a boundary, and the
-    `Requirement`/`AcceptanceCriterion`/`DesignAssumption`/`LoadCase` Prisma
-    models were delivered back in Unit 2.2 — so check what application-layer
-    services exist for them before starting; this unit may need its own
-    read model and use cases the way Unit 3.6 needed
-    `loadComponentAssignmentView`.
+  **Unit 3.7 (requirements, assumptions, and load-case UI) is complete**
+  (2026-07-31, new session — see Current Goal) and drops off this list. It
+  built the `lib/application/requirements/` boundary from scratch (four
+  write services plus `loadRequirementsView`), made the Requirements
+  navigator row a real deep link, and settled "verification status" as
+  authoring-completeness only (acceptance criteria recorded or not) —
+  a real requirement-to-run link is Milestone 5's Unit 5.3 to build.
+
+  **Next: Unit 3.8 (baseline and comparison UI)**, the last Milestone 3
+  unit, then Milestone 4 (modules). Per `implementation-map.md`:
+  - **Deliverables**: Pre-baseline validation summary, Warning
+    acknowledgement, Baseline creation, Baseline list, Changed
+    requirement/input/output/check/part comparison.
+  - **Exit criterion**: User can identify what changed between two design
+    states.
+  - `createBaseline`/`compareBaselines` (`lib/application/configurations/`)
+    already exist from Unit 2.9 — check their current shape (inputs,
+    outputs, what a baseline snapshot already records) before building a
+    read model or UI; this unit likely needs its own read model the way
+    every prior Unit 3.x panel did.
 
 ## Open Questions
 
@@ -1064,6 +1213,23 @@ after every meaningful Unit 3.x change, per
 
 ## Architecture Decisions
 
+- (2026-07-31, Unit 3.7) **"Verification status" reports only whether a
+  requirement has recorded acceptance criteria — not whether a calculation
+  run demonstrates it — and no `VerificationLink` model was added.**
+  `architecture.md`'s domain model names a `VerificationLink` class under
+  "Design intent," but Unit 2.2 never built it, and Milestone 5's
+  "Requirements verification matrix" (Unit 5.3) is the roadmap unit that
+  actually needs a real requirement-to-run link. Building it now would
+  combine a Prisma schema change with a UI unit (the Split Rule,
+  `ai-workflow-rules.md`), and deciding which run or check satisfies which
+  requirement is engineering judgment no released contract records — the
+  same shape of gap Unit 3.6 hit with `CatalogAdapter.requiredSpec()`'s
+  missing comparison operator. `loadRequirementsView` computes
+  `verificationStatus: "criteria_defined" | "no_criteria_yet"` from data
+  that already exists, and the panel states the limitation via a fixed
+  info notice rather than implying a requirement is "verified" when
+  nothing has actually checked it. Revisit at Unit 5.3, which owns the
+  real link.
 - (2026-07-31, Unit 3.6) **The catalog matching UI reports
   `matchingAvailable: false` rather than deriving `MatchCriterion`s from a
   module's `requiredSpec()`.** Ranking and hard filtering need a comparison

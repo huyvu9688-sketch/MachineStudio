@@ -102,6 +102,7 @@ describe("MachineNavigator", () => {
         configuration={null}
         modulePackages={MODULE_PACKAGES}
         selectedModuleInstanceId={null}
+        selectedPanel={null}
       />,
     );
 
@@ -116,6 +117,7 @@ describe("MachineNavigator", () => {
         configuration={configuration}
         modulePackages={MODULE_PACKAGES}
         selectedModuleInstanceId={null}
+        selectedPanel={null}
       />,
     );
 
@@ -138,6 +140,7 @@ describe("MachineNavigator", () => {
         configuration={configuration}
         modulePackages={MODULE_PACKAGES}
         selectedModuleInstanceId={null}
+        selectedPanel={null}
       />,
     );
 
@@ -157,6 +160,7 @@ describe("MachineNavigator", () => {
         configuration={configuration}
         modulePackages={MODULE_PACKAGES}
         selectedModuleInstanceId={null}
+        selectedPanel={null}
       />,
     );
 
@@ -182,6 +186,7 @@ describe("MachineNavigator", () => {
         configuration={configuration}
         modulePackages={MODULE_PACKAGES}
         selectedModuleInstanceId={null}
+        selectedPanel={null}
       />,
     );
 
@@ -197,19 +202,70 @@ describe("MachineNavigator", () => {
     expect(screen.getByRole("heading", { name: "Rename assembly" })).toBeInTheDocument();
   });
 
-  it("renders the Requirements/BOM/Reports sections as non-interactive placeholders", () => {
+  it("renders the BOM/Reports sections as non-interactive placeholders", () => {
     render(
       <MachineNavigator
         projectName="Palletizer axis"
         configuration={configuration}
         modulePackages={MODULE_PACKAGES}
         selectedModuleInstanceId={null}
+        selectedPanel={null}
       />,
     );
 
-    for (const label of ["Requirements", "BOM", "Reports"]) {
+    for (const label of ["BOM", "Reports"]) {
       const row = screen.getByText(label);
       expect(row).toHaveAttribute("aria-disabled", "true");
     }
+  });
+
+  it("renders Requirements as a disabled placeholder when there is no configuration", () => {
+    render(
+      <MachineNavigator
+        projectName="Palletizer axis"
+        configuration={null}
+        modulePackages={MODULE_PACKAGES}
+        selectedModuleInstanceId={null}
+        selectedPanel={null}
+      />,
+    );
+
+    expect(screen.getByText("Requirements")).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("renders Requirements as a real deep link to ?...&panel=requirements once a configuration exists", () => {
+    render(
+      <MachineNavigator
+        projectName="Palletizer axis"
+        configuration={configuration}
+        modulePackages={MODULE_PACKAGES}
+        selectedModuleInstanceId={null}
+        selectedPanel={null}
+      />,
+    );
+
+    const link = screen.getByRole("link", { name: "Requirements" });
+    expect(link).toHaveAttribute(
+      "href",
+      "/workspace?project=project&configuration=config&panel=requirements",
+    );
+    expect(link).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks the Requirements link current when ?panel=requirements is selected", () => {
+    render(
+      <MachineNavigator
+        projectName="Palletizer axis"
+        configuration={configuration}
+        modulePackages={MODULE_PACKAGES}
+        selectedModuleInstanceId={null}
+        selectedPanel="requirements"
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Requirements" })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
   });
 });

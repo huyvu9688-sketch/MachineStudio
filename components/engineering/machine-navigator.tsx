@@ -36,21 +36,25 @@ export interface MachineNavigatorProps {
   readonly modulePackages: readonly ModulePackageOption[];
   /** The module instance the `?module=` deep link currently selects, if any. */
   readonly selectedModuleInstanceId: string | null;
+  /** The static-row panel the `?panel=` deep link currently selects, if any. */
+  readonly selectedPanel: "requirements" | null;
 }
 
 /**
  * The 280px machine navigator (context/ui-context.md "Application Shell":
  * "machine, assemblies, workflows, modules, requirements, BOM, and
  * reports"). Assembly rows are interactive (real expand/collapse, plus
- * add-sub-assembly/add-module/rename actions, Unit 3.2); module rows and the
- * Requirements/BOM/Reports section stay informational only, since nothing
- * they would open exists yet (Units 3.6/3.7, Milestone 5).
+ * add-sub-assembly/add-module/rename actions, Unit 3.2); module rows are
+ * real deep links (Unit 3.3). Requirements is now a real deep link too
+ * (Unit 3.7, `?...&panel=requirements`); BOM/Reports stay informational
+ * only, since nothing they would open exists yet (Milestone 5).
  */
 export function MachineNavigator({
   projectName,
   configuration,
   modulePackages,
   selectedModuleInstanceId,
+  selectedPanel,
 }: MachineNavigatorProps) {
   return (
     <nav aria-label="Machine navigator" className="flex h-full flex-col">
@@ -125,7 +129,15 @@ export function MachineNavigator({
       </div>
 
       <div className="shrink-0 border-t border-border-default py-1.5">
-        <StaticRow icon={ListChecks} label="Requirements" />
+        {configuration === null ? (
+          <StaticRow icon={ListChecks} label="Requirements" />
+        ) : (
+          <RequirementsRow
+            projectId={configuration.projectId}
+            configurationId={configuration.id}
+            selected={selectedPanel === "requirements"}
+          />
+        )}
         <StaticRow icon={Layers} label="BOM" />
         <StaticRow icon={FileText} label="Reports" />
       </div>
@@ -292,6 +304,40 @@ function AssemblyRow({
         </CollapsibleContent>
       ) : null}
     </Collapsible>
+  );
+}
+
+/**
+ * The Requirements row — a real deep link to `?...&panel=requirements`,
+ * opening Unit 3.7's `RequirementsWorkspace` in the main canvas. Same
+ * deep-linkable pattern as `ModuleRow` below and the project/configuration
+ * pickers (`app-bar.tsx`).
+ */
+function RequirementsRow({
+  projectId,
+  configurationId,
+  selected,
+}: {
+  readonly projectId: string;
+  readonly configurationId: string;
+  readonly selected: boolean;
+}) {
+  const pathname = usePathname();
+  const href = `${pathname}?project=${encodeURIComponent(projectId)}&configuration=${encodeURIComponent(configurationId)}&panel=requirements`;
+
+  return (
+    <Link
+      href={href}
+      aria-current={selected ? "true" : undefined}
+      className={cn(
+        "flex items-center gap-2 px-3 py-1.5 text-[13px] text-text-primary",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary",
+        selected ? "bg-surface-selected" : "hover:bg-surface-hover",
+      )}
+    >
+      <ListChecks aria-hidden="true" className="h-4 w-4 shrink-0 text-text-muted" />
+      Requirements
+    </Link>
   );
 }
 

@@ -130,6 +130,21 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(await repo.listRequirements(configId, ownerId)).toHaveLength(1);
     });
 
+    it("loads a single requirement scoped to the owner", async () => {
+      const ownerId = await newOwner();
+      const configId = await newConfiguration(ownerId);
+      const requirement = await repo.createRequirement({
+        configurationId: configId,
+        code: "REQ-01",
+        statement: "Owned requirement.",
+      });
+
+      expect(await repo.loadRequirementForOwner(requirement.id, ownerId)).not.toBeNull();
+
+      const strangerId = asUserId(`test-user-${randomUUID()}`);
+      expect(await repo.loadRequirementForOwner(requirement.id, strangerId)).toBeNull();
+    });
+
     it("rejects invalid input at the persistence boundary", async () => {
       const ownerId = await newOwner();
       const configId = await newConfiguration(ownerId);

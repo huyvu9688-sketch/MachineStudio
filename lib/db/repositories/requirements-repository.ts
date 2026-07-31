@@ -294,3 +294,22 @@ export async function listLoadCases(
   });
   return rows.map(toLoadCaseRecord);
 }
+
+/**
+ * Loads a single `Requirement`, scoped to the owner (mirrors
+ * `loadAssemblyForOwner` in project-repository.ts). Needed by the
+ * application layer to authorize adding an acceptance criterion to a
+ * requirement it does not itself take a `configurationId` for.
+ */
+export async function loadRequirementForOwner(
+  requirementId: string,
+  ownerId: UserId,
+  client: DbClient = prisma,
+): Promise<RequirementRecord | null> {
+  const id = parse(nonEmpty, requirementId);
+  const owner = parse(nonEmpty, ownerId);
+  const row = await client.requirement.findFirst({
+    where: { id, configuration: { project: { ownerId: owner } } },
+  });
+  return row === null ? null : toRequirementRecord(row);
+}

@@ -16,7 +16,11 @@ import {
   assignComponent,
   confirmParameterLink,
   createMachineAssembly,
+  createMachineDesignAssumption,
+  createMachineLoadCase,
   createMachineProject,
+  createMachineRequirement,
+  createRequirementAcceptanceCriterion,
   executeModuleInstance,
   removeParameterLink,
   renameMachineAssembly,
@@ -31,6 +35,7 @@ import {
   asManufacturerPartRevisionId,
   asModuleInstanceId,
   asParameterLinkId,
+  asRequirementId,
   asUserId,
   type ParameterNodeKind,
 } from "@/lib/db";
@@ -439,6 +444,105 @@ export async function assignComponentAction(
   }
 
   const result = await assignComponent(partFields, asUserId(userId));
+  if (!result.ok) {
+    return { status: "error", message: result.error.message };
+  }
+  revalidatePath("/workspace");
+  return { status: "success" };
+}
+
+/**
+ * Records a requirement (Unit 3.7's "Requirement editor"). An empty
+ * `assemblyId` field means machine-level, the same "blank hidden/select
+ * field means omit" convention `createAssemblyAction`'s `parentId` already
+ * uses.
+ */
+export async function createRequirementAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth.protect();
+  const assemblyIdRaw = fieldValue(formData, "assemblyId");
+  const result = await createMachineRequirement(
+    {
+      configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
+      ...(assemblyIdRaw.length > 0 ? { assemblyId: asAssemblyId(assemblyIdRaw) } : {}),
+      code: fieldValue(formData, "code"),
+      statement: fieldValue(formData, "statement"),
+    },
+    asUserId(userId),
+  );
+  if (!result.ok) {
+    return { status: "error", message: result.error.message };
+  }
+  revalidatePath("/workspace");
+  return { status: "success" };
+}
+
+/** Adds an acceptance criterion to a requirement (Unit 3.7). */
+export async function createAcceptanceCriterionAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth.protect();
+  const result = await createRequirementAcceptanceCriterion(
+    {
+      requirementId: asRequirementId(fieldValue(formData, "requirementId")),
+      statement: fieldValue(formData, "statement"),
+    },
+    asUserId(userId),
+  );
+  if (!result.ok) {
+    return { status: "error", message: result.error.message };
+  }
+  revalidatePath("/workspace");
+  return { status: "success" };
+}
+
+/** Records a design assumption (Unit 3.7's "Assumption register"). */
+export async function createDesignAssumptionAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth.protect();
+  const assemblyIdRaw = fieldValue(formData, "assemblyId");
+  const rationale = fieldValue(formData, "rationale");
+  const result = await createMachineDesignAssumption(
+    {
+      configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
+      ...(assemblyIdRaw.length > 0 ? { assemblyId: asAssemblyId(assemblyIdRaw) } : {}),
+      statement: fieldValue(formData, "statement"),
+      ...(rationale.length > 0 ? { rationale } : {}),
+    },
+    asUserId(userId),
+  );
+  if (!result.ok) {
+    return { status: "error", message: result.error.message };
+  }
+  revalidatePath("/workspace");
+  return { status: "success" };
+}
+
+/** Records a load case (Unit 3.7's "Load-case table"). Reuses `parseLoadCase`. */
+export async function createLoadCaseAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth.protect();
+  const category = parseLoadCase(fieldValue(formData, "category"));
+  if (category === undefined) {
+    return { status: "error", message: "Select a valid load-case category." };
+  }
+  const description = fieldValue(formData, "description");
+  const result = await createMachineLoadCase(
+    {
+      configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
+      category,
+      label: fieldValue(formData, "label"),
+      ...(description.length > 0 ? { description } : {}),
+    },
+    asUserId(userId),
+  );
   if (!result.ok) {
     return { status: "error", message: result.error.message };
   }

@@ -151,10 +151,13 @@ reload) rather than client-only state. Navigator collapse is instant, not
 animated — animating the navigator's width would animate a layout
 property, which this file's Motion section already forbids. Assembly rows
 are the tree's only interactive rows (real expand/collapse); module-
-instance rows and the Requirements/BOM/Reports section are informational
-only in this unit — nothing they would open exists yet
-(Units 3.6/3.7, Milestone 5), so they are not styled as if they were
-clickable. The status bar's "stale count" field is a fixed placeholder for
+instance rows and the BOM/Reports section are informational only — nothing
+they would open exists yet (Milestone 5), so they are not styled as if they
+were clickable. **Update (Unit 3.7):** the Requirements row is no longer a
+placeholder — it is a real deep link to `?...&panel=requirements`, opening
+`RequirementsWorkspace` (see the new subsection below), matching the
+project/configuration/module deep-link pattern. The status bar's "stale
+count" field is a fixed placeholder for
 the same reason: staleness lives on `CalculationRun`/`ComponentAssignment`,
 one read hop past what this unit loads. **Update (Unit 3.5):** the result
 pane now renders one module's own stale state (see "Generic Module
@@ -442,6 +445,43 @@ fixtures, ready for Milestone 4 to populate.
 for calculated components"), so both Assign buttons are disabled with an
 inline explanation until the module has been run at least once — the
 "looks tappable but does nothing" anti-pattern Unit 3.1 already rejected.
+
+## Requirements, Assumptions, and Load-Case UI
+
+**Implemented (Unit 3.7 — `components/engineering/requirements-workspace.tsx`,
+`?...&panel=requirements`):** a configuration-level panel — independent of
+any module instance, unlike every other main-canvas surface so far — with
+three sections: a requirement editor (code, statement, machine-level or
+assembly scope, each requirement's recorded acceptance criteria, and an
+inline "add acceptance criterion" form per requirement), a load-case table
+(category/label/description, category drawn from the same
+`LOAD_CASE_LABELS` map `module-input-workspace.tsx`/`link-suggestion-
+panel.tsx` already use), and a design-assumption register (statement,
+optional rationale, machine-level or assembly scope). The scope picker
+flattens the configuration's assembly tree into an indented path list
+("X axis / Drive train") reused by both the requirement and assumption
+forms — a plain native `<select>`, matching the existing convention
+(`add-module-instance-dialog.tsx`'s module-package picker) rather than a
+new dropdown primitive. The read model is `loadRequirementsView`
+(`lib/application/requirements/`); the four writes
+(`createMachineRequirement`, `createRequirementAcceptanceCriterion`,
+`createMachineDesignAssumption`, `createMachineLoadCase`) are new
+application services following the exact "configuration ownership, plus
+assembly-in-configuration cross-check when scoped" shape
+`createMachineAssembly` (Unit 3.2) already established.
+
+**"Verification status" is authoring completeness, not verification
+against a calculation run.** A requirement shows "Acceptance criteria
+defined" or "No acceptance criteria yet" — nothing more. `architecture.md`'s
+domain model names a `VerificationLink` class linking a requirement to the
+run that demonstrates it, but Unit 2.2 never built it, and deciding which
+run or check satisfies which requirement is real engineering judgment no
+released contract records — the same shape of gap Unit 3.6 hit with
+`CatalogAdapter.requiredSpec()`'s missing comparison operator. A fixed
+info notice states this plainly rather than implying a requirement is
+"verified" when no calculation has actually checked it. A real
+requirement-to-run link is Milestone 5's "Requirements verification
+matrix" (Unit 5.3) to build, not invented here as a UI-only mapping.
 
 ## Reports and Baselines
 

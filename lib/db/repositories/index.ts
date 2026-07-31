@@ -39,6 +39,7 @@ export {
   listRequirements,
   listDesignAssumptions,
   listLoadCases,
+  loadRequirementForOwner,
 } from "./requirements-repository";
 export type { RequirementsRepositoryErrorCode } from "./requirements-repository";
 export {

@@ -3,9 +3,10 @@ import {
   loadComponentAssignmentView,
   loadModuleResultView,
   loadModuleWorkspaceView,
+  loadRequirementsView,
   loadWorkspaceView,
 } from "@/lib/application";
-import { asMachineProjectId, asModuleInstanceId, asUserId } from "@/lib/db";
+import { asMachineConfigurationId, asMachineProjectId, asModuleInstanceId, asUserId } from "@/lib/db";
 import { listModulePackages } from "@/lib/modules";
 import { marketProfileKey, SOURCE_REGISTRY } from "@/lib/standards";
 import { WorkspaceShell } from "@/components/engineering/workspace-shell";
@@ -18,6 +19,7 @@ interface WorkspacePageProps {
     readonly project?: string;
     readonly configuration?: string;
     readonly module?: string;
+    readonly panel?: string;
   }>;
 }
 
@@ -77,6 +79,13 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
   const componentAssignment = params.module
     ? await loadComponentAssignmentView(asModuleInstanceId(params.module), asUserId(userId))
     : null;
+  const requirements =
+    params.panel === "requirements" && selectedConfiguration !== null
+      ? await loadRequirementsView(
+          asMachineConfigurationId(selectedConfiguration.id),
+          asUserId(userId),
+        )
+      : null;
 
   return (
     <WorkspaceShell
@@ -88,6 +97,7 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
       moduleWorkspace={moduleWorkspace}
       moduleResult={moduleResult}
       componentAssignment={componentAssignment}
+      requirements={requirements}
       summary={summarizeModuleStatuses(selectedConfiguration?.assemblies ?? [])}
       marketProfiles={marketProfiles}
       modulePackages={modulePackages}

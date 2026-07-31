@@ -7,7 +7,7 @@ import { summarizeModuleStatuses } from "./module-status-summary";
 import type { MarketProfileOption } from "./create-project-dialog";
 import type { ModulePackageOption } from "./add-module-instance-dialog";
 import type { MachineProjectRecord, ProjectTree } from "@/lib/db";
-import type { ModuleResultView, ModuleWorkspaceView } from "@/lib/application";
+import type { ModuleResultView, ModuleWorkspaceView, RequirementsView } from "@/lib/application";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/workspace",
@@ -27,6 +27,11 @@ vi.mock("@/app/(workspace)/workspace/actions", () => ({
   confirmSuggestedLinkAction: vi.fn(),
   removeParameterLinkAction: vi.fn(),
   runModuleInstanceAction: vi.fn(),
+  assignComponentAction: vi.fn(),
+  createRequirementAction: vi.fn(),
+  createAcceptanceCriterionAction: vi.fn(),
+  createDesignAssumptionAction: vi.fn(),
+  createLoadCaseAction: vi.fn(),
 }));
 
 const MARKET_PROFILES: MarketProfileOption[] = [
@@ -110,6 +115,7 @@ describe("WorkspaceShell", () => {
         moduleWorkspace={null}
         moduleResult={null}
         componentAssignment={null}
+        requirements={null}
         summary={summarizeModuleStatuses(projectTree.configurations[0].assemblies)}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
@@ -186,6 +192,7 @@ describe("WorkspaceShell", () => {
         moduleWorkspace={moduleWorkspace}
         moduleResult={moduleResult}
         componentAssignment={null}
+        requirements={null}
         summary={summarizeModuleStatuses(projectTree.configurations[0].assemblies)}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
@@ -201,6 +208,35 @@ describe("WorkspaceShell", () => {
     expect(screen.queryByText("Select an item in the navigator")).not.toBeInTheDocument();
   });
 
+  it("renders the requirements workspace in the canvas when ?panel=requirements resolves", () => {
+    const requirements: RequirementsView = {
+      configurationId: "c1" as RequirementsView["configurationId"],
+      requirements: [],
+      designAssumptions: [],
+      loadCases: [],
+    };
+
+    render(
+      <WorkspaceShell
+        status="loaded"
+        projects={projects}
+        selectedProject={projectTree}
+        selectedConfigurationId="c1"
+        selectedModuleInstanceId={null}
+        moduleWorkspace={null}
+        moduleResult={null}
+        componentAssignment={null}
+        requirements={requirements}
+        summary={summarizeModuleStatuses(projectTree.configurations[0].assemblies)}
+        marketProfiles={MARKET_PROFILES}
+        modulePackages={MODULE_PACKAGES}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Requirements & design intent" })).toBeInTheDocument();
+    expect(screen.queryByText("Select an item in the navigator")).not.toBeInTheDocument();
+  });
+
   it("hides the navigator panel when the collapse toggle is clicked", async () => {
     const user = userEvent.setup();
     render(
@@ -213,6 +249,7 @@ describe("WorkspaceShell", () => {
         moduleWorkspace={null}
         moduleResult={null}
         componentAssignment={null}
+        requirements={null}
         summary={summarizeModuleStatuses(projectTree.configurations[0].assemblies)}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}

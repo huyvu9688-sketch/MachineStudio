@@ -9,6 +9,7 @@ import { WorkspaceCanvas } from "./workspace-canvas";
 import { ModuleInputWorkspace } from "./module-input-workspace";
 import { ModuleResultPanel } from "./module-result-panel";
 import { ComponentAssignmentPanel } from "./component-assignment-panel";
+import { RequirementsWorkspace } from "./requirements-workspace";
 import { StatusBar } from "./status-bar";
 import { EmptyState } from "./empty-state";
 import { CreateProjectDialog, type MarketProfileOption } from "./create-project-dialog";
@@ -19,6 +20,7 @@ import type {
   ComponentAssignmentPanelView,
   ModuleResultView,
   ModuleWorkspaceView,
+  RequirementsView,
 } from "@/lib/application";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +38,7 @@ export type WorkspaceShellProps = {
       readonly moduleWorkspace: ModuleWorkspaceView | null;
       readonly moduleResult: ModuleResultView | null;
       readonly componentAssignment: ComponentAssignmentPanelView | null;
+      readonly requirements: RequirementsView | null;
       readonly summary: ModuleStatusSummary;
     }
 );
@@ -97,6 +100,9 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
                 selectedModuleInstanceId={
                   props.status === "loaded" ? props.selectedModuleInstanceId : null
                 }
+                selectedPanel={
+                  props.status === "loaded" && props.requirements !== null ? "requirements" : null
+                }
               />
             )}
           </div>
@@ -105,7 +111,8 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
         <main
           className={cn(
             "flex min-w-0 flex-1 overflow-y-auto",
-            props.status === "loaded" && props.moduleWorkspace !== null
+            (props.status === "loaded" && props.moduleWorkspace !== null) ||
+              (props.status === "loaded" && props.requirements !== null)
               ? "items-start justify-start"
               : "items-center justify-center",
           )}
@@ -120,6 +127,11 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
                 <ComponentAssignmentPanel view={props.componentAssignment} />
               ) : null}
             </div>
+          ) : props.status === "loaded" && props.requirements !== null ? (
+            <RequirementsWorkspace
+              view={props.requirements}
+              assemblies={selectedConfiguration?.assemblies ?? []}
+            />
           ) : (
             <WorkspaceCanvas
               hasProjects={props.status === "loaded"}
