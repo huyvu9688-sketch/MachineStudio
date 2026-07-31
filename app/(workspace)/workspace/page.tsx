@@ -1,5 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
-import { loadModuleResultView, loadModuleWorkspaceView, loadWorkspaceView } from "@/lib/application";
+import {
+  loadComponentAssignmentView,
+  loadModuleResultView,
+  loadModuleWorkspaceView,
+  loadWorkspaceView,
+} from "@/lib/application";
 import { asMachineProjectId, asModuleInstanceId, asUserId } from "@/lib/db";
 import { listModulePackages } from "@/lib/modules";
 import { marketProfileKey, SOURCE_REGISTRY } from "@/lib/standards";
@@ -69,6 +74,9 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
   const moduleResult = params.module
     ? await loadModuleResultView(asModuleInstanceId(params.module), asUserId(userId))
     : null;
+  const componentAssignment = params.module
+    ? await loadComponentAssignmentView(asModuleInstanceId(params.module), asUserId(userId))
+    : null;
 
   return (
     <WorkspaceShell
@@ -79,6 +87,7 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
       selectedModuleInstanceId={moduleWorkspace?.moduleInstance.id ?? null}
       moduleWorkspace={moduleWorkspace}
       moduleResult={moduleResult}
+      componentAssignment={componentAssignment}
       summary={summarizeModuleStatuses(selectedConfiguration?.assemblies ?? [])}
       marketProfiles={marketProfiles}
       modulePackages={modulePackages}

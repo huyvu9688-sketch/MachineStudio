@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import {
   addModuleInstance,
+  assignComponent,
   confirmParameterLink,
   createMachineAssembly,
   createMachineProject,
@@ -24,8 +25,10 @@ import {
 } from "@/lib/application";
 import {
   asAssemblyId,
+  asCalculationRunId,
   asMachineConfigurationId,
   asMachineProjectId,
+  asManufacturerPartRevisionId,
   asModuleInstanceId,
   asParameterLinkId,
   asUserId,
@@ -347,6 +350,95 @@ export async function removeParameterLinkAction(
     asParameterLinkId(fieldValue(formData, "linkId")),
     asUserId(userId),
   );
+  if (!result.ok) {
+    return { status: "error", message: result.error.message };
+  }
+  revalidatePath("/workspace");
+  return { status: "success" };
+}
+
+/** Parses a positive integer quantity field, defaulting to 1 when absent. */
+function parseQuantity(raw: string): number | undefined {
+  if (raw.trim().length === 0) return undefined;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : Number.NaN;
+}
+
+/**
+ * Assigns a manufacturer catalog part, or a manual/custom part, to a module
+ * instance (Unit 3.6's "Assign and manual-part actions"). Thin glue only —
+ * `assignComponent` (Unit 2.8) is the sole authority that authorizes the
+ * target, cross-checks the supporting calculation run against it, and
+ * verifies the part revision exists; nothing submitted here is trusted on
+ * its own. `partSource` picks which of the two payloads is read, matching the
+ * discriminated `AssignComponentInput` the service already declares.
+ */
+export async function assignComponentAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth.protect();
+
+  const partSource = fieldValue(formData, "partSource");
+  if (partSource !== "catalog" && partSource !== "manual") {
+    return { status: "error", message: "Select a catalog part or a manual part." };
+  }
+
+  const quantity = parseQuantity(fieldValue(formData, "quantity"));
+  if (Number.isNaN(quantity)) {
+    return { status: "error", message: "Quantity must be a whole number greater than zero." };
+  }
+
+  const calculationRunId = fieldValue(formData, "calculationRunId");
+  if (calculationRunId.length === 0) {
+    return {
+      status: "error",
+      message: "Run this module before assigning a part — a calculated component needs a supporting run.",
+    };
+  }
+
+  let partFields: Parameters<typeof assignComponent>[0];
+  const common = {
+    configurationId: asMachineConfigurationId(fieldValue(formData, "configurationId")),
+    target: {
+      kind: "module_instance" as const,
+      moduleInstanceId: asModuleInstanceId(fieldValue(formData, "moduleInstanceId")),
+    },
+    calculationRunId: asCalculationRunId(calculationRunId),
+    ...(quantity !== undefined ? { quantity } : {}),
+  };
+
+  if (partSource === "catalog") {
+    const revisionId = fieldValue(formData, "manufacturerPartRevisionId");
+    if (revisionId.length === 0) {
+      return { status: "error", message: "Select a manufacturer part to assign." };
+    }
+    partFields = {
+      ...common,
+      partSource: "catalog",
+      manufacturerPartRevisionId: asManufacturerPartRevisionId(revisionId),
+    };
+  } else {
+    const description = fieldValue(formData, "description").trim();
+    if (description.length === 0) {
+      return { status: "error", message: "Describe the manual or custom part." };
+    }
+    const manufacturerName = fieldValue(formData, "manufacturerName").trim();
+    const partNumber = fieldValue(formData, "partNumber").trim();
+    const notes = fieldValue(formData, "notes").trim();
+    partFields = {
+      ...common,
+      partSource: "manual",
+      manualPartDetails: {
+        description,
+        ...(manufacturerName.length > 0 ? { manufacturerName } : {}),
+        ...(partNumber.length > 0 ? { partNumber } : {}),
+        ...(notes.length > 0 ? { notes } : {}),
+      },
+    };
+  }
+
+  const result = await assignComponent(partFields, asUserId(userId));
   if (!result.ok) {
     return { status: "error", message: result.error.message };
   }

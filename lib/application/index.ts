@@ -71,6 +71,15 @@ export {
 } from "./catalogs/assign-component";
 
 export {
+  loadComponentAssignmentView,
+  type ComponentAssignmentPanelView,
+  type ComponentAssignmentView,
+  type CandidatePartView,
+  type RankedCandidateView,
+  type RejectedCandidateView,
+} from "./catalogs/load-component-assignment-view";
+
+export {
   createBaseline,
   type CreateBaselineInput,
   type CreateBaselineResult,

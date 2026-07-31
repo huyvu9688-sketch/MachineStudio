@@ -109,6 +109,7 @@ export {
   createComponentAssignment,
   loadComponentAssignmentForOwner,
   listComponentAssignmentsForConfiguration,
+  listComponentAssignmentsForModuleInstance,
   markComponentAssignmentsStaleForModuleInstances,
 } from "./component-assignment-repository";
 export type { ComponentAssignmentRepositoryErrorCode } from "./component-assignment-repository";

@@ -287,6 +287,27 @@ export async function listComponentAssignmentsForConfiguration(
   return rows.map(toComponentAssignmentRecord);
 }
 
+/**
+ * Lists one module instance's component assignments (newest first), scoped to
+ * the owner. Returns `[]` when the module instance is not owned by `ownerId`.
+ * The same total order as {@link listComponentAssignmentsForConfiguration},
+ * narrowed to a single target — Unit 3.6's assignment panel renders one
+ * module's assignments, not a whole configuration's.
+ */
+export async function listComponentAssignmentsForModuleInstance(
+  moduleInstanceId: ModuleInstanceId,
+  ownerId: UserId,
+  client: DbClient = prisma,
+): Promise<ComponentAssignmentRecord[]> {
+  const id = parse(nonEmpty, moduleInstanceId);
+  const owner = parse(nonEmpty, ownerId);
+  const rows = await client.componentAssignment.findMany({
+    where: { moduleInstanceId: id, configuration: { project: { ownerId: owner } } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  return rows.map(toComponentAssignmentRecord);
+}
+
 // --- Stale state (transactional propagation) ---------------------------------
 
 /**

@@ -13,6 +13,17 @@ after every meaningful Unit 3.x change, per
 
 ## Current Phase
 
+- **2026-07-31 (new session — user said "read claude.md and context files,
+  start build next task"): Unit 3.6 (catalog matching and assignment UI)
+  complete, verified against the live database.** Also, before starting it,
+  this session committed the entire uncommitted Units 3.1–3.5 + bug-fix
+  backlog as six separate, unit-tagged commits at the user's direction (the
+  work had been complete but never committed; see "Commit History
+  Reconstruction" below). `npm run verify` green: lint 0 warnings, typecheck
+  0 errors, 665/665 tests passed against the live Neon database with **0
+  skipped** (up from 650), build clean. See Current Goal for full detail,
+  including the standing `matchingAvailable: false` decision this unit
+  encodes rather than inventing the Milestone 4 operator mapping.
 - **2026-07-31 (same session, continued — user's first real browser click-
   through after Unit 3.5): first-ever-real-user bug found and fixed —
   `createMachineProject` violated `machine_projects_ownerId_fkey` for
@@ -97,6 +108,133 @@ after every meaningful Unit 3.x change, per
 
 ## Current Goal
 
+- **UNIT 3.6 (2026-07-31, new session): catalog matching and assignment UI —
+  complete, verified against the live database.** `implementation-map.md`
+  Unit 3.6: "Required-spec panel", "Filtered candidate table", "Rejection
+  reasons", "Ranking explanations", "Datasheet/source link", "Assign and
+  manual-part actions." Exit criterion: "An engineer can assign a
+  manufacturer part and see its supporting run."
+  - **The read model** (`lib/application/catalogs/
+    load-component-assignment-view.ts`, new, `loadComponentAssignmentView`):
+    read-only, no transaction, same shape as `loadModuleResultView` (Unit
+    3.5). Composes `lib/db` (authorization, the module instance, its latest
+    run, its assignments, part revisions/manufacturers) and `lib/modules`
+    (the pinned package, for its optional `catalogAdapter` — never
+    `compute`). Returns `null` for an unknown/unowned instance; a module with
+    no adapter is a **normal render**, not an error.
+  - **THE CENTRAL SCOPE DECISION — `matchingAvailable: false`, and why this
+    unit did not invent the missing contract.** Hard filtering and ranking
+    (`rankCandidates`, Unit 2.8 part 1) need `MatchCriterion`s: attribute
+    key + **comparison operator** + required value. A module's
+    `CatalogAdapter.requiredSpec()` returns only
+    `Record<string, EngineeringValue>` — no operator. Unit 2.8 part 1's own
+    recorded Architecture Decision explicitly defers building criteria from
+    `requiredSpec()` to "whichever later unit first wires a real production
+    module's catalog adapter to this engine (Milestone 4)", precisely
+    because deciding whether an attribute needs a capacity floor (`"gte"`), a
+    size ceiling (`"lte"`), or an identity match (`"eq"`) is real
+    engineering judgment no released contract records. **Extending
+    `CatalogAdapter` to carry operators was considered and rejected here**:
+    it is a released SDK contract, and `lib/engine` deliberately does not
+    import `lib/catalog`'s `MatchCriterion` (stated in `CatalogAdapter`'s own
+    TSDoc) — doing it would have pulled a fourth boundary into a UI unit and
+    pre-empted a Milestone 4 engineering decision from a UI read model. So
+    the panel reports `matchingAvailable: false` with a specific reason
+    (no adapter / no run yet / no comparison rules yet) and says so honestly
+    instead of rendering an empty candidate table. Today **every** module
+    hits the first case — no registered module declares a `catalogAdapter` at
+    all (only `example-relay`/`example-scaffold` exist; Milestone 4 has not
+    started). This was raised with the user before implementing
+    (`AskUserQuestion`), who chose "build both paths now"; the
+    candidate/rejection/ranking UI is therefore fully built and fixture-
+    tested, ready for Milestone 4 to populate, while manual/custom-part
+    assignment is what satisfies the exit criterion today.
+  - **`ComponentAssignmentPanel`** (`components/engineering/
+    component-assignment-panel.tsx`, new): required-spec table, ranked
+    candidate list (rank badge, manufacturer/part number, rev + lifecycle +
+    data-quality meta, real datasheet link, per-candidate Assign form with
+    quantity), collapsed-by-default "Show N rejected parts" with per-
+    criterion rejection reasons, a manual/custom part form, and the
+    assigned-parts list showing quantity, stale banner, and **the supporting
+    calculation run**. Stacked below `ModuleResultPanel` in the same single
+    scrollable column the Unit 3.5 layout decision established (no new layout
+    infrastructure).
+  - **Assignment is blocked with an inline explanation until the module has
+    run.** `assignComponent` requires a `calculationRunId` for a
+    `module_instance` target ("Supporting run required for calculated
+    components"), so both Assign buttons are `disabled` with a stated reason
+    rather than failing on submit — the same "don't show an affordance that
+    does nothing" posture Unit 3.1 established.
+  - **One Server Action, not two** (`assignComponentAction`): `partSource`
+    ("catalog" | "manual") already discriminates which payload to read,
+    mirroring the `AssignComponentInput` union `assignComponent` declares.
+    Thin glue only — authorization, the target/run cross-check, and
+    part-revision existence stay entirely in `assignComponent` (Unit 2.8),
+    reused unchanged. No new persistence logic was written for this unit.
+  - **The one new `lib/db` function**:
+    `listComponentAssignmentsForModuleInstance` (`component-assignment-
+    repository.ts`) — the per-module-instance narrowing of the existing
+    `listComponentAssignmentsForConfiguration`, same ownership filter and
+    same total order (`createdAt desc, id desc`). No schema change, so no
+    migration and no CI round trip.
+  - **Tests**: `load-component-assignment-view.test.ts` (6 live-DB tests —
+    null for an unowned instance; the no-adapter `matchingAvailable: false`
+    state; `latestRunId` appearing after a run; a manual assignment described
+    with its supporting run **(the literal exit criterion)**; an assignment
+    going stale after an upstream input change, proving Unit 2.5's
+    same-transaction assignment staling surfaces here; and that one module's
+    assignments never leak into another's view);
+    `component-assignment-panel.test.tsx` (9 component tests covering the
+    honest-notice state, required-spec with ranked candidates, ranking
+    reasons and datasheet link, rejection reasons revealed on click, catalog assign
+    submit, manual assign submit, the blocked-until-run state, an assigned
+    part with its supporting run, a stale assignment, and the empty state);
+    `workspace-shell.test.tsx` updated with the new required
+    `componentAssignment` prop on every "loaded" fixture.
+  - **What could not be verified on this dev machine**: no live signed-in
+    browser click-through of assigning a part (same standing Clerk-keyless/
+    Chromium-group-policy constraint as every prior UI-adjacent unit).
+    Covered instead by the 9 component tests, the 6 live-database read-model
+    tests, and a full `npm run build` production compile.
+  - Verified: `npm run lint` (0 warnings), `npm run typecheck` (0 errors),
+    `npm run test` with `DATABASE_URL` unset (487/487 passed, 178 skipped)
+    and against the live Neon database (**665/665 passed, 0 skipped**,
+    `--testTimeout=30000`), `npm run build` (clean, `/workspace` still
+    correctly dynamic).
+- **COMMIT HISTORY RECONSTRUCTION (2026-07-31, same session, before Unit
+  3.6): Units 3.1–3.5 and the `upsertUser` bug fix had all been implemented
+  and verified but never committed** — the entire Milestone 3 body of work
+  was sitting as uncommitted changes on `main`. At the user's direction
+  (asked before touching git), it was split into six separate, unit-tagged
+  commits matching `implementation-map.md`'s own Delivery Rule ("Commit with
+  the work-unit ID in the message") rather than one bulk commit: `feat(3.1)`
+  workspace shell, `feat(3.2)` project/assembly management UI, `feat(3.3)`
+  module workspace read model + navigator deep links, `feat(3.4)` link
+  suggestion UI, `feat(3.5)` generic result and trace renderer, and a final
+  `fix:` carrying the `createMachineProject`/`upsertUser` FK bug fix, the
+  Neon adapter, and the documentation extraction.
+  - Two files had to be split *within* themselves to keep the boundaries
+    honest: `lib/db/repositories/project-repository.ts` was staged hunk-by-
+    hunk (`git add -p`) so its Unit 3.2 renames/transaction-client params
+    went in the 3.2 commit while the `upsertUser` bug-fix hunk stayed for the
+    final commit. Files that genuinely span units (`actions.ts`,
+    `module-input-workspace.tsx`, `workspace-shell.tsx`,
+    `lib/application/index.ts`) were committed at the unit where they first
+    appear or reach final form, with the commit message stating so — they
+    were never developed in separable states, and inventing intermediate
+    versions would have produced commits that never actually existed and did
+    not build.
+  - **A real incident during this reconstruction, disclosed for the record**:
+    an intermediate edit to `lib/application/index.ts` (attempting to
+    reconstruct a 3.1-era version of the barrel) removed exports that
+    `actions.ts` imports, and the user's **running dev server** hot-reloaded
+    the broken state and reported a compile error within seconds. Restored to
+    the correct full content immediately and confirmed byte-identical to the
+    pre-edit state (`git diff --stat` showed exactly the same 55 insertions
+    as before), then re-verified with typecheck and lint. **Lesson for future
+    sessions**: when reconstructing history for already-final code, split
+    with `git add -p` against the index — never by editing working-tree files
+    backwards into earlier states, which breaks a live dev server for real.
 - **FIRST REAL-BROWSER QA PASS (2026-07-31, same session, immediately
   after Unit 3.5 — the user actually opened the app and clicked "New
   project"): a real, previously-invisible correctness bug found and
@@ -876,18 +1014,29 @@ after every meaningful Unit 3.x change, per
   manufacturer part and stale state" and the status-bar's tree-wide "stale
   count" for Unit 3.6 and beyond (see Current Goal's Scope note).
 
-  **Next: Unit 3.6 (catalog matching and assignment UI)**, continuing
-  through Milestone 3 in `implementation-map.md` order, then Milestone 4
-  (modules). Per `implementation-map.md`:
-  - **Deliverables**: Required-spec panel, Filtered candidate table,
-    Rejection reasons, Ranking explanations, Datasheet/source link, Assign
-    and manual-part actions.
-  - **Exit criterion**: An engineer can assign a manufacturer part and see
-    its supporting run.
-  - This is the unit `ui-context.md`'s Result-pane bullet list's "Assigned
-    manufacturer part and stale state" belongs to (Unit 3.5's Current Goal
-    entry's Scope note) — `ModuleResultPanel` renders no
-    `ComponentAssignment` data today.
+  **Unit 3.6 (catalog matching and assignment UI) is complete** (2026-07-31,
+  new session — see Current Goal) and drops off this list. It closed
+  `ui-context.md`'s Result-pane "Assigned manufacturer part and stale state"
+  bullet that Unit 3.5 deferred here. Its candidate-table/ranking half is
+  built but reports `matchingAvailable: false` for every module today, by
+  design: no registered module declares a `catalogAdapter`, and the
+  `requiredSpec()`-to-`MatchCriterion` operator mapping is Unit 2.8's
+  recorded Milestone 4 deferral, deliberately not invented in a UI unit.
+
+  **Next: Unit 3.7 (requirements, assumptions, and load-case UI)**,
+  continuing through Milestone 3 in `implementation-map.md` order, then Unit
+  3.8 (baseline and comparison UI), then Milestone 4 (modules). Per
+  `implementation-map.md`:
+  - **Deliverables**: Requirement editor, Acceptance criteria, Load-case
+    table, Assumption register, Verification status.
+  - **Exit criterion**: Axis design intent is stored before downstream
+    modules are run.
+  - `lib/requirements/` does not exist yet as a boundary, and the
+    `Requirement`/`AcceptanceCriterion`/`DesignAssumption`/`LoadCase` Prisma
+    models were delivered back in Unit 2.2 — so check what application-layer
+    services exist for them before starting; this unit may need its own
+    read model and use cases the way Unit 3.6 needed
+    `loadComponentAssignmentView`.
 
 ## Open Questions
 
@@ -915,6 +1064,33 @@ after every meaningful Unit 3.x change, per
 
 ## Architecture Decisions
 
+- (2026-07-31, Unit 3.6) **The catalog matching UI reports
+  `matchingAvailable: false` rather than deriving `MatchCriterion`s from a
+  module's `requiredSpec()`.** Ranking and hard filtering need a comparison
+  operator per attribute; `CatalogAdapter.requiredSpec()` supplies none, and
+  Unit 2.8 part 1 already recorded that building criteria from it belongs to
+  "whichever later unit first wires a real production module's catalog
+  adapter to this engine (Milestone 4)" — because the operator is real
+  engineering judgment (capacity floor vs. size ceiling vs. identity match),
+  not a mechanical transformation. Two alternatives were considered and
+  rejected: (a) inferring operators heuristically in the read model, which
+  invents engineering behavior in a UI layer, and (b) extending
+  `CatalogAdapter` to carry operators, which changes a released SDK contract
+  and would force `lib/engine` to import `lib/catalog`'s `MatchCriterion`,
+  something that interface's own TSDoc deliberately avoids. The panel
+  therefore states why matching is unavailable (no adapter / no run yet / no
+  comparison rules yet) and keeps manual/custom-part assignment fully
+  functional. Revisit at the first Milestone 4 module that declares a real
+  catalog adapter — that unit owns the operator mapping, and this UI
+  activates with no change to the component.
+- (2026-07-31, Unit 3.6) **One `assignComponentAction` serves both the
+  catalog and manual assign forms.** `partSource` already discriminates the
+  payload, mirroring the `AssignComponentInput` union `assignComponent`
+  (Unit 2.8) declares — two near-identical actions differing only in which
+  three fields they read would be duplication, not clarity. The action
+  validates only what shaping requires; authorization, the target/run
+  cross-check, and part-revision existence stay in the application service,
+  reused unchanged.
 - (2026-07-31, Unit 3.5) **Previous-run comparison is fixed to the latest
   run against the run immediately before it — not a user-selectable pair.**
   `implementation-map.md`'s "Comparison with previous run" is singular; a

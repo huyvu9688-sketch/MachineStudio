@@ -219,6 +219,16 @@ button) — thinner than every other action in this file, since it wraps
 `executeModuleInstance` (Unit 2.4) unchanged and adds no input parsing beyond
 the one id.
 
+`assignComponentAction` (Unit 3.6) backs both of `ComponentAssignmentPanel`'s
+assign forms — the per-candidate catalog assign and the manual/custom part
+form — with one action rather than two, since `partSource` ("catalog" |
+"manual") already discriminates which payload to read, mirroring the
+`AssignComponentInput` union `assignComponent` (Unit 2.8) declares. It
+validates only what shaping requires (a known `partSource`, a positive
+integer quantity, a non-empty description or part-revision id, a present
+`calculationRunId`); authorization, the target/run cross-check, and part-
+revision existence all stay in `assignComponent`, reused unchanged.
+
 ## Status Model
 
 - Not configured
@@ -393,6 +403,45 @@ downstream impact."
 
 The MVP does not expose approval, supplier, purchasing, or inventory
 states.
+
+**Implemented (Unit 3.6 — `components/engineering/
+component-assignment-panel.tsx`, stacked below `ModuleResultPanel` in the
+same scrollable column the Unit 3.5 layout decision established):** the
+required-specification table (label / constraint operator / required value,
+right-aligned per "Tables and Numeric Inputs"), a ranked candidate list
+(rank badge, manufacturer + part number, `rev`/lifecycle/data-quality meta,
+a real datasheet `<a>` when `sourceLink` exists, and a per-candidate Assign
+form with a quantity field), a collapsed-by-default "Show N rejected parts"
+list giving each excluded part's per-criterion rejection reasons, a
+manual/custom part form (description required; manufacturer, part number,
+quantity, notes optional), and the assigned-parts list — each showing its
+quantity, stale banner when stale, and **its supporting calculation run**
+(this unit's exit criterion). The read model is `loadComponentAssignmentView`
+(`lib/application/catalogs/`); the write reuses `assignComponent` (Unit 2.8)
+unchanged via the new `assignComponentAction`.
+
+**Honest-notice state, not an empty table:** hard filtering and ranking need
+`MatchCriterion`s (attribute key + comparison operator + required value), but
+a module's `CatalogAdapter.requiredSpec()` returns only
+`Record<string, EngineeringValue>` — no operator. Unit 2.8 part 1
+deliberately deferred building criteria from `requiredSpec()` to "whichever
+later unit first wires a real production module's catalog adapter to this
+engine (Milestone 4)", because choosing a capacity floor vs. a size ceiling
+vs. an identity match is engineering judgment no released contract records.
+This unit honors that deferral rather than inventing the mapping in a UI read
+model (extending `CatalogAdapter` was considered and rejected: it is a
+released SDK contract, and `lib/engine` deliberately does not import
+`lib/catalog`'s `MatchCriterion`). So `matchingAvailable` is `false` for
+every module today — no registered module declares a `catalogAdapter` at all
+— and the panel states exactly why instead of showing an empty candidate
+table. The candidate/rejection/ranking UI is fully built and tested against
+fixtures, ready for Milestone 4 to populate.
+
+**Assignment requires a supporting run.** `assignComponent` requires a
+`calculationRunId` for a `module_instance` target ("Supporting run required
+for calculated components"), so both Assign buttons are disabled with an
+inline explanation until the module has been run at least once — the
+"looks tappable but does nothing" anti-pattern Unit 3.1 already rejected.
 
 ## Reports and Baselines
 

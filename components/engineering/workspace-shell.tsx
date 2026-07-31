@@ -8,13 +8,18 @@ import { MachineNavigator } from "./machine-navigator";
 import { WorkspaceCanvas } from "./workspace-canvas";
 import { ModuleInputWorkspace } from "./module-input-workspace";
 import { ModuleResultPanel } from "./module-result-panel";
+import { ComponentAssignmentPanel } from "./component-assignment-panel";
 import { StatusBar } from "./status-bar";
 import { EmptyState } from "./empty-state";
 import { CreateProjectDialog, type MarketProfileOption } from "./create-project-dialog";
 import type { ModulePackageOption } from "./add-module-instance-dialog";
 import type { ModuleStatusSummary } from "./module-status-summary";
 import type { MachineProjectRecord, ProjectTree } from "@/lib/db";
-import type { ModuleResultView, ModuleWorkspaceView } from "@/lib/application";
+import type {
+  ComponentAssignmentPanelView,
+  ModuleResultView,
+  ModuleWorkspaceView,
+} from "@/lib/application";
 import { cn } from "@/lib/utils";
 
 export type WorkspaceShellProps = {
@@ -30,6 +35,7 @@ export type WorkspaceShellProps = {
       readonly selectedModuleInstanceId: string | null;
       readonly moduleWorkspace: ModuleWorkspaceView | null;
       readonly moduleResult: ModuleResultView | null;
+      readonly componentAssignment: ComponentAssignmentPanelView | null;
       readonly summary: ModuleStatusSummary;
     }
 );
@@ -109,6 +115,9 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
               <ModuleInputWorkspace view={props.moduleWorkspace} />
               {props.moduleResult !== null ? (
                 <ModuleResultPanel view={props.moduleResult} />
+              ) : null}
+              {props.componentAssignment !== null ? (
+                <ComponentAssignmentPanel view={props.componentAssignment} />
               ) : null}
             </div>
           ) : (
