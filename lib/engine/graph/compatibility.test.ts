@@ -198,4 +198,29 @@ describe("evaluateLinkCompatibility — load case", () => {
     );
     expect(result.compatible).toBe(true);
   });
+
+  it("rejects an unpinned source silently linking into a load-case-pinned sink", () => {
+    const result = evaluateLinkCompatibility(
+      output("motion.axis.thrust_force"),
+      input("motion.axis.thrust_force", "holding"),
+    );
+    expect(result.compatible).toBe(false);
+    expect(result.reasons).toEqual(["load_case"]);
+  });
+
+  it("accepts a load-case-pinned source linking into an unpinned sink", () => {
+    const result = evaluateLinkCompatibility(
+      output("motion.axis.thrust_force", "peak"),
+      input("motion.axis.thrust_force"),
+    );
+    expect(result.compatible).toBe(true);
+  });
+
+  it("accepts an unpinned source linking into an unpinned sink", () => {
+    const result = evaluateLinkCompatibility(
+      output("motion.axis.thrust_force"),
+      input("motion.axis.thrust_force"),
+    );
+    expect(result.compatible).toBe(true);
+  });
 });

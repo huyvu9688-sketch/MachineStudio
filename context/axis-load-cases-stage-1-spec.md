@@ -133,9 +133,10 @@ define their inputs and output meaning before a package is registered.
 
 `ModuleInput.loadCaseId` is only an opaque run label and is not the load-case
 model. The later package must use per-port `loadCase` declarations and stable,
-distinct output keys. The generic result surface currently loses that metadata,
-so a separate generic UI unit must add output load-case labels before four
-same-parameter thrust outputs are exposed to users.
+distinct output keys. **CLOSED (2026-08-01)**: the generic result surface used
+to lose that metadata; it no longer does — `loadModuleResultView` and
+`ModuleResultPanel` now carry and render each output port's `loadCase`. See
+`context/axis-load-cases-stage-2-contract.md` deferred item 4.
 
 ## Existing Parameter Review
 
@@ -171,9 +172,10 @@ in place.
    alone has no universal engineering conversion to a force derating.
 
 The existing generic module workspace also cannot author `vector_quantity`
-inputs, and its generic result panel does not label output load cases. Both are
-cross-module UI capabilities and must be planned separately rather than solved
-with a custom Unit 4.1 form.
+inputs — still open, a cross-module UI capability that must be planned
+separately rather than solved with a custom Unit 4.1 form. Its generic result
+panel not labeling output load cases is the same class of gap and is now
+**closed** (see above).
 
 ## Trace and Report Contract
 
@@ -245,9 +247,10 @@ Unit 4.1 cannot move to Stage 4 or release until all of the following exist:
   numerical benchmark;
 - a completed `validation/axis-load-cases/0.1.0.md`, reviewer or documented
   solo-review substitute, and corresponding `validation/source-index.md` rows;
-- vector-input authoring and multi-case-result labeling planned as generic
-  capabilities, or a documented, source-safe workflow that supplies those
-  inputs without a custom UI; and
+- vector-input authoring planned as a generic capability, or a documented,
+  source-safe workflow that supplies those inputs without a custom UI
+  (multi-case-result labeling, the other half of this gate item, is
+  **closed** — see above); and
 - module conformance, source-immutability hash, registry registration, and full
   project verification.
 

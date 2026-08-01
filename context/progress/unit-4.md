@@ -21,13 +21,36 @@ continuing work on the axis application and load-case module.
   `fonts.googleapis.com`, but the complete `npm run verify` pipeline passed
   once its production build was allowed its normal network access; no app/font
   code was changed in this unit.
+- **2026-08-01: two of the Stage 2 contract's five deferred decisions —
+  the two that needed no new evidence — are now closed.** The other three
+  (per-case external force/moment vectors and resolved outputs; the
+  per-case-vectors-vs-generic-container choice; emergency-stop/holding
+  evidence) remain genuinely evidence-gated and untouched. Closed this
+  session, both as pure generic-platform units (no module registered, no
+  schema/evidence dependency):
+  - Generic parameter-graph compatibility (`evaluateLinkCompatibility`) now
+    rejects an unpinned source port silently linking into a load-case-pinned
+    target.
+  - The generic result panel now labels an output's load case (the
+    result-label half of vector-input-authoring-and-result-labels); the
+    vector-input-authoring half is still open.
+  Full detail and verification for both live in `context/progress-tracker.md`
+  Current Phase (2026-08-01 entries); the module-contract-level record lives
+  in `context/axis-load-cases-stage-1-spec.md` and
+  `context/axis-load-cases-stage-2-contract.md` (deferred items 4 and 5).
 
 ## Next Safe Work Unit
 
 Finish the remaining Stage 2 parameter decisions before scaffolding a
-`ModulePackage`: first resolve per-case external force/moment and resolved
-output semantics against sources, then schedule the required generic vector
-input, result-label, and graph-compatibility capabilities as separate units.
+`ModulePackage`: resolve per-case external force/moment and resolved output
+semantics against sources (items 1-3 of the Stage 2 contract's deferred-
+decision list — genuinely evidence-gated, not actionable without sanitized
+historical fixtures and published methods this project does not yet have).
+The remaining non-evidence-gated generic-platform item is vector-input
+authoring (the other half of item 4) — a real generic-UI/value-type design
+decision (how a `vector_quantity` field is edited, not just displayed), likely
+worth a brainstorm/user check before implementation, the same way the curve
+editor deferral was handled in Unit 3.3.
 Do not register a module, claim a historical phase category, or create a
-validation record while those decisions and the Stage 1 evidence gate remain
-open.
+validation record while the Stage 2 items above and the Stage 1 evidence gate
+remain open.

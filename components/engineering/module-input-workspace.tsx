@@ -13,13 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./status-badge";
 import { LinkedFieldControl, LinkSuggestionPanel } from "./link-suggestion-panel";
-import { LOAD_CASE_LABELS } from "./load-case-labels";
+import { LoadCaseChip } from "./load-case-chip";
 import {
   setModuleInputValueAction,
 } from "@/app/(workspace)/workspace/actions";
 import { IDLE_ACTION_STATE } from "@/app/(workspace)/workspace/action-state";
 import { cn } from "@/lib/utils";
-import type { LoadCaseCategory } from "@/lib/engine";
 import type { ResolvedInputSource } from "@/lib/db";
 import type {
   ModuleInputFieldView,
@@ -134,18 +133,6 @@ function SourceBadge({ source }: { readonly source: ResolvedInputSource["source"
     <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border-default px-1.5 py-0.5 text-[11px] font-medium text-text-muted">
       <Icon aria-hidden="true" className="h-3 w-3" />
       {meta.label}
-    </span>
-  );
-}
-
-/** Load-case context chip (ui-context.md "Generic Module Workspace": "Load-case and coordinate-frame context"). */
-function LoadCaseChip({ loadCase }: { readonly loadCase: LoadCaseCategory }) {
-  return (
-    <span
-      className="inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium"
-      style={{ color: "var(--state-info)", backgroundColor: "rgba(29, 78, 216, 0.08)" }}
-    >
-      {LOAD_CASE_LABELS[loadCase]} load case
     </span>
   );
 }

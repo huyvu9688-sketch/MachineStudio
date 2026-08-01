@@ -10,7 +10,10 @@
 //   5. semantic qualifiers — bound / aggregation / load-nature agree on every
 //                            populated axis (absent axes do not constrain)
 //   6. coordinate frame    — equal
-//   7. load case           — the two nodes pertain to the same load case
+//   7. load case           — a load-case-pinned sink requires the source to
+//                            declare the identical case; an unpinned source
+//                            must never silently satisfy a pinned sink (an
+//                            unpinned sink accepts a pinned or unpinned source)
 //
 // For a plain parameter-identity link (criteria 3–6 hold trivially: it is one
 // parameter), only direction and load case are evaluated. Criteria 3–6 are
@@ -141,12 +144,11 @@ export function evaluateLinkCompatibility(
     ? semanticReasons(sourceDef, sinkDef)
     : [];
 
-  // 7. Load case: reject only when both nodes pin a load case and they differ.
-  if (
-    source.loadCase !== undefined &&
-    sink.loadCase !== undefined &&
-    source.loadCase !== sink.loadCase
-  ) {
+  // 7. Load case: a pinned sink requires the identical case from the source,
+  // including when the source declares none at all — an unpinned source's
+  // value is not known to represent the sink's specific case, so it must not
+  // silently satisfy it. An unpinned sink imposes no load-case constraint.
+  if (sink.loadCase !== undefined && source.loadCase !== sink.loadCase) {
     reasons.push("load_case");
   }
 

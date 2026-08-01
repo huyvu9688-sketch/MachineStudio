@@ -4,6 +4,130 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
+- **2026-08-01 (same session, continued — user opened
+  `context/progress/unit-4.md` and said "continue"): closed the other half
+  of Stage 2 deferred item 4 that needed no new evidence — output
+  load-case labels on the generic result panel.** `axis-load-cases-
+  stage-1-spec.md` named this explicitly: "`ModuleInput.loadCaseId` is only
+  an opaque run label... The generic result surface currently loses that
+  metadata, so a separate generic UI unit must add output load-case labels
+  before four same-parameter thrust outputs are exposed to users." Unlike
+  vector-input authoring (the other half of item 4, which needs an actual
+  editor-UX design decision and stays open), this half only needed to plumb
+  metadata that already existed — `ModuleOutputPort.loadCase` — through to
+  display, mirroring the load-case chip Unit 3.3 already built for inputs.
+  - `lib/application/calculations/load-module-result-view.ts`:
+    `RunOutputView` and `ChangedOutputView` both gained a required
+    `loadCase: LoadCaseCategory | null` field, sourced from
+    `port.loadCase ?? null` in `describeOutputs`/`compareRuns` (the same
+    `?? null` convention `graph-repository.ts` already uses for this exact
+    field). A new local `OutputPortShape` interface (`key`, `parameterId`,
+    optional `loadCase`) replaces the two functions' previous ad hoc inline
+    port-shape type so both read the field consistently;
+    `pkg.ports.outputs` (`ModuleOutputPort[]`) satisfies it structurally, no
+    call-site change needed.
+  - **`LoadCaseChip` extracted** from `module-input-workspace.tsx` into a new
+    shared `components/engineering/load-case-chip.tsx` (no `"use client"`
+    needed — a hookless presentational component, same as `status-badge.tsx`)
+    so `module-result-panel.tsx` could reuse the identical chip rather than
+    duplicating it a second time — the same "extract on second use" call
+    Unit 3.4/3.5 already made for `LOAD_CASE_LABELS` and
+    `formatEngineeringValue`/`trimNumber`. `module-input-workspace.tsx` now
+    imports it instead of defining it locally; its own now-unused
+    `LoadCaseCategory` import was removed.
+  - **`ModuleResultPanel`** renders the chip next to a pinned output's label
+    in both the output summary (`OutputSummary`) and the previous-run
+    comparison's changed-outputs list (`ComparisonSection`) — the comparison
+    section needed it too, since two same-parameter outputs at different
+    load cases would otherwise be visually indistinguishable there as well,
+    the same motivating scenario Stage 1 named for the summary.
+  - **Deliberately not touched**: `CheckResult`/`Warning`/`ValidityResult`
+    (`lib/engine/trace/types.ts`) stay unlabeled by load case. They are not
+    port-scoped records (no `portKey`/`loadCase` field exists or was added),
+    and Stage 1's own gap description named only *output* labels as the
+    blocker — extending the engine's trace contracts would have been a
+    materially larger, unrequested change to a released generic contract.
+  - **Tests**: 2 new assertions in the existing live-DB
+    `load-module-result-view.test.ts` (`loadCase: null` proven for real
+    through `example-relay`, which declares no port load case — the common
+    case today); 3 new pure component tests in
+    `module-result-panel.test.tsx` (a pinned output's chip renders in the
+    summary; an unpinned output renders no chip; a pinned output's chip
+    renders in the comparison section too), plus `loadCase: null` added to
+    the file's two existing fixture entries to satisfy the new required
+    field.
+  - Verified locally: `npm run lint` (0 warnings), `npm run typecheck` (0
+    errors), `npm run test` (535/535 passed, up from 532, 200 skipped —
+    unchanged skip count, all 3 new tests pure and DB-free), `npm run build`
+    all green. No `lib/db` schema file touched, no module registered or
+    released, so no CI round trip and no validation record are needed for
+    this unit.
+- **2026-08-01 (new session — user said "read claude.md and context files,
+  start build next task"): resolved the standing ambiguity over Unit 4.1's
+  status, then closed one of the two Stage 2 deferred decisions that needed
+  no new evidence — a generic `lib/engine/graph` fix, not a module release.**
+  A prior, uncommitted session-start had already found and flagged (as an
+  Open Questions entry, never committed) that this file's own records
+  disagreed about whether Unit 4.1 was next: `Next Up` item 1 was `CLOSED`
+  while the Current Phase summary and item 5 both pointed at Unit 4.1 Stage
+  2, and `progress/unit-3.md` still said Stage 1. Re-reading
+  `axis-load-cases-stage-2-contract.md`'s five deferred decisions against
+  `ai-workflow-rules.md`'s Split Rule showed three (1, 2, 3) genuinely need
+  source-backed evidence this session cannot invent, but two (4, 5) are
+  generic-platform capabilities with no evidence dependency — the same
+  "do the generic platform work while the evidence-gated module stays
+  blocked" pattern the 2026-07-30 design-risk follow-ups already established.
+  Item 5 — "strengthen generic parameter-graph compatibility so an unpinned
+  source port cannot silently link into a load-case-pinned target" — was the
+  smaller, self-contained one (pure engine logic, one function, no new
+  value-type/editor design), so it was implemented and closed this session;
+  item 4 (generic vector-input authoring and result load-case labels) is a
+  materially larger generic-UI/value-type design decision and stays open, see
+  Next Up.
+  - **The fix**: `lib/engine/graph/compatibility.ts`'s `evaluateLinkCompatibility`
+    load-case criterion previously read
+    `source.loadCase !== undefined && sink.loadCase !== undefined &&
+    source.loadCase !== sink.loadCase` — it only rejected when *both* nodes
+    pinned a case and they differed, so an unpinned source (a node whose true
+    load case is not declared) could silently satisfy a load-case-pinned sink
+    (e.g. a future `holding`-only port), exactly the gap
+    `axis-load-cases-stage-2-contract.md` named. Changed to
+    `sink.loadCase !== undefined && source.loadCase !== sink.loadCase`: a
+    pinned sink now requires the identical case from the source, including
+    when the source declares none at all; an unpinned sink still imposes no
+    load-case constraint (matches the "absent axes do not constrain" pattern
+    the file's other semantic-qualifier checks already use, and the Stage 2
+    contract's own wording, which names only the unpinned-source-into-pinned-
+    sink direction as unsafe). **One function, three call sites fixed at
+    once**: `suggestSources` (`lib/engine/graph/suggest.ts`) and
+    `confirmParameterLink` (`lib/application/parameters/
+    stale-propagation.ts`) both call `evaluateLinkCompatibility` directly, so
+    suggestion ranking and server-side link confirmation are both closed with
+    no call-site change needed — confirmed by reading both call sites, not
+    assumed.
+  - **No regression risk confirmed by inspection, not just by the suite
+    passing**: grepped every existing test fixture across
+    `lib/engine/graph/*.test.ts`, `lib/application/parameters/
+    stale-propagation.test.ts`, and `lib/application/parameters/
+    suggest-link-sources.test.ts` for `loadCase` usage — no existing fixture
+    pins a load case on any port, so every existing link-compatibility
+    assertion exercises the still-unchanged unpinned/unpinned case.
+  - **3 new tests** in `lib/engine/graph/compatibility.test.ts`'s existing
+    "load case" describe block, together with the pre-existing test proving
+    all four source/sink pinned-or-unpinned combinations: unpinned source
+    into a pinned sink now rejects (the fix, new); a pinned source into an
+    unpinned sink still accepts (new); unpinned into unpinned still accepts
+    (new); same pinned case on both sides still accepts (pre-existing,
+    unchanged).
+  - `axis-load-cases-stage-2-contract.md`'s deferred-decision list item 5 is
+    marked `CLOSED (2026-08-01)` with a pointer to this detail; items 1-4
+    remain open exactly as before.
+  - Verified locally: `npm run lint` (0 warnings), `npm run typecheck` (0
+    errors), `npm run test` (532/532 passed, up from 529, 200 skipped —
+    unchanged skip count, all 3 new tests pure and DB-free), `npm run build`
+    all green. No `lib/db` schema file touched, no module registered or
+    released, so no CI round trip and no validation record are needed for
+    this unit.
 - **2026-07-31 (continued after Unit 3.8): Unit 4.1 Stage 1 is complete and
   its first Stage 2 contract increment is implemented, but no production
   module is registered or released.** `context/axis-load-cases-stage-1-spec.md`
@@ -2283,11 +2407,31 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
    `context/axis-load-cases-stage-1-spec.md` records the source-based method,
    but the release gate still needs sanitized horizontal and vertical historical
    fixtures, an independent numerical benchmark, and decisions for guide
-   resistance, holding/emergency-stop case semantics, signed acceleration,
-   resolved moments, and derating. It also depends on separately planned
-   generic vector authoring and output load-case-labeling capabilities.
+   resistance, holding/emergency-stop case semantics, signed acceleration, and
+   resolved moments and derating (Stage 2 contract deferred items 1-3, still
+   open — genuinely evidence-gated). Of the two deferred items that needed no
+   new evidence: item 5 (generic parameter-graph load-case link compatibility)
+   is **CLOSED (2026-08-01)**; item 4 is **PARTIALLY CLOSED (2026-08-01)** —
+   its result-load-case-labels half is done, but its vector-input-authoring
+   half remains open as its own future generic-platform unit, a materially
+   larger generic-UI/value-type design decision than either closed piece was.
+   See Current Phase for both.
 
 ## Open Questions
+
+- **RESOLVED (2026-08-01) — the ordered work-unit record is unambiguous
+  again.** A prior, uncommitted session-start had flagged (right below, now
+  removed) that this file's own records disagreed about Unit 4.1's status.
+  Resolution: Milestone 3 is complete; Unit 4.1 Stage 2's final port map stays
+  `BLOCKED` on real evidence for three of its five deferred decisions (see
+  Next Up item 5); of the two that were not evidence-gated, one (generic
+  parameter-graph load-case compatibility) is now closed (see Current Phase),
+  and the other (generic vector-input authoring/output load-case labels)
+  is recorded as its own open future unit rather than folded into Unit 4.1 or
+  invented ad hoc. `context/progress/unit-3.md` needs no correction — it was
+  never wrong; it simply predates the Stage 1/2 work, which lives entirely in
+  this file per the Unit 3 extraction's own scope (`progress/unit-3.md`'s
+  first line: "Milestone 3 — Generic User Experience").
 
 - **RESOLVED (2026-07-31, Unit 3.3) — read-model half only; the curve/
   `vector_quantity` editor half remains a standing deferral.** Full detail,

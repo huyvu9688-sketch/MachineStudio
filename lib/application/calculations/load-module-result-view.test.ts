@@ -130,6 +130,9 @@ describe.skipIf(!liveDatabaseAvailable)("loadModuleResultView (live database)", 
       portKey: "thrust_force_out",
       parameterId: "motion.axis.thrust_force",
       value: makeQuantity(12, "N"),
+      // example-relay's output port declares no load case (the common case
+      // today — no registered module pins one yet).
+      loadCase: null,
     });
     expect(view?.checks).toHaveLength(1);
     expect(view?.checks[0].id).toBe("relay-preserves-value");
@@ -186,6 +189,7 @@ describe.skipIf(!liveDatabaseAvailable)("loadModuleResultView (live database)", 
       portKey: "thrust_force_out",
       before: makeQuantity(12, "N"),
       after: makeQuantity(20, "N"),
+      loadCase: null,
     });
     // The relay's only check is tautologically true on every run (it always
     // relays its input unchanged), so its status never differs between runs.

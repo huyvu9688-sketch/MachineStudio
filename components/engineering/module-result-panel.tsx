@@ -11,6 +11,7 @@ import {
 import { StatusBadge } from "./status-badge";
 import { EmptyState } from "./empty-state";
 import { formatEngineeringValue } from "./format-engineering-value";
+import { LoadCaseChip } from "./load-case-chip";
 import { runModuleInstanceAction } from "@/app/(workspace)/workspace/actions";
 import { IDLE_ACTION_STATE } from "@/app/(workspace)/workspace/action-state";
 // Deep import, not the `@/lib/engine` barrel: that barrel also re-exports
@@ -80,7 +81,10 @@ function OutputSummary({ view }: { readonly view: ModuleResultView }) {
     <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5">
       {view.outputs.map((output) => (
         <div key={output.portKey} className="contents">
-          <dt className="text-[13px] text-text-primary">{output.label}</dt>
+          <dt className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-primary">
+            {output.label}
+            {output.loadCase !== null ? <LoadCaseChip loadCase={output.loadCase} /> : null}
+          </dt>
           <dd className="text-right font-mono text-[13px] tabular-nums text-text-primary">
             {formatResultValue(output.value)}
           </dd>
@@ -109,7 +113,10 @@ function ComparisonSection({ view }: { readonly view: ModuleResultView }) {
         <dl className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 gap-y-1 text-[12px]">
           {comparison.changedOutputs.map((changed) => (
             <div key={changed.portKey} className="contents">
-              <dt className="text-text-primary">{changed.label}</dt>
+              <dt className="flex flex-wrap items-center gap-1.5 text-text-primary">
+                {changed.label}
+                {changed.loadCase !== null ? <LoadCaseChip loadCase={changed.loadCase} /> : null}
+              </dt>
               <dd className="text-right font-mono tabular-nums text-text-muted">
                 {formatResultValue(changed.before)}
               </dd>

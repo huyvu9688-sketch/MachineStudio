@@ -85,6 +85,7 @@ function view(overrides: Partial<ModuleResultView> = {}): ModuleResultView {
         parameterId: "motion.axis.thrust_force",
         label: "Thrust force",
         value: thrustForceOut,
+        loadCase: null,
       },
     ],
     checks,
@@ -199,6 +200,7 @@ describe("ModuleResultPanel", () => {
                 label: "Thrust force",
                 before: { v: 1, kind: "quantity", value: 5, unit: "N" },
                 after: thrustForceOut,
+                loadCase: null,
               },
             ],
             changedChecks: [],
@@ -214,6 +216,56 @@ describe("ModuleResultPanel", () => {
   it("omits the previous-run comparison section when there is nothing to compare", () => {
     render(<ModuleResultPanel view={view()} />);
     expect(screen.queryByText("Previous-run comparison")).not.toBeInTheDocument();
+  });
+
+  it("labels a load-case-pinned output so same-parameter outputs stay distinguishable", () => {
+    render(
+      <ModuleResultPanel
+        view={view({
+          outputs: [
+            {
+              portKey: "thrust_force_out_peak",
+              parameterId: "motion.axis.thrust_force",
+              label: "Thrust force",
+              value: thrustForceOut,
+              loadCase: "peak",
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Peak load case")).toBeInTheDocument();
+  });
+
+  it("does not render a load-case label for an unpinned output", () => {
+    render(<ModuleResultPanel view={view()} />);
+    expect(screen.queryByText(/load case$/)).not.toBeInTheDocument();
+  });
+
+  it("labels a load-case-pinned output in the previous-run comparison too", () => {
+    render(
+      <ModuleResultPanel
+        view={view({
+          comparison: {
+            previousRunId: "run0" as never,
+            previousRunCreatedAt: new Date("2026-07-31T11:00:00Z"),
+            changedOutputs: [
+              {
+                portKey: "thrust_force_out_holding",
+                label: "Thrust force",
+                before: { v: 1, kind: "quantity", value: 5, unit: "N" },
+                after: thrustForceOut,
+                loadCase: "holding",
+              },
+            ],
+            changedChecks: [],
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Holding load case")).toBeInTheDocument();
   });
 
   it("runs the module instance when Run is clicked", async () => {

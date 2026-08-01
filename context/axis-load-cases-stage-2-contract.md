@@ -116,11 +116,45 @@ have a source-backed contract:
    resistance/brake semantics.
 4. Add generic vector-input authoring and result load-case labels before the
    package exposes those fields in the workspace.
-5. Strengthen generic parameter-graph compatibility so an unpinned source port
-   cannot silently link into a load-case-pinned target.
+   - **PARTIALLY CLOSED (2026-08-01)**: the result-load-case-labels half is
+     done. `RunOutputView`/`ChangedOutputView`
+     (`lib/application/calculations/load-module-result-view.ts`) now carry
+     each output port's `loadCase` (already present on `ModuleOutputPort`,
+     simply not read before), and `ModuleResultPanel` renders it via a new
+     shared `LoadCaseChip` (`components/engineering/load-case-chip.tsx`,
+     extracted from `module-input-workspace.tsx`'s existing input-side chip
+     of the same name — the identical presentation the input side already
+     established, applied to the output summary and previous-run comparison
+     rows). This closes the literal "so a separate generic UI unit must add
+     output load-case labels before four same-parameter thrust outputs are
+     exposed to users" requirement from
+     `context/axis-load-cases-stage-1-spec.md`. No engine contract changed —
+     `CheckResult`/`Warning`/`ValidityResult` stay unlabeled by load case,
+     since they are not themselves port-scoped and Stage 1 only named
+     *output* labels as the blocker. **The vector-input-authoring half
+     remains open** — a materially larger generic-UI/value-type design
+     decision (how a `vector_quantity` field is edited, not just displayed),
+     deliberately not attempted alongside the smaller labeling fix. See
+     `context/progress-tracker.md` Current Phase for verification detail.
+5. **CLOSED (2026-08-01)**: generic parameter-graph compatibility now rejects an
+   unpinned source port linking into a load-case-pinned target.
+   `lib/engine/graph/compatibility.ts`'s `evaluateLinkCompatibility` load-case
+   criterion previously fired only when *both* nodes pinned a case and they
+   differed, so an unpinned source (its true case unknown) could silently
+   satisfy a pinned sink (e.g. a `holding`-only port). It now rejects whenever
+   the sink pins a case and the source's case is not identical, including when
+   the source declares none at all; an unpinned sink still imposes no
+   constraint. This is a pure `lib/engine/graph` change with no schema or
+   evidence dependency, so it closed independently of the other four items —
+   `suggestSources` and `confirmParameterLink` both call
+   `evaluateLinkCompatibility` directly, so the fix applies to suggestion
+   ranking and server-side link confirmation without any call-site change. Not
+   a module release; no module exercises this path yet. See
+   `context/progress-tracker.md` Current Goal for verification detail.
 
 The module cannot progress to a released Stage 3 package until the final port
-map is complete. It cannot progress to Stage 4 or Stage 6 until the Stage 1
-validation gate is met: release-grade ID39/ID42 records, a third long-stroke
-fixture, published worked examples, an independent benchmark, reviewer or
-documented substitute, source-index rows, conformance, and full verification.
+map is complete (items 1-4 above remain open). It cannot progress to Stage 4 or
+Stage 6 until the Stage 1 validation gate is met: release-grade ID39/ID42
+records, a third long-stroke fixture, published worked examples, an
+independent benchmark, reviewer or documented substitute, source-index rows,
+conformance, and full verification.

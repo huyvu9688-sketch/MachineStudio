@@ -38,6 +38,7 @@ import {
   type CheckResult,
   type CheckStatus,
   type EngineeringValue,
+  type LoadCaseCategory,
   type ModuleComputation,
   type ValidityResult,
   type Warning,
@@ -62,6 +63,8 @@ export interface RunOutputView {
   readonly parameterId: string;
   readonly label: string;
   readonly value: EngineeringValue;
+  /** The port's declared load case, when it is load-case specific (Stage 1 spec: "per-port loadCase declarations"). */
+  readonly loadCase: LoadCaseCategory | null;
 }
 
 /** A resolved source citation, ready to render without a registry lookup. */
@@ -79,6 +82,7 @@ export interface ChangedOutputView {
   readonly label: string;
   readonly before: EngineeringValue;
   readonly after: EngineeringValue;
+  readonly loadCase: LoadCaseCategory | null;
 }
 
 /** One check whose status differs between the previous run and the latest run. */
@@ -176,9 +180,16 @@ function resolveSourceReferences(
   return views;
 }
 
+/** An output port's fields this view needs — matches `ModuleOutputPort` without importing its module-sdk source directly. */
+interface OutputPortShape {
+  readonly key: string;
+  readonly parameterId: string;
+  readonly loadCase?: LoadCaseCategory;
+}
+
 function describeOutputs(
   outputs: Readonly<Record<string, EngineeringValue>>,
-  ports: readonly { readonly key: string; readonly parameterId: string }[],
+  ports: readonly OutputPortShape[],
 ): RunOutputView[] {
   const views: RunOutputView[] = [];
   for (const port of ports) {
@@ -189,13 +200,14 @@ function describeOutputs(
       parameterId: port.parameterId,
       label: getParameter(port.parameterId)?.displayName ?? port.key,
       value,
+      loadCase: port.loadCase ?? null,
     });
   }
   return views;
 }
 
 function compareRuns(
-  ports: readonly { readonly key: string; readonly parameterId: string }[],
+  ports: readonly OutputPortShape[],
   before: CalculationRunRecord,
   after: CalculationRunRecord,
 ): RunComparisonView {
@@ -210,6 +222,7 @@ function compareRuns(
         label: getParameter(port.parameterId)?.displayName ?? port.key,
         before: beforeValue,
         after: afterValue,
+        loadCase: port.loadCase ?? null,
       });
     }
   }
