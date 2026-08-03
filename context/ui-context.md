@@ -504,6 +504,9 @@ matrix" (Unit 5.3) to build, not invented here as a UI-only mapping.
 - Show unit in a dedicated cell or suffix
 - Preserve significant figures appropriate to the result
 - Do not imply false precision
+- Convert a displayed quantity's magnitude to its visible unit before rendering
+  or editing; scalar labels use shared six-significant-figure `formatQuantity`,
+  never a canonical magnitude paired with a display-unit suffix
 - Use sticky headers for long engineering tables
 - Support keyboard navigation and copy/paste for repeated values
 

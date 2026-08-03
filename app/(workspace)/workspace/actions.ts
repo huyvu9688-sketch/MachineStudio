@@ -42,13 +42,12 @@ import {
 } from "@/lib/db";
 import {
   SERIALIZATION_FORMAT_VERSION,
-  convert,
   getParameter,
-  makeQuantity,
   type EngineeringValue,
   type LoadCaseCategory,
 } from "@/lib/engine";
 import type { ActionState } from "./action-state";
+import { parseSubmittedQuantity } from "./parse-submitted-quantity";
 
 function fieldValue(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -182,23 +181,15 @@ export async function setModuleInputValueAction(
         message: "This parameter has no canonical unit.",
       };
     }
-    const magnitude = Number(fieldValue(formData, "magnitude"));
-    if (!Number.isFinite(magnitude)) {
-      return { status: "error", message: "Enter a numeric value." };
+    const parsed = parseSubmittedQuantity(
+      fieldValue(formData, "magnitude"),
+      fieldValue(formData, "unit"),
+      definition.canonicalUnit,
+    );
+    if (!parsed.ok) {
+      return { status: "error", message: parsed.message };
     }
-    const unit = fieldValue(formData, "unit") || definition.canonicalUnit;
-    try {
-      value = makeQuantity(
-        convert(magnitude, unit, definition.canonicalUnit),
-        definition.canonicalUnit,
-        unit,
-      );
-    } catch {
-      return {
-        status: "error",
-        message: `Unit "${unit}" is not valid for this value.`,
-      };
-    }
+    value = parsed.value;
   } else if (valueKind === "enum") {
     if (definition.enumId === undefined) {
       return {

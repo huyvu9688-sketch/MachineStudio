@@ -1,17 +1,30 @@
 # Unit 3 Progress Context
 
 Milestone 3 — Generic User Experience. This file holds the full Unit
-3.1–3.8 history, standing deferrals, decisions, and the Unit 3.6 brief,
+3.1–3.9 history, standing deferrals, decisions, and the Unit 3.6 brief,
 split out of `context/progress-tracker.md` on 2026-07-31 (see
 `docs/superpowers/specs/2026-07-31-progress-tracker-unit-3-extraction-design.md`)
 to keep normal Unit 3 continuation work small to read.
 `context/progress-tracker.md` retains all cross-cutting and non-Unit-3
 history and links here instead of duplicating this material — read both
-files for a full project audit. Update this file (not the master tracker)
-after every meaningful Unit 3.x change, per
+files for a full project audit. Update this file after every meaningful Unit
+3.x change; update the master tracker too only when an explicit work-unit
+specification requires a cross-cutting entry, per
 `context/ai-workflow-rules.md`'s Documentation Synchronization rule.
 
 ## Current Phase
+
+- **2026-08-03 (same session — user said "read `CLAUDE.md` and
+  `unit-3.9-quantity-input-integrity-spec.md`, implement it"): Unit 3.9
+  (quantity input integrity) complete and locally verified.** Canonical
+  magnitudes now convert to their selected display units before editing without
+  rounding, including affine temperature units; scalar labels use shared
+  six-significant-figure `formatQuantity`, and vectors convert each component
+  before their display-unit suffix. Blank/whitespace submissions now
+  reject before numeric coercion while typed `0` remains valid. The no-op
+  unchanged-manual-value write/stale guard stays deliberately deferred as a
+  later, service-level DB-backed follow-up. Verification: 48 focused tests;
+  full suite 550 passed / 200 skipped (750 total); lint, typecheck, and build green.
 
 - **2026-07-31 (new session — user said "pull project from github ... start
   build next step"): Unit 3.8 (baseline and comparison UI) complete and
@@ -1118,10 +1131,9 @@ after every meaningful Unit 3.x change, per
 
 ## Next Up — Milestone 4
 
-- **Units 3.1 (workspace shell) and 3.2 (project and assembly management
-  UI) are complete** (2026-07-30, same session — see Current Goal) and drop
-  off this list. **Milestone 3 (Generic User Experience) is under way.**
-  Unit 3.2 shipped create/rename project, create/rename assembly, and
+- **Milestone 3 (Generic User Experience) is complete; all Units 3.1–3.9 are
+  complete.** Unit 3.2 shipped create/rename project, create/rename
+  assembly, and
   add-module-instance; two pieces of its literal deliverable list were
   deliberately deferred rather than folded in (see Architecture Decisions
   for the full reasoning on both):
@@ -1189,13 +1201,23 @@ after every meaningful Unit 3.x change, per
   a real requirement-to-run link is Milestone 5's Unit 5.3 to build.
 
   **Unit 3.8 (baseline and comparison UI) is complete** (2026-07-31, new
-  session — see Current Phase) and closes Milestone 3. It reuses the existing
+  session — see Current Phase); it reuses the existing
   atomic `createBaseline`/`compareBaselines` services through a new
   configuration-level read model; readiness remains advisory until the
   creation service rechecks it inside its transaction. Baseline output/check
   detail comes from the stored run snapshots referenced by two immutable
   baseline snapshots, with stable port-key fallback labels rather than a
   recalculation or current module-package dependency.
+
+  **Unit 3.9 (quantity input integrity) is complete** (2026-08-03, see
+  Current Phase). It converts canonical magnitudes into selected display units
+  without rounding, including affine temperatures; scalar inline labels use
+  shared six-significant-figure `formatQuantity`, and vector components convert
+  before their suffix. Blank inputs reject before numeric coercion while typed
+  zero remains valid; unchanged-save persistence guards remain an explicit
+  later service-level follow-up.
+
+  **With Unit 3.9, Milestone 3 is complete.**
 
   **Next: Unit 4.1 — Axis application and load-case module.** Begin the
   first production engineering module only after reading its implementation

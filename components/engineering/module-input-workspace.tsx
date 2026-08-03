@@ -18,6 +18,7 @@ import {
   setModuleInputValueAction,
 } from "@/app/(workspace)/workspace/actions";
 import { IDLE_ACTION_STATE } from "@/app/(workspace)/workspace/action-state";
+import { convert } from "@/lib/engine/units";
 import { cn } from "@/lib/utils";
 import type { ResolvedInputSource } from "@/lib/db";
 import type {
@@ -228,6 +229,8 @@ function FieldControl({
   if (descriptor.kind === "quantity") {
     const current = currentValue?.kind === "quantity" ? currentValue : undefined;
     const defaultUnit = current?.displayUnit ?? current?.unit ?? descriptor.canonicalUnit;
+    const defaultMagnitude =
+      current === undefined ? undefined : convert(current.value, current.unit, defaultUnit);
     return (
       <div className="flex items-center gap-2">
         <input
@@ -235,7 +238,7 @@ function FieldControl({
           type="number"
           step="any"
           name="magnitude"
-          defaultValue={current?.value}
+          defaultValue={defaultMagnitude}
           required={field.required}
           className={cn(CONTROL_CLASS, "w-36 font-mono tabular-nums")}
         />

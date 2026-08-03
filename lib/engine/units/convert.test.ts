@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { convert, convertQuantity } from "./convert";
 import { DimensionMismatchError, NonFiniteValueError, UnknownUnitError } from "./errors";
 import { makeQuantity } from "./quantity";
+import { engineeringValuesClose } from "../values";
 
 describe("convert — published multiplicative cases", () => {
   const cases: ReadonlyArray<[number, string, string, number]> = [
@@ -49,6 +50,26 @@ describe("convert — round trips", () => {
   it.each(roundTrips)("round-trips %f %s via %s", (value, unit, via) => {
     expect(convert(convert(value, unit, via), via, unit)).toBeCloseTo(value, 9);
   });
+});
+describe("convert — canonical/display quantity round trips", () => {
+  const cases: ReadonlyArray<[number, string, string]> = [
+    [0.5, "m", "mm"],
+    [298.15, "K", "degC"],
+  ];
+
+  it.each(cases)(
+    "restores canonical %f %s through display unit %s within engineering tolerance",
+    (value, canonicalUnit, displayUnit) => {
+      const expected = makeQuantity(value, canonicalUnit, displayUnit);
+      const restored = makeQuantity(
+        convert(convert(value, canonicalUnit, displayUnit), displayUnit, canonicalUnit),
+        canonicalUnit,
+        displayUnit,
+      );
+
+      expect(engineeringValuesClose(restored, expected)).toBe(true);
+    },
+  );
 });
 
 describe("convert — rejections", () => {

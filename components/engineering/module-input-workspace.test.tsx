@@ -45,6 +45,51 @@ const quantityDefaultField: ModuleInputFieldView = {
   suggestions: [],
   linkRemovalImpact: null,
 };
+const lengthManualField: ModuleInputFieldView = {
+  portKey: "stroke",
+  parameterId: "motion.axis.stroke",
+  label: "Stroke",
+  help: null,
+  required: true,
+  loadCase: null,
+  field: { kind: "quantity", canonicalUnit: "m", displayUnits: ["m", "mm"] },
+  resolved: {
+    source: "manual",
+    value: { v: 1, kind: "quantity", value: 0.5, unit: "m", displayUnit: "mm" },
+  },
+  suggestions: [],
+  linkRemovalImpact: null,
+};
+
+const fractionalLengthManualField: ModuleInputFieldView = {
+  ...lengthManualField,
+  resolved: {
+    source: "manual",
+    value: {
+      v: 1,
+      kind: "quantity",
+      value: 0.123456789,
+      unit: "m",
+      displayUnit: "mm",
+    },
+  },
+};
+
+const temperatureManualField: ModuleInputFieldView = {
+  portKey: "ambient_temperature",
+  parameterId: "env.ambient_temperature",
+  label: "Ambient temperature",
+  help: null,
+  required: true,
+  loadCase: null,
+  field: { kind: "quantity", canonicalUnit: "K", displayUnits: ["K", "degC"] },
+  resolved: {
+    source: "manual",
+    value: { v: 1, kind: "quantity", value: 298.15, unit: "K", displayUnit: "degC" },
+  },
+  suggestions: [],
+  linkRemovalImpact: null,
+};
 
 const enumManualField: ModuleInputFieldView = {
   portKey: "orientation",
@@ -216,6 +261,26 @@ describe("ModuleInputWorkspace", () => {
 
     expect(screen.getByLabelText("Thrust force")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "N" })).toBeInTheDocument();
+  });
+  it("renders a stored canonical length in its selected display unit", () => {
+    render(<ModuleInputWorkspace view={view([lengthManualField])} />);
+
+    expect(screen.getByLabelText("Stroke")).toHaveValue(500);
+    expect(screen.getByLabelText("Stroke unit")).toHaveValue("mm");
+  });
+
+  it("does not round a stored quantity while preparing its display magnitude", () => {
+    render(<ModuleInputWorkspace view={view([fractionalLengthManualField])} />);
+
+    expect(screen.getByLabelText("Stroke")).toHaveValue(123.456789);
+    expect(screen.getByLabelText("Stroke unit")).toHaveValue("mm");
+  });
+
+  it("renders a stored canonical temperature in its selected affine display unit", () => {
+    render(<ModuleInputWorkspace view={view([temperatureManualField])} />);
+
+    expect(screen.getByLabelText("Ambient temperature")).toHaveValue(25);
+    expect(screen.getByLabelText("Ambient temperature unit")).toHaveValue("degC");
   });
 
   it("submits a quantity field's manual value and clears the field-level error on success", async () => {

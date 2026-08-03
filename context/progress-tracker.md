@@ -4,6 +4,20 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
+- **2026-08-03 (same session — user said "read `CLAUDE.md` and
+  `unit-3.9-quantity-input-integrity-spec.md`, implement it"): Unit 3.9
+  (quantity input integrity) complete and locally verified.** Stored canonical
+  quantity magnitudes now convert to their selected display units before
+  editing without rounding, including affine temperature units. Scalar inline
+  labels use shared six-significant-figure `formatQuantity` behavior, and
+  vectors convert every component before their display-unit suffix.
+  Blank/whitespace submissions reject before numeric coercion while typed `0`
+  remains valid. The unchanged-manual-value no-op/stale-write guard is
+  deliberately deferred to preserve this unit's pure, DB-free test scope and
+  unchanged skip count; the follow-up is recorded in Next Up. Verified:
+  48 focused tests; `npm run test` 550 passed / 200 skipped (750 total);
+  `npm run lint`, `npm run typecheck`, and `npm run build` all green.
+
 - **2026-08-01 (same session, continued — user opened
   `context/progress/unit-4.md` and said "continue"): closed the other half
   of Stage 2 deferred item 4 that needed no new evidence — output
@@ -2369,15 +2383,15 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
    ("CI blocks lint, type, unit, and build failures") was already true
    before this pass; the roadmap's own toolchain deliverable list is what
    was incomplete, and that gap is now closed pending the CI round trip.
-2. **Milestone 3 (Generic User Experience) is under way; Units 3.1–3.7 are
+2. **Milestone 3 (Generic User Experience) is complete; all Units 3.1–3.9 are
    complete.** See `context/progress/unit-3.md` for full unit-by-unit
    history, the Unit 3.2/3.5/3.6/3.7 architecture decisions, the curve-editor
    deferral, Unit 3.6's `matchingAvailable: false` deferral (the
    `requiredSpec()`-to-`MatchCriterion` operator mapping stays Milestone
    4's), Unit 3.7's verification-status scope (authoring completeness only,
    not a real requirement-to-run link — that stays Milestone 5's Unit 5.3),
-   and the Unit 3.8 brief (next: baseline and comparison UI, the last
-   Milestone 3 unit).
+   Unit 3.8's baseline/comparison UI, and Unit 3.9's quantity-input-integrity
+   hardening.
    - Deferred as its own future unit (NOT Unit 2.8): "change an
      assigned-component feedback input" stale-propagation use case — an
      assignment acting as a *source* of a value other calculations consume
@@ -2416,6 +2430,13 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
    half remains open as its own future generic-platform unit, a materially
    larger generic-UI/value-type design decision than either closed piece was.
    See Current Phase for both.
+
+6. **FOLLOW-UP — unchanged manual-quantity save guard.** Add an
+   `engineeringValuesClose` no-op guard on the `setParameterValue` path so a
+   re-save that converts to the same canonical manual value performs no write
+   and propagates no stale state. It was deliberately deferred from Unit 3.9
+   to preserve its pure, DB-free scope and unchanged skip count; cover it with
+   a service-level no-write/no-stale assertion when implemented.
 
 ## Open Questions
 
