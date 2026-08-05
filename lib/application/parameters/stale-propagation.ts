@@ -30,6 +30,7 @@ import {
   asParameterId,
   asScopeId,
   computeStaleImpact,
+  engineeringValuesClose,
   evaluateLinkCompatibility,
   type GraphNode,
   type ModulePackage,
@@ -41,6 +42,7 @@ import {
   createParameterLink,
   createParameterValue,
   deleteParameterLink,
+  findCurrentParameterValueForNode,
   isConfigurationOwnedBy,
   loadAssemblyForOwner,
   loadConfigurationGraph,
@@ -228,6 +230,18 @@ function declaresOutputPort(
  * in the same transaction as the write (invariant "Transactional stale
  * propagation"). Authored values are append-only history (Unit 2.2): this
  * creates a new `ParameterValue` row; it does not edit an existing one.
+ *
+ * No-op guard (Unit 3.9 follow-up): when the same node already holds a value
+ * from the same `source` that is `engineeringValuesClose` to `input.value`,
+ * this performs no write and marks nothing stale — it returns the existing
+ * record instead. This exists because Unit 3.9 made the display-unit input
+ * round-trip exactly (convert stored canonical -> display unit for editing,
+ * then back on submit), so submitting an untouched field now reproduces the
+ * stored canonical value up to float noise rather than drifting; without this
+ * guard, that reproduction would still append a new history row and re-stale
+ * every downstream run on every re-save, even though nothing actually
+ * changed. A `source` change (e.g. workflow -> manual) is never treated as a
+ * no-op, even at an identical magnitude — it is a real provenance change.
  */
 export async function setParameterValue(
   input: CreateParameterValueInput,
@@ -280,6 +294,25 @@ export async function setParameterValue(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      // No-op guard: read the current value for this exact node inside the
+      // same transaction (so it sees this transaction's own prior writes,
+      // consistent with every other read in this file) before computing any
+      // impact. A true no-op skips impact computation, stale-marking, and the
+      // write entirely — not just the write — since there is nothing to
+      // propagate when nothing actually changed.
+      const current = await findCurrentParameterValueForNode(
+        input.configurationId,
+        changedDescriptor,
+        tx,
+      );
+      if (
+        current !== null &&
+        current.source === input.source &&
+        engineeringValuesClose(current.value, input.value)
+      ) {
+        return { value: current, staleModuleInstanceIds: [] as readonly ModuleInstanceId[] };
+      }
+
       // Impact is computed inside the transaction so the traversal and the
       // stale marks it drives see one state of the graph.
       const staleModuleInstanceIds = await computeImpact(

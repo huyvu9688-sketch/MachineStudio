@@ -587,6 +587,34 @@ export async function listCurrentParameterValuesForConfiguration(
   return [...latestByNode.values()].map(toParameterValueRecord);
 }
 
+/**
+ * Finds the current (most recently authored) `ParameterValue` for one exact
+ * graph node, or `null` if the node has never been authored. Used by the
+ * stale-propagation service to detect a true no-op re-save before writing
+ * (the Unit 3.9 follow-up: "add an `engineeringValuesClose` no-op guard on
+ * the `setParameterValue` path") — same newest-row convention as
+ * `listCurrentParameterValuesForConfiguration` (`createdAt desc, id desc`,
+ * `id` breaking same-timestamp ties deterministically).
+ */
+export async function findCurrentParameterValueForNode(
+  configurationId: string,
+  descriptor: GraphNodeDescriptor,
+  client: DbClient = prisma,
+): Promise<ParameterValueRecord | null> {
+  const row = await client.parameterValue.findFirst({
+    where: {
+      configurationId,
+      assemblyId: descriptor.assemblyId,
+      moduleInstanceId: descriptor.moduleInstanceId,
+      nodeKind: descriptor.kind,
+      parameterId: descriptor.parameterId,
+      loadCase: descriptor.loadCase,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  return row === null ? null : toParameterValueRecord(row);
+}
+
 // --- Input resolution (ownership-scoped) ---------------------------------
 
 function portKey(parameterId: string, loadCase: LoadCaseCategory | null): string {

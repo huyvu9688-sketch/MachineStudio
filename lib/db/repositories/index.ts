@@ -53,6 +53,7 @@ export {
   deleteParameterLink,
   listParameterLinksForConfiguration,
   listCurrentParameterValuesForConfiguration,
+  findCurrentParameterValueForNode,
 } from "./graph-repository";
 export type {
   GraphRepositoryErrorCode,

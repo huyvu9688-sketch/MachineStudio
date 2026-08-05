@@ -320,6 +320,92 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(await isRunStale(unrelated.runId)).toBe(false);
     });
 
+    // --- No-op guard (Unit 3.9 follow-up) -------------------------------
+
+    it("performs no write and propagates no stale state when re-saving the same manual value", async () => {
+      const s = await scaffold();
+      const a = await newModuleWithRun(s, "A");
+      const b = await newModuleWithRun(s, "B");
+      const ab = await stalePropagation.confirmParameterLink(
+        linkInput(s, a.moduleInstanceId, b.moduleInstanceId),
+        s.ownerId,
+      );
+      expect(ab.ok).toBe(true);
+      await resetRunFresh(b.runId);
+
+      // newModuleWithRun seeds THRUST_FORCE at exactly 274 N (manual).
+      const rowCountBefore = await client.prisma.parameterValue.count({
+        where: { moduleInstanceId: a.moduleInstanceId, parameterId: THRUST_FORCE },
+      });
+
+      const result = await stalePropagation.setParameterValue(
+        {
+          configurationId: s.configId,
+          moduleInstanceId: a.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: THRUST_FORCE,
+          source: "manual",
+          value: makeQuantity(274, "N"),
+        },
+        s.ownerId,
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.staleModuleInstanceIds).toEqual([]);
+      expect(await isRunStale(a.runId)).toBe(false);
+      expect(await isRunStale(b.runId)).toBe(false);
+
+      const rowCountAfter = await client.prisma.parameterValue.count({
+        where: { moduleInstanceId: a.moduleInstanceId, parameterId: THRUST_FORCE },
+      });
+      expect(rowCountAfter).toBe(rowCountBefore);
+    });
+
+    it("still writes and propagates stale state when the source changes at an identical magnitude", async () => {
+      const s = await scaffold();
+      const a = await newModuleWithRun(s, "A");
+      // a's THRUST_FORCE input already holds a "manual" 274 N value
+      // (newModuleWithRun); switching its source to "workflow" at the same
+      // magnitude is a real provenance change, not a no-op.
+      const result = await stalePropagation.setParameterValue(
+        {
+          configurationId: s.configId,
+          moduleInstanceId: a.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: THRUST_FORCE,
+          source: "workflow",
+          value: makeQuantity(274, "N"),
+        },
+        s.ownerId,
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.source).toBe("workflow");
+      expect(result.staleModuleInstanceIds).toContain(a.moduleInstanceId);
+      expect(await isRunStale(a.runId)).toBe(true);
+    });
+
+    it("still writes when the magnitude genuinely differs, even within float noise of a round-trip conversion", async () => {
+      const s = await scaffold();
+      const a = await newModuleWithRun(s, "A");
+
+      const result = await stalePropagation.setParameterValue(
+        {
+          configurationId: s.configId,
+          moduleInstanceId: a.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: THRUST_FORCE,
+          source: "manual",
+          value: makeQuantity(274.5, "N"),
+        },
+        s.ownerId,
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.staleModuleInstanceIds).toContain(a.moduleInstanceId);
+      expect(await isRunStale(a.runId)).toBe(true);
+    });
+
     it("rolls back the whole transaction when the write fails, including the stale marks", async () => {
       const s = await scaffold();
       const a = await newModuleWithRun(s, "A");

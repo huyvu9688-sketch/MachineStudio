@@ -105,6 +105,43 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(value).toEqual(kg(12));
     });
 
+    it("findCurrentParameterValueForNode returns null before any value is authored, then the most recently written row", async () => {
+      const s = await scaffold();
+      const moduleId = await newModule(s, "Thrust");
+      const descriptor = {
+        kind: "module_input" as const,
+        moduleInstanceId: moduleId,
+        assemblyId: null,
+        parameterId: "motion.axis.payload_mass",
+        loadCase: null,
+      };
+
+      expect(await graph.findCurrentParameterValueForNode(s.configId, descriptor)).toBeNull();
+
+      const first = await graph.createParameterValue({
+        configurationId: s.configId,
+        moduleInstanceId: moduleId,
+        nodeKind: "module_input",
+        parameterId: "motion.axis.payload_mass",
+        source: "manual",
+        value: kg(10),
+      });
+      const firstCurrent = await graph.findCurrentParameterValueForNode(s.configId, descriptor);
+      expect(firstCurrent?.id).toBe(first.id);
+
+      const second = await graph.createParameterValue({
+        configurationId: s.configId,
+        moduleInstanceId: moduleId,
+        nodeKind: "module_input",
+        parameterId: "motion.axis.payload_mass",
+        source: "manual",
+        value: kg(12),
+      });
+      const secondCurrent = await graph.findCurrentParameterValueForNode(s.configId, descriptor);
+      expect(secondCurrent?.id).toBe(second.id);
+      expect(secondCurrent?.value).toEqual(kg(12));
+    });
+
     it("rejects an invalid EngineeringValue on write", async () => {
       const s = await scaffold();
       const moduleId = await newModule(s, "Thrust");

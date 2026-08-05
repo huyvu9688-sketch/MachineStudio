@@ -4,6 +4,58 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
+- **2026-08-04 (new session — user said "read claude.md and context files,
+  build next task"): the Unit 3.9 follow-up (unchanged-manual-quantity save
+  guard) is closed, verified against the live database.** Milestone 3 is
+  already complete and Unit 4.1 Stage 2's remaining decisions are all
+  evidence-gated (Next Up item 5) or a larger generic-UI design decision
+  needing a user check (vector-input authoring, see `context/progress/
+  unit-4.md` "Next Safe Work Unit") — this was the one well-specified,
+  unblocked item left on the list (Next Up item 6), so it was implemented
+  rather than started on either blocked item.
+  - **`findCurrentParameterValueForNode`** (new, `lib/db/repositories/
+    graph-repository.ts`): finds the most-recently-authored `ParameterValue`
+    for one exact graph node (or `null`), reusing the same
+    `createdAt desc, id desc` newest-row convention
+    `listCurrentParameterValuesForConfiguration` already established.
+  - **`setParameterValue`** (`lib/application/parameters/
+    stale-propagation.ts`) now reads the current value for the changed node
+    inside the same transaction, before computing impact. When it exists,
+    has the identical `source`, and is `engineeringValuesClose` to
+    `input.value` (default tolerances: relative 1e-9, absolute 1e-12), the
+    whole use case short-circuits to returning the existing record with
+    `staleModuleInstanceIds: []` — no impact computation, no stale marks, no
+    new `ParameterValue` row. A `source` change (e.g. workflow -> manual) at
+    an identical magnitude is deliberately never treated as a no-op, since
+    that is a real provenance change, not float noise from a display-unit
+    round trip.
+  - **Why this matters now, not just in principle**: Unit 3.9 made the
+    quantity-field display-unit round trip exact (convert stored canonical to
+    the selected display unit for editing, then back on submit), so
+    submitting an untouched field now reproduces the stored value up to float
+    noise instead of drifting. Without this guard, every such reproduction
+    would still append a new append-only history row and re-stale every
+    downstream run and component assignment on every re-save, even though
+    nothing actually changed — exactly the gap Unit 3.9's spec named and
+    deliberately deferred to preserve its own pure, DB-free test scope.
+  - **Tests**: `graph-repository.test.ts` (1 new live-DB test —
+    `findCurrentParameterValueForNode` returns `null` before any value is
+    authored, then the most recently written row's id after two writes to
+    the same node); `stale-propagation.test.ts` (3 new live-DB tests — an
+    unchanged re-save writes no new row and marks nothing stale, even with a
+    confirmed downstream link that would otherwise propagate; a source
+    change at an identical magnitude still writes and still propagates; a
+    genuinely different magnitude still writes and still propagates). No
+    existing test re-saves an identical value for the same node, confirmed
+    by reading every `setParameterValue` call site across the test suite
+    before writing the guard, so no existing assertion could have silently
+    started relying on the old always-write behavior.
+  - Verified: `npm run lint` (0 warnings), `npm run typecheck` (0 errors),
+    `npm run test` both with `DATABASE_URL` unset (550/550 passed, 204
+    skipped — up from 200 with these 4 new live-DB tests) and against the
+    live Neon database (**754/754 passed, 0 skipped**,
+    `--testTimeout=30000`), `npm run build` (clean) all green.
+
 - **2026-08-03 (same session — user said "read `CLAUDE.md` and
   `unit-3.9-quantity-input-integrity-spec.md`, implement it"): Unit 3.9
   (quantity input integrity) complete and locally verified.** Stored canonical
@@ -2431,12 +2483,12 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
    larger generic-UI/value-type design decision than either closed piece was.
    See Current Phase for both.
 
-6. **FOLLOW-UP — unchanged manual-quantity save guard.** Add an
-   `engineeringValuesClose` no-op guard on the `setParameterValue` path so a
-   re-save that converts to the same canonical manual value performs no write
-   and propagates no stale state. It was deliberately deferred from Unit 3.9
-   to preserve its pure, DB-free scope and unchanged skip count; cover it with
-   a service-level no-write/no-stale assertion when implemented.
+6. **CLOSED (2026-08-04, new session — see Current Phase).** The
+   `engineeringValuesClose` no-op guard on `setParameterValue` is implemented:
+   an unchanged re-save (same node, same `source`, value within default
+   tolerances of the currently stored one) performs no write and propagates no
+   stale state; a `source` change or a genuinely different magnitude still
+   writes and still propagates, covered by three new live-DB tests.
 
 ## Open Questions
 
