@@ -136,6 +136,21 @@ have a source-backed contract:
      decision (how a `vector_quantity` field is edited, not just displayed),
      deliberately not attempted alongside the smaller labeling fix. See
      `context/progress-tracker.md` Current Phase for verification detail.
+   - **CLOSED (2026-08-05)**: the vector-input-authoring half is done too.
+     The generic module-input renderer now edits any `frame: "axis"`
+     vector — `describeField` in the new
+     `lib/application/calculations/describe-field.ts` (extracted from
+     `load-module-workspace-view.ts`, which still re-exports both it and
+     `ModuleInputFieldDescriptor` unchanged) produces the new
+     `"vector_quantity"` field-descriptor kind, and `FieldControl`
+     (`components/engineering/module-input-workspace.tsx`) renders it —
+     exactly the case `motion.axis.center_of_mass_offset`,
+     `motion.axis.external_force`, and `motion.axis.external_moment` all
+     need. See
+     `docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md`
+     and `context/progress-tracker.md` Current Phase for full detail. Item 4
+     is now fully closed — both halves (result-load-case labels,
+     2026-08-01, and vector-input authoring, 2026-08-05) are done.
 5. **CLOSED (2026-08-01)**: generic parameter-graph compatibility now rejects an
    unpinned source port linking into a load-case-pinned target.
    `lib/engine/graph/compatibility.ts`'s `evaluateLinkCompatibility` load-case

@@ -151,13 +151,59 @@ const linkedField: ModuleInputFieldView = {
 };
 
 const unsupportedField: ModuleInputFieldView = {
+  portKey: "non_axis_vector",
+  parameterId: "example.non_axis_vector",
+  label: "Non-axis vector example",
+  help: null,
+  required: false,
+  loadCase: null,
+  field: { kind: "unsupported", valueType: "vector_quantity" },
+  resolved: { source: "default" },
+  suggestions: [],
+  linkRemovalImpact: null,
+};
+
+const vectorManualField: ModuleInputFieldView = {
   portKey: "cg_offset",
   parameterId: "motion.axis.center_of_mass_offset",
   label: "Center-of-mass offset",
   help: null,
   required: false,
   loadCase: null,
-  field: { kind: "unsupported", valueType: "vector_quantity" },
+  field: {
+    kind: "vector_quantity",
+    canonicalUnit: "m",
+    displayUnits: ["mm", "cm", "m", "in"],
+    frame: "axis",
+  },
+  resolved: {
+    source: "manual",
+    value: {
+      v: 1,
+      kind: "vector_quantity",
+      components: [0.05, 0, -0.02],
+      unit: "m",
+      frame: "axis",
+      displayUnit: "mm",
+    },
+  },
+  suggestions: [],
+  linkRemovalImpact: null,
+};
+
+const vectorDefaultField: ModuleInputFieldView = {
+  portKey: "external_force",
+  parameterId: "motion.axis.external_force",
+  label: "External process force",
+  help: null,
+  required: true,
+  loadCase: "normal",
+  field: {
+    kind: "vector_quantity",
+    canonicalUnit: "N",
+    displayUnits: ["N", "kN", "lbf"],
+    frame: "axis",
+  },
   resolved: { source: "default" },
   suggestions: [],
   linkRemovalImpact: null,
@@ -237,7 +283,7 @@ describe("ModuleInputWorkspace", () => {
     expect(screen.getByText("Linked")).toBeInTheDocument();
     expect(screen.getByText(/Linked from a module output/)).toBeInTheDocument();
 
-    // Unsupported (vector_quantity): honest deferral notice, not a crash or invented editor.
+    // Unsupported (vector_quantity, non-axis frame): honest deferral notice, not a crash or invented editor.
     expect(
       screen.getByText(/Editing vector quantity values is not supported yet/),
     ).toBeInTheDocument();
@@ -346,5 +392,56 @@ describe("ModuleInputWorkspace", () => {
 
     await user.click(screen.getByRole("button", { name: "Confirm removal" }));
     expect(removeParameterLinkAction).toHaveBeenCalled();
+  });
+
+  it("renders a stored axis-frame vector in its selected display unit, per component", () => {
+    render(<ModuleInputWorkspace view={view([vectorManualField])} />);
+
+    expect(screen.getByLabelText("Center-of-mass offset X (travel direction)")).toHaveValue(50);
+    expect(screen.getByLabelText("Center-of-mass offset Y (transverse)")).toHaveValue(0);
+    expect(screen.getByLabelText("Center-of-mass offset Z")).toHaveValue(-20);
+    expect(screen.getByLabelText("Center-of-mass offset unit")).toHaveValue("mm");
+
+    // Short visible captions ("X"/"Y"/"Z") for sighted users, distinct from
+    // the full aria-label text screen readers get — a persistent caption,
+    // not a placeholder that vanishes once a value is entered.
+    expect(screen.getByText("X")).toBeInTheDocument();
+    expect(screen.getByText("Y")).toBeInTheDocument();
+    expect(screen.getByText("Z")).toBeInTheDocument();
+  });
+
+  it("renders empty component inputs for a vector field with no current value", () => {
+    render(<ModuleInputWorkspace view={view([vectorDefaultField])} />);
+
+    expect(screen.getByLabelText("External process force X (travel direction)")).toHaveValue(
+      null,
+    );
+    expect(screen.getByLabelText("External process force Y (transverse)")).toHaveValue(null);
+    expect(screen.getByLabelText("External process force Z")).toHaveValue(null);
+  });
+
+  it("submits a vector field's three components and the shared unit", async () => {
+    const user = userEvent.setup();
+    render(<ModuleInputWorkspace view={view([vectorManualField])} />);
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(setModuleInputValueAction).toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("does not submit a required vector field while a component is left blank (native validation)", async () => {
+    const user = userEvent.setup();
+    render(<ModuleInputWorkspace view={view([vectorDefaultField])} />);
+
+    await user.type(
+      screen.getByLabelText("External process force X (travel direction)"),
+      "10",
+    );
+    // Y and Z stay blank; the field is required, so the browser blocks
+    // submission before the Server Action is ever called.
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(setModuleInputValueAction).not.toHaveBeenCalled();
   });
 });

@@ -35,24 +35,55 @@ const CONTROL_CLASS =
   "h-9 rounded-md border border-border-default bg-bg-surface px-2.5 text-[13px] text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary";
 
 /**
+ * axis.v1's fixed 3-component order and physical meaning
+ * (context/axis-load-cases-stage-1-spec.md): X = the engineer-declared
+ * positive travel direction, Y = horizontal transverse, Z = the resulting
+ * right-handed axis. Only `frame: "axis"` vectors are editable today — see
+ * docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md.
+ */
+const AXIS_COMPONENT_LABELS = [
+  "X (travel direction)",
+  "Y (transverse)",
+  "Z",
+] as const;
+
+/**
+ * Short visible captions for the 3 axis-vector component inputs — the full
+ * `AXIS_COMPONENT_LABELS` phrasing (e.g. "X (travel direction)") stays in
+ * each input's `aria-label` for screen readers, but a sighted user needs a
+ * persistent, at-a-glance way to tell 3 otherwise-identical number boxes
+ * apart too (a code-review finding: without this, mistyping a value into
+ * the wrong component silently saves and validates — 3 finite numbers, no
+ * error — unlike the blank-rejection guard this feature already takes
+ * seriously elsewhere, Unit 3.9's Defect 3). Deliberately not a
+ * `placeholder`, which disappears the moment a value is typed — exactly
+ * when re-checking which box is which matters most.
+ */
+const AXIS_COMPONENT_CAPTIONS = ["X", "Y", "Z"] as const;
+
+/**
  * The generic module input renderer (Unit 3.3, `implementation-map.md`:
  * "Render fields from ModuleUiSchema"; extended by Unit 3.4, "Link
  * Suggestion UI"). Renders `quantity` (with an explicit unit selector),
- * `enum`, and `boolean` fields, grouped per the module's declared
- * `ModuleUiSchema` — the same component for every module, per the "No
- * module-specific form is permitted in this unit" rule. A non-linked field
- * also renders its ranked link suggestions (`LinkSuggestionPanel`,
- * link-suggestion-panel.tsx); a linked field renders its remove-link control
- * (`LinkedFieldControl`) instead of an editor.
+ * `enum`, `boolean`, and axis-frame `vector_quantity` (three labeled
+ * component inputs plus a shared unit selector — see
+ * docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md)
+ * fields, grouped per the module's declared `ModuleUiSchema` — the same
+ * component for every module, per the "No module-specific form is permitted
+ * in this unit" rule. A non-linked field also renders its ranked link
+ * suggestions (`LinkSuggestionPanel`, link-suggestion-panel.tsx); a linked
+ * field renders its remove-link control (`LinkedFieldControl`) instead of an
+ * editor.
  *
  * Deliberately deferred (2026-07-31 decision, see
- * context/progress-tracker.md Open Questions): a curve editor, and editing
- * `vector_quantity` fields. Neither has a released registry contract for what
- * a generic editor needs yet, and no registered module declares either kind
- * today. Both render as an honest "not yet editable" notice via the
- * `"unsupported"` field-descriptor branch rather than being invented here —
- * such a field still offers link suggestions, since linking never needs a
- * native editor.
+ * context/progress-tracker.md Open Questions): a `curve` parameter, or a
+ * `vector_quantity` whose frame is not `"axis"` (same wording as the
+ * `"unsupported"` union member's own comment in describe-field.ts). Neither
+ * has a released registry contract for what a generic editor needs yet, and
+ * no registered module declares either kind today. Both render as an honest
+ * "not yet editable" notice via the `"unsupported"` field-descriptor branch
+ * rather than being invented here — such a field still offers link
+ * suggestions, since linking never needs a native editor.
  *
  * Still deliberately out of scope: a "Run module" action —
  * `ui-context.md`'s Generic Module Workspace section assigns that to the
@@ -242,6 +273,45 @@ function FieldControl({
           required={field.required}
           className={cn(CONTROL_CLASS, "w-36 font-mono tabular-nums")}
         />
+        <select
+          name="unit"
+          defaultValue={defaultUnit}
+          aria-label={`${field.label} unit`}
+          className={cn(CONTROL_CLASS, "w-24")}
+        >
+          {descriptor.displayUnits.map((unit) => (
+            <option key={unit} value={unit}>
+              {unit}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  if (descriptor.kind === "vector_quantity") {
+    const current = currentValue?.kind === "vector_quantity" ? currentValue : undefined;
+    const defaultUnit = current?.displayUnit ?? current?.unit ?? descriptor.canonicalUnit;
+    const defaultComponents = current?.components.map((component) =>
+      convert(component, current.unit, defaultUnit),
+    );
+    return (
+      <div className="flex flex-wrap items-start gap-2">
+        {AXIS_COMPONENT_LABELS.map((axisLabel, index) => (
+          <div key={axisLabel} className="flex flex-col gap-0.5">
+            <span className="text-[11px] text-text-muted">{AXIS_COMPONENT_CAPTIONS[index]}</span>
+            <input
+              id={index === 0 ? inputId : undefined}
+              type="number"
+              step="any"
+              name={`component-${index}`}
+              defaultValue={defaultComponents?.[index]}
+              aria-label={`${field.label} ${axisLabel}`}
+              required={field.required}
+              className={cn(CONTROL_CLASS, "w-24 font-mono tabular-nums")}
+            />
+          </div>
+        ))}
         <select
           name="unit"
           defaultValue={defaultUnit}

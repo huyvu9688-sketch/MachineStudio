@@ -318,6 +318,14 @@ pane) — a linked field instead shows a short read-only notice ("Linked from
 …") with no editable control, and there is no run trigger anywhere in this
 unit's UI.
 
+**Update (2026-08-05): `vector_quantity` editing is no longer universally
+deferred.** A `frame: "axis"` vector — axis.v1's fixed 3-component X/Y/Z
+convention — is now editable in the generic renderer, each component with
+both a screen-reader `aria-label` and a visible X/Y/Z caption; any other
+frame still renders the "not yet editable" notice, since no other frame has
+a defined convention. See
+`docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md`.
+
 **Implemented (Unit 3.5, Result pane — `components/engineering/
 module-result-panel.tsx`):** `WorkspaceShell` stacks `ModuleResultPanel`
 directly below `ModuleInputWorkspace` in the main canvas (one scrollable

@@ -4,6 +4,84 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
+- **2026-08-05 (same session, continued): axis-frame `vector_quantity` input
+  editing is complete end to end — read model, editor UI, and save path —
+  closing the vector-input-authoring half of `context/
+  axis-load-cases-stage-2-contract.md` deferred item 4 and the
+  `vector_quantity` half of Unit 3.3's original deferral note in
+  `context/ui-context.md`.** Editing is supported only for `frame: "axis"`
+  vectors (axis.v1's fixed 3-component `[X, Y, Z]` order) — the only frame
+  any released parameter uses today: `motion.axis.center_of_mass_offset`,
+  `motion.axis.external_force`, and `motion.axis.external_moment`. Any other
+  frame still renders the existing "not yet editable" notice. Full design in
+  `docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md`.
+  - **Read model**: `describeField`/`ModuleInputFieldDescriptor` now live in
+    a new file, `lib/application/calculations/describe-field.ts`, extracted
+    from `load-module-workspace-view.ts` (which still re-exports both, so
+    its public surface is unchanged). **Why extracted**: an earlier draft
+    kept `describeField` directly in `load-module-workspace-view.ts`, but
+    that file has an unconditional runtime `@/lib/db` import, which eagerly
+    validates `DATABASE_URL` at module-load time (`lib/env.ts`) — so a test
+    importing it, even one that needs no database, broke this project's
+    normal `DATABASE_URL`-unset local/CI test path with a hard collection
+    failure, not a graceful skip. The extraction gives `describe-field.ts`
+    zero runtime `@/lib/db` exposure (its only import is a type-only
+    `@/lib/engine` import), closing the regression at the root rather than
+    working around it.
+  - **Editor UI**: `FieldControl`
+    (`components/engineering/module-input-workspace.tsx`) gained a
+    `"vector_quantity"` branch rendering 3 number inputs (one per axis.v1
+    component) plus one shared unit select, with the same no-rounding
+    display-unit round trip Unit 3.9 established for scalar quantities,
+    applied per component. Each input carries both a full descriptive
+    `aria-label` for screen readers and a short, persistently-visible
+    "X"/"Y"/"Z" caption for sighted users — added during code review, which
+    correctly flagged that `aria-label` alone would leave sighted users
+    unable to visually tell the three otherwise-identical inputs apart: a
+    value typed into the wrong box would save successfully with no error,
+    silently landing on the wrong axis.
+  - **Save path**: a new pure helper, `parseSubmittedVector`
+    (`app/(workspace)/workspace/parse-submitted-vector.ts`, sibling to
+    `parseSubmittedQuantity`), rejects the whole submission if any of the 3
+    components is blank/non-finite, or if a component overflows to a
+    non-finite value after unit conversion — a defensive guard added during
+    review, mirroring `parseSubmittedQuantity`'s own `makeQuantity`-based
+    finiteness check, which the first draft of this helper lacked.
+    `setModuleInputValueAction` (`app/(workspace)/workspace/actions.ts`)
+    gained a matching `valueKind === "vector_quantity"` branch that also
+    re-derives `frame` from the registry rather than trusting the
+    client-supplied `valueKind` alone. This action had zero dedicated test
+    coverage before this feature; a new
+    `app/(workspace)/workspace/actions.test.ts` was added specifically to
+    cover the new frame-mismatch guard (2 tests: rejection before any write
+    for a mismatched frame, and a valid submission reaching
+    `setParameterValue` with the correct shape) — added during review, which
+    also ran a mutation test (temporarily disabling the guard and confirming
+    the test then failed) to prove the coverage is genuinely coupled to the
+    real check, not a tautology.
+  - No module registered or released, no `lib/db`/Prisma schema change —
+    this is generic-platform work the not-yet-released `axis-load-cases`
+    module (Unit 4.1) will need once it declares ports against these
+    parameters.
+  - **Tests**: `describe-field.test.ts` (2, pure — the real released
+    `motion.axis.external_force` parameter, and a fabricated non-axis-frame
+    case); `parse-submitted-vector.test.ts` (10, pure — cross-unit
+    conversion, a genuine zero, falling back to the canonical unit when no
+    unit is submitted, 4 blank/whitespace-component rejections, a
+    non-numeric component, an invalid unit, and a post-conversion overflow);
+    `actions.test.ts` (2, the frame-mismatch guard above); and 4 new tests
+    in `module-input-workspace.test.tsx` (display-unit round trip per
+    component, empty inputs for a defaulted vector, a full submission, and
+    native-validation blocking submission on a blank required component) —
+    plus the pre-existing `unsupportedField` fixture repointed from
+    `motion.axis.center_of_mass_offset` (no longer accurate — that parameter
+    is now editable) to a fictional non-axis-frame `vector_quantity`
+    parameter.
+  - Verified: `npm run lint` (0 warnings), `npm run typecheck` (0 errors),
+    `npm run test` with `DATABASE_URL` unset (568/568 passed, 204 skipped —
+    up from 550, exactly the 18 new tests above: 2 + 10 + 2 + 4), `npm run
+    build` all green.
+
 - **2026-08-04 (new session — user said "read claude.md and context files,
   build next task"): the Unit 3.9 follow-up (unchanged-manual-quantity save
   guard) is closed, verified against the live database.** Milestone 3 is

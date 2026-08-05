@@ -48,6 +48,7 @@ import {
 } from "@/lib/engine";
 import type { ActionState } from "./action-state";
 import { parseSubmittedQuantity } from "./parse-submitted-quantity";
+import { parseSubmittedVector } from "./parse-submitted-vector";
 
 function fieldValue(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -185,6 +186,40 @@ export async function setModuleInputValueAction(
       fieldValue(formData, "magnitude"),
       fieldValue(formData, "unit"),
       definition.canonicalUnit,
+    );
+    if (!parsed.ok) {
+      return { status: "error", message: parsed.message };
+    }
+    value = parsed.value;
+  } else if (valueKind === "vector_quantity") {
+    // Never trust a client-supplied valueKind alone: re-derive the frame
+    // from the registry, the same "never trust a client-supplied unit/enumId"
+    // discipline this action already applies to the quantity/enum branches
+    // (ui-context.md "Server Actions"). A tampered request could otherwise
+    // write an axis-framed vector onto a parameter whose real frame differs
+    // — exactly what axis.v1 says must be rejected, not silently reinterpreted
+    // (context/axis-load-cases-stage-1-spec.md).
+    if (definition.frame !== "axis") {
+      return {
+        status: "error",
+        message: "This parameter does not use the axis vector frame.",
+      };
+    }
+    if (definition.canonicalUnit === undefined) {
+      return {
+        status: "error",
+        message: "This parameter has no canonical unit.",
+      };
+    }
+    const parsed = parseSubmittedVector(
+      [
+        fieldValue(formData, "component-0"),
+        fieldValue(formData, "component-1"),
+        fieldValue(formData, "component-2"),
+      ],
+      fieldValue(formData, "unit"),
+      definition.canonicalUnit,
+      "axis",
     );
     if (!parsed.ok) {
       return { status: "error", message: parsed.message };

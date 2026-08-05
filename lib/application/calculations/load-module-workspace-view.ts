@@ -17,17 +17,19 @@
 //     without importing the parameter registry itself.
 //
 // Scope note (2026-07-31 decision, superseding the BLOCKER entry this
-// resolves): curve-typed fields remain deferred — the registry has no
-// released curve-parameter contract yet (`ParameterValueType` has no
-// "curve" member). `vector_quantity` is modeled generically here as
+// resolves; updated 2026-08-05 when a `frame: "axis"` `vector_quantity`
+// editor was added — see `describe-field.ts`): curve-typed fields remain
+// deferred — the registry has no released curve-parameter contract yet
+// (`ParameterValueType` has no "curve" member). A `vector_quantity` whose
+// frame is not `"axis"` is likewise still modeled generically here as
 // "unsupported" for the same reason a curve editor is deferred: no released
 // module declares one yet, and building an editor for it is out of this
 // unit's literal deliverable list (implementation-map.md Unit 3.3 names only
 // "Quantity with unit selector" and "Enum and boolean"). The renderer must
-// never crash on either kind — it shows an honest "not yet editable" field
-// instead, the same posture the curve deferral already established. A field
-// still offers link suggestions regardless of this deferral (see below) —
-// linking never needs a native editor.
+// never crash on either remaining deferred kind — it shows an honest "not
+// yet editable" field instead, the same posture the curve deferral already
+// established. A field still offers link suggestions regardless of this
+// deferral (see below) — linking never needs a native editor.
 //
 // Unit 3.4 (link suggestions) extends this view with two more compositions,
 // both from lib/application/parameters/: `buildConfigurationSuggestionIndex`
@@ -43,7 +45,6 @@ import {
   getParameter,
   type CheckStatus,
   type LoadCaseCategory,
-  type ParameterValueType,
 } from "@/lib/engine";
 import { getModulePackage } from "@/lib/modules";
 import {
@@ -62,18 +63,10 @@ import {
   previewRemoveParameterLinkImpact,
   type LinkSuggestionSourceView,
 } from "../parameters";
+import { describeField, type ModuleInputFieldDescriptor } from "./describe-field";
 
-/** A field's editable shape, derived from its canonical parameter's `valueType`. */
-export type ModuleInputFieldDescriptor =
-  | {
-      readonly kind: "quantity";
-      readonly canonicalUnit: string;
-      readonly displayUnits: readonly string[];
-    }
-  | { readonly kind: "enum"; readonly enumId: string; readonly options: readonly string[] }
-  | { readonly kind: "boolean" }
-  /** `vector_quantity` today; would also cover a future `curve` parameter type. */
-  | { readonly kind: "unsupported"; readonly valueType: ParameterValueType };
+export { describeField };
+export type { ModuleInputFieldDescriptor };
 
 /** One input field, fully described for the generic renderer — no engine imports needed downstream. */
 export interface ModuleInputFieldView {
@@ -124,40 +117,6 @@ export interface ModuleWorkspaceModuleSummary {
 export interface ModuleWorkspaceView {
   readonly moduleInstance: ModuleWorkspaceModuleSummary;
   readonly groups: readonly ModuleInputGroupView[];
-}
-
-function describeField(valueType: ParameterValueType, definition: {
-  readonly canonicalUnit?: string;
-  readonly displayUnits?: readonly string[];
-  readonly enumId?: string;
-  readonly enumOptions?: readonly string[];
-}): ModuleInputFieldDescriptor {
-  switch (valueType) {
-    case "quantity": {
-      if (definition.canonicalUnit === undefined) {
-        throw new Error("Quantity parameter is missing its canonicalUnit.");
-      }
-      return {
-        kind: "quantity",
-        canonicalUnit: definition.canonicalUnit,
-        displayUnits: definition.displayUnits ?? [definition.canonicalUnit],
-      };
-    }
-    case "enum": {
-      if (definition.enumId === undefined) {
-        throw new Error("Enum parameter is missing its enumId.");
-      }
-      return { kind: "enum", enumId: definition.enumId, options: definition.enumOptions ?? [] };
-    }
-    case "boolean":
-      return { kind: "boolean" };
-    case "vector_quantity":
-      return { kind: "unsupported", valueType };
-    default: {
-      const exhaustive: never = valueType;
-      return { kind: "unsupported", valueType: exhaustive };
-    }
-  }
 }
 
 /**

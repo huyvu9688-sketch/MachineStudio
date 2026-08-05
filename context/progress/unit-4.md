@@ -38,6 +38,15 @@ continuing work on the axis application and load-case module.
   Current Phase (2026-08-01 entries); the module-contract-level record lives
   in `context/axis-load-cases-stage-1-spec.md` and
   `context/axis-load-cases-stage-2-contract.md` (deferred items 4 and 5).
+- **2026-08-05: the vector-input-authoring half is now closed too.** After a
+  brainstorm/user check (the same process the 2026-08-01 entry above flagged
+  as likely needed), the generic module-input renderer now edits any
+  `frame: "axis"` vector — exactly the case `motion.axis.
+  center_of_mass_offset`, `motion.axis.external_force`, and `motion.axis.
+  external_moment` all need. Deferred item 4 is now fully closed (both
+  halves). Design and verification detail:
+  `docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md`
+  and `context/progress-tracker.md` Current Phase.
 
 ## Next Safe Work Unit
 
@@ -46,11 +55,8 @@ Finish the remaining Stage 2 parameter decisions before scaffolding a
 semantics against sources (items 1-3 of the Stage 2 contract's deferred-
 decision list — genuinely evidence-gated, not actionable without sanitized
 historical fixtures and published methods this project does not yet have).
-The remaining non-evidence-gated generic-platform item is vector-input
-authoring (the other half of item 4) — a real generic-UI/value-type design
-decision (how a `vector_quantity` field is edited, not just displayed), likely
-worth a brainstorm/user check before implementation, the same way the curve
-editor deferral was handled in Unit 3.3.
+No non-evidence-gated generic-platform item remains open on this list —
+items 4 and 5 are both closed as of 2026-08-05 (see Current Phase above).
 Do not register a module, claim a historical phase category, or create a
 validation record while the Stage 2 items above and the Stage 1 evidence gate
 remain open.
