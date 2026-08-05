@@ -7,8 +7,15 @@
 // anything — invariant "Trace-driven reporting" applied to baselines too.
 
 import "server-only";
-import { compareBaselineSnapshots, type BaselineComparison } from "@/lib/configuration";
-import { loadMachineBaseline, type MachineBaselineId, type UserId } from "@/lib/db";
+import {
+  compareBaselineSnapshots,
+  type BaselineComparison,
+} from "@/lib/configuration";
+import {
+  loadMachineBaseline,
+  type MachineBaselineId,
+  type UserId,
+} from "@/lib/db";
 
 /** Machine-readable classification of a `compareBaselines` failure. */
 export type CompareBaselinesErrorCode = "not_found";
@@ -61,5 +68,8 @@ export async function compareBaselines(
       },
     };
   }
-  return { ok: true, comparison: compareBaselineSnapshots(before.snapshot, after.snapshot) };
+  return {
+    ok: true,
+    comparison: compareBaselineSnapshots(before.snapshot, after.snapshot),
+  };
 }

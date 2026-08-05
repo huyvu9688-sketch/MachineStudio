@@ -79,6 +79,7 @@ export function summarizeModuleStatuses(
     notConfigured,
     invalidInput,
     notApplicable,
-    overallStatus: evaluated.length === 0 ? "not_configured" : overallCheckStatus(evaluated),
+    overallStatus:
+      evaluated.length === 0 ? "not_configured" : overallCheckStatus(evaluated),
   };
 }

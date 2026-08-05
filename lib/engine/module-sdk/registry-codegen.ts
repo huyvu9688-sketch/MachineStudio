@@ -26,7 +26,10 @@ export function moduleRegistryKey(moduleId: string, version: string): string {
 
 /** A safe JS identifier for a default import of the given entry. */
 function importIdentifier(entry: RegistryModuleEntry): string {
-  const base = `${entry.moduleId}_${entry.version}`.replace(/[^a-zA-Z0-9]/g, "_");
+  const base = `${entry.moduleId}_${entry.version}`.replace(
+    /[^a-zA-Z0-9]/g,
+    "_",
+  );
   return `mod_${base}`;
 }
 

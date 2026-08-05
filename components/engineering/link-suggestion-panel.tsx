@@ -11,7 +11,10 @@ import { IDLE_ACTION_STATE } from "@/app/(workspace)/workspace/action-state";
 import { LOAD_CASE_LABELS } from "./load-case-labels";
 import { formatEngineeringValue } from "./format-engineering-value";
 import type { ResolvedInputSource } from "@/lib/db";
-import type { LinkSuggestionSourceView, ModuleInputFieldView } from "@/lib/application";
+import type {
+  LinkSuggestionSourceView,
+  ModuleInputFieldView,
+} from "@/lib/application";
 
 /**
  * The link-suggestion banner and link-removal control (Unit 3.4,
@@ -40,14 +43,24 @@ function suggestionKey(s: LinkSuggestionSourceView): string {
 
 /** "Use payload mass 12 kg from Axis Requirements / Normal load case?" (ui-context.md example). */
 function suggestionText(s: LinkSuggestionSourceView): string {
-  const valuePart = s.value !== null ? ` ${formatEngineeringValue(s.value)}` : "";
-  const originPart = s.moduleLabel !== null ? `${s.moduleLabel} (${s.scopeLabel})` : s.scopeLabel;
+  const valuePart =
+    s.value !== null ? ` ${formatEngineeringValue(s.value)}` : "";
+  const originPart =
+    s.moduleLabel !== null
+      ? `${s.moduleLabel} (${s.scopeLabel})`
+      : s.scopeLabel;
   const loadCasePart =
-    s.sourceLoadCase !== null ? ` — ${LOAD_CASE_LABELS[s.sourceLoadCase]} load case` : "";
+    s.sourceLoadCase !== null
+      ? ` — ${LOAD_CASE_LABELS[s.sourceLoadCase]} load case`
+      : "";
   return `Use ${s.parameterLabel}${valuePart} from ${originPart}${loadCasePart}?`;
 }
 
-function SuggestionDetail({ suggestion }: { readonly suggestion: LinkSuggestionSourceView }) {
+function SuggestionDetail({
+  suggestion,
+}: {
+  readonly suggestion: LinkSuggestionSourceView;
+}) {
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[11px] text-text-muted">
       <dt>Parameter</dt>
@@ -97,16 +110,30 @@ function LinkSuggestionRow({
 
   return (
     <div className="flex flex-col gap-1.5 border-t border-border-default pt-2 first:border-t-0 first:pt-0">
-      <p className="text-[12px] text-text-primary">{suggestionText(suggestion)}</p>
+      <p className="text-[12px] text-text-primary">
+        {suggestionText(suggestion)}
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         <form action={formAction} className="contents">
           <input type="hidden" name="configurationId" value={configurationId} />
-          <input type="hidden" name="targetModuleInstanceId" value={targetModuleInstanceId} />
-          <input type="hidden" name="targetParameterId" value={targetParameterId} />
+          <input
+            type="hidden"
+            name="targetModuleInstanceId"
+            value={targetModuleInstanceId}
+          />
+          <input
+            type="hidden"
+            name="targetParameterId"
+            value={targetParameterId}
+          />
           {targetLoadCase !== null ? (
             <input type="hidden" name="targetLoadCase" value={targetLoadCase} />
           ) : null}
-          <input type="hidden" name="sourceKind" value={suggestion.sourceKind} />
+          <input
+            type="hidden"
+            name="sourceKind"
+            value={suggestion.sourceKind}
+          />
           {suggestion.sourceModuleInstanceId !== null ? (
             <input
               type="hidden"
@@ -115,17 +142,39 @@ function LinkSuggestionRow({
             />
           ) : null}
           {suggestion.sourceAssemblyId !== null ? (
-            <input type="hidden" name="sourceAssemblyId" value={suggestion.sourceAssemblyId} />
+            <input
+              type="hidden"
+              name="sourceAssemblyId"
+              value={suggestion.sourceAssemblyId}
+            />
           ) : null}
-          <input type="hidden" name="sourceParameterId" value={suggestion.sourceParameterId} />
+          <input
+            type="hidden"
+            name="sourceParameterId"
+            value={suggestion.sourceParameterId}
+          />
           {suggestion.sourceLoadCase !== null ? (
-            <input type="hidden" name="sourceLoadCase" value={suggestion.sourceLoadCase} />
+            <input
+              type="hidden"
+              name="sourceLoadCase"
+              value={suggestion.sourceLoadCase}
+            />
           ) : null}
-          <Button type="submit" size="sm" variant="outline" disabled={isPending}>
+          <Button
+            type="submit"
+            size="sm"
+            variant="outline"
+            disabled={isPending}
+          >
             {isPending ? "Confirming…" : "Confirm"}
           </Button>
         </form>
-        <Button type="button" size="sm" variant="ghost" onClick={() => setExpanded((v) => !v)}>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => setExpanded((v) => !v)}
+        >
           {expanded ? "Hide details" : "View source"}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={onDismiss}>
@@ -134,7 +183,11 @@ function LinkSuggestionRow({
       </div>
       {expanded ? <SuggestionDetail suggestion={suggestion} /> : null}
       {state.status === "error" ? (
-        <p role="alert" className="text-[12px]" style={{ color: "var(--state-error)" }}>
+        <p
+          role="alert"
+          className="text-[12px]"
+          style={{ color: "var(--state-error)" }}
+        >
           {state.message}
         </p>
       ) : null}
@@ -155,7 +208,9 @@ export function LinkSuggestionPanel({
   targetModuleInstanceId,
 }: LinkSuggestionPanelProps) {
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
-  const visible = field.suggestions.filter((s) => !dismissed.has(suggestionKey(s)));
+  const visible = field.suggestions.filter(
+    (s) => !dismissed.has(suggestionKey(s)),
+  );
   if (visible.length === 0) return null;
 
   return (
@@ -196,7 +251,10 @@ export interface LinkedFieldControlProps {
  * required for destructive actions and link removal with downstream
  * impact").
  */
-export function LinkedFieldControl({ resolved, linkRemovalImpact }: LinkedFieldControlProps) {
+export function LinkedFieldControl({
+  resolved,
+  linkRemovalImpact,
+}: LinkedFieldControlProps) {
   const [state, formAction, isPending] = useActionState(
     removeParameterLinkAction,
     IDLE_ACTION_STATE,
@@ -238,18 +296,32 @@ export function LinkedFieldControl({ resolved, linkRemovalImpact }: LinkedFieldC
           <div className="flex items-center gap-2">
             <form action={formAction}>
               <input type="hidden" name="linkId" value={resolved.link.id} />
-              <Button type="submit" size="sm" variant="destructive" disabled={isPending}>
+              <Button
+                type="submit"
+                size="sm"
+                variant="destructive"
+                disabled={isPending}
+              >
                 {isPending ? "Removing…" : "Confirm removal"}
               </Button>
             </form>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setConfirming(false)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirming(false)}
+            >
               Cancel
             </Button>
           </div>
         </div>
       )}
       {state.status === "error" ? (
-        <p role="alert" className="text-[12px]" style={{ color: "var(--state-error)" }}>
+        <p
+          role="alert"
+          className="text-[12px]"
+          style={{ color: "var(--state-error)" }}
+        >
           {state.message}
         </p>
       ) : null}

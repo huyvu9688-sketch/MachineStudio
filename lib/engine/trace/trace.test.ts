@@ -46,8 +46,16 @@ const fixture: CalculationTrace = buildCalculationTrace([
             methodId: "axis.friction_force",
             expression: "F_f = μ · m · g",
             inputs: [
-              { label: "μ", value: qty(0.01, "ratio"), ref: "motion.axis.friction_coefficient" },
-              { label: "m", value: qty(12, "kg"), ref: "motion.axis.moving_mass" },
+              {
+                label: "μ",
+                value: qty(0.01, "ratio"),
+                ref: "motion.axis.friction_coefficient",
+              },
+              {
+                label: "m",
+                value: qty(12, "kg"),
+                ref: "motion.axis.moving_mass",
+              },
               { label: "g", value: qty(9.80665, "m/s^2") },
             ],
             outputs: [{ label: "F_f", value: qty(1.1768, "N") }],
@@ -56,7 +64,9 @@ const fixture: CalculationTrace = buildCalculationTrace([
             title: "Required thrust",
             methodId: "axis.thrust_force",
             expression: "F = F_f",
-            inputs: [{ label: "F_f", value: qty(1.1768, "N"), ref: "friction-force" }],
+            inputs: [
+              { label: "F_f", value: qty(1.1768, "N"), ref: "friction-force" },
+            ],
             outputs: [{ label: "F", value: qty(1.1768, "N") }],
             sources: [
               {
@@ -95,16 +105,27 @@ describe("trace traversal (nested sections)", () => {
 describe("trace invariants", () => {
   it("rejects a duplicate step ID", () => {
     const sections: TraceSection[] = [
-      { node: "section", id: "a", title: "A", children: [step("dup"), step("dup")] },
+      {
+        node: "section",
+        id: "a",
+        title: "A",
+        children: [step("dup"), step("dup")],
+      },
     ];
-    expectTraceError(() => buildCalculationTrace(sections), "duplicate_node_id");
+    expectTraceError(
+      () => buildCalculationTrace(sections),
+      "duplicate_node_id",
+    );
   });
 
   it("rejects a step ID colliding with a section ID", () => {
     const sections: TraceSection[] = [
       { node: "section", id: "shared", title: "A", children: [step("shared")] },
     ];
-    expectTraceError(() => buildCalculationTrace(sections), "duplicate_node_id");
+    expectTraceError(
+      () => buildCalculationTrace(sections),
+      "duplicate_node_id",
+    );
   });
 
   it("rejects a source citation with neither clause nor page", () => {
@@ -114,11 +135,18 @@ describe("trace invariants", () => {
         id: "a",
         title: "A",
         children: [
-          step("s", { sources: [{ sourceRevisionId: asSourceRevisionId("us.ansi.b11_0@2023") }] }),
+          step("s", {
+            sources: [
+              { sourceRevisionId: asSourceRevisionId("us.ansi.b11_0@2023") },
+            ],
+          }),
         ],
       },
     ];
-    expectTraceError(() => buildCalculationTrace(sections), "invalid_source_reference");
+    expectTraceError(
+      () => buildCalculationTrace(sections),
+      "invalid_source_reference",
+    );
   });
 
   it("accepts a source citation that carries a page instead of a clause", () => {
@@ -128,7 +156,14 @@ describe("trace invariants", () => {
         id: "a",
         title: "A",
         children: [
-          step("s", { sources: [{ sourceRevisionId: asSourceRevisionId("us.ansi.b11_0@2023"), page: 42 }] }),
+          step("s", {
+            sources: [
+              {
+                sourceRevisionId: asSourceRevisionId("us.ansi.b11_0@2023"),
+                page: 42,
+              },
+            ],
+          }),
         ],
       },
     ];
@@ -137,7 +172,9 @@ describe("trace invariants", () => {
 
   it("rejects a malformed section shape at build time", () => {
     // A section child with a bad discriminator fails structural validation.
-    const bad = [{ node: "section", id: "a", title: "A", children: [{ node: "nope" }] }];
+    const bad = [
+      { node: "section", id: "a", title: "A", children: [{ node: "nope" }] },
+    ];
     expectTraceError(
       () => buildCalculationTrace(bad as unknown as TraceSection[]),
       "invalid_shape",
@@ -154,9 +191,19 @@ describe("trace serialization", () => {
   it("re-validates invariants on deserialize (duplicate IDs)", () => {
     const dup = JSON.stringify({
       v: TRACE_FORMAT_VERSION,
-      sections: [{ node: "section", id: "a", title: "A", children: [step("dup"), step("dup")] }],
+      sections: [
+        {
+          node: "section",
+          id: "a",
+          title: "A",
+          children: [step("dup"), step("dup")],
+        },
+      ],
     });
-    expectTraceError(() => deserializeCalculationTrace(dup), "duplicate_node_id");
+    expectTraceError(
+      () => deserializeCalculationTrace(dup),
+      "duplicate_node_id",
+    );
   });
 
   it("rejects a trace serialized under a different format version", () => {
@@ -180,9 +227,12 @@ describe("report-from-trace (exit criterion)", () => {
         const pad = "  ".repeat(depth);
         lines.push(`${pad}• ${s.title ?? s.id} [${s.methodId}]`);
         if (s.expression) lines.push(`${pad}    ${s.expression}`);
-        for (const out of s.outputs) lines.push(`${pad}    → ${out.label} = ${render(out.value)}`);
+        for (const out of s.outputs)
+          lines.push(`${pad}    → ${out.label} = ${render(out.value)}`);
         for (const src of s.sources ?? []) {
-          lines.push(`${pad}    src: ${src.sourceRevisionId} ${src.clause ?? `p.${src.page}`}`);
+          lines.push(
+            `${pad}    src: ${src.sourceRevisionId} ${src.clause ?? `p.${src.page}`}`,
+          );
         }
       },
     });

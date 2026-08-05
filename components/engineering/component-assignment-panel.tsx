@@ -65,7 +65,9 @@ function PartIdentity({ part }: { readonly part: CandidatePartView }) {
       </span>
       <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-text-muted">
         <span className="font-mono">rev {part.sourceRevision}</span>
-        {part.lifecycleStatus !== null ? <span>{part.lifecycleStatus}</span> : null}
+        {part.lifecycleStatus !== null ? (
+          <span>{part.lifecycleStatus}</span>
+        ) : null}
         <span>data: {part.dataQualityStatus}</span>
         {part.sourceLink !== null ? (
           <a
@@ -85,7 +87,11 @@ function PartIdentity({ part }: { readonly part: CandidatePartView }) {
 }
 
 /** Required specification summary, shown first (ui-context.md "Catalog and Assignment UI"). */
-function RequiredSpecPanel({ view }: { readonly view: ComponentAssignmentPanelView }) {
+function RequiredSpecPanel({
+  view,
+}: {
+  readonly view: ComponentAssignmentPanelView;
+}) {
   if (view.requiredSpec.length === 0) {
     return (
       <p className="text-[13px] text-text-muted">
@@ -110,7 +116,10 @@ function RequiredSpecPanel({ view }: { readonly view: ComponentAssignmentPanelVi
       </thead>
       <tbody>
         {view.requiredSpec.map((entry) => (
-          <tr key={entry.key} className="border-b border-border-default last:border-0">
+          <tr
+            key={entry.key}
+            className="border-b border-border-default last:border-0"
+          >
             <td className="py-1.5 pr-2 text-text-primary">{entry.label}</td>
             <td className="py-1.5 pr-2 font-mono text-[12px] text-text-muted">
               {entry.operator}
@@ -179,7 +188,11 @@ function CandidateTable({
 }
 
 /** Rejected candidates and exactly why each was excluded (ui-context.md "Rejection reasons"). */
-function RejectedTable({ candidates }: { readonly candidates: readonly RejectedCandidateView[] }) {
+function RejectedTable({
+  candidates,
+}: {
+  readonly candidates: readonly RejectedCandidateView[];
+}) {
   const [expanded, setExpanded] = useState(false);
   if (candidates.length === 0) return null;
 
@@ -242,11 +255,18 @@ function AssignPartForm({
   const blocked = calculationRunId === null;
 
   return (
-    <form action={formAction} className="flex shrink-0 flex-col items-end gap-1">
+    <form
+      action={formAction}
+      className="flex shrink-0 flex-col items-end gap-1"
+    >
       <input type="hidden" name="partSource" value="catalog" />
       <input type="hidden" name="moduleInstanceId" value={moduleInstanceId} />
       <input type="hidden" name="configurationId" value={configurationId} />
-      <input type="hidden" name="calculationRunId" value={calculationRunId ?? ""} />
+      <input
+        type="hidden"
+        name="calculationRunId"
+        value={calculationRunId ?? ""}
+      />
       <input
         type="hidden"
         name="manufacturerPartRevisionId"
@@ -308,11 +328,16 @@ function ManualPartForm({
       <input type="hidden" name="partSource" value="manual" />
       <input type="hidden" name="moduleInstanceId" value={moduleInstanceId} />
       <input type="hidden" name="configurationId" value={configurationId} />
-      <input type="hidden" name="calculationRunId" value={calculationRunId ?? ""} />
+      <input
+        type="hidden"
+        name="calculationRunId"
+        value={calculationRunId ?? ""}
+      />
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="manual-description">
-          Description <span className="text-[11px] text-text-muted">(required)</span>
+          Description{" "}
+          <span className="text-[11px] text-text-muted">(required)</span>
         </Label>
         <Input
           id="manual-description"
@@ -351,17 +376,27 @@ function ManualPartForm({
       </div>
 
       <div className="flex items-center gap-3">
-        <Button type="submit" size="sm" variant="outline" disabled={isPending || blocked}>
+        <Button
+          type="submit"
+          size="sm"
+          variant="outline"
+          disabled={isPending || blocked}
+        >
           {isPending ? "Assigning…" : "Assign manual part"}
         </Button>
         {blocked ? (
           <p className="text-[12px] text-text-muted">
-            Run this module first — a calculated component needs a supporting run.
+            Run this module first — a calculated component needs a supporting
+            run.
           </p>
         ) : null}
       </div>
       {state.status === "error" ? (
-        <p role="alert" className="text-[12px]" style={{ color: "var(--state-error)" }}>
+        <p
+          role="alert"
+          className="text-[12px]"
+          style={{ color: "var(--state-error)" }}
+        >
           {state.message}
         </p>
       ) : null}
@@ -375,9 +410,17 @@ function ManualPartForm({
  * and the "Assigned manufacturer part and stale state" bullet Unit 3.5's
  * Result pane deferred here.
  */
-function AssignmentList({ assignments }: { readonly assignments: readonly ComponentAssignmentView[] }) {
+function AssignmentList({
+  assignments,
+}: {
+  readonly assignments: readonly ComponentAssignmentView[];
+}) {
   if (assignments.length === 0) {
-    return <p className="text-[13px] text-text-muted">No part is assigned to this module yet.</p>;
+    return (
+      <p className="text-[13px] text-text-muted">
+        No part is assigned to this module yet.
+      </p>
+    );
   }
   return (
     <ul className="flex flex-col gap-2">
@@ -399,7 +442,9 @@ function AssignmentList({ assignments }: { readonly assignments: readonly Compon
                     <span>{assignment.manualManufacturerName}</span>
                   ) : null}
                   {assignment.manualPartNumber !== null ? (
-                    <span className="font-mono">{assignment.manualPartNumber}</span>
+                    <span className="font-mono">
+                      {assignment.manualPartNumber}
+                    </span>
                   ) : null}
                   <span>manual / custom part</span>
                 </span>
@@ -415,7 +460,10 @@ function AssignmentList({ assignments }: { readonly assignments: readonly Compon
               className="flex items-center gap-1.5 text-[12px]"
               style={{ color: "var(--state-stale)" }}
             >
-              <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              <AlertTriangle
+                aria-hidden="true"
+                className="h-3.5 w-3.5 shrink-0"
+              />
               {assignment.staleReason ??
                 "This assignment is stale — its supporting calculation changed."}
             </p>
@@ -426,10 +474,14 @@ function AssignmentList({ assignments }: { readonly assignments: readonly Compon
               <span>Supporting run:</span>
               <StatusBadge status={assignment.supportingRun.status} iconOnly />
               <span className="font-mono">{assignment.supportingRun.id}</span>
-              <span>({assignment.supportingRun.createdAt.toLocaleString()})</span>
+              <span>
+                ({assignment.supportingRun.createdAt.toLocaleString()})
+              </span>
             </p>
           ) : (
-            <p className="text-[12px] text-text-muted">No supporting run recorded.</p>
+            <p className="text-[12px] text-text-muted">
+              No supporting run recorded.
+            </p>
           )}
         </li>
       ))}
@@ -450,12 +502,19 @@ function AssignmentList({ assignments }: { readonly assignments: readonly Compon
  * Milestone 4 deferral), the candidate tables are replaced by an honest
  * notice stating why, and the manual/custom part path stays fully usable.
  */
-export function ComponentAssignmentPanel({ view }: ComponentAssignmentPanelProps) {
+export function ComponentAssignmentPanel({
+  view,
+}: ComponentAssignmentPanelProps) {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-6 pb-6">
       <header className="flex items-center gap-2 border-b border-border-default pb-3">
-        <Package aria-hidden="true" className="h-5 w-5 shrink-0 text-text-muted" />
-        <h1 className="text-[16px] font-semibold text-text-primary">Component assignment</h1>
+        <Package
+          aria-hidden="true"
+          className="h-5 w-5 shrink-0 text-text-muted"
+        />
+        <h1 className="text-[16px] font-semibold text-text-primary">
+          Component assignment
+        </h1>
         {view.componentType !== null ? (
           <span className="ml-auto shrink-0 rounded-md border border-border-default px-1.5 py-0.5 font-mono text-[11px] text-text-muted">
             {view.componentType}

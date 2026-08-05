@@ -80,16 +80,17 @@ describe.skipIf(!liveDatabaseAvailable)(
         moduleInstanceId: s.moduleInstanceId,
         ownerId: s.ownerId,
       });
-      if (!executed.ok) throw new Error(`fixture run failed: ${executed.error.message}`);
+      if (!executed.ok)
+        throw new Error(`fixture run failed: ${executed.error.message}`);
       return executed.run.id;
     }
 
     beforeAll(async () => {
-      ({ loadComponentAssignmentView } = await import("./load-component-assignment-view"));
+      ({ loadComponentAssignmentView } =
+        await import("./load-component-assignment-view"));
       ({ assignComponent } = await import("./assign-component"));
-      ({ executeModuleInstance } = await import(
-        "../calculations/execute-module-instance"
-      ));
+      ({ executeModuleInstance } =
+        await import("../calculations/execute-module-instance"));
       projects = await import("../../db/repositories/project-repository");
       graph = await import("../../db/repositories/graph-repository");
       client = await import("../../db/client");
@@ -108,18 +109,25 @@ describe.skipIf(!liveDatabaseAvailable)(
       const stranger = await projects.upsertUser(`test-user-${randomUUID()}`);
       createdUserIds.push(stranger.id);
 
-      expect(await loadComponentAssignmentView(s.moduleInstanceId, stranger.id)).toBeNull();
+      expect(
+        await loadComponentAssignmentView(s.moduleInstanceId, stranger.id),
+      ).toBeNull();
     });
 
     it("reports matching unavailable for a module with no catalog adapter, and still renders", async () => {
       const s = await scaffold();
 
-      const view = await loadComponentAssignmentView(s.moduleInstanceId, s.ownerId);
+      const view = await loadComponentAssignmentView(
+        s.moduleInstanceId,
+        s.ownerId,
+      );
 
       expect(view).not.toBeNull();
       expect(view?.matchingAvailable).toBe(false);
       expect(view?.componentType).toBeNull();
-      expect(view?.matchingUnavailableReason).toContain("does not define catalog matching");
+      expect(view?.matchingUnavailableReason).toContain(
+        "does not define catalog matching",
+      );
       expect(view?.accepted).toEqual([]);
       expect(view?.rejected).toEqual([]);
       expect(view?.assignments).toEqual([]);
@@ -131,7 +139,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const s = await scaffold();
       const runId = await run(s);
 
-      const view = await loadComponentAssignmentView(s.moduleInstanceId, s.ownerId);
+      const view = await loadComponentAssignmentView(
+        s.moduleInstanceId,
+        s.ownerId,
+      );
 
       expect(view?.latestRunId).toBe(runId);
     });
@@ -143,7 +154,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const assigned = await assignComponent(
         {
           configurationId: s.configId,
-          target: { kind: "module_instance", moduleInstanceId: s.moduleInstanceId },
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: s.moduleInstanceId,
+          },
           partSource: "manual",
           manualPartDetails: {
             description: "Custom machined bracket",
@@ -157,7 +171,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       );
       expect(assigned.ok).toBe(true);
 
-      const view = await loadComponentAssignmentView(s.moduleInstanceId, s.ownerId);
+      const view = await loadComponentAssignmentView(
+        s.moduleInstanceId,
+        s.ownerId,
+      );
 
       expect(view?.assignments).toHaveLength(1);
       const assignment = view?.assignments[0];
@@ -180,7 +197,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const assigned = await assignComponent(
         {
           configurationId: s.configId,
-          target: { kind: "module_instance", moduleInstanceId: s.moduleInstanceId },
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: s.moduleInstanceId,
+          },
           partSource: "manual",
           manualPartDetails: { description: "Bracket" },
           calculationRunId: runId,
@@ -190,7 +210,8 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(assigned.ok).toBe(true);
 
       // Unit 2.5 marks runs AND assignments stale in the same transaction.
-      const { setParameterValue } = await import("../parameters/stale-propagation");
+      const { setParameterValue } =
+        await import("../parameters/stale-propagation");
       const changed = await setParameterValue(
         {
           configurationId: s.configId,
@@ -204,7 +225,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       );
       expect(changed.ok).toBe(true);
 
-      const view = await loadComponentAssignmentView(s.moduleInstanceId, s.ownerId);
+      const view = await loadComponentAssignmentView(
+        s.moduleInstanceId,
+        s.ownerId,
+      );
 
       expect(view?.assignments[0]?.stale).toBe(true);
       expect(view?.assignments[0]?.staleReason).not.toBeNull();
@@ -216,7 +240,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       await assignComponent(
         {
           configurationId: s.configId,
-          target: { kind: "module_instance", moduleInstanceId: s.moduleInstanceId },
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: s.moduleInstanceId,
+          },
           partSource: "manual",
           manualPartDetails: { description: "Bracket" },
           calculationRunId: runId,
@@ -226,7 +253,10 @@ describe.skipIf(!liveDatabaseAvailable)(
 
       const other = await projects.createModuleInstance({
         assemblyId: (
-          await projects.createAssembly({ configurationId: s.configId, name: "Y axis" })
+          await projects.createAssembly({
+            configurationId: s.configId,
+            name: "Y axis",
+          })
         ).id,
         configurationId: s.configId,
         modulePackageId: "example-relay",

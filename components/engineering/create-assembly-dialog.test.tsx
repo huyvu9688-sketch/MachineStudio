@@ -21,7 +21,9 @@ describe("CreateAssemblyDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Add" }));
 
-    expect(screen.getByRole("heading", { name: "New assembly" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "New assembly" }),
+    ).toBeInTheDocument();
   });
 
   it("titles the dialog for a sub-assembly when parentId is given", async () => {
@@ -36,7 +38,9 @@ describe("CreateAssemblyDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Add" }));
 
-    expect(screen.getByRole("heading", { name: "New sub-assembly" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "New sub-assembly" }),
+    ).toBeInTheDocument();
   });
 
   it("shows the action's error message inline on failure", async () => {
@@ -58,6 +62,8 @@ describe("CreateAssemblyDialog", () => {
     await user.type(screen.getByLabelText("Assembly name"), "Drive train");
     await user.click(screen.getByRole("button", { name: "Add assembly" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Assembly name is required.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Assembly name is required.",
+    );
   });
 });

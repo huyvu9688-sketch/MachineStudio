@@ -46,7 +46,10 @@ function main(): void {
   }
 
   const sources = names
-    .map((name) => ({ path: name, contents: readFileSync(join(moduleDir, name), "utf8") }))
+    .map((name) => ({
+      path: name,
+      contents: readFileSync(join(moduleDir, name), "utf8"),
+    }))
     .sort((a, b) => a.path.localeCompare(b.path));
 
   const hash = moduleSourceHash(sources);

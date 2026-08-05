@@ -64,8 +64,14 @@ describe.skipIf(!liveDatabaseAvailable)(
         name: "Axis",
         marketProfileKey: "US-General-Industrial-Machinery@1",
       });
-      const config = await projects.createConfiguration({ projectId: project.id, name: "Baseline" });
-      const assembly = await projects.createAssembly({ configurationId: config.id, name: "X axis" });
+      const config = await projects.createConfiguration({
+        projectId: project.id,
+        name: "Baseline",
+      });
+      const assembly = await projects.createAssembly({
+        configurationId: config.id,
+        name: "X axis",
+      });
       const moduleInstance = await projects.createModuleInstance({
         assemblyId: assembly.id,
         configurationId: config.id,
@@ -108,7 +114,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const assignmentResult = await assignComponent(
         {
           configurationId: config.id,
-          target: { kind: "module_instance", moduleInstanceId: moduleInstance.id },
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: moduleInstance.id,
+          },
           partSource: "manual",
           manualPartDetails: { description: "Custom screw" },
           calculationRunId: runResult.run.id,
@@ -116,7 +125,9 @@ describe.skipIf(!liveDatabaseAvailable)(
         user.id,
       );
       if (!assignmentResult.ok) {
-        throw new Error(`seed assignment failed: ${assignmentResult.error.message}`);
+        throw new Error(
+          `seed assignment failed: ${assignmentResult.error.message}`,
+        );
       }
 
       return {
@@ -131,11 +142,14 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     beforeAll(async () => {
       createBaseline = (await import("./create-baseline")).createBaseline;
-      setParameterValue = (await import("../parameters/stale-propagation")).setParameterValue;
-      assignComponent = (await import("../catalogs/assign-component")).assignComponent;
+      setParameterValue = (await import("../parameters/stale-propagation"))
+        .setParameterValue;
+      assignComponent = (await import("../catalogs/assign-component"))
+        .assignComponent;
       projects = await import("../../db/repositories/project-repository");
       graph = await import("../../db/repositories/graph-repository");
-      requirements = await import("../../db/repositories/requirements-repository");
+      requirements =
+        await import("../../db/repositories/requirements-repository");
       executeModuleInstance = (
         await import("../calculations/execute-module-instance")
       ).executeModuleInstance;
@@ -145,7 +159,9 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     afterEach(async () => {
       if (createdUserIds.length > 0) {
-        await client.prisma.user.deleteMany({ where: { id: { in: createdUserIds.splice(0) } } });
+        await client.prisma.user.deleteMany({
+          where: { id: { in: createdUserIds.splice(0) } },
+        });
       }
     });
 
@@ -161,7 +177,9 @@ describe.skipIf(!liveDatabaseAvailable)(
       const snapshot = result.baseline.snapshot;
       expect(snapshot.projectId).toBe(f.projectId);
       expect(snapshot.configurationId).toBe(f.configId);
-      expect(snapshot.marketProfileKey).toBe("US-General-Industrial-Machinery@1");
+      expect(snapshot.marketProfileKey).toBe(
+        "US-General-Industrial-Machinery@1",
+      );
       expect(snapshot.requirements).toHaveLength(1);
       expect(snapshot.requirements[0].code).toBe("REQ-01");
       expect(snapshot.designAssumptions).toHaveLength(1);
@@ -169,17 +187,25 @@ describe.skipIf(!liveDatabaseAvailable)(
 
       expect(snapshot.assemblies).toHaveLength(1);
       expect(snapshot.assemblies[0].moduleInstances).toHaveLength(1);
-      expect(snapshot.assemblies[0].moduleInstances[0].id).toBe(f.moduleInstanceId);
-      expect(snapshot.assemblies[0].moduleInstances[0].lastRunStatus).toBe("pass");
+      expect(snapshot.assemblies[0].moduleInstances[0].id).toBe(
+        f.moduleInstanceId,
+      );
+      expect(snapshot.assemblies[0].moduleInstances[0].lastRunStatus).toBe(
+        "pass",
+      );
 
-      expect(snapshot.parameterValues.some((v) => v.parameterId === PAYLOAD_MASS)).toBe(true);
+      expect(
+        snapshot.parameterValues.some((v) => v.parameterId === PAYLOAD_MASS),
+      ).toBe(true);
 
       expect(snapshot.calculationRuns).toHaveLength(1);
       expect(snapshot.calculationRuns[0].id).toBe(f.runId);
       expect(snapshot.calculationRuns[0].stale).toBe(false);
 
       expect(snapshot.componentAssignments).toHaveLength(1);
-      expect(snapshot.componentAssignments[0].moduleInstanceId).toBe(f.moduleInstanceId);
+      expect(snapshot.componentAssignments[0].moduleInstanceId).toBe(
+        f.moduleInstanceId,
+      );
     });
 
     it("appends a machine_baseline.created audit event atomically with the write", async () => {
@@ -191,9 +217,14 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(result.ok).toBe(true);
       if (!result.ok) return;
 
-      const events = await audit.listAuditEventsForProject(f.projectId, f.ownerId);
+      const events = await audit.listAuditEventsForProject(
+        f.projectId,
+        f.ownerId,
+      );
       const created = events.find(
-        (e) => e.eventType === "machine_baseline.created" && e.entityId === result.baseline.id,
+        (e) =>
+          e.eventType === "machine_baseline.created" &&
+          e.entityId === result.baseline.id,
       );
       expect(created).toBeDefined();
       expect(created?.payload).toMatchObject({ label: "Design review 1" });
@@ -244,12 +275,18 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(kinds).toContain("stale_assignment");
 
       const acknowledged = await createBaseline(
-        { configurationId: f.configId, label: "Acknowledged", acknowledgeWarnings: true },
+        {
+          configurationId: f.configId,
+          label: "Acknowledged",
+          acknowledgeWarnings: true,
+        },
         f.ownerId,
       );
       expect(acknowledged.ok).toBe(true);
       if (!acknowledged.ok) return;
-      expect(acknowledged.baseline.snapshot.calculationRuns[0]?.stale).toBe(true);
+      expect(acknowledged.baseline.snapshot.calculationRuns[0]?.stale).toBe(
+        true,
+      );
     });
 
     it("proves RepeatableRead: a concurrent commit mid-transaction is invisible to reads already inside it (design-risk follow-up, transactionally consistent read snapshots)", async () => {
@@ -261,11 +298,12 @@ describe.skipIf(!liveDatabaseAvailable)(
 
       const before = await client.prisma.$transaction(
         async (tx) => {
-          const firstRead = await graph.listCurrentParameterValuesForConfiguration(
-            f.configId,
-            f.ownerId,
-            tx,
-          );
+          const firstRead =
+            await graph.listCurrentParameterValuesForConfiguration(
+              f.configId,
+              f.ownerId,
+              tx,
+            );
 
           // A fully separate, independent transaction (the default `prisma`
           // singleton, not `tx`) commits a real change while `tx` is still
@@ -284,11 +322,12 @@ describe.skipIf(!liveDatabaseAvailable)(
           );
           expect(changed.ok).toBe(true);
 
-          const secondRead = await graph.listCurrentParameterValuesForConfiguration(
-            f.configId,
-            f.ownerId,
-            tx,
-          );
+          const secondRead =
+            await graph.listCurrentParameterValuesForConfiguration(
+              f.configId,
+              f.ownerId,
+              tx,
+            );
           // Still the pre-change snapshot: tx's view was fixed when the
           // transaction started, not when each statement ran.
           expect(secondRead).toEqual(firstRead);

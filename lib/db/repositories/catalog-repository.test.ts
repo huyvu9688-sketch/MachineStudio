@@ -348,7 +348,9 @@ describe.skipIf(!liveDatabaseAvailable)(
       createdPartRevisionIds.push(corruptId);
 
       await expect(
-        catalog.loadManufacturerPartRevision(asManufacturerPartRevisionId(corruptId)),
+        catalog.loadManufacturerPartRevision(
+          asManufacturerPartRevisionId(corruptId),
+        ),
       ).rejects.toMatchObject({
         code: "invalid_snapshot",
       });

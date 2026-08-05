@@ -9,7 +9,11 @@ import {
   subtractQuantities,
   torqueFromPower,
 } from "./arithmetic";
-import { AffineUnitError, DimensionMismatchError, NonFiniteValueError } from "./errors";
+import {
+  AffineUnitError,
+  DimensionMismatchError,
+  NonFiniteValueError,
+} from "./errors";
 import { makeQuantity } from "./quantity";
 
 describe("addQuantities / subtractQuantities", () => {
@@ -43,13 +47,19 @@ describe("addQuantities / subtractQuantities", () => {
 
 describe("multiplyQuantities", () => {
   it("simplifies force x length to torque (N*m)", () => {
-    const torque = multiplyQuantities(makeQuantity(2, "N"), makeQuantity(3, "m"));
+    const torque = multiplyQuantities(
+      makeQuantity(2, "N"),
+      makeQuantity(3, "m"),
+    );
     expect(torque.unit).toBe("N*m");
     expect(torque.value).toBeCloseTo(6, 9);
   });
 
   it("normalizes operands to SI before combining", () => {
-    const torque = multiplyQuantities(makeQuantity(2, "kN"), makeQuantity(3, "m"));
+    const torque = multiplyQuantities(
+      makeQuantity(2, "kN"),
+      makeQuantity(3, "m"),
+    );
     expect(torque.unit).toBe("N*m");
     expect(torque.value).toBeCloseTo(6000, 6);
   });
@@ -78,7 +88,10 @@ describe("divideQuantities", () => {
   });
 
   it("simplifies speed / time to acceleration (m/s^2)", () => {
-    const accel = divideQuantities(makeQuantity(6, "m/s"), makeQuantity(3, "s"));
+    const accel = divideQuantities(
+      makeQuantity(6, "m/s"),
+      makeQuantity(3, "s"),
+    );
     expect(accel.unit).toBe("m/s^2");
     expect(accel.value).toBeCloseTo(2, 9);
   });
@@ -90,7 +103,10 @@ describe("divideQuantities", () => {
   });
 
   it("keeps angular velocity (rad/s) distinct from frequency (Hz)", () => {
-    const angular = divideQuantities(makeQuantity(2, "rad"), makeQuantity(1, "s"));
+    const angular = divideQuantities(
+      makeQuantity(2, "rad"),
+      makeQuantity(1, "s"),
+    );
     expect(angular.unit).toBe("rad/s");
     const frequency = divideQuantities(
       makeQuantity(1, "ratio"),
@@ -122,13 +138,19 @@ describe("rotational-mechanics helpers (angle-cancelling exceptions)", () => {
   });
 
   it("computes rotational power from torque and angular velocity", () => {
-    const power = rotationalPower(makeQuantity(10, "N*m"), makeQuantity(100, "rad/s"));
+    const power = rotationalPower(
+      makeQuantity(10, "N*m"),
+      makeQuantity(100, "rad/s"),
+    );
     expect(power.unit).toBe("W");
     expect(power.value).toBeCloseTo(1000, 9);
   });
 
   it("normalizes operands to SI before combining", () => {
-    const power = rotationalPower(makeQuantity(10, "N*mm"), makeQuantity(1000, "rpm"));
+    const power = rotationalPower(
+      makeQuantity(10, "N*mm"),
+      makeQuantity(1000, "rpm"),
+    );
     expect(power.unit).toBe("W");
     // 10 N*mm = 0.01 N*m; 1000 rpm = 1000 * 2*pi/60 rad/s
     expect(power.value).toBeCloseTo(0.01 * ((1000 * 2 * Math.PI) / 60), 6);
@@ -147,7 +169,10 @@ describe("rotational-mechanics helpers (angle-cancelling exceptions)", () => {
   });
 
   it("computes torque from power and angular velocity, inverting rotationalPower", () => {
-    const torque = torqueFromPower(makeQuantity(1000, "W"), makeQuantity(100, "rad/s"));
+    const torque = torqueFromPower(
+      makeQuantity(1000, "W"),
+      makeQuantity(100, "rad/s"),
+    );
     expect(torque.unit).toBe("N*m");
     expect(torque.value).toBeCloseTo(10, 9);
   });

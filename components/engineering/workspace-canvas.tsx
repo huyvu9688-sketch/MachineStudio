@@ -1,6 +1,9 @@
 import { FolderOpen, LayoutPanelLeft, PackageOpen, Plus } from "lucide-react";
 import { EmptyState } from "./empty-state";
-import { CreateProjectDialog, type MarketProfileOption } from "./create-project-dialog";
+import {
+  CreateProjectDialog,
+  type MarketProfileOption,
+} from "./create-project-dialog";
 import { CreateAssemblyDialog } from "./create-assembly-dialog";
 import { Button } from "@/components/ui/button";
 

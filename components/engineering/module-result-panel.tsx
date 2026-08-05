@@ -35,7 +35,11 @@ function formatResultValue(value: EngineeringValue): string {
     : formatEngineeringValue(value);
 }
 
-function RunButton({ moduleInstanceId }: { readonly moduleInstanceId: string }) {
+function RunButton({
+  moduleInstanceId,
+}: {
+  readonly moduleInstanceId: string;
+}) {
   const [state, formAction, isPending] = useActionState(
     runModuleInstanceAction,
     IDLE_ACTION_STATE,
@@ -48,7 +52,11 @@ function RunButton({ moduleInstanceId }: { readonly moduleInstanceId: string }) 
         {isPending ? "Running…" : "Run"}
       </Button>
       {state.status === "error" ? (
-        <p role="alert" className="max-w-xs text-right text-[12px]" style={{ color: "var(--state-error)" }}>
+        <p
+          role="alert"
+          className="max-w-xs text-right text-[12px]"
+          style={{ color: "var(--state-error)" }}
+        >
           {state.message}
         </p>
       ) : null}
@@ -68,14 +76,21 @@ function StaleBanner({ reason }: { readonly reason: string | null }) {
       }}
     >
       <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
-      <span>{reason ?? "This result is stale — an upstream input changed since it was computed."}</span>
+      <span>
+        {reason ??
+          "This result is stale — an upstream input changed since it was computed."}
+      </span>
     </div>
   );
 }
 
 function OutputSummary({ view }: { readonly view: ModuleResultView }) {
   if (view.outputs.length === 0) {
-    return <p className="text-[13px] text-text-muted">This run produced no output values.</p>;
+    return (
+      <p className="text-[13px] text-text-muted">
+        This run produced no output values.
+      </p>
+    );
   }
   return (
     <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5">
@@ -83,7 +98,9 @@ function OutputSummary({ view }: { readonly view: ModuleResultView }) {
         <div key={output.portKey} className="contents">
           <dt className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-primary">
             {output.label}
-            {output.loadCase !== null ? <LoadCaseChip loadCase={output.loadCase} /> : null}
+            {output.loadCase !== null ? (
+              <LoadCaseChip loadCase={output.loadCase} />
+            ) : null}
           </dt>
           <dd className="text-right font-mono text-[13px] tabular-nums text-text-primary">
             {formatResultValue(output.value)}
@@ -97,17 +114,22 @@ function OutputSummary({ view }: { readonly view: ModuleResultView }) {
 function ComparisonSection({ view }: { readonly view: ModuleResultView }) {
   const comparison = view.comparison;
   if (comparison === null) return null;
-  if (comparison.changedOutputs.length === 0 && comparison.changedChecks.length === 0) {
+  if (
+    comparison.changedOutputs.length === 0 &&
+    comparison.changedChecks.length === 0
+  ) {
     return (
       <p className="text-[12px] text-text-muted">
-        No change since the previous run ({comparison.previousRunCreatedAt.toLocaleString()}).
+        No change since the previous run (
+        {comparison.previousRunCreatedAt.toLocaleString()}).
       </p>
     );
   }
   return (
     <div className="flex flex-col gap-2">
       <p className="text-[12px] text-text-muted">
-        Changed since the previous run ({comparison.previousRunCreatedAt.toLocaleString()}):
+        Changed since the previous run (
+        {comparison.previousRunCreatedAt.toLocaleString()}):
       </p>
       {comparison.changedOutputs.length > 0 ? (
         <dl className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 gap-y-1 text-[12px]">
@@ -115,7 +137,9 @@ function ComparisonSection({ view }: { readonly view: ModuleResultView }) {
             <div key={changed.portKey} className="contents">
               <dt className="flex flex-wrap items-center gap-1.5 text-text-primary">
                 {changed.label}
-                {changed.loadCase !== null ? <LoadCaseChip loadCase={changed.loadCase} /> : null}
+                {changed.loadCase !== null ? (
+                  <LoadCaseChip loadCase={changed.loadCase} />
+                ) : null}
               </dt>
               <dd className="text-right font-mono tabular-nums text-text-muted">
                 {formatResultValue(changed.before)}
@@ -150,7 +174,11 @@ function ComparisonSection({ view }: { readonly view: ModuleResultView }) {
 
 function CheckTable({ view }: { readonly view: ModuleResultView }) {
   if (view.checks.length === 0) {
-    return <p className="text-[13px] text-text-muted">This run declares no checks.</p>;
+    return (
+      <p className="text-[13px] text-text-muted">
+        This run declares no checks.
+      </p>
+    );
   }
   return (
     <div className="overflow-x-auto">
@@ -166,7 +194,10 @@ function CheckTable({ view }: { readonly view: ModuleResultView }) {
         </thead>
         <tbody>
           {view.checks.map((check) => (
-            <tr key={check.id} className="border-b border-border-default last:border-b-0">
+            <tr
+              key={check.id}
+              className="border-b border-border-default last:border-b-0"
+            >
               <td className="py-1.5 pr-3">
                 <StatusBadge status={check.status} />
               </td>
@@ -174,13 +205,19 @@ function CheckTable({ view }: { readonly view: ModuleResultView }) {
                 {check.criterion ?? check.message}
               </td>
               <td className="py-1.5 pr-3 text-right font-mono tabular-nums text-text-primary">
-                {check.observed !== undefined ? formatResultValue(check.observed) : "—"}
+                {check.observed !== undefined
+                  ? formatResultValue(check.observed)
+                  : "—"}
               </td>
               <td className="py-1.5 pr-3 text-right font-mono tabular-nums text-text-primary">
-                {check.allowable !== undefined ? formatResultValue(check.allowable) : "—"}
+                {check.allowable !== undefined
+                  ? formatResultValue(check.allowable)
+                  : "—"}
               </td>
               <td className="py-1.5 pr-3 text-right font-mono tabular-nums text-text-primary">
-                {check.margin !== undefined ? formatResultValue(check.margin) : "—"}
+                {check.margin !== undefined
+                  ? formatResultValue(check.margin)
+                  : "—"}
               </td>
             </tr>
           ))}
@@ -191,7 +228,9 @@ function CheckTable({ view }: { readonly view: ModuleResultView }) {
 }
 
 function WarningsPanel({ view }: { readonly view: ModuleResultView }) {
-  const outOfEnvelope = view.validity.filter((v) => v.status !== "within_limits");
+  const outOfEnvelope = view.validity.filter(
+    (v) => v.status !== "within_limits",
+  );
   if (view.warnings.length === 0 && outOfEnvelope.length === 0) return null;
   return (
     <div className="flex flex-col gap-2">
@@ -199,7 +238,10 @@ function WarningsPanel({ view }: { readonly view: ModuleResultView }) {
         <p
           key={warning.id}
           className="rounded-md border px-2.5 py-1.5 text-[12px]"
-          style={{ borderColor: "var(--state-stale)", color: "var(--state-stale)" }}
+          style={{
+            borderColor: "var(--state-stale)",
+            color: "var(--state-stale)",
+          }}
         >
           {warning.message}
           {warning.detail !== undefined ? ` — ${warning.detail}` : ""}
@@ -210,13 +252,21 @@ function WarningsPanel({ view }: { readonly view: ModuleResultView }) {
           key={validity.id}
           className="rounded-md border px-2.5 py-1.5 text-[12px]"
           style={{
-            borderColor: validity.status === "out_of_range" ? "var(--state-error)" : "var(--state-neutral)",
-            color: validity.status === "out_of_range" ? "var(--state-error)" : "var(--state-neutral)",
+            borderColor:
+              validity.status === "out_of_range"
+                ? "var(--state-error)"
+                : "var(--state-neutral)",
+            color:
+              validity.status === "out_of_range"
+                ? "var(--state-error)"
+                : "var(--state-neutral)",
           }}
         >
           {validity.limit}
           {validity.message !== undefined ? ` — ${validity.message}` : ""}
-          {validity.status === "not_evaluated" ? " (not evaluated for these inputs)" : ""}
+          {validity.status === "not_evaluated"
+            ? " (not evaluated for these inputs)"
+            : ""}
         </p>
       ))}
     </div>
@@ -228,14 +278,20 @@ function TraceOperandList({
   operands,
 }: {
   readonly label: string;
-  readonly operands: readonly { readonly label: string; readonly value: EngineeringValue }[];
+  readonly operands: readonly {
+    readonly label: string;
+    readonly value: EngineeringValue;
+  }[];
 }) {
   if (operands.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-text-muted">
       <span className="font-medium">{label}:</span>
       {operands.map((operand, index) => (
-        <span key={`${operand.label}-${index}`} className="font-mono tabular-nums">
+        <span
+          key={`${operand.label}-${index}`}
+          className="font-mono tabular-nums"
+        >
           {operand.label} = {formatResultValue(operand.value)}
         </span>
       ))}
@@ -244,7 +300,13 @@ function TraceOperandList({
 }
 
 /** One trace node (section or step), recursively — ui-context.md "Expandable structured calculation trace." */
-function TraceNodeItem({ node, depth }: { readonly node: TraceNode; readonly depth: number }) {
+function TraceNodeItem({
+  node,
+  depth,
+}: {
+  readonly node: TraceNode;
+  readonly depth: number;
+}) {
   const [open, setOpen] = useState(depth === 0);
 
   if (node.node === "section") {
@@ -256,13 +318,20 @@ function TraceNodeItem({ node, depth }: { readonly node: TraceNode; readonly dep
         >
           <ChevronRight
             aria-hidden="true"
-            className={cn("h-3.5 w-3.5 shrink-0 transition-transform", open ? "rotate-90" : "")}
+            className={cn(
+              "h-3.5 w-3.5 shrink-0 transition-transform",
+              open ? "rotate-90" : "",
+            )}
           />
           {node.title}
         </CollapsibleTrigger>
         <CollapsibleContent className="flex flex-col">
           {node.children.map((child) => (
-            <TraceNodeItem key={`${child.node}-${child.id}`} node={child} depth={depth + 1} />
+            <TraceNodeItem
+              key={`${child.node}-${child.id}`}
+              node={child}
+              depth={depth + 1}
+            />
           ))}
         </CollapsibleContent>
       </Collapsible>
@@ -277,11 +346,16 @@ function TraceNodeItem({ node, depth }: { readonly node: TraceNode; readonly dep
       >
         <ChevronRight
           aria-hidden="true"
-          className={cn("h-3.5 w-3.5 shrink-0 transition-transform", open ? "rotate-90" : "")}
+          className={cn(
+            "h-3.5 w-3.5 shrink-0 transition-transform",
+            open ? "rotate-90" : "",
+          )}
         />
         {node.title ?? node.methodId}
         {node.expression !== undefined ? (
-          <span className="font-mono text-[12px] text-text-muted">{node.expression}</span>
+          <span className="font-mono text-[12px] text-text-muted">
+            {node.expression}
+          </span>
         ) : null}
       </CollapsibleTrigger>
       <CollapsibleContent
@@ -303,9 +377,15 @@ function TraceNodeItem({ node, depth }: { readonly node: TraceNode; readonly dep
   );
 }
 
-function SourceReferencesList({ sources }: { readonly sources: readonly SourceReferenceView[] }) {
+function SourceReferencesList({
+  sources,
+}: {
+  readonly sources: readonly SourceReferenceView[];
+}) {
   if (sources.length === 0) {
-    return <p className="text-[12px] text-text-muted">No source references cited.</p>;
+    return (
+      <p className="text-[12px] text-text-muted">No source references cited.</p>
+    );
   }
   return (
     <ul className="flex flex-col gap-1 text-[12px] text-text-muted">
@@ -321,7 +401,13 @@ function SourceReferencesList({ sources }: { readonly sources: readonly SourceRe
   );
 }
 
-function ResultSection({ title, children }: { readonly title: string; readonly children: ReactNode }) {
+function ResultSection({
+  title,
+  children,
+}: {
+  readonly title: string;
+  readonly children: ReactNode;
+}) {
   return (
     <section className="flex flex-col gap-2 rounded-lg border border-border-default bg-bg-surface p-4">
       <h2 className="text-[14px] font-semibold text-text-primary">{title}</h2>
@@ -365,7 +451,9 @@ export function ModuleResultPanel({ view }: ModuleResultPanelProps) {
         </div>
       </header>
 
-      {view.run?.stale === true ? <StaleBanner reason={view.run.staleReason} /> : null}
+      {view.run?.stale === true ? (
+        <StaleBanner reason={view.run.staleReason} />
+      ) : null}
 
       {view.run === null ? (
         <EmptyState
@@ -395,7 +483,11 @@ export function ModuleResultPanel({ view }: ModuleResultPanelProps) {
           <ResultSection title="Calculation trace">
             <div className="flex flex-col">
               {view.trace?.sections.map((section) => (
-                <TraceNodeItem key={`${section.node}-${section.id}`} node={section} depth={0} />
+                <TraceNodeItem
+                  key={`${section.node}-${section.id}`}
+                  node={section}
+                  depth={0}
+                />
               ))}
             </div>
           </ResultSection>

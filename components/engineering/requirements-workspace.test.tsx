@@ -34,7 +34,9 @@ beforeEach(() => {
   }
 });
 
-function requirement(overrides: Partial<RequirementView> = {}): RequirementView {
+function requirement(
+  overrides: Partial<RequirementView> = {},
+): RequirementView {
   return {
     id: "req-1" as RequirementView["id"],
     configurationId: "cfg-1" as RequirementView["configurationId"],
@@ -83,10 +85,18 @@ describe("RequirementsWorkspace", () => {
   it("renders empty-state messages when nothing is recorded yet", () => {
     render(<RequirementsWorkspace view={view()} assemblies={[]} />);
 
-    expect(screen.getByText("No requirements recorded yet.")).toBeInTheDocument();
+    expect(
+      screen.getByText("No requirements recorded yet."),
+    ).toBeInTheDocument();
     expect(screen.getByText("No load cases recorded yet.")).toBeInTheDocument();
-    expect(screen.getByText("No design assumptions recorded yet.")).toBeInTheDocument();
-    expect(screen.getByText(/does not yet check a requirement against a calculation run/i)).toBeInTheDocument();
+    expect(
+      screen.getByText("No design assumptions recorded yet."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /does not yet check a requirement against a calculation run/i,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows 'No acceptance criteria yet' for a requirement with none, and defined once one exists", () => {
@@ -94,7 +104,10 @@ describe("RequirementsWorkspace", () => {
       <RequirementsWorkspace
         view={view({
           requirements: [
-            requirement({ id: "req-1" as RequirementView["id"], code: "REQ-01" }),
+            requirement({
+              id: "req-1" as RequirementView["id"],
+              code: "REQ-01",
+            }),
             requirement({
               id: "req-2" as RequirementView["id"],
               code: "REQ-02",
@@ -167,7 +180,9 @@ describe("RequirementsWorkspace", () => {
       />,
     );
 
-    expect(screen.getByText("Guideway friction coefficient 0.005.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Guideway friction coefficient 0.005."),
+    ).toBeInTheDocument();
     expect(screen.getByText("Manufacturer datasheet.")).toBeInTheDocument();
     expect(screen.getByText("Whole machine")).toBeInTheDocument();
   });
@@ -177,7 +192,9 @@ describe("RequirementsWorkspace", () => {
 
     // Both the requirement and assumption forms have their own scope picker.
     expect(screen.getAllByRole("option", { name: "X axis" })).toHaveLength(2);
-    expect(screen.getAllByRole("option", { name: "X axis / Drive train" })).toHaveLength(2);
+    expect(
+      screen.getAllByRole("option", { name: "X axis / Drive train" }),
+    ).toHaveLength(2);
   });
 
   it("submits the add-requirement form via createRequirementAction", async () => {
@@ -185,7 +202,10 @@ describe("RequirementsWorkspace", () => {
     render(<RequirementsWorkspace view={view()} assemblies={[]} />);
 
     await user.type(screen.getByLabelText("Code"), "REQ-01");
-    await user.type(screen.getByLabelText("Requirement statement"), "New requirement.");
+    await user.type(
+      screen.getByLabelText("Requirement statement"),
+      "New requirement.",
+    );
     await user.click(screen.getByRole("button", { name: "Add requirement" }));
 
     expect(createRequirementAction).toHaveBeenCalled();
@@ -200,7 +220,10 @@ describe("RequirementsWorkspace", () => {
       />,
     );
 
-    await user.type(screen.getByLabelText("Add acceptance criterion"), "New criterion.");
+    await user.type(
+      screen.getByLabelText("Add acceptance criterion"),
+      "New criterion.",
+    );
     await user.click(screen.getByRole("button", { name: "Add" }));
 
     expect(createAcceptanceCriterionAction).toHaveBeenCalled();
@@ -221,7 +244,10 @@ describe("RequirementsWorkspace", () => {
     const user = userEvent.setup();
     render(<RequirementsWorkspace view={view()} assemblies={[]} />);
 
-    await user.type(screen.getByLabelText("Assumption statement"), "An assumption.");
+    await user.type(
+      screen.getByLabelText("Assumption statement"),
+      "An assumption.",
+    );
     await user.click(screen.getByRole("button", { name: "Add assumption" }));
 
     expect(createDesignAssumptionAction).toHaveBeenCalled();

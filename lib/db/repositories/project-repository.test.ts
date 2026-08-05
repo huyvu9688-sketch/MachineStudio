@@ -323,7 +323,9 @@ describe.skipIf(!liveDatabaseAvailable)(
         label: "m",
       });
 
-      await client.prisma.workflowInstance.delete({ where: { id: workflow.id } });
+      await client.prisma.workflowInstance.delete({
+        where: { id: workflow.id },
+      });
 
       const reloaded = await client.prisma.moduleInstance.findUnique({
         where: { id: moduleInstance.id },
@@ -341,12 +343,18 @@ describe.skipIf(!liveDatabaseAvailable)(
         marketProfileKey: "US-General-Industrial-Machinery@1",
       });
 
-      expect(await repo.renameProject(project.id, ownerId, "Renamed")).toBe(true);
+      expect(await repo.renameProject(project.id, ownerId, "Renamed")).toBe(
+        true,
+      );
       const reloaded = await repo.loadProjectTree(project.id, ownerId);
       expect(reloaded?.name).toBe("Renamed");
 
-      expect(await repo.renameProject(project.id, strangerId, "Hijacked")).toBe(false);
-      expect((await repo.loadProjectTree(project.id, ownerId))?.name).toBe("Renamed");
+      expect(await repo.renameProject(project.id, strangerId, "Hijacked")).toBe(
+        false,
+      );
+      expect((await repo.loadProjectTree(project.id, ownerId))?.name).toBe(
+        "Renamed",
+      );
 
       expect(
         await repo.renameProject(
@@ -365,16 +373,27 @@ describe.skipIf(!liveDatabaseAvailable)(
         name: "Axis",
         marketProfileKey: "US-General-Industrial-Machinery@1",
       });
-      const config = await repo.createConfiguration({ projectId: project.id, name: "cfg" });
-      const assembly = await repo.createAssembly({ configurationId: config.id, name: "Original" });
+      const config = await repo.createConfiguration({
+        projectId: project.id,
+        name: "cfg",
+      });
+      const assembly = await repo.createAssembly({
+        configurationId: config.id,
+        name: "Original",
+      });
 
-      expect(await repo.renameAssembly(assembly.id, ownerId, "Renamed assembly")).toBe(true);
+      expect(
+        await repo.renameAssembly(assembly.id, ownerId, "Renamed assembly"),
+      ).toBe(true);
       const reloaded = await repo.loadConfigurationTree(config.id, ownerId);
       expect(reloaded?.assemblies[0]?.name).toBe("Renamed assembly");
 
-      expect(await repo.renameAssembly(assembly.id, strangerId, "Hijacked")).toBe(false);
       expect(
-        (await repo.loadConfigurationTree(config.id, ownerId))?.assemblies[0]?.name,
+        await repo.renameAssembly(assembly.id, strangerId, "Hijacked"),
+      ).toBe(false);
+      expect(
+        (await repo.loadConfigurationTree(config.id, ownerId))?.assemblies[0]
+          ?.name,
       ).toBe("Renamed assembly");
     });
   },
@@ -386,6 +405,8 @@ describe.skipIf(!liveDatabaseAvailable)(
 function repoAsUserId(id: string): import("./types").UserId {
   return id as import("./types").UserId;
 }
-function repoAsMachineProjectId(id: string): import("./types").MachineProjectId {
+function repoAsMachineProjectId(
+  id: string,
+): import("./types").MachineProjectId {
   return id as import("./types").MachineProjectId;
 }

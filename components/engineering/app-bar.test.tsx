@@ -4,7 +4,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AppBar } from "./app-bar";
 import type { MarketProfileOption } from "./create-project-dialog";
-import type { MachineConfigurationRecord, MachineProjectRecord } from "@/lib/db";
+import type {
+  MachineConfigurationRecord,
+  MachineProjectRecord,
+} from "@/lib/db";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/workspace",
@@ -61,7 +64,9 @@ describe("AppBar", () => {
     );
 
     expect(screen.getByText("MachineStudio")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New project" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "New project" }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("user-button")).toBeInTheDocument();
   });
 
@@ -77,9 +82,15 @@ describe("AppBar", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /Palletizer axis/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Baseline configuration/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Rename project" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Palletizer axis/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Baseline configuration/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Rename project" }),
+    ).toBeInTheDocument();
   });
 
   it("lists every project as a real link inside the project picker", async () => {
@@ -97,7 +108,9 @@ describe("AppBar", () => {
 
     await user.click(screen.getByRole("button", { name: /Palletizer axis/ }));
 
-    const link = await screen.findByRole("menuitem", { name: "Palletizer axis" });
+    const link = await screen.findByRole("menuitem", {
+      name: "Palletizer axis",
+    });
     expect(link.tagName).toBe("A");
     expect(link).toHaveAttribute("href", "/workspace?project=p1");
   });
@@ -116,7 +129,9 @@ describe("AppBar", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Hide machine navigator" }));
+    await user.click(
+      screen.getByRole("button", { name: "Hide machine navigator" }),
+    );
     expect(onToggleNavigator).toHaveBeenCalledOnce();
   });
 });

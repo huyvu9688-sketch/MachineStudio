@@ -19,6 +19,9 @@ import type { ModuleSourceFile } from "@/lib/engine";
 export function readModuleSources(dir: string): ModuleSourceFile[] {
   return readdirSync(dir)
     .filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"))
-    .map((name) => ({ path: name, contents: readFileSync(join(dir, name), "utf8") }))
+    .map((name) => ({
+      path: name,
+      contents: readFileSync(join(dir, name), "utf8"),
+    }))
     .sort((a, b) => a.path.localeCompare(b.path));
 }

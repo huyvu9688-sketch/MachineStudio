@@ -41,11 +41,14 @@ describe("parseSubmittedVector", () => {
     ["blank middle component", ["1", "", "2"]],
     ["blank last component", ["1", "2", ""]],
     ["whitespace-only component", ["1", "   ", "2"]],
-  ])("rejects with %s without storing a partial vector", (_label, components) => {
-    const result = parseSubmittedVector(components, "N", "N", "axis");
+  ])(
+    "rejects with %s without storing a partial vector",
+    (_label, components) => {
+      const result = parseSubmittedVector(components, "N", "N", "axis");
 
-    expect(result).toEqual({ ok: false, message: "Enter a numeric value." });
-  });
+      expect(result).toEqual({ ok: false, message: "Enter a numeric value." });
+    },
+  );
 
   it("rejects a non-numeric component", () => {
     const result = parseSubmittedVector(["1", "abc", "2"], "N", "N", "axis");
@@ -54,7 +57,12 @@ describe("parseSubmittedVector", () => {
   });
 
   it("rejects an invalid unit", () => {
-    const result = parseSubmittedVector(["1", "2", "3"], "not-a-unit", "N", "axis");
+    const result = parseSubmittedVector(
+      ["1", "2", "3"],
+      "not-a-unit",
+      "N",
+      "axis",
+    );
 
     expect(result).toEqual({
       ok: false,

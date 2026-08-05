@@ -40,14 +40,18 @@ import type {
 } from "./types";
 
 const nonEmptyString = z.string().min(1);
-const parameterId = nonEmptyString.transform((v): ParameterId => v as ParameterId);
+const parameterId = nonEmptyString.transform(
+  (v): ParameterId => v as ParameterId,
+);
 const sourceRevisionId = nonEmptyString.transform(
   (v): SourceRevisionId => v as SourceRevisionId,
 );
 const sourceRevisionIds = z.array(sourceRevisionId).readonly();
 const clauseReferences = z.array(ClauseReferenceSchema).readonly();
 const loadCase = z.enum(["normal", "peak", "holding", "emergency_stop"]);
-const engineeringValues = z.record(nonEmptyString, EngineeringValueSchema).readonly();
+const engineeringValues = z
+  .record(nonEmptyString, EngineeringValueSchema)
+  .readonly();
 
 export const SdkRangeSchema = z.strictObject({
   min: nonEmptyString,
@@ -189,19 +193,55 @@ type MutuallyAssignable<A, B> = [A] extends [B]
 type Assert<T extends true> = T;
 
 export type _ModuleSdkSchemaParity = [
-  Assert<MutuallyAssignable<ModuleReplacement, z.infer<typeof ModuleReplacementSchema>>>,
-  Assert<MutuallyAssignable<ModuleManifest, z.infer<typeof ModuleManifestSchema>>>,
-  Assert<MutuallyAssignable<ModuleInputPort, z.infer<typeof ModuleInputPortSchema>>>,
-  Assert<MutuallyAssignable<ModuleOutputPort, z.infer<typeof ModuleOutputPortSchema>>>,
+  Assert<
+    MutuallyAssignable<
+      ModuleReplacement,
+      z.infer<typeof ModuleReplacementSchema>
+    >
+  >,
+  Assert<
+    MutuallyAssignable<ModuleManifest, z.infer<typeof ModuleManifestSchema>>
+  >,
+  Assert<
+    MutuallyAssignable<ModuleInputPort, z.infer<typeof ModuleInputPortSchema>>
+  >,
+  Assert<
+    MutuallyAssignable<ModuleOutputPort, z.infer<typeof ModuleOutputPortSchema>>
+  >,
   Assert<MutuallyAssignable<ModulePorts, z.infer<typeof ModulePortsSchema>>>,
-  Assert<MutuallyAssignable<ModuleUiField, z.infer<typeof ModuleUiFieldSchema>>>,
-  Assert<MutuallyAssignable<ModuleUiGroup, z.infer<typeof ModuleUiGroupSchema>>>,
-  Assert<MutuallyAssignable<ModuleUiSchema, z.infer<typeof ModuleUiSchemaSchema>>>,
-  Assert<MutuallyAssignable<ModuleReportSection, z.infer<typeof ModuleReportSectionSchema>>>,
-  Assert<MutuallyAssignable<ModuleReportSchema, z.infer<typeof ModuleReportSchemaSchema>>>,
-  Assert<MutuallyAssignable<ReferenceExample, z.infer<typeof ReferenceExampleSchema>>>,
-  Assert<MutuallyAssignable<ValidationRecord, z.infer<typeof ValidationRecordSchema>>>,
+  Assert<
+    MutuallyAssignable<ModuleUiField, z.infer<typeof ModuleUiFieldSchema>>
+  >,
+  Assert<
+    MutuallyAssignable<ModuleUiGroup, z.infer<typeof ModuleUiGroupSchema>>
+  >,
+  Assert<
+    MutuallyAssignable<ModuleUiSchema, z.infer<typeof ModuleUiSchemaSchema>>
+  >,
+  Assert<
+    MutuallyAssignable<
+      ModuleReportSection,
+      z.infer<typeof ModuleReportSectionSchema>
+    >
+  >,
+  Assert<
+    MutuallyAssignable<
+      ModuleReportSchema,
+      z.infer<typeof ModuleReportSchemaSchema>
+    >
+  >,
+  Assert<
+    MutuallyAssignable<ReferenceExample, z.infer<typeof ReferenceExampleSchema>>
+  >,
+  Assert<
+    MutuallyAssignable<ValidationRecord, z.infer<typeof ValidationRecordSchema>>
+  >,
   Assert<MutuallyAssignable<Assumption, z.infer<typeof AssumptionSchema>>>,
   Assert<MutuallyAssignable<ModuleInput, z.infer<typeof ModuleInputSchema>>>,
-  Assert<MutuallyAssignable<ModuleComputation, z.infer<typeof ModuleComputationSchema>>>,
+  Assert<
+    MutuallyAssignable<
+      ModuleComputation,
+      z.infer<typeof ModuleComputationSchema>
+    >
+  >,
 ];

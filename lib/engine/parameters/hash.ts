@@ -54,5 +54,7 @@ function toHex8(value: number): string {
  */
 export function contentHash(text: string): string {
   const bytes = new TextEncoder().encode(text);
-  return toHex8(fnv1a(bytes, FNV_OFFSET_A)) + toHex8(fnv1a(bytes, FNV_OFFSET_B));
+  return (
+    toHex8(fnv1a(bytes, FNV_OFFSET_A)) + toHex8(fnv1a(bytes, FNV_OFFSET_B))
+  );
 }

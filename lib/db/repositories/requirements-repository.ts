@@ -14,10 +14,7 @@ import type { LoadCaseCategory } from "../../engine/parameters";
 import { prisma } from "../client";
 import type { DbClient } from "./db-client";
 import type { MachineConfigurationId, UserId } from "./types";
-import {
-  asAssemblyId,
-  asMachineConfigurationId,
-} from "./types";
+import { asAssemblyId, asMachineConfigurationId } from "./types";
 import type {
   AcceptanceCriterionRecord,
   CreateAcceptanceCriterionInput,
@@ -255,7 +252,10 @@ export async function listRequirements(
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
   const rows = await client.requirement.findMany({
-    where: { configurationId: id, configuration: { project: { ownerId: owner } } },
+    where: {
+      configurationId: id,
+      configuration: { project: { ownerId: owner } },
+    },
     orderBy: { createdAt: "asc" },
     include: { acceptanceCriteria: { orderBy: { createdAt: "asc" } } },
   });
@@ -274,7 +274,10 @@ export async function listDesignAssumptions(
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
   const rows = await client.designAssumption.findMany({
-    where: { configurationId: id, configuration: { project: { ownerId: owner } } },
+    where: {
+      configurationId: id,
+      configuration: { project: { ownerId: owner } },
+    },
     orderBy: { createdAt: "asc" },
   });
   return rows.map(toDesignAssumptionRecord);
@@ -289,7 +292,10 @@ export async function listLoadCases(
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
   const rows = await client.loadCase.findMany({
-    where: { configurationId: id, configuration: { project: { ownerId: owner } } },
+    where: {
+      configurationId: id,
+      configuration: { project: { ownerId: owner } },
+    },
     orderBy: { createdAt: "asc" },
   });
   return rows.map(toLoadCaseRecord);

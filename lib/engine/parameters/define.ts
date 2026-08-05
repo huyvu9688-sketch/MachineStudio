@@ -49,7 +49,9 @@ export function defineParameter(spec: ParameterSpec): ParameterDefinition {
     symbol: spec.symbol,
     definition: spec.definition,
     valueType: spec.valueType,
-    ...(spec.canonicalUnit !== undefined && { canonicalUnit: spec.canonicalUnit }),
+    ...(spec.canonicalUnit !== undefined && {
+      canonicalUnit: spec.canonicalUnit,
+    }),
     ...(spec.displayUnits !== undefined && { displayUnits: spec.displayUnits }),
     ...(spec.range !== undefined && { range: spec.range }),
     ...(spec.enumId !== undefined && { enumId: spec.enumId }),
@@ -59,6 +61,8 @@ export function defineParameter(spec: ParameterSpec): ParameterDefinition {
     frame: spec.frame ?? "none",
     defaultPolicy: spec.defaultPolicy ?? { kind: "optional" },
     lifecycle: spec.lifecycle ?? "released",
-    ...(spec.replacedBy !== undefined && { replacedBy: asParameterId(spec.replacedBy) }),
+    ...(spec.replacedBy !== undefined && {
+      replacedBy: asParameterId(spec.replacedBy),
+    }),
   };
 }

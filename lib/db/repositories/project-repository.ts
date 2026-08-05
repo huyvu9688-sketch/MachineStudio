@@ -57,7 +57,10 @@ export type ProjectRepositoryErrorCode = "invalid_input";
 export class ProjectRepositoryError extends Error {
   readonly code: ProjectRepositoryErrorCode;
 
-  constructor(message: string, code: ProjectRepositoryErrorCode = "invalid_input") {
+  constructor(
+    message: string,
+    code: ProjectRepositoryErrorCode = "invalid_input",
+  ) {
     super(message);
     this.name = "ProjectRepositoryError";
     this.code = code;
@@ -168,7 +171,11 @@ interface ModuleInstanceRow {
 }
 
 function toUserRecord(row: UserRow): UserRecord {
-  return { id: asUserId(row.id), createdAt: row.createdAt, updatedAt: row.updatedAt };
+  return {
+    id: asUserId(row.id),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
 }
 function toProjectRecord(row: ProjectRow): MachineProjectRecord {
   return {
@@ -180,7 +187,9 @@ function toProjectRecord(row: ProjectRow): MachineProjectRecord {
     updatedAt: row.updatedAt,
   };
 }
-function toConfigurationRecord(row: ConfigurationRow): MachineConfigurationRecord {
+function toConfigurationRecord(
+  row: ConfigurationRow,
+): MachineConfigurationRecord {
   return {
     id: asMachineConfigurationId(row.id),
     projectId: asMachineProjectId(row.projectId),
@@ -199,7 +208,9 @@ function toAssemblyRecord(row: AssemblyRow): AssemblyRecord {
     updatedAt: row.updatedAt,
   };
 }
-function toWorkflowInstanceRecord(row: WorkflowInstanceRow): WorkflowInstanceRecord {
+function toWorkflowInstanceRecord(
+  row: WorkflowInstanceRow,
+): WorkflowInstanceRecord {
   return {
     id: asWorkflowInstanceId(row.id),
     configurationId: asMachineConfigurationId(row.configurationId),
@@ -240,7 +251,10 @@ function toModuleInstanceRecord(row: ModuleInstanceRow): ModuleInstanceRecord {
  * project, since a real (non-test) Clerk user has no other entry point that
  * would have created their `User` row first.
  */
-export async function upsertUser(id: string, client: DbClient = prisma): Promise<UserRecord> {
+export async function upsertUser(
+  id: string,
+  client: DbClient = prisma,
+): Promise<UserRecord> {
   const userId = parse(nonEmpty, id);
   const row = await client.user.upsert({
     where: { id: userId },
@@ -397,7 +411,8 @@ function buildAssemblyForest(
   const childrenByParent = new Map<string | null, ConfigAssemblyRow[]>();
   const ids = new Set(rows.map((r) => r.id));
   for (const row of rows) {
-    const key = row.parentId !== null && ids.has(row.parentId) ? row.parentId : null;
+    const key =
+      row.parentId !== null && ids.has(row.parentId) ? row.parentId : null;
     const bucket = childrenByParent.get(key);
     if (bucket) {
       bucket.push(row);
@@ -570,7 +585,10 @@ export async function loadConfigurationForOwner(
   configurationId: MachineConfigurationId,
   ownerId: UserId,
   client: DbClient = prisma,
-): Promise<{ configuration: MachineConfigurationRecord; project: MachineProjectRecord } | null> {
+): Promise<{
+  configuration: MachineConfigurationRecord;
+  project: MachineProjectRecord;
+} | null> {
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
 

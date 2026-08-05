@@ -67,12 +67,15 @@ interface BaselineRow {
   snapshot: Prisma.JsonValue;
 }
 
-function toBaselineSummary(row: Omit<BaselineRow, "snapshot">): MachineBaselineSummary {
+function toBaselineSummary(
+  row: Omit<BaselineRow, "snapshot">,
+): MachineBaselineSummary {
   return {
     id: asMachineBaselineId(row.id),
     configurationId: asMachineConfigurationId(row.configurationId),
     label: row.label,
-    createdByUserId: row.createdByUserId === null ? null : asUserId(row.createdByUserId),
+    createdByUserId:
+      row.createdByUserId === null ? null : asUserId(row.createdByUserId),
     createdAt: row.createdAt,
   };
 }
@@ -164,7 +167,10 @@ export async function listMachineBaselinesForConfiguration(
   const id = parseId(configurationId);
   const owner = parseId(ownerId);
   const rows = await prisma.machineBaseline.findMany({
-    where: { configurationId: id, configuration: { project: { ownerId: owner } } },
+    where: {
+      configurationId: id,
+      configuration: { project: { ownerId: owner } },
+    },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     omit: { snapshot: true },
   });

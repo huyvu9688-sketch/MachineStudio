@@ -96,9 +96,9 @@ describe("QuantitySchema", () => {
       Number.NEGATIVE_INFINITY,
       Number.NaN,
     ]) {
-      expect(QuantitySchema.safeParse({ ...sampleQuantity, value }).success).toBe(
-        false,
-      );
+      expect(
+        QuantitySchema.safeParse({ ...sampleQuantity, value }).success,
+      ).toBe(false);
     }
   });
 
@@ -129,12 +129,14 @@ describe("the other value schemas accept their samples", () => {
 
   it("rejects an empty vector, curve, and load spectrum", () => {
     expect(
-      VectorQuantitySchema.safeParse({ ...sampleVectorQuantity, components: [] })
-        .success,
+      VectorQuantitySchema.safeParse({
+        ...sampleVectorQuantity,
+        components: [],
+      }).success,
     ).toBe(false);
-    expect(
-      CurveSchema.safeParse({ ...sampleCurve, points: [] }).success,
-    ).toBe(false);
+    expect(CurveSchema.safeParse({ ...sampleCurve, points: [] }).success).toBe(
+      false,
+    );
     expect(
       LoadSpectrumSchema.safeParse({ ...sampleLoadSpectrum, bins: [] }).success,
     ).toBe(false);

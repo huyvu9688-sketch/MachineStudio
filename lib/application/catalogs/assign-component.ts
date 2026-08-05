@@ -45,7 +45,10 @@ import {
 
 /** What a `ComponentAssignment` is attached to — a type-safe entry point for the two `targetKind`s. */
 export type AssignComponentTarget =
-  | { readonly kind: "module_instance"; readonly moduleInstanceId: ModuleInstanceId }
+  | {
+      readonly kind: "module_instance";
+      readonly moduleInstanceId: ModuleInstanceId;
+    }
   | { readonly kind: "assembly"; readonly assemblyId?: AssemblyId };
 
 /** Input to {@link assignComponent}. */
@@ -61,7 +64,8 @@ export interface AssignComponentInput {
 }
 
 /** Machine-readable classification of an `assignComponent` failure. */
-export type AssignComponentErrorCode = "unauthorized" | "invalid_input" | "not_found";
+export type AssignComponentErrorCode =
+  "unauthorized" | "invalid_input" | "not_found";
 
 /** A failed {@link assignComponent} outcome. */
 export interface AssignComponentError {
@@ -120,7 +124,9 @@ export async function assignComponent(
       ownerId,
     );
     if (context === null) {
-      return unauthorized("Module instance not found or not owned by this user.");
+      return unauthorized(
+        "Module instance not found or not owned by this user.",
+      );
     }
     if (context.configurationId !== input.configurationId) {
       return unauthorized(
@@ -128,12 +134,17 @@ export async function assignComponent(
       );
     }
   } else if (input.target.assemblyId !== undefined) {
-    const assembly = await loadAssemblyForOwner(input.target.assemblyId, ownerId);
+    const assembly = await loadAssemblyForOwner(
+      input.target.assemblyId,
+      ownerId,
+    );
     if (assembly === null) {
       return unauthorized("Assembly not found or not owned by this user.");
     }
     if (assembly.configurationId !== input.configurationId) {
-      return unauthorized("Assembly does not belong to the given configuration.");
+      return unauthorized(
+        "Assembly does not belong to the given configuration.",
+      );
     }
   } else {
     const owned = await isConfigurationOwnedBy(input.configurationId, ownerId);
@@ -159,8 +170,13 @@ export async function assignComponent(
     }
   }
 
-  if (input.partSource === "catalog" && input.manufacturerPartRevisionId !== undefined) {
-    const part = await loadManufacturerPartRevision(input.manufacturerPartRevisionId);
+  if (
+    input.partSource === "catalog" &&
+    input.manufacturerPartRevisionId !== undefined
+  ) {
+    const part = await loadManufacturerPartRevision(
+      input.manufacturerPartRevisionId,
+    );
     if (part === null) {
       return notFound(
         `Manufacturer part revision "${input.manufacturerPartRevisionId}" does not exist.`,

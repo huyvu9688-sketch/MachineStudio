@@ -107,7 +107,9 @@ export function canonicalDimensionSymbol(d: Dimension): string {
   for (const base of BASE_ORDER) {
     const exponent = d[base];
     if (exponent === 0) continue;
-    parts.push(exponent === 1 ? BASE_SYMBOLS[base] : `${BASE_SYMBOLS[base]}^${exponent}`);
+    parts.push(
+      exponent === 1 ? BASE_SYMBOLS[base] : `${BASE_SYMBOLS[base]}^${exponent}`,
+    );
   }
   return parts.join("*");
 }

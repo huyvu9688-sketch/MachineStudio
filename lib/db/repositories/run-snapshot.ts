@@ -6,7 +6,10 @@
 // with the value/trace/check contracts rather than duplicating them.
 
 import { z } from "zod";
-import { ModuleComputationSchema, ModuleInputSchema } from "../../engine/module-sdk";
+import {
+  ModuleComputationSchema,
+  ModuleInputSchema,
+} from "../../engine/module-sdk";
 import type { CalculationRunSnapshot } from "./run-types";
 import { RUN_SNAPSHOT_FORMAT_VERSION } from "./run-types";
 

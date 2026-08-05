@@ -35,7 +35,11 @@ function n(
 }
 
 function link(id: string, from: string, to: string): GraphLink {
-  return { id: asLinkId(id), sourceNodeId: asNodeId(from), targetNodeId: asNodeId(to) };
+  return {
+    id: asLinkId(id),
+    sourceNodeId: asNodeId(from),
+    targetNodeId: asNodeId(to),
+  };
 }
 
 /** A two-module chain: req → modA(in→out) → modB(in→out). */
@@ -53,7 +57,10 @@ function chainGraph(): ParameterGraph {
   };
 }
 
-function expectGraphError(fn: () => unknown, code: ParameterGraphError["code"]): void {
+function expectGraphError(
+  fn: () => unknown,
+  code: ParameterGraphError["code"],
+): void {
   try {
     fn();
   } catch (error) {
@@ -72,8 +79,14 @@ describe("buildParameterGraph — integrity", () => {
 
   it("rejects a duplicate node ID", () => {
     const g = chainGraph();
-    const nodes = [...g.nodes, n("req", "machine_requirement", "motion.axis.payload_mass")];
-    expectGraphError(() => buildParameterGraph({ ...g, nodes }), "duplicate_id");
+    const nodes = [
+      ...g.nodes,
+      n("req", "machine_requirement", "motion.axis.payload_mass"),
+    ];
+    expectGraphError(
+      () => buildParameterGraph({ ...g, nodes }),
+      "duplicate_id",
+    );
   });
 
   it("rejects a node in an unknown scope", () => {
@@ -89,31 +102,46 @@ describe("buildParameterGraph — integrity", () => {
     const g = chainGraph();
     const bad = n("a_in", "module_input", "motion.axis.payload_mass"); // no module
     const nodes = [g.nodes[0], bad, ...g.nodes.slice(2)];
-    expectGraphError(() => buildParameterGraph({ ...g, nodes }), "missing_module_instance");
+    expectGraphError(
+      () => buildParameterGraph({ ...g, nodes }),
+      "missing_module_instance",
+    );
   });
 
   it("rejects a link targeting a non-input node", () => {
     const g = chainGraph();
     const links = [...g.links, link("L3", "req", "a_out")]; // a_out is an output
-    expectGraphError(() => buildParameterGraph({ ...g, links }), "invalid_link_target");
+    expectGraphError(
+      () => buildParameterGraph({ ...g, links }),
+      "invalid_link_target",
+    );
   });
 
   it("rejects a link whose source is a module input", () => {
     const g = chainGraph();
     const links = [...g.links, link("L3", "a_in", "b_in")]; // a_in is an input
-    expectGraphError(() => buildParameterGraph({ ...g, links }), "invalid_link_source");
+    expectGraphError(
+      () => buildParameterGraph({ ...g, links }),
+      "invalid_link_source",
+    );
   });
 
   it("rejects a link to an unknown node", () => {
     const g = chainGraph();
     const links = [...g.links, link("L3", "req", "ghost")];
-    expectGraphError(() => buildParameterGraph({ ...g, links }), "unknown_node");
+    expectGraphError(
+      () => buildParameterGraph({ ...g, links }),
+      "unknown_node",
+    );
   });
 
   it("rejects an unknown scope parent", () => {
     const g = chainGraph();
     const scopes = [{ id: AXIS, parentId: asScopeId("ghost") }];
-    expectGraphError(() => buildParameterGraph({ ...g, scopes }), "unknown_scope_parent");
+    expectGraphError(
+      () => buildParameterGraph({ ...g, scopes }),
+      "unknown_scope_parent",
+    );
   });
 
   it("rejects a scope hierarchy cycle", () => {
@@ -155,18 +183,24 @@ describe("downstream resolution and stale impact", () => {
 describe("wouldCreateCycle", () => {
   it("rejects a self link", () => {
     const indexed = buildParameterGraph(chainGraph());
-    expect(wouldCreateCycle(indexed, asNodeId("a_in"), asNodeId("a_in"))).toBe(true);
+    expect(wouldCreateCycle(indexed, asNodeId("a_in"), asNodeId("a_in"))).toBe(
+      true,
+    );
   });
 
   it("detects a transitive cycle through module-internal edges", () => {
     const indexed = buildParameterGraph(chainGraph());
     // b_out already feeds nothing, but a_in → a_out → b_in → b_out, so linking
     // b_out → a_in would close a loop.
-    expect(wouldCreateCycle(indexed, asNodeId("b_out"), asNodeId("a_in"))).toBe(true);
+    expect(wouldCreateCycle(indexed, asNodeId("b_out"), asNodeId("a_in"))).toBe(
+      true,
+    );
   });
 
   it("allows a link that does not close a loop", () => {
     const indexed = buildParameterGraph(chainGraph());
-    expect(wouldCreateCycle(indexed, asNodeId("req"), asNodeId("b_in"))).toBe(false);
+    expect(wouldCreateCycle(indexed, asNodeId("req"), asNodeId("b_in"))).toBe(
+      false,
+    );
   });
 });

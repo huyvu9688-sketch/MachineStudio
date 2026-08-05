@@ -25,8 +25,14 @@ export interface ManageLoadCasesError {
   readonly message: string;
 }
 
-const LOAD_CASE_CATEGORIES = ["normal", "peak", "holding", "emergency_stop"] as const;
-const categorySchema: z.ZodType<LoadCaseCategory> = z.enum(LOAD_CASE_CATEGORIES);
+const LOAD_CASE_CATEGORIES = [
+  "normal",
+  "peak",
+  "holding",
+  "emergency_stop",
+] as const;
+const categorySchema: z.ZodType<LoadCaseCategory> =
+  z.enum(LOAD_CASE_CATEGORIES);
 const labelSchema = z.string().trim().min(1, "A label is required.").max(200);
 const descriptionSchema = z.string().trim().max(2000).optional();
 
@@ -52,7 +58,10 @@ export async function createMachineLoadCase(
   if (!categoryResult.success) {
     return {
       ok: false,
-      error: { code: "invalid_input", message: "Select a valid load-case category." },
+      error: {
+        code: "invalid_input",
+        message: "Select a valid load-case category.",
+      },
     };
   }
   const labelResult = labelSchema.safeParse(input.label);
@@ -67,14 +76,23 @@ export async function createMachineLoadCase(
   }
   const descriptionResult = descriptionSchema.safeParse(input.description);
   if (!descriptionResult.success) {
-    return { ok: false, error: { code: "invalid_input", message: "Description is too long." } };
+    return {
+      ok: false,
+      error: { code: "invalid_input", message: "Description is too long." },
+    };
   }
 
-  const configOwned = await isConfigurationOwnedBy(input.configurationId, ownerId);
+  const configOwned = await isConfigurationOwnedBy(
+    input.configurationId,
+    ownerId,
+  );
   if (!configOwned) {
     return {
       ok: false,
-      error: { code: "unauthorized", message: "Configuration not found or not owned by this user." },
+      error: {
+        code: "unauthorized",
+        message: "Configuration not found or not owned by this user.",
+      },
     };
   }
 

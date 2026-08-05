@@ -28,7 +28,9 @@ beforeEach(() => {
   vi.mocked(setModuleInputValueAction).mockReset();
   vi.mocked(setModuleInputValueAction).mockResolvedValue({ status: "success" });
   vi.mocked(confirmSuggestedLinkAction).mockReset();
-  vi.mocked(confirmSuggestedLinkAction).mockResolvedValue({ status: "success" });
+  vi.mocked(confirmSuggestedLinkAction).mockResolvedValue({
+    status: "success",
+  });
   vi.mocked(removeParameterLinkAction).mockReset();
   vi.mocked(removeParameterLinkAction).mockResolvedValue({ status: "success" });
 });
@@ -40,7 +42,11 @@ const quantityDefaultField: ModuleInputFieldView = {
   help: "Total moving mass carried by the axis.",
   required: true,
   loadCase: null,
-  field: { kind: "quantity", canonicalUnit: "kg", displayUnits: ["kg", "g", "lbm"] },
+  field: {
+    kind: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: ["kg", "g", "lbm"],
+  },
   resolved: { source: "default" },
   suggestions: [],
   linkRemovalImpact: null,
@@ -85,7 +91,13 @@ const temperatureManualField: ModuleInputFieldView = {
   field: { kind: "quantity", canonicalUnit: "K", displayUnits: ["K", "degC"] },
   resolved: {
     source: "manual",
-    value: { v: 1, kind: "quantity", value: 298.15, unit: "K", displayUnit: "degC" },
+    value: {
+      v: 1,
+      kind: "quantity",
+      value: 298.15,
+      unit: "K",
+      displayUnit: "degC",
+    },
   },
   suggestions: [],
   linkRemovalImpact: null,
@@ -98,10 +110,19 @@ const enumManualField: ModuleInputFieldView = {
   help: null,
   required: false,
   loadCase: "normal",
-  field: { kind: "enum", enumId: "axis_orientation", options: ["horizontal", "vertical", "inclined"] },
+  field: {
+    kind: "enum",
+    enumId: "axis_orientation",
+    options: ["horizontal", "vertical", "inclined"],
+  },
   resolved: {
     source: "manual",
-    value: { v: 1, kind: "enum", enumId: "axis_orientation", value: "vertical" },
+    value: {
+      v: 1,
+      kind: "enum",
+      enumId: "axis_orientation",
+      value: "vertical",
+    },
   },
   suggestions: [],
   linkRemovalImpact: null,
@@ -115,7 +136,10 @@ const booleanWorkflowField: ModuleInputFieldView = {
   required: false,
   loadCase: null,
   field: { kind: "boolean" },
-  resolved: { source: "workflow", value: { v: 1, kind: "boolean", value: true } },
+  resolved: {
+    source: "workflow",
+    value: { v: 1, kind: "boolean", value: true },
+  },
   suggestions: [],
   linkRemovalImpact: null,
 };
@@ -127,7 +151,11 @@ const linkedField: ModuleInputFieldView = {
   help: null,
   required: true,
   loadCase: null,
-  field: { kind: "quantity", canonicalUnit: "N", displayUnits: ["N", "kN", "lbf"] },
+  field: {
+    kind: "quantity",
+    canonicalUnit: "N",
+    displayUnits: ["N", "kN", "lbf"],
+  },
   resolved: {
     source: "linked",
     link: {
@@ -257,7 +285,9 @@ describe("ModuleInputWorkspace", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Thrust check" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Thrust check" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("example-scaffold@0.1.0")).toBeInTheDocument();
     expect(screen.getByText("Inputs")).toBeInTheDocument();
 
@@ -265,7 +295,9 @@ describe("ModuleInputWorkspace", () => {
     // (Both the quantity field and the unsupported field resolve to
     // "default" here, so two badges are expected.)
     expect(screen.getByLabelText("Payload mass")).toBeInTheDocument();
-    expect(screen.getByText("Total moving mass carried by the axis.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Total moving mass carried by the axis."),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Payload mass unit")).toBeInTheDocument();
     expect(screen.getAllByText("Default")).toHaveLength(2);
 
@@ -297,7 +329,11 @@ describe("ModuleInputWorkspace", () => {
       help: null,
       required: true,
       loadCase: null,
-      field: { kind: "quantity", canonicalUnit: "N", displayUnits: ["N", "kN", "lbf"] },
+      field: {
+        kind: "quantity",
+        canonicalUnit: "N",
+        displayUnits: ["N", "kN", "lbf"],
+      },
       resolved: { source: "default" },
       suggestions: [],
       linkRemovalImpact: null,
@@ -326,7 +362,9 @@ describe("ModuleInputWorkspace", () => {
     render(<ModuleInputWorkspace view={view([temperatureManualField])} />);
 
     expect(screen.getByLabelText("Ambient temperature")).toHaveValue(25);
-    expect(screen.getByLabelText("Ambient temperature unit")).toHaveValue("degC");
+    expect(screen.getByLabelText("Ambient temperature unit")).toHaveValue(
+      "degC",
+    );
   });
 
   it("submits a quantity field's manual value and clears the field-level error on success", async () => {
@@ -351,7 +389,9 @@ describe("ModuleInputWorkspace", () => {
     await user.type(screen.getByLabelText("Payload mass"), "12");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Enter a numeric value.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Enter a numeric value.",
+    );
   });
 
   it("shows a link suggestion (parameter, value, origin, load case) and confirms it on request", async () => {
@@ -359,7 +399,9 @@ describe("ModuleInputWorkspace", () => {
     render(<ModuleInputWorkspace view={view([fieldWithSuggestion])} />);
 
     expect(
-      screen.getByText("Use Payload mass 12 kg from Machine — Normal load case?"),
+      screen.getByText(
+        "Use Payload mass 12 kg from Machine — Normal load case?",
+      ),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "View source" }));
@@ -397,10 +439,16 @@ describe("ModuleInputWorkspace", () => {
   it("renders a stored axis-frame vector in its selected display unit, per component", () => {
     render(<ModuleInputWorkspace view={view([vectorManualField])} />);
 
-    expect(screen.getByLabelText("Center-of-mass offset X (travel direction)")).toHaveValue(50);
-    expect(screen.getByLabelText("Center-of-mass offset Y (transverse)")).toHaveValue(0);
+    expect(
+      screen.getByLabelText("Center-of-mass offset X (travel direction)"),
+    ).toHaveValue(50);
+    expect(
+      screen.getByLabelText("Center-of-mass offset Y (transverse)"),
+    ).toHaveValue(0);
     expect(screen.getByLabelText("Center-of-mass offset Z")).toHaveValue(-20);
-    expect(screen.getByLabelText("Center-of-mass offset unit")).toHaveValue("mm");
+    expect(screen.getByLabelText("Center-of-mass offset unit")).toHaveValue(
+      "mm",
+    );
 
     // Short visible captions ("X"/"Y"/"Z") for sighted users, distinct from
     // the full aria-label text screen readers get — a persistent caption,
@@ -413,10 +461,12 @@ describe("ModuleInputWorkspace", () => {
   it("renders empty component inputs for a vector field with no current value", () => {
     render(<ModuleInputWorkspace view={view([vectorDefaultField])} />);
 
-    expect(screen.getByLabelText("External process force X (travel direction)")).toHaveValue(
-      null,
-    );
-    expect(screen.getByLabelText("External process force Y (transverse)")).toHaveValue(null);
+    expect(
+      screen.getByLabelText("External process force X (travel direction)"),
+    ).toHaveValue(null);
+    expect(
+      screen.getByLabelText("External process force Y (transverse)"),
+    ).toHaveValue(null);
     expect(screen.getByLabelText("External process force Z")).toHaveValue(null);
   });
 

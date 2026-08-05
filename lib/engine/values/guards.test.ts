@@ -57,9 +57,7 @@ describe("per-kind type guards", () => {
     for (const guardKind of kinds) {
       const guard = guardsByKind[guardKind];
       for (const sampleKind of kinds) {
-        expect(guard(samplesByKind[sampleKind])).toBe(
-          guardKind === sampleKind,
-        );
+        expect(guard(samplesByKind[sampleKind])).toBe(guardKind === sampleKind);
       }
     }
   });

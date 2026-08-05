@@ -6,7 +6,11 @@
 import { describe, expect, it } from "vitest";
 import { makeQuantity } from "../engine/units";
 import { SERIALIZATION_FORMAT_VERSION } from "../engine/values";
-import type { BooleanValue, EnumValue, MaterialReference } from "../engine/values";
+import type {
+  BooleanValue,
+  EnumValue,
+  MaterialReference,
+} from "../engine/values";
 import type { ComponentAttributes } from "./types";
 import type { CandidatePart, MatchCriterion } from "./matching-types";
 import { MatchCriterionError } from "./matching-types";
@@ -102,7 +106,9 @@ describe("evaluateCriterion — quantity eq", () => {
   };
 
   it("passes on an exact match", () => {
-    expect(evaluateCriterion(criterion, makeQuantity(20, "mm")).satisfied).toBe(true);
+    expect(evaluateCriterion(criterion, makeQuantity(20, "mm")).satisfied).toBe(
+      true,
+    );
   });
 
   it("fails with not_equal outside the default tolerance", () => {
@@ -113,7 +119,9 @@ describe("evaluateCriterion — quantity eq", () => {
 
   it("honors an explicit relative tolerance", () => {
     const toleranced: MatchCriterion = { ...criterion, tolerance: 0.05 };
-    expect(evaluateCriterion(toleranced, makeQuantity(20.5, "mm")).satisfied).toBe(true);
+    expect(
+      evaluateCriterion(toleranced, makeQuantity(20.5, "mm")).satisfied,
+    ).toBe(true);
   });
 
   it("has no margin (pass/fail only)", () => {
@@ -131,7 +139,10 @@ describe("evaluateCriterion — non-quantity eq", () => {
       value: enumValue("ball_screw.mounting", "fixed_free"),
     };
     expect(
-      evaluateCriterion(criterion, enumValue("ball_screw.mounting", "fixed_free")).satisfied,
+      evaluateCriterion(
+        criterion,
+        enumValue("ball_screw.mounting", "fixed_free"),
+      ).satisfied,
     ).toBe(true);
     const mismatch = evaluateCriterion(
       criterion,
@@ -148,8 +159,12 @@ describe("evaluateCriterion — non-quantity eq", () => {
       operator: "eq",
       value: booleanValue(true),
     };
-    expect(evaluateCriterion(criterion, booleanValue(true)).satisfied).toBe(true);
-    expect(evaluateCriterion(criterion, booleanValue(false)).satisfied).toBe(false);
+    expect(evaluateCriterion(criterion, booleanValue(true)).satisfied).toBe(
+      true,
+    );
+    expect(evaluateCriterion(criterion, booleanValue(false)).satisfied).toBe(
+      false,
+    );
   });
 
   it("matches equal material references", () => {
@@ -159,8 +174,12 @@ describe("evaluateCriterion — non-quantity eq", () => {
       operator: "eq",
       value: materialValue("steel-4140"),
     };
-    expect(evaluateCriterion(criterion, materialValue("steel-4140")).satisfied).toBe(true);
-    expect(evaluateCriterion(criterion, materialValue("steel-1045")).satisfied).toBe(false);
+    expect(
+      evaluateCriterion(criterion, materialValue("steel-4140")).satisfied,
+    ).toBe(true);
+    expect(
+      evaluateCriterion(criterion, materialValue("steel-1045")).satisfied,
+    ).toBe(false);
   });
 
   it("rejects gte/lte on a non-quantity criterion as a setup error", () => {
@@ -170,9 +189,12 @@ describe("evaluateCriterion — non-quantity eq", () => {
       operator: "gte",
       value: enumValue("ball_screw.mounting", "fixed_free"),
     };
-    expect(() => evaluateCriterion(criterion, enumValue("ball_screw.mounting", "fixed_free"))).toThrow(
-      MatchCriterionError,
-    );
+    expect(() =>
+      evaluateCriterion(
+        criterion,
+        enumValue("ball_screw.mounting", "fixed_free"),
+      ),
+    ).toThrow(MatchCriterionError);
   });
 });
 
@@ -199,21 +221,37 @@ describe("evaluateCriterion — missing and mismatched candidate data", () => {
 
 describe("evaluateCandidate", () => {
   const criteria: MatchCriterion[] = [
-    { key: "dynamicLoad", label: "Dynamic load rating", operator: "gte", value: makeQuantity(3660, "N") },
-    { key: "lead", label: "Lead", operator: "eq", value: makeQuantity(20, "mm") },
+    {
+      key: "dynamicLoad",
+      label: "Dynamic load rating",
+      operator: "gte",
+      value: makeQuantity(3660, "N"),
+    },
+    {
+      key: "lead",
+      label: "Lead",
+      operator: "eq",
+      value: makeQuantity(20, "mm"),
+    },
   ];
 
   it("passes only when every criterion is satisfied", () => {
     const passing = evaluateCandidate(
       criteria,
-      candidate("part-a", { dynamicLoad: makeQuantity(4026, "N"), lead: makeQuantity(20, "mm") }),
+      candidate("part-a", {
+        dynamicLoad: makeQuantity(4026, "N"),
+        lead: makeQuantity(20, "mm"),
+      }),
     );
     expect(passing.passed).toBe(true);
     expect(passing.criteria).toHaveLength(2);
 
     const failing = evaluateCandidate(
       criteria,
-      candidate("part-b", { dynamicLoad: makeQuantity(3000, "N"), lead: makeQuantity(20, "mm") }),
+      candidate("part-b", {
+        dynamicLoad: makeQuantity(3000, "N"),
+        lead: makeQuantity(20, "mm"),
+      }),
     );
     expect(failing.passed).toBe(false);
   });
@@ -221,7 +259,12 @@ describe("evaluateCandidate", () => {
 
 describe("rankCandidates", () => {
   const criteria: MatchCriterion[] = [
-    { key: "dynamicLoad", label: "Dynamic load rating", operator: "gte", value: makeQuantity(3660, "N") },
+    {
+      key: "dynamicLoad",
+      label: "Dynamic load rating",
+      operator: "gte",
+      value: makeQuantity(3660, "N"),
+    },
   ];
 
   it("excludes hard-filter-failing candidates from the accepted/ranked list", () => {
@@ -254,14 +297,24 @@ describe("rankCandidates", () => {
       candidate("zebra", { dynamicLoad: makeQuantity(3660, "N") }),
       candidate("alpha", { dynamicLoad: makeQuantity(3660, "N") }),
     ]);
-    expect(result.accepted.map((r) => r.candidate.id)).toEqual(["alpha", "zebra"]);
+    expect(result.accepted.map((r) => r.candidate.id)).toEqual([
+      "alpha",
+      "zebra",
+    ]);
   });
 
   it("gives a candidate with only eq criteria a score of 0 (no scored margin)", () => {
     const eqOnly: MatchCriterion[] = [
-      { key: "lead", label: "Lead", operator: "eq", value: makeQuantity(20, "mm") },
+      {
+        key: "lead",
+        label: "Lead",
+        operator: "eq",
+        value: makeQuantity(20, "mm"),
+      },
     ];
-    const result = rankCandidates(eqOnly, [candidate("exact", { lead: makeQuantity(20, "mm") })]);
+    const result = rankCandidates(eqOnly, [
+      candidate("exact", { lead: makeQuantity(20, "mm") }),
+    ]);
     expect(result.accepted).toHaveLength(1);
     expect(result.accepted[0].score).toBe(0);
   });
@@ -270,22 +323,57 @@ describe("rankCandidates", () => {
 describe("describeRequiredSpec", () => {
   it("formats each value kind for display", () => {
     const criteria: MatchCriterion[] = [
-      { key: "dynamicLoad", label: "Dynamic load rating", operator: "gte", value: makeQuantity(3660, "N") },
-      { key: "preloaded", label: "Preloaded", operator: "eq", value: booleanValue(true) },
+      {
+        key: "dynamicLoad",
+        label: "Dynamic load rating",
+        operator: "gte",
+        value: makeQuantity(3660, "N"),
+      },
+      {
+        key: "preloaded",
+        label: "Preloaded",
+        operator: "eq",
+        value: booleanValue(true),
+      },
       {
         key: "mounting",
         label: "Mounting",
         operator: "eq",
         value: enumValue("ball_screw.mounting", "fixed_free"),
       },
-      { key: "material", label: "Material", operator: "eq", value: materialValue("steel-4140") },
+      {
+        key: "material",
+        label: "Material",
+        operator: "eq",
+        value: materialValue("steel-4140"),
+      },
     ];
     const summary = describeRequiredSpec(criteria);
     expect(summary).toEqual([
-      { key: "dynamicLoad", label: "Dynamic load rating", operator: "gte", displayValue: "3660 N" },
-      { key: "preloaded", label: "Preloaded", operator: "eq", displayValue: "true" },
-      { key: "mounting", label: "Mounting", operator: "eq", displayValue: "fixed_free" },
-      { key: "material", label: "Material", operator: "eq", displayValue: "steel-4140" },
+      {
+        key: "dynamicLoad",
+        label: "Dynamic load rating",
+        operator: "gte",
+        displayValue: "3660 N",
+      },
+      {
+        key: "preloaded",
+        label: "Preloaded",
+        operator: "eq",
+        displayValue: "true",
+      },
+      {
+        key: "mounting",
+        label: "Mounting",
+        operator: "eq",
+        displayValue: "fixed_free",
+      },
+      {
+        key: "material",
+        label: "Material",
+        operator: "eq",
+        displayValue: "steel-4140",
+      },
     ]);
   });
 });

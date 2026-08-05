@@ -13,7 +13,11 @@ vi.mock("@/app/(workspace)/workspace/actions", () => ({
 }));
 
 const MODULE_PACKAGES: ModulePackageOption[] = [
-  { modulePackageId: "example-scaffold", moduleVersion: "0.1.0", category: "example" },
+  {
+    modulePackageId: "example-scaffold",
+    moduleVersion: "0.1.0",
+    category: "example",
+  },
 ];
 
 // Distinct from the dialog's own "Add module" submit button, which would

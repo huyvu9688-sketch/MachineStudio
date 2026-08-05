@@ -36,9 +36,15 @@ export interface CreateProjectDialogProps {
  * handling here (the navigation unmounts this dialog along with the rest of
  * the page). Unit 3.2.
  */
-export function CreateProjectDialog({ marketProfiles, trigger }: CreateProjectDialogProps) {
+export function CreateProjectDialog({
+  marketProfiles,
+  trigger,
+}: CreateProjectDialogProps) {
   const [open, setOpen] = useState(false);
-  const [state, formAction, isPending] = useActionState(createProjectAction, IDLE_ACTION_STATE);
+  const [state, formAction, isPending] = useActionState(
+    createProjectAction,
+    IDLE_ACTION_STATE,
+  );
   const nameId = useId();
   const profileId = useId();
 
@@ -57,14 +63,21 @@ export function CreateProjectDialog({ marketProfiles, trigger }: CreateProjectDi
           <DialogHeader>
             <DialogTitle>New machine project</DialogTitle>
             <DialogDescription>
-              Starts with one working configuration you can build an assembly tree in.
+              Starts with one working configuration you can build an assembly
+              tree in.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-1.5">
               <Label htmlFor={nameId}>Project name</Label>
-              <Input id={nameId} name="name" required maxLength={200} autoFocus />
+              <Input
+                id={nameId}
+                name="name"
+                required
+                maxLength={200}
+                autoFocus
+              />
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor={profileId}>Market profile</Label>
@@ -86,7 +99,11 @@ export function CreateProjectDialog({ marketProfiles, trigger }: CreateProjectDi
               </select>
             </div>
             {state.status === "error" ? (
-              <p role="alert" className="text-[13px]" style={{ color: "var(--state-error)" }}>
+              <p
+                role="alert"
+                className="text-[13px]"
+                style={{ color: "var(--state-error)" }}
+              >
                 {state.message}
               </p>
             ) : null}

@@ -25,11 +25,17 @@ export default function WorkspaceError({
 
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-3 bg-bg-base px-6 text-center">
-      <AlertTriangle aria-hidden="true" className="h-9 w-9" style={{ color: "var(--state-error)" }} />
-      <p className="text-[16px] font-medium text-text-primary">Workspace failed to load</p>
+      <AlertTriangle
+        aria-hidden="true"
+        className="h-9 w-9"
+        style={{ color: "var(--state-error)" }}
+      />
+      <p className="text-[16px] font-medium text-text-primary">
+        Workspace failed to load
+      </p>
       <p className="max-w-sm text-[14px] text-text-muted">
-        Something went wrong while loading your machine projects. Try again, and contact support
-        if the problem continues.
+        Something went wrong while loading your machine projects. Try again, and
+        contact support if the problem continues.
       </p>
       <Button type="button" onClick={reset} className="mt-2">
         Try again

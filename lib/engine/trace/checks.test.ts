@@ -12,29 +12,42 @@ describe("overallCheckStatus severity behavior", () => {
   });
 
   it("is not_applicable when every check is not_applicable", () => {
-    expect(overallCheckStatus([check("not_applicable", "a"), check("not_applicable", "b")])).toBe(
-      "not_applicable",
-    );
+    expect(
+      overallCheckStatus([
+        check("not_applicable", "a"),
+        check("not_applicable", "b"),
+      ]),
+    ).toBe("not_applicable");
   });
 
   it("passes when all contributing checks pass (ignoring not_applicable)", () => {
-    expect(overallCheckStatus([check("pass", "a"), check("not_applicable", "b")])).toBe("pass");
+    expect(
+      overallCheckStatus([check("pass", "a"), check("not_applicable", "b")]),
+    ).toBe("pass");
   });
 
   it("reports warning when a warning accompanies passes", () => {
-    expect(overallCheckStatus([check("pass"), check("warning")])).toBe("warning");
+    expect(overallCheckStatus([check("pass"), check("warning")])).toBe(
+      "warning",
+    );
   });
 
   it("a warning never masks a fail", () => {
-    expect(overallCheckStatus([check("warning"), check("fail"), check("pass")])).toBe("fail");
+    expect(
+      overallCheckStatus([check("warning"), check("fail"), check("pass")]),
+    ).toBe("fail");
   });
 
   it("a fail never presents as a pass", () => {
-    expect(overallCheckStatus([check("pass", "a"), check("fail", "b")])).toBe("fail");
+    expect(overallCheckStatus([check("pass", "a"), check("fail", "b")])).toBe(
+      "fail",
+    );
   });
 
   it("invalid_input outranks a fail", () => {
-    expect(overallCheckStatus([check("fail"), check("invalid_input")])).toBe("invalid_input");
+    expect(overallCheckStatus([check("fail"), check("invalid_input")])).toBe(
+      "invalid_input",
+    );
   });
 });
 

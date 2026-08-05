@@ -19,7 +19,12 @@ import type {
 } from "./types";
 
 function kg(value: number): Quantity {
-  return { v: SERIALIZATION_FORMAT_VERSION, kind: "quantity", value, unit: "kg" };
+  return {
+    v: SERIALIZATION_FORMAT_VERSION,
+    kind: "quantity",
+    value,
+    unit: "kg",
+  };
 }
 
 describe.skipIf(!liveDatabaseAvailable)(
@@ -116,7 +121,9 @@ describe.skipIf(!liveDatabaseAvailable)(
         loadCase: null,
       };
 
-      expect(await graph.findCurrentParameterValueForNode(s.configId, descriptor)).toBeNull();
+      expect(
+        await graph.findCurrentParameterValueForNode(s.configId, descriptor),
+      ).toBeNull();
 
       const first = await graph.createParameterValue({
         configurationId: s.configId,
@@ -126,7 +133,10 @@ describe.skipIf(!liveDatabaseAvailable)(
         source: "manual",
         value: kg(10),
       });
-      const firstCurrent = await graph.findCurrentParameterValueForNode(s.configId, descriptor);
+      const firstCurrent = await graph.findCurrentParameterValueForNode(
+        s.configId,
+        descriptor,
+      );
       expect(firstCurrent?.id).toBe(first.id);
 
       const second = await graph.createParameterValue({
@@ -137,7 +147,10 @@ describe.skipIf(!liveDatabaseAvailable)(
         source: "manual",
         value: kg(12),
       });
-      const secondCurrent = await graph.findCurrentParameterValueForNode(s.configId, descriptor);
+      const secondCurrent = await graph.findCurrentParameterValueForNode(
+        s.configId,
+        descriptor,
+      );
       expect(secondCurrent?.id).toBe(second.id);
       expect(secondCurrent?.value).toEqual(kg(12));
     });
@@ -393,9 +406,7 @@ describe.skipIf(!liveDatabaseAvailable)(
 
 /** Extracts the resolved value from a resolution outcome, or null if none. */
 function sourceValue(
-  resolved:
-    | import("./graph-types").ResolvedInputSource
-    | undefined,
+  resolved: import("./graph-types").ResolvedInputSource | undefined,
 ): EngineeringValue | null {
   if (resolved === undefined) return null;
   if (resolved.source === "manual" || resolved.source === "workflow") {

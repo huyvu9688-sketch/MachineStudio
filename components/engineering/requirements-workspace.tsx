@@ -43,16 +43,22 @@ function flattenAssemblies(
 ): AssemblyOption[] {
   const options: AssemblyOption[] = [];
   for (const assembly of assemblies) {
-    const label = prefix.length > 0 ? `${prefix} / ${assembly.name}` : assembly.name;
+    const label =
+      prefix.length > 0 ? `${prefix} / ${assembly.name}` : assembly.name;
     options.push({ id: assembly.id, label });
     options.push(...flattenAssemblies(assembly.children, label));
   }
   return options;
 }
 
-function assemblyLabel(assemblyId: string | null, options: readonly AssemblyOption[]): string {
+function assemblyLabel(
+  assemblyId: string | null,
+  options: readonly AssemblyOption[],
+): string {
   if (assemblyId === null) return "Whole machine";
-  return options.find((option) => option.id === assemblyId)?.label ?? assemblyId;
+  return (
+    options.find((option) => option.id === assemblyId)?.label ?? assemblyId
+  );
 }
 
 function PanelSection({
@@ -90,7 +96,11 @@ function InfoNotice({ children }: { readonly children: ReactNode }) {
 function ErrorText({ message }: { readonly message?: string }) {
   if (message === undefined) return null;
   return (
-    <p role="alert" className="text-[12px]" style={{ color: "var(--state-error)" }}>
+    <p
+      role="alert"
+      className="text-[12px]"
+      style={{ color: "var(--state-error)" }}
+    >
       {message}
     </p>
   );
@@ -108,7 +118,12 @@ function AssemblyScopeField({
   return (
     <div className="flex min-w-48 flex-1 flex-col gap-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <select id={id} name="assemblyId" defaultValue="" className={CONTROL_CLASS}>
+      <select
+        id={id}
+        name="assemblyId"
+        defaultValue=""
+        className={CONTROL_CLASS}
+      >
         <option value="">Whole machine (no assembly)</option>
         {assemblyOptions.map((option) => (
           <option key={option.id} value={option.id}>
@@ -126,7 +141,11 @@ function AssemblyScopeField({
  * no calculation run is consulted (see `load-requirements-view.ts`'s
  * header for the full reasoning).
  */
-function VerificationStatusBadge({ status }: { readonly status: RequirementVerificationStatus }) {
+function VerificationStatusBadge({
+  status,
+}: {
+  readonly status: RequirementVerificationStatus;
+}) {
   const defined = status === "criteria_defined";
   const Icon = defined ? CheckCircle2 : Circle;
   return (
@@ -150,20 +169,36 @@ function AddRequirementForm({
   readonly configurationId: string;
   readonly assemblyOptions: readonly AssemblyOption[];
 }) {
-  const [state, formAction, isPending] = useActionState(createRequirementAction, IDLE_ACTION_STATE);
+  const [state, formAction, isPending] = useActionState(
+    createRequirementAction,
+    IDLE_ACTION_STATE,
+  );
   const codeId = useId();
   const statementId = useId();
   const scopeId = useId();
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-md border border-border-default p-3">
+    <form
+      action={formAction}
+      className="flex flex-col gap-3 rounded-md border border-border-default p-3"
+    >
       <input type="hidden" name="configurationId" value={configurationId} />
       <div className="flex flex-wrap gap-3">
         <div className="flex w-32 flex-col gap-1.5">
           <Label htmlFor={codeId}>Code</Label>
-          <Input id={codeId} name="code" required maxLength={40} placeholder="REQ-01" />
+          <Input
+            id={codeId}
+            name="code"
+            required
+            maxLength={40}
+            placeholder="REQ-01"
+          />
         </div>
-        <AssemblyScopeField id={scopeId} label="Requirement scope" assemblyOptions={assemblyOptions} />
+        <AssemblyScopeField
+          id={scopeId}
+          label="Requirement scope"
+          assemblyOptions={assemblyOptions}
+        />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={statementId}>Requirement statement</Label>
@@ -180,13 +215,19 @@ function AddRequirementForm({
         <Button type="submit" size="sm" disabled={isPending}>
           {isPending ? "Adding…" : "Add requirement"}
         </Button>
-        <ErrorText message={state.status === "error" ? state.message : undefined} />
+        <ErrorText
+          message={state.status === "error" ? state.message : undefined}
+        />
       </div>
     </form>
   );
 }
 
-function AddAcceptanceCriterionForm({ requirementId }: { readonly requirementId: string }) {
+function AddAcceptanceCriterionForm({
+  requirementId,
+}: {
+  readonly requirementId: string;
+}) {
   const [state, formAction, isPending] = useActionState(
     createAcceptanceCriterionAction,
     IDLE_ACTION_STATE,
@@ -200,12 +241,20 @@ function AddAcceptanceCriterionForm({ requirementId }: { readonly requirementId:
         <Label htmlFor={id} className="text-[11px]">
           Add acceptance criterion
         </Label>
-        <Input id={id} name="statement" required maxLength={2000} className="h-8 text-[12px]" />
+        <Input
+          id={id}
+          name="statement"
+          required
+          maxLength={2000}
+          className="h-8 text-[12px]"
+        />
       </div>
       <Button type="submit" size="sm" variant="outline" disabled={isPending}>
         {isPending ? "Adding…" : "Add"}
       </Button>
-      <ErrorText message={state.status === "error" ? state.message : undefined} />
+      <ErrorText
+        message={state.status === "error" ? state.message : undefined}
+      />
     </form>
   );
 }
@@ -229,7 +278,9 @@ function RequirementCard({
               {assemblyLabel(requirement.assemblyId, assemblyOptions)}
             </span>
           </div>
-          <p className="text-[13px] text-text-primary">{requirement.statement}</p>
+          <p className="text-[13px] text-text-primary">
+            {requirement.statement}
+          </p>
         </div>
         <VerificationStatusBadge status={requirement.verificationStatus} />
       </div>
@@ -257,13 +308,19 @@ function RequirementsSection({
   return (
     <PanelSection title="Requirements">
       <InfoNotice>
-        Verification status here reflects only whether acceptance criteria have been recorded —
-        it does not yet check a requirement against a calculation run. A requirements verification
-        matrix linking requirements to supporting runs is planned for Milestone 5.
+        Verification status here reflects only whether acceptance criteria have
+        been recorded — it does not yet check a requirement against a
+        calculation run. A requirements verification matrix linking requirements
+        to supporting runs is planned for Milestone 5.
       </InfoNotice>
-      <AddRequirementForm configurationId={view.configurationId} assemblyOptions={assemblyOptions} />
+      <AddRequirementForm
+        configurationId={view.configurationId}
+        assemblyOptions={assemblyOptions}
+      />
       {view.requirements.length === 0 ? (
-        <p className="text-[13px] text-text-muted">No requirements recorded yet.</p>
+        <p className="text-[13px] text-text-muted">
+          No requirements recorded yet.
+        </p>
       ) : (
         <ul className="flex flex-col gap-2">
           {view.requirements.map((requirement) => (
@@ -279,8 +336,15 @@ function RequirementsSection({
   );
 }
 
-function AddLoadCaseForm({ configurationId }: { readonly configurationId: string }) {
-  const [state, formAction, isPending] = useActionState(createLoadCaseAction, IDLE_ACTION_STATE);
+function AddLoadCaseForm({
+  configurationId,
+}: {
+  readonly configurationId: string;
+}) {
+  const [state, formAction, isPending] = useActionState(
+    createLoadCaseAction,
+    IDLE_ACTION_STATE,
+  );
   const categoryId = useId();
   const labelId = useId();
   const descriptionId = useId();
@@ -290,7 +354,13 @@ function AddLoadCaseForm({ configurationId }: { readonly configurationId: string
       <input type="hidden" name="configurationId" value={configurationId} />
       <div className="flex w-40 flex-col gap-1.5">
         <Label htmlFor={categoryId}>Category</Label>
-        <select id={categoryId} name="category" required defaultValue="" className={CONTROL_CLASS}>
+        <select
+          id={categoryId}
+          name="category"
+          required
+          defaultValue=""
+          className={CONTROL_CLASS}
+        >
           <option value="" disabled>
             Select
           </option>
@@ -303,7 +373,13 @@ function AddLoadCaseForm({ configurationId }: { readonly configurationId: string
       </div>
       <div className="flex min-w-40 flex-1 flex-col gap-1.5">
         <Label htmlFor={labelId}>Label</Label>
-        <Input id={labelId} name="label" required maxLength={200} placeholder="e.g. Peak acceleration" />
+        <Input
+          id={labelId}
+          name="label"
+          required
+          maxLength={200}
+          placeholder="e.g. Peak acceleration"
+        />
       </div>
       <div className="flex min-w-48 flex-1 flex-col gap-1.5">
         <Label htmlFor={descriptionId}>Description</Label>
@@ -312,7 +388,9 @@ function AddLoadCaseForm({ configurationId }: { readonly configurationId: string
       <Button type="submit" size="sm" disabled={isPending}>
         {isPending ? "Adding…" : "Add load case"}
       </Button>
-      <ErrorText message={state.status === "error" ? state.message : undefined} />
+      <ErrorText
+        message={state.status === "error" ? state.message : undefined}
+      />
     </form>
   );
 }
@@ -322,7 +400,9 @@ function LoadCasesSection({ view }: { readonly view: RequirementsView }) {
     <PanelSection title="Load cases">
       <AddLoadCaseForm configurationId={view.configurationId} />
       {view.loadCases.length === 0 ? (
-        <p className="text-[13px] text-text-muted">No load cases recorded yet.</p>
+        <p className="text-[13px] text-text-muted">
+          No load cases recorded yet.
+        </p>
       ) : (
         <table className="w-full border-collapse text-[13px]">
           <thead>
@@ -340,10 +420,19 @@ function LoadCasesSection({ view }: { readonly view: RequirementsView }) {
           </thead>
           <tbody>
             {view.loadCases.map((loadCase) => (
-              <tr key={loadCase.id} className="border-b border-border-default last:border-0">
-                <td className="py-1.5 pr-2 text-text-primary">{LOAD_CASE_LABELS[loadCase.category]}</td>
-                <td className="py-1.5 pr-2 text-text-primary">{loadCase.label}</td>
-                <td className="py-1.5 text-text-muted">{loadCase.description ?? "—"}</td>
+              <tr
+                key={loadCase.id}
+                className="border-b border-border-default last:border-0"
+              >
+                <td className="py-1.5 pr-2 text-text-primary">
+                  {LOAD_CASE_LABELS[loadCase.category]}
+                </td>
+                <td className="py-1.5 pr-2 text-text-primary">
+                  {loadCase.label}
+                </td>
+                <td className="py-1.5 text-text-muted">
+                  {loadCase.description ?? "—"}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -369,7 +458,10 @@ function AddDesignAssumptionForm({
   const scopeId = useId();
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-md border border-border-default p-3">
+    <form
+      action={formAction}
+      className="flex flex-col gap-3 rounded-md border border-border-default p-3"
+    >
       <input type="hidden" name="configurationId" value={configurationId} />
       <div className="flex flex-wrap gap-3">
         <div className="flex min-w-48 flex-1 flex-col gap-1.5">
@@ -383,17 +475,28 @@ function AddDesignAssumptionForm({
             placeholder="e.g. Guideway friction coefficient 0.005."
           />
         </div>
-        <AssemblyScopeField id={scopeId} label="Assumption scope" assemblyOptions={assemblyOptions} />
+        <AssemblyScopeField
+          id={scopeId}
+          label="Assumption scope"
+          assemblyOptions={assemblyOptions}
+        />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={rationaleId}>Rationale</Label>
-        <Input id={rationaleId} name="rationale" maxLength={2000} placeholder="Optional" />
+        <Input
+          id={rationaleId}
+          name="rationale"
+          maxLength={2000}
+          placeholder="Optional"
+        />
       </div>
       <div className="flex items-center gap-3">
         <Button type="submit" size="sm" disabled={isPending}>
           {isPending ? "Adding…" : "Add assumption"}
         </Button>
-        <ErrorText message={state.status === "error" ? state.message : undefined} />
+        <ErrorText
+          message={state.status === "error" ? state.message : undefined}
+        />
       </div>
     </form>
   );
@@ -408,21 +511,33 @@ function DesignAssumptionsSection({
 }) {
   return (
     <PanelSection title="Design assumptions">
-      <AddDesignAssumptionForm configurationId={view.configurationId} assemblyOptions={assemblyOptions} />
+      <AddDesignAssumptionForm
+        configurationId={view.configurationId}
+        assemblyOptions={assemblyOptions}
+      />
       {view.designAssumptions.length === 0 ? (
-        <p className="text-[13px] text-text-muted">No design assumptions recorded yet.</p>
+        <p className="text-[13px] text-text-muted">
+          No design assumptions recorded yet.
+        </p>
       ) : (
         <ul className="flex flex-col gap-2">
           {view.designAssumptions.map((assumption) => (
-            <li key={assumption.id} className="flex flex-col gap-1 rounded-md border border-border-default p-3">
+            <li
+              key={assumption.id}
+              className="flex flex-col gap-1 rounded-md border border-border-default p-3"
+            >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="text-[13px] text-text-primary">{assumption.statement}</p>
+                <p className="text-[13px] text-text-primary">
+                  {assumption.statement}
+                </p>
                 <span className="shrink-0 text-[11px] text-text-muted">
                   {assemblyLabel(assumption.assemblyId, assemblyOptions)}
                 </span>
               </div>
               {assumption.rationale !== null ? (
-                <p className="text-[12px] text-text-muted">{assumption.rationale}</p>
+                <p className="text-[12px] text-text-muted">
+                  {assumption.rationale}
+                </p>
               ) : null}
             </li>
           ))}
@@ -447,14 +562,22 @@ function DesignAssumptionsSection({
  * to Milestone 5's requirements verification matrix (Unit 5.3), not
  * invented here.
  */
-export function RequirementsWorkspace({ view, assemblies }: RequirementsWorkspaceProps) {
+export function RequirementsWorkspace({
+  view,
+  assemblies,
+}: RequirementsWorkspaceProps) {
   const assemblyOptions = flattenAssemblies(assemblies);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-6 pb-6">
       <header className="flex items-center gap-2 border-b border-border-default pb-3">
-        <ClipboardList aria-hidden="true" className="h-5 w-5 shrink-0 text-text-muted" />
-        <h1 className="text-[16px] font-semibold text-text-primary">Requirements & design intent</h1>
+        <ClipboardList
+          aria-hidden="true"
+          className="h-5 w-5 shrink-0 text-text-muted"
+        />
+        <h1 className="text-[16px] font-semibold text-text-primary">
+          Requirements & design intent
+        </h1>
       </header>
 
       <RequirementsSection view={view} assemblyOptions={assemblyOptions} />

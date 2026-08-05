@@ -29,7 +29,8 @@ const RAW_INPUT = { values: { payload_mass: makeQuantity(10, "kg") } };
 
 function pkgOrThrow(): ModulePackage {
   const pkg = getModulePackage(MODULE_ID, MODULE_VERSION);
-  if (pkg === undefined) throw new Error(`${MODULE_ID}@${MODULE_VERSION} not registered`);
+  if (pkg === undefined)
+    throw new Error(`${MODULE_ID}@${MODULE_VERSION} not registered`);
   return pkg;
 }
 
@@ -93,7 +94,11 @@ describe.skipIf(!liveDatabaseAvailable)(
         moduleVersion: MODULE_VERSION,
         label: "Thrust",
       });
-      return { ownerId: user.id, assemblyId: assembly.id, moduleInstanceId: mi.id };
+      return {
+        ownerId: user.id,
+        assemblyId: assembly.id,
+        moduleInstanceId: mi.id,
+      };
     }
 
     beforeAll(async () => {
@@ -141,13 +146,18 @@ describe.skipIf(!liveDatabaseAvailable)(
       if (loaded === null) throw new Error("run not loaded");
 
       // Re-execute the pinned module version against the stored resolved input.
-      const pkg = getModulePackage(loaded.modulePackageId, loaded.moduleVersion);
+      const pkg = getModulePackage(
+        loaded.modulePackageId,
+        loaded.moduleVersion,
+      );
       if (pkg === undefined) throw new Error("pinned module version not found");
       const recomputed = executeModule(pkg, loaded.snapshot.input);
 
       const stored = loaded.snapshot.computation.outputs;
       for (const key of Object.keys(stored)) {
-        expect(engineeringValuesEqual(recomputed.outputs[key], stored[key])).toBe(true);
+        expect(
+          engineeringValuesEqual(recomputed.outputs[key], stored[key]),
+        ).toBe(true);
       }
     });
 
@@ -157,10 +167,25 @@ describe.skipIf(!liveDatabaseAvailable)(
       const computation: ModuleComputation = {
         ...base,
         checks: [
-          { id: "sf-a", status: "pass", message: "SF a", margin: makeQuantity(2.5, "ratio") },
-          { id: "sf-b", status: "pass", message: "SF b", margin: makeQuantity(1.4, "ratio") },
+          {
+            id: "sf-a",
+            status: "pass",
+            message: "SF a",
+            margin: makeQuantity(2.5, "ratio"),
+          },
+          {
+            id: "sf-b",
+            status: "pass",
+            message: "SF b",
+            margin: makeQuantity(1.4, "ratio"),
+          },
           // Physical (force) margin is ignored — not comparable across checks.
-          { id: "force", status: "pass", message: "F", margin: makeQuantity(500, "N") },
+          {
+            id: "force",
+            status: "pass",
+            message: "F",
+            margin: makeQuantity(500, "N"),
+          },
         ],
       };
       const created = await runs.createCalculationRun({
@@ -230,7 +255,11 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       expect(created.stale).toBe(false);
 
-      const marked = await runs.markRunStale(created.id, true, "upstream value changed");
+      const marked = await runs.markRunStale(
+        created.id,
+        true,
+        "upstream value changed",
+      );
       expect(marked?.stale).toBe(true);
       expect(marked?.staleReason).toBe("upstream value changed");
 
@@ -256,7 +285,10 @@ describe.skipIf(!liveDatabaseAvailable)(
         await runs.listRunsForModuleInstance(s.moduleInstanceId, strangerId),
       ).toHaveLength(0);
       // The owner sees the run in the module's run list.
-      const owned = await runs.listRunsForModuleInstance(s.moduleInstanceId, s.ownerId);
+      const owned = await runs.listRunsForModuleInstance(
+        s.moduleInstanceId,
+        s.ownerId,
+      );
       expect(owned.map((r) => r.id)).toContain(created.id);
     });
   },

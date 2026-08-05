@@ -32,6 +32,9 @@ describe("describeField", () => {
       frame: "world",
     });
 
-    expect(descriptor).toEqual({ kind: "unsupported", valueType: "vector_quantity" });
+    expect(descriptor).toEqual({
+      kind: "unsupported",
+      valueType: "vector_quantity",
+    });
   });
 });

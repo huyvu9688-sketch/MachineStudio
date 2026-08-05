@@ -140,7 +140,9 @@ function clauseReferenceKey(ref: ClauseReference): string {
 }
 
 /** Collects every unique `ClauseReference` cited anywhere in a computation. */
-function collectClauseReferences(computation: ModuleComputation): ClauseReference[] {
+function collectClauseReferences(
+  computation: ModuleComputation,
+): ClauseReference[] {
   const byKey = new Map<string, ClauseReference>();
   const add = (refs: readonly ClauseReference[] | undefined): void => {
     for (const ref of refs ?? []) {
@@ -227,7 +229,9 @@ function compareRuns(
     }
   }
 
-  const beforeChecksById = new Map(before.snapshot.computation.checks.map((c) => [c.id, c]));
+  const beforeChecksById = new Map(
+    before.snapshot.computation.checks.map((c) => [c.id, c]),
+  );
   const changedChecks: ChangedCheckView[] = [];
   for (const check of after.snapshot.computation.checks) {
     const previous = beforeChecksById.get(check.id);
@@ -270,7 +274,10 @@ export async function loadModuleResultView(
   }
   const { moduleInstance } = context;
 
-  const pkg = getModulePackage(moduleInstance.modulePackageId, moduleInstance.moduleVersion);
+  const pkg = getModulePackage(
+    moduleInstance.modulePackageId,
+    moduleInstance.moduleVersion,
+  );
   if (pkg === undefined) {
     return null;
   }
@@ -317,7 +324,9 @@ export async function loadModuleResultView(
 
   const previousSummary = summaries[1];
   const previous =
-    previousSummary !== undefined ? await loadCalculationRun(previousSummary.id, ownerId) : null;
+    previousSummary !== undefined
+      ? await loadCalculationRun(previousSummary.id, ownerId)
+      : null;
 
   return {
     moduleInstance: moduleInstanceView,
@@ -329,12 +338,20 @@ export async function loadModuleResultView(
       staleReason: latest.staleReason,
       createdAt: latest.createdAt,
     },
-    outputs: describeOutputs(latest.snapshot.computation.outputs, pkg.ports.outputs),
+    outputs: describeOutputs(
+      latest.snapshot.computation.outputs,
+      pkg.ports.outputs,
+    ),
     checks: latest.snapshot.computation.checks,
     warnings: latest.snapshot.computation.warnings,
     validity: latest.snapshot.computation.validity,
     trace: latest.snapshot.computation.trace,
-    sources: resolveSourceReferences(collectClauseReferences(latest.snapshot.computation)),
-    comparison: previous !== null ? compareRuns(pkg.ports.outputs, previous, latest) : null,
+    sources: resolveSourceReferences(
+      collectClauseReferences(latest.snapshot.computation),
+    ),
+    comparison:
+      previous !== null
+        ? compareRuns(pkg.ports.outputs, previous, latest)
+        : null,
   };
 }

@@ -108,11 +108,7 @@ export interface CalculationTrace {
  * Status").
  */
 export type CheckStatus =
-  | "pass"
-  | "fail"
-  | "warning"
-  | "not_applicable"
-  | "invalid_input";
+  "pass" | "fail" | "warning" | "not_applicable" | "invalid_input";
 
 /**
  * The result of evaluating one engineering acceptance check.

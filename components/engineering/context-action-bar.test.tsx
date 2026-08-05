@@ -10,13 +10,21 @@ describe("ContextActionBar", () => {
   });
 
   it("shows the project name alone when there is no configuration yet", () => {
-    render(<ContextActionBar projectName="Palletizer axis" configurationName={null} />);
+    render(
+      <ContextActionBar
+        projectName="Palletizer axis"
+        configurationName={null}
+      />,
+    );
     expect(screen.getByText("Palletizer axis")).toBeInTheDocument();
   });
 
   it("shows the project / configuration path", () => {
     render(
-      <ContextActionBar projectName="Palletizer axis" configurationName="Baseline configuration" />,
+      <ContextActionBar
+        projectName="Palletizer axis"
+        configurationName="Baseline configuration"
+      />,
     );
     expect(screen.getByText("Palletizer axis")).toBeInTheDocument();
     expect(screen.getByText("Baseline configuration")).toBeInTheDocument();

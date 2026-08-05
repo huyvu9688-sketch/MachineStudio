@@ -12,10 +12,14 @@
 // passes `acknowledgeWarnings: true`, mirroring Unit 3.8's named UI flow
 // ("Pre-baseline validation summary" + "Warning acknowledgement").
 
-import type { BaselineCalculationRunRef, BaselineComponentAssignment } from "./types";
+import type {
+  BaselineCalculationRunRef,
+  BaselineComponentAssignment,
+} from "./types";
 
 /** Why one item blocks baseline creation, absent explicit acknowledgement. */
-export type BaselineBlockerKind = "stale_run" | "failed_run" | "stale_assignment";
+export type BaselineBlockerKind =
+  "stale_run" | "failed_run" | "stale_assignment";
 
 /** One blocking condition found while evaluating baseline readiness. */
 export interface BaselineBlocker {

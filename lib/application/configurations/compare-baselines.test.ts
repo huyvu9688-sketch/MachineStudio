@@ -51,8 +51,14 @@ describe.skipIf(!liveDatabaseAvailable)(
         name: "Axis",
         marketProfileKey: "US-General-Industrial-Machinery@1",
       });
-      const config = await projects.createConfiguration({ projectId: project.id, name: "Baseline" });
-      const assembly = await projects.createAssembly({ configurationId: config.id, name: "X axis" });
+      const config = await projects.createConfiguration({
+        projectId: project.id,
+        name: "Baseline",
+      });
+      const assembly = await projects.createAssembly({
+        configurationId: config.id,
+        name: "X axis",
+      });
       const moduleInstance = await projects.createModuleInstance({
         assemblyId: assembly.id,
         configurationId: config.id,
@@ -72,15 +78,21 @@ describe.skipIf(!liveDatabaseAvailable)(
         moduleInstanceId: moduleInstance.id,
         ownerId: user.id,
       });
-      if (!runResult.ok) throw new Error(`seed execution failed: ${runResult.error.message}`);
+      if (!runResult.ok)
+        throw new Error(`seed execution failed: ${runResult.error.message}`);
 
-      return { ownerId: user.id, configId: config.id, moduleInstanceId: moduleInstance.id };
+      return {
+        ownerId: user.id,
+        configId: config.id,
+        moduleInstanceId: moduleInstance.id,
+      };
     }
 
     beforeAll(async () => {
       createBaseline = (await import("./create-baseline")).createBaseline;
       compareBaselines = (await import("./compare-baselines")).compareBaselines;
-      setParameterValue = (await import("../parameters/stale-propagation")).setParameterValue;
+      setParameterValue = (await import("../parameters/stale-propagation"))
+        .setParameterValue;
       projects = await import("../../db/repositories/project-repository");
       graph = await import("../../db/repositories/graph-repository");
       executeModuleInstance = (
@@ -91,13 +103,18 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     afterEach(async () => {
       if (createdUserIds.length > 0) {
-        await client.prisma.user.deleteMany({ where: { id: { in: createdUserIds.splice(0) } } });
+        await client.prisma.user.deleteMany({
+          where: { id: { in: createdUserIds.splice(0) } },
+        });
       }
     });
 
     it("shows a changed parameter value and a changed run between two real baselines", async () => {
       const f = await fixture();
-      const before = await createBaseline({ configurationId: f.configId, label: "Before" }, f.ownerId);
+      const before = await createBaseline(
+        { configurationId: f.configId, label: "Before" },
+        f.ownerId,
+      );
       expect(before.ok).toBe(true);
       if (!before.ok) return;
 
@@ -122,11 +139,18 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       expect(rerun.ok).toBe(true);
 
-      const after = await createBaseline({ configurationId: f.configId, label: "After" }, f.ownerId);
+      const after = await createBaseline(
+        { configurationId: f.configId, label: "After" },
+        f.ownerId,
+      );
       expect(after.ok).toBe(true);
       if (!after.ok) return;
 
-      const result = await compareBaselines(before.baseline.id, after.baseline.id, f.ownerId);
+      const result = await compareBaselines(
+        before.baseline.id,
+        after.baseline.id,
+        f.ownerId,
+      );
       expect(result.ok).toBe(true);
       if (!result.ok) return;
 
@@ -146,7 +170,10 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     it("reports not_found when the first baseline does not exist", async () => {
       const f = await fixture();
-      const baseline = await createBaseline({ configurationId: f.configId, label: "Only" }, f.ownerId);
+      const baseline = await createBaseline(
+        { configurationId: f.configId, label: "Only" },
+        f.ownerId,
+      );
       expect(baseline.ok).toBe(true);
       if (!baseline.ok) return;
 
@@ -162,14 +189,21 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     it("reports not_found for a baseline owned by a different user", async () => {
       const f = await fixture();
-      const baseline = await createBaseline({ configurationId: f.configId, label: "Owned" }, f.ownerId);
+      const baseline = await createBaseline(
+        { configurationId: f.configId, label: "Owned" },
+        f.ownerId,
+      );
       expect(baseline.ok).toBe(true);
       if (!baseline.ok) return;
 
       const stranger = await projects.upsertUser(`test-user-${randomUUID()}`);
       createdUserIds.push(stranger.id);
 
-      const result = await compareBaselines(baseline.baseline.id, baseline.baseline.id, stranger.id);
+      const result = await compareBaselines(
+        baseline.baseline.id,
+        baseline.baseline.id,
+        stranger.id,
+      );
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("not_found");

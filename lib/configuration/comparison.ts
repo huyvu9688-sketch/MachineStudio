@@ -55,7 +55,9 @@ function diffByKey<T>(
   keyOf: (item: T) => string,
   equal: (a: T, b: T) => boolean,
 ): BaselineListDiff<T> {
-  const beforeByKey = new Map(before.map((item) => [keyOf(item), item] as const));
+  const beforeByKey = new Map(
+    before.map((item) => [keyOf(item), item] as const),
+  );
   const afterByKey = new Map(after.map((item) => [keyOf(item), item] as const));
   const added: T[] = [];
   const removed: T[] = [];
@@ -88,7 +90,10 @@ function acceptanceCriteriaEqual(
   return b.every((c) => byId.get(c.id) === c.statement);
 }
 
-function requirementsEqual(a: BaselineRequirement, b: BaselineRequirement): boolean {
+function requirementsEqual(
+  a: BaselineRequirement,
+  b: BaselineRequirement,
+): boolean {
   return (
     a.code === b.code &&
     a.statement === b.statement &&
@@ -109,10 +114,17 @@ function designAssumptionsEqual(
 }
 
 function loadCasesEqual(a: BaselineLoadCase, b: BaselineLoadCase): boolean {
-  return a.category === b.category && a.label === b.label && a.description === b.description;
+  return (
+    a.category === b.category &&
+    a.label === b.label &&
+    a.description === b.description
+  );
 }
 
-function parameterLinksEqual(a: BaselineParameterLink, b: BaselineParameterLink): boolean {
+function parameterLinksEqual(
+  a: BaselineParameterLink,
+  b: BaselineParameterLink,
+): boolean {
   return (
     a.sourceKind === b.sourceKind &&
     a.sourceModuleInstanceId === b.sourceModuleInstanceId &&
@@ -126,8 +138,12 @@ function calculationRunRefsEqual(
   a: BaselineCalculationRunRef,
   b: BaselineCalculationRunRef,
 ): boolean {
-  return a.id === b.id && a.modulePackageHash === b.modulePackageHash &&
-    a.status === b.status && a.stale === b.stale;
+  return (
+    a.id === b.id &&
+    a.modulePackageHash === b.modulePackageHash &&
+    a.status === b.status &&
+    a.stale === b.stale
+  );
 }
 
 function manualPartDetailsEqual(
@@ -168,11 +184,16 @@ function componentAssignmentsEqual(
  */
 function parameterValueNodeKey(value: BaselineParameterValue): string {
   const owner =
-    value.moduleInstanceId !== null ? `m:${value.moduleInstanceId}` : `a:${value.assemblyId ?? "root"}`;
+    value.moduleInstanceId !== null
+      ? `m:${value.moduleInstanceId}`
+      : `a:${value.assemblyId ?? "root"}`;
   return `${value.nodeKind}|${owner}|${value.parameterId}|${value.loadCase ?? ""}`;
 }
 
-function parameterValuesEqual(a: BaselineParameterValue, b: BaselineParameterValue): boolean {
+function parameterValuesEqual(
+  a: BaselineParameterValue,
+  b: BaselineParameterValue,
+): boolean {
   return a.source === b.source && engineeringValuesEqual(a.value, b.value);
 }
 
@@ -207,7 +228,10 @@ function flattenAssemblies(nodes: readonly BaselineAssemblyNode[]): {
   return { assemblies, moduleInstances };
 }
 
-function assembliesEqual(a: BaselineAssemblySummary, b: BaselineAssemblySummary): boolean {
+function assembliesEqual(
+  a: BaselineAssemblySummary,
+  b: BaselineAssemblySummary,
+): boolean {
   return a.parentId === b.parentId && a.name === b.name;
 }
 
@@ -256,15 +280,30 @@ export function compareBaselineSnapshots(
   const afterFlat = flattenAssemblies(after.assemblies);
 
   return {
-    requirements: diffByKey(before.requirements, after.requirements, (r) => r.id, requirementsEqual),
+    requirements: diffByKey(
+      before.requirements,
+      after.requirements,
+      (r) => r.id,
+      requirementsEqual,
+    ),
     designAssumptions: diffByKey(
       before.designAssumptions,
       after.designAssumptions,
       (a) => a.id,
       designAssumptionsEqual,
     ),
-    loadCases: diffByKey(before.loadCases, after.loadCases, (l) => l.id, loadCasesEqual),
-    assemblies: diffByKey(beforeFlat.assemblies, afterFlat.assemblies, (a) => a.id, assembliesEqual),
+    loadCases: diffByKey(
+      before.loadCases,
+      after.loadCases,
+      (l) => l.id,
+      loadCasesEqual,
+    ),
+    assemblies: diffByKey(
+      beforeFlat.assemblies,
+      afterFlat.assemblies,
+      (a) => a.id,
+      assembliesEqual,
+    ),
     moduleInstances: diffByKey(
       beforeFlat.moduleInstances,
       afterFlat.moduleInstances,

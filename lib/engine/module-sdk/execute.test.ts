@@ -10,7 +10,10 @@ import { exampleThrustModule } from "./example-module";
 import { baseDraft } from "./test-support";
 import type { ModuleComputation } from "./types";
 
-function expectExecError(fn: () => unknown, code: ModuleSdkError["code"]): void {
+function expectExecError(
+  fn: () => unknown,
+  code: ModuleSdkError["code"],
+): void {
   try {
     fn();
   } catch (error) {
@@ -74,16 +77,25 @@ describe("executeModule — exit criterion", () => {
 
 describe("executeModule — input contract", () => {
   it("rejects a raw input that fails the module input schema", () => {
-    expectExecError(() => executeModule(baseModule, { bogus: true }), "input_schema_mismatch");
+    expectExecError(
+      () => executeModule(baseModule, { bogus: true }),
+      "input_schema_mismatch",
+    );
   });
 
   it("rejects a missing required input with no constant default", () => {
-    expectExecError(() => executeModule(baseModule, { values: {} }), "missing_required_input");
+    expectExecError(
+      () => executeModule(baseModule, { values: {} }),
+      "missing_required_input",
+    );
   });
 
   it("rejects an input value not in the parameter's canonical unit", () => {
     expectExecError(
-      () => executeModule(baseModule, { values: { mass: makeQuantity(5000, "g") } }),
+      () =>
+        executeModule(baseModule, {
+          values: { mass: makeQuantity(5000, "g") },
+        }),
       "input_value_mismatch",
     );
   });
@@ -95,7 +107,12 @@ describe("executeModule — SDK compatibility", () => {
       () =>
         executeModule(
           exampleThrustModule,
-          { values: { payload_mass: makeQuantity(1, "kg"), friction_coefficient: makeQuantity(0.1, "ratio") } },
+          {
+            values: {
+              payload_mass: makeQuantity(1, "kg"),
+              friction_coefficient: makeQuantity(0.1, "ratio"),
+            },
+          },
           { engineSdkVersion: "0.9.0" },
         ),
       "incompatible_sdk",
@@ -105,16 +122,26 @@ describe("executeModule — SDK compatibility", () => {
 
 describe("executeModule — output contract", () => {
   it("rejects a missing declared output", () => {
-    const pkg = sealModulePackage({ ...baseDraft(), compute: () => computation({}) });
-    expectExecError(() => executeModule(pkg, validBaseInput), "output_schema_mismatch");
+    const pkg = sealModulePackage({
+      ...baseDraft(),
+      compute: () => computation({}),
+    });
+    expectExecError(
+      () => executeModule(pkg, validBaseInput),
+      "output_schema_mismatch",
+    );
   });
 
   it("rejects an undeclared extra output", () => {
     const pkg = sealModulePackage({
       ...baseDraft(),
-      compute: () => computation({ out: makeQuantity(1, "N"), extra: makeQuantity(2, "N") }),
+      compute: () =>
+        computation({ out: makeQuantity(1, "N"), extra: makeQuantity(2, "N") }),
     });
-    expectExecError(() => executeModule(pkg, validBaseInput), "output_schema_mismatch");
+    expectExecError(
+      () => executeModule(pkg, validBaseInput),
+      "output_schema_mismatch",
+    );
   });
 
   it("rejects an output of the wrong dimension", () => {
@@ -122,7 +149,10 @@ describe("executeModule — output contract", () => {
       ...baseDraft(),
       compute: () => computation({ out: makeQuantity(1, "kg") }),
     });
-    expectExecError(() => executeModule(pkg, validBaseInput), "output_schema_mismatch");
+    expectExecError(
+      () => executeModule(pkg, validBaseInput),
+      "output_schema_mismatch",
+    );
   });
 });
 
@@ -138,7 +168,10 @@ describe("executeModule — computation and trace validity", () => {
         validity: [],
       }) as unknown as ModuleComputation;
     const pkg = sealModulePackage({ ...baseDraft(), compute: bad });
-    expectExecError(() => executeModule(pkg, validBaseInput), "invalid_computation");
+    expectExecError(
+      () => executeModule(pkg, validBaseInput),
+      "invalid_computation",
+    );
   });
 
   it("rejects a trace with duplicate node IDs", () => {
@@ -158,9 +191,13 @@ describe("executeModule — computation and trace validity", () => {
     };
     const pkg = sealModulePackage({
       ...baseDraft(),
-      compute: () => computation({ out: makeQuantity(1, "N") }, { trace: dupTrace }),
+      compute: () =>
+        computation({ out: makeQuantity(1, "N") }, { trace: dupTrace }),
     });
-    expectExecError(() => executeModule(pkg, validBaseInput), "invalid_computation");
+    expectExecError(
+      () => executeModule(pkg, validBaseInput),
+      "invalid_computation",
+    );
   });
 });
 
@@ -181,7 +218,12 @@ describe("executeModule — declared sources", () => {
                 methodId: "m",
                 inputs: [],
                 outputs: [],
-                sources: [{ sourceRevisionId: asSourceRevisionId("us.ansi.b11_0@2023"), clause: "6.1" }],
+                sources: [
+                  {
+                    sourceRevisionId: asSourceRevisionId("us.ansi.b11_0@2023"),
+                    clause: "6.1",
+                  },
+                ],
               },
             ],
           },
@@ -191,7 +233,10 @@ describe("executeModule — declared sources", () => {
 
   it("rejects a citation to a source not declared in the manifest", () => {
     const pkg = sealModulePackage({ ...baseDraft(), compute: tracedCompute });
-    expectExecError(() => executeModule(pkg, validBaseInput), "missing_trace_source");
+    expectExecError(
+      () => executeModule(pkg, validBaseInput),
+      "missing_trace_source",
+    );
   });
 
   it("accepts a citation to a declared source", () => {

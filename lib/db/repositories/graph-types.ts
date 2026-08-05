@@ -18,7 +18,9 @@ import type {
 } from "./types";
 
 /** A `ParameterValue` ID. */
-export type ParameterValueId = string & { readonly __brand: "ParameterValueId" };
+export type ParameterValueId = string & {
+  readonly __brand: "ParameterValueId";
+};
 /** A `ParameterLink` ID. */
 export type ParameterLinkId = string & { readonly __brand: "ParameterLinkId" };
 

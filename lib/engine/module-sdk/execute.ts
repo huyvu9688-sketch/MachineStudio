@@ -32,7 +32,11 @@ export interface ExecuteOptions {
   readonly engineSdkVersion?: string;
 }
 
-function fail(code: ModuleSdkErrorCode, message: string, subjectId?: string): never {
+function fail(
+  code: ModuleSdkErrorCode,
+  message: string,
+  subjectId?: string,
+): never {
   throw new ModuleSdkError(code, message, subjectId);
 }
 
@@ -58,7 +62,11 @@ function assertValueMatchesParameter(
   code: ModuleSdkErrorCode,
 ): void {
   const wrongKind = (): never =>
-    fail(code, `Port "${key}" expects a "${def.valueType}" but got a "${value.kind}".`, key);
+    fail(
+      code,
+      `Port "${key}" expects a "${def.valueType}" but got a "${value.kind}".`,
+      key,
+    );
 
   switch (def.valueType) {
     case "quantity":
@@ -69,8 +77,15 @@ function assertValueMatchesParameter(
       break;
     case "enum":
       if (value.kind !== "enum") wrongKind();
-      else if (value.enumId !== def.enumId || def.enumOptions?.includes(value.value) !== true) {
-        fail(code, `Port "${key}" enum value is not a valid option of "${def.enumId}".`, key);
+      else if (
+        value.enumId !== def.enumId ||
+        def.enumOptions?.includes(value.value) !== true
+      ) {
+        fail(
+          code,
+          `Port "${key}" enum value is not a valid option of "${def.enumId}".`,
+          key,
+        );
       }
       return;
     case "boolean":
@@ -86,10 +101,20 @@ function assertValueMatchesParameter(
   const unit = unitOf(value);
   const canonicalUnit = def.canonicalUnit as string;
   if (unit === undefined || !hasUnit(unit)) {
-    fail(code, `Port "${key}" value carries unknown unit "${unit ?? "?"}".`, key);
+    fail(
+      code,
+      `Port "${key}" value carries unknown unit "${unit ?? "?"}".`,
+      key,
+    );
   }
-  if (!dimensionsEqual(getUnit(unit).dimension, getUnit(canonicalUnit).dimension)) {
-    fail(code, `Port "${key}" value unit "${unit}" is not dimension-compatible with "${canonicalUnit}".`, key);
+  if (
+    !dimensionsEqual(getUnit(unit).dimension, getUnit(canonicalUnit).dimension)
+  ) {
+    fail(
+      code,
+      `Port "${key}" value unit "${unit}" is not dimension-compatible with "${canonicalUnit}".`,
+      key,
+    );
   }
   if (unit !== canonicalUnit) {
     fail(
@@ -133,7 +158,11 @@ export function resolveModuleInput(
 
   const parsed = pkg.inputSchema.safeParse(rawInput);
   if (!parsed.success) {
-    fail("input_schema_mismatch", `Input rejected by module schema: ${parsed.error.message}`, pkg.manifest.id);
+    fail(
+      "input_schema_mismatch",
+      `Input rejected by module schema: ${parsed.error.message}`,
+      pkg.manifest.id,
+    );
   }
 
   const values: Record<string, EngineeringValue> = { ...parsed.data.values };
@@ -145,7 +174,11 @@ export function resolveModuleInput(
         value = def.defaultPolicy.value;
         values[port.key] = value;
       } else if (port.required) {
-        fail("missing_required_input", `Missing required input "${port.key}".`, port.key);
+        fail(
+          "missing_required_input",
+          `Missing required input "${port.key}".`,
+          port.key,
+        );
       } else {
         continue;
       }
@@ -157,7 +190,9 @@ export function resolveModuleInput(
 
   return {
     values,
-    ...(parsed.data.loadCaseId !== undefined && { loadCaseId: parsed.data.loadCaseId }),
+    ...(parsed.data.loadCaseId !== undefined && {
+      loadCaseId: parsed.data.loadCaseId,
+    }),
   };
 }
 
@@ -201,11 +236,20 @@ export function executeModule(
   for (const port of pkg.ports.outputs) {
     const value = parsedComputation.data.outputs[port.key];
     if (value === undefined) {
-      fail("output_schema_mismatch", `Module "${pkg.manifest.id}" did not produce output "${port.key}".`, port.key);
+      fail(
+        "output_schema_mismatch",
+        `Module "${pkg.manifest.id}" did not produce output "${port.key}".`,
+        port.key,
+      );
     }
     const def = registry.get(port.parameterId);
     if (def !== undefined) {
-      assertValueMatchesParameter(value, def, port.key, "output_schema_mismatch");
+      assertValueMatchesParameter(
+        value,
+        def,
+        port.key,
+        "output_schema_mismatch",
+      );
     }
     remaining.delete(port.key);
   }
@@ -222,7 +266,11 @@ export function executeModule(
     validateCalculationTrace(parsedComputation.data.trace);
   } catch (error) {
     if (error instanceof TraceError) {
-      fail("invalid_computation", `Module "${pkg.manifest.id}" trace is invalid: ${error.message}`, pkg.manifest.id);
+      fail(
+        "invalid_computation",
+        `Module "${pkg.manifest.id}" trace is invalid: ${error.message}`,
+        pkg.manifest.id,
+      );
     }
     throw error;
   }

@@ -35,7 +35,10 @@ function isSection(node: TraceNode): node is TraceSection {
  * before their children; siblings are visited in authoring order. Used by
  * reports, audits, and validation to consume trace data generically.
  */
-export function walkTrace(trace: CalculationTrace, visitor: TraceVisitor): void {
+export function walkTrace(
+  trace: CalculationTrace,
+  visitor: TraceVisitor,
+): void {
   const visitNode = (node: TraceNode, depth: number): void => {
     if (isSection(node)) {
       visitor.section?.(node, depth);
@@ -63,11 +66,17 @@ export function traceStepIds(trace: CalculationTrace): string[] {
  *   ID, or (`invalid_source_reference`) on a citation with neither clause nor
  *   page.
  */
-export function validateCalculationTrace(trace: CalculationTrace): CalculationTrace {
+export function validateCalculationTrace(
+  trace: CalculationTrace,
+): CalculationTrace {
   const seen = new Set<string>();
   const checkId = (id: string): void => {
     if (seen.has(id)) {
-      throw new TraceError("duplicate_node_id", `Duplicate trace node ID "${id}".`, id);
+      throw new TraceError(
+        "duplicate_node_id",
+        `Duplicate trace node ID "${id}".`,
+        id,
+      );
     }
     seen.add(id);
   };
@@ -100,9 +109,15 @@ export function validateCalculationTrace(trace: CalculationTrace): CalculationTr
 export function buildCalculationTrace(
   sections: readonly TraceSection[],
 ): CalculationTrace {
-  const result = safeParseCalculationTrace({ v: TRACE_FORMAT_VERSION, sections });
+  const result = safeParseCalculationTrace({
+    v: TRACE_FORMAT_VERSION,
+    sections,
+  });
   if (!result.success) {
-    throw new TraceError("invalid_shape", `Malformed calculation trace: ${result.error.message}`);
+    throw new TraceError(
+      "invalid_shape",
+      `Malformed calculation trace: ${result.error.message}`,
+    );
   }
   return validateCalculationTrace(result.data);
 }

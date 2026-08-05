@@ -35,13 +35,27 @@ export interface ManageRequirementsError {
   readonly message: string;
 }
 
-const codeSchema = z.string().trim().min(1, "A requirement code is required.").max(40);
-const statementSchema = z.string().trim().min(1, "A statement is required.").max(2000);
+const codeSchema = z
+  .string()
+  .trim()
+  .min(1, "A requirement code is required.")
+  .max(40);
+const statementSchema = z
+  .string()
+  .trim()
+  .min(1, "A statement is required.")
+  .max(2000);
 
-function invalid(message: string): { ok: false; error: ManageRequirementsError } {
+function invalid(message: string): {
+  ok: false;
+  error: ManageRequirementsError;
+} {
   return { ok: false, error: { code: "invalid_input", message } };
 }
-function unauthorized(message: string): { ok: false; error: ManageRequirementsError } {
+function unauthorized(message: string): {
+  ok: false;
+  error: ManageRequirementsError;
+} {
   return { ok: false, error: { code: "unauthorized", message } };
 }
 
@@ -69,14 +83,21 @@ export async function createMachineRequirement(
 ): Promise<CreateMachineRequirementResult> {
   const codeResult = codeSchema.safeParse(input.code);
   if (!codeResult.success) {
-    return invalid(codeResult.error.issues[0]?.message ?? "Invalid requirement code.");
+    return invalid(
+      codeResult.error.issues[0]?.message ?? "Invalid requirement code.",
+    );
   }
   const statementResult = statementSchema.safeParse(input.statement);
   if (!statementResult.success) {
-    return invalid(statementResult.error.issues[0]?.message ?? "Invalid statement.");
+    return invalid(
+      statementResult.error.issues[0]?.message ?? "Invalid statement.",
+    );
   }
 
-  const configOwned = await isConfigurationOwnedBy(input.configurationId, ownerId);
+  const configOwned = await isConfigurationOwnedBy(
+    input.configurationId,
+    ownerId,
+  );
   if (!configOwned) {
     return unauthorized("Configuration not found or not owned by this user.");
   }
@@ -87,7 +108,9 @@ export async function createMachineRequirement(
       return unauthorized("Assembly not found or not owned by this user.");
     }
     if (assembly.configurationId !== input.configurationId) {
-      return unauthorized("Assembly does not belong to the given configuration.");
+      return unauthorized(
+        "Assembly does not belong to the given configuration.",
+      );
     }
   }
 
@@ -108,7 +131,10 @@ export interface CreateRequirementAcceptanceCriterionInput {
 
 /** Result of {@link createRequirementAcceptanceCriterion}. */
 export type CreateRequirementAcceptanceCriterionResult =
-  | { readonly ok: true; readonly acceptanceCriterion: AcceptanceCriterionRecord }
+  | {
+      readonly ok: true;
+      readonly acceptanceCriterion: AcceptanceCriterionRecord;
+    }
   | { readonly ok: false; readonly error: ManageRequirementsError };
 
 /**
@@ -124,10 +150,15 @@ export async function createRequirementAcceptanceCriterion(
 ): Promise<CreateRequirementAcceptanceCriterionResult> {
   const statementResult = statementSchema.safeParse(input.statement);
   if (!statementResult.success) {
-    return invalid(statementResult.error.issues[0]?.message ?? "Invalid statement.");
+    return invalid(
+      statementResult.error.issues[0]?.message ?? "Invalid statement.",
+    );
   }
 
-  const requirement = await loadRequirementForOwner(input.requirementId, ownerId);
+  const requirement = await loadRequirementForOwner(
+    input.requirementId,
+    ownerId,
+  );
   if (requirement === null) {
     return unauthorized("Requirement not found or not owned by this user.");
   }

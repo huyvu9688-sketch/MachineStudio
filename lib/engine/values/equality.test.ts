@@ -11,9 +11,9 @@ import {
 
 describe("engineeringValuesEqual", () => {
   it("is true for structurally identical values", () => {
-    expect(
-      engineeringValuesEqual(sampleQuantity, { ...sampleQuantity }),
-    ).toBe(true);
+    expect(engineeringValuesEqual(sampleQuantity, { ...sampleQuantity })).toBe(
+      true,
+    );
   });
 
   it("is false for different kinds", () => {
@@ -26,7 +26,10 @@ describe("engineeringValuesEqual", () => {
   });
 
   it("is false for a different magnitude", () => {
-    const other: Quantity = { ...sampleQuantity, value: sampleQuantity.value + 1 };
+    const other: Quantity = {
+      ...sampleQuantity,
+      value: sampleQuantity.value + 1,
+    };
     expect(engineeringValuesEqual(sampleQuantity, other)).toBe(false);
   });
 
@@ -65,7 +68,10 @@ describe("engineeringValuesClose", () => {
   });
 
   it("honors a custom absolute tolerance", () => {
-    const other: Quantity = { ...sampleQuantity, value: sampleQuantity.value + 0.5 };
+    const other: Quantity = {
+      ...sampleQuantity,
+      value: sampleQuantity.value + 0.5,
+    };
     expect(engineeringValuesClose(sampleQuantity, other, { absolute: 1 })).toBe(
       true,
     );
@@ -111,9 +117,9 @@ describe("engineeringValuesClose", () => {
   });
 
   it("falls back to exact equality for non-numeric kinds", () => {
-    expect(engineeringValuesClose(sampleEnumValue, { ...sampleEnumValue })).toBe(
-      true,
-    );
+    expect(
+      engineeringValuesClose(sampleEnumValue, { ...sampleEnumValue }),
+    ).toBe(true);
     expect(
       engineeringValuesClose(sampleEnumValue, {
         ...sampleEnumValue,

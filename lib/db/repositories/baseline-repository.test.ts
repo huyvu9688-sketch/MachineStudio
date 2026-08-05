@@ -15,7 +15,9 @@ import type { MachineBaselineSnapshot } from "../../configuration";
 import { asMachineBaselineId } from "./baseline-types";
 import type { MachineConfigurationId, UserId } from "./types";
 
-function minimalSnapshot(overrides: Partial<MachineBaselineSnapshot> = {}): MachineBaselineSnapshot {
+function minimalSnapshot(
+  overrides: Partial<MachineBaselineSnapshot> = {},
+): MachineBaselineSnapshot {
   return {
     snapshotVersion: BASELINE_SNAPSHOT_FORMAT_VERSION,
     projectId: "project-x",
@@ -57,7 +59,10 @@ describe.skipIf(!liveDatabaseAvailable)(
         name: "Axis",
         marketProfileKey: "US-General-Industrial-Machinery@1",
       });
-      const config = await projects.createConfiguration({ projectId: project.id, name: "Baseline" });
+      const config = await projects.createConfiguration({
+        projectId: project.id,
+        name: "Baseline",
+      });
       return { ownerId: user.id, configurationId: config.id };
     }
 
@@ -69,7 +74,9 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     afterEach(async () => {
       if (createdUserIds.length > 0) {
-        await client.prisma.user.deleteMany({ where: { id: { in: createdUserIds.splice(0) } } });
+        await client.prisma.user.deleteMany({
+          where: { id: { in: createdUserIds.splice(0) } },
+        });
       }
     });
 
@@ -140,7 +147,8 @@ describe.skipIf(!liveDatabaseAvailable)(
         snapshot: minimalSnapshot({ configurationId: s.configurationId }),
       });
       await expect(
-        client.prisma.$executeRaw`UPDATE machine_baselines SET label = 'changed' WHERE id = ${created.id}`,
+        client.prisma
+          .$executeRaw`UPDATE machine_baselines SET label = 'changed' WHERE id = ${created.id}`,
       ).rejects.toThrow(/immutable/i);
     });
 
@@ -154,12 +162,20 @@ describe.skipIf(!liveDatabaseAvailable)(
       const stranger = await projects.upsertUser(`test-user-${randomUUID()}`);
       createdUserIds.push(stranger.id);
 
-      expect(await baselines.loadMachineBaseline(created.id, stranger.id)).toBeNull();
       expect(
-        await baselines.listMachineBaselinesForConfiguration(s.configurationId, stranger.id),
+        await baselines.loadMachineBaseline(created.id, stranger.id),
+      ).toBeNull();
+      expect(
+        await baselines.listMachineBaselinesForConfiguration(
+          s.configurationId,
+          stranger.id,
+        ),
       ).toEqual([]);
       expect(
-        await baselines.listMachineBaselinesForConfiguration(s.configurationId, s.ownerId),
+        await baselines.listMachineBaselinesForConfiguration(
+          s.configurationId,
+          s.ownerId,
+        ),
       ).toHaveLength(1);
     });
 
@@ -190,8 +206,12 @@ describe.skipIf(!liveDatabaseAvailable)(
         label: "Will cascade",
         snapshot: minimalSnapshot({ configurationId: s.configurationId }),
       });
-      await client.prisma.machineConfiguration.delete({ where: { id: s.configurationId } });
-      const row = await client.prisma.machineBaseline.findUnique({ where: { id: created.id } });
+      await client.prisma.machineConfiguration.delete({
+        where: { id: s.configurationId },
+      });
+      const row = await client.prisma.machineBaseline.findUnique({
+        where: { id: created.id },
+      });
       expect(row).toBeNull();
     });
   },

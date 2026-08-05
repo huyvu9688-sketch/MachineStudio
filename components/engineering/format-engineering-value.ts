@@ -26,7 +26,9 @@ export function formatEngineeringValue(value: EngineeringValue): string {
     case "vector_quantity": {
       const targetUnit = value.displayUnit ?? value.unit;
       return `[${value.components
-        .map((component) => trimNumber(convert(component, value.unit, targetUnit)))
+        .map((component) =>
+          trimNumber(convert(component, value.unit, targetUnit)),
+        )
         .join(", ")}] ${targetUnit}`;
     }
     default:

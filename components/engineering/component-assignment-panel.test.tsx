@@ -24,10 +24,13 @@ function view(
   return {
     moduleInstance: {
       id: "mi-1" as ComponentAssignmentPanelView["moduleInstance"]["id"],
-      configurationId: "cfg-1" as ComponentAssignmentPanelView["moduleInstance"]["configurationId"],
+      configurationId:
+        "cfg-1" as ComponentAssignmentPanelView["moduleInstance"]["configurationId"],
       label: "Ball screw",
     },
-    latestRunId: "run-1" as NonNullable<ComponentAssignmentPanelView["latestRunId"]>,
+    latestRunId: "run-1" as NonNullable<
+      ComponentAssignmentPanelView["latestRunId"]
+    >,
     componentType: null,
     requiredSpec: [],
     matchingAvailable: false,
@@ -54,7 +57,9 @@ describe("ComponentAssignmentPanel", () => {
   it("states why matching is unavailable instead of rendering an empty candidate table", () => {
     render(<ComponentAssignmentPanel view={view()} />);
 
-    expect(screen.getByText(/does not define catalog matching/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/does not define catalog matching/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/No required specification has been calculated/i),
     ).toBeInTheDocument();
@@ -68,13 +73,20 @@ describe("ComponentAssignmentPanel", () => {
           matchingAvailable: true,
           matchingUnavailableReason: null,
           requiredSpec: [
-            { key: "dynamic_load", label: "Dynamic load", operator: "gte", displayValue: "3660 N" },
+            {
+              key: "dynamic_load",
+              label: "Dynamic load",
+              operator: "gte",
+              displayValue: "3660 N",
+            },
           ],
           accepted: [
             {
               part,
               score: 0.12,
-              rankingReasons: ['"Dynamic load" 4100 N meets the required minimum 3660 N'],
+              rankingReasons: [
+                '"Dynamic load" 4100 N meets the required minimum 3660 N',
+              ],
             },
           ],
         })}
@@ -101,16 +113,24 @@ describe("ComponentAssignmentPanel", () => {
           rejected: [
             {
               part,
-              rejectionReasons: ['"Dynamic load" 2100 N is below the required minimum 3660 N'],
+              rejectionReasons: [
+                '"Dynamic load" 2100 N is below the required minimum 3660 N',
+              ],
             },
           ],
         })}
       />,
     );
 
-    expect(screen.queryByText(/is below the required minimum/i)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /show 1 rejected part/i }));
-    expect(screen.getByText(/is below the required minimum/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/is below the required minimum/i),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: /show 1 rejected part/i }),
+    );
+    expect(
+      screen.getByText(/is below the required minimum/i),
+    ).toBeInTheDocument();
   });
 
   it("submits a catalog part assignment", async () => {
@@ -135,7 +155,9 @@ describe("ComponentAssignmentPanel", () => {
     render(<ComponentAssignmentPanel view={view()} />);
 
     await user.type(screen.getByLabelText(/description/i), "Custom bracket");
-    await user.click(screen.getByRole("button", { name: /assign manual part/i }));
+    await user.click(
+      screen.getByRole("button", { name: /assign manual part/i }),
+    );
 
     expect(assignComponentAction).toHaveBeenCalled();
   });
@@ -143,8 +165,12 @@ describe("ComponentAssignmentPanel", () => {
   it("blocks assignment and explains why when the module has never been run", () => {
     render(<ComponentAssignmentPanel view={view({ latestRunId: null })} />);
 
-    expect(screen.getByRole("button", { name: /assign manual part/i })).toBeDisabled();
-    expect(screen.getAllByText(/Run this module first/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("button", { name: /assign manual part/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getAllByText(/Run this module first/i).length,
+    ).toBeGreaterThan(0);
   });
 
   it("renders an assigned part with its supporting run", () => {
@@ -211,6 +237,8 @@ describe("ComponentAssignmentPanel", () => {
   it("reports the empty state when nothing is assigned yet", () => {
     render(<ComponentAssignmentPanel view={view()} />);
 
-    expect(screen.getByText(/No part is assigned to this module yet/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/No part is assigned to this module yet/i),
+    ).toBeInTheDocument();
   });
 });

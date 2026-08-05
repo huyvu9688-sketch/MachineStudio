@@ -33,10 +33,7 @@ export function asParameterId(id: string): ParameterId {
  * invented up front.
  */
 export type ParameterValueType =
-  | "quantity"
-  | "vector_quantity"
-  | "enum"
-  | "boolean";
+  "quantity" | "vector_quantity" | "enum" | "boolean";
 
 /** Lifecycle state of a parameter definition. */
 export type ParameterLifecycle = "draft" | "released" | "deprecated";
@@ -72,11 +69,7 @@ export interface ParameterQualifiers {
  * are stored as separate values tagged with a load case at runtime; this field
  * declares which categories the parameter admits.
  */
-export type LoadCaseCategory =
-  | "normal"
-  | "peak"
-  | "holding"
-  | "emergency_stop";
+export type LoadCaseCategory = "normal" | "peak" | "holding" | "emergency_stop";
 
 /**
  * Coordinate-frame / direction requirement. `none` for a frame-free scalar;

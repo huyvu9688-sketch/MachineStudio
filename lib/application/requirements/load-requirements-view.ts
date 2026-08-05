@@ -55,7 +55,8 @@ import {
  * Deliberately not "verified"/"unverified" — no calculation run is
  * consulted here (see this file's header).
  */
-export type RequirementVerificationStatus = "criteria_defined" | "no_criteria_yet";
+export type RequirementVerificationStatus =
+  "criteria_defined" | "no_criteria_yet";
 
 /** One requirement, its acceptance criteria, and its authoring-completeness status. */
 export interface RequirementView {
@@ -108,7 +109,9 @@ export async function loadRequirementsView(
     statement: node.statement,
     acceptanceCriteria: node.acceptanceCriteria,
     verificationStatus:
-      node.acceptanceCriteria.length > 0 ? "criteria_defined" : "no_criteria_yet",
+      node.acceptanceCriteria.length > 0
+        ? "criteria_defined"
+        : "no_criteria_yet",
     createdAt: node.createdAt,
   }));
 

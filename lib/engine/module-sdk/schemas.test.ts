@@ -23,7 +23,9 @@ const validManifest = {
 describe("module SDK schemas", () => {
   it("accepts a well-formed manifest and rejects unknown keys (strict)", () => {
     expect(ModuleManifestSchema.safeParse(validManifest).success).toBe(true);
-    expect(ModuleManifestSchema.safeParse({ ...validManifest, extra: 1 }).success).toBe(false);
+    expect(
+      ModuleManifestSchema.safeParse({ ...validManifest, extra: 1 }).success,
+    ).toBe(false);
   });
 
   it("rejects a manifest missing a required field", () => {
@@ -33,9 +35,13 @@ describe("module SDK schemas", () => {
   });
 
   it("validates a ModuleInput envelope of engineering values", () => {
-    const parsed = ModuleInputSchema.parse({ values: { m: makeQuantity(1, "kg") } });
+    const parsed = ModuleInputSchema.parse({
+      values: { m: makeQuantity(1, "kg") },
+    });
     expect(parsed.values.m.kind).toBe("quantity");
-    expect(ModuleInputSchema.safeParse({ values: { m: 5 } }).success).toBe(false);
+    expect(ModuleInputSchema.safeParse({ values: { m: 5 } }).success).toBe(
+      false,
+    );
   });
 
   it("parses a well-formed computation and rejects a bad check status", () => {
@@ -50,7 +56,10 @@ describe("module SDK schemas", () => {
     };
     expect(() => parseModuleComputation(base)).not.toThrow();
     expect(() =>
-      parseModuleComputation({ ...base, checks: [{ id: "c", status: "nope", message: "m" }] }),
+      parseModuleComputation({
+        ...base,
+        checks: [{ id: "c", status: "nope", message: "m" }],
+      }),
     ).toThrow(z.ZodError);
   });
 });

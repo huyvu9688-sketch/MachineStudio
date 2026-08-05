@@ -46,19 +46,25 @@ describe("SourceDocumentSchema", () => {
   });
 
   it("rejects unknown keys (strict)", () => {
-    expect(SourceDocumentSchema.safeParse({ ...validDocument, extra: 1 }).success).toBe(false);
+    expect(
+      SourceDocumentSchema.safeParse({ ...validDocument, extra: 1 }).success,
+    ).toBe(false);
   });
 
   it("rejects an unknown classification", () => {
     expect(
-      SourceDocumentSchema.safeParse({ ...validDocument, classification: "guess" }).success,
+      SourceDocumentSchema.safeParse({
+        ...validDocument,
+        classification: "guess",
+      }).success,
     ).toBe(false);
   });
 
   it("rejects a market outside US/JP", () => {
-    expect(SourceDocumentSchema.safeParse({ ...validDocument, market: "EU" }).success).toBe(
-      false,
-    );
+    expect(
+      SourceDocumentSchema.safeParse({ ...validDocument, market: "EU" })
+        .success,
+    ).toBe(false);
   });
 });
 
@@ -68,9 +74,9 @@ describe("SourceRevisionSchema", () => {
   });
 
   it("rejects an empty edition (missing edition)", () => {
-    expect(SourceRevisionSchema.safeParse({ ...validRevision, edition: "" }).success).toBe(
-      false,
-    );
+    expect(
+      SourceRevisionSchema.safeParse({ ...validRevision, edition: "" }).success,
+    ).toBe(false);
   });
 
   it("rejects a missing edition field", () => {

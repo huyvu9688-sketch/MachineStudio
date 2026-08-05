@@ -4,6 +4,36 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
+- **2026-08-05 (new session — user said "read claude.md and context files,
+  build next task"): repo-wide Prettier formatting applied, closing the
+  standing `format:check` gap.** The prior session's Open Questions entry
+  noted `format:check` was red on 124 files (drifted to 232 by this session,
+  since it was never enforced) and needed its own formatting-only commit
+  separate from any behavior change. Ran `npx prettier --write .`, then
+  reverted the rewrite on 17 files this project's own `ai-workflow-rules.md`
+  "Protected Files and Records" list covers: the 10 shadcn-generated
+  `components/ui/*` primitives (hand-configured, not to be reformatted
+  without explicit reason), and all 7 source files under
+  `lib/modules/example-relay/0.1.0/` and `lib/modules/example-scaffold/
+  0.1.0/` — these two example modules pin an exact-source-text
+  `expectedSourceHash` (`moduleSourceHash`, `lib/engine/module-sdk/hash.ts`)
+  in their own test files as the Stage 6 release reference pattern, so
+  reformatting their whitespace would have changed that hash and broken the
+  assertion. `format:check` now passes clean except for those 17 files,
+  which is the intended, documented steady state, not a residual gap.
+  Confirmed the change is purely stylistic, not behavioral: `printWidth: 80`
+  in `.prettierrc.json` (narrower than much of the existing code was
+  wrapped at) accounts for the bulk of the diff (170 files, +5600/-2907),
+  spot-checked on `lib/engine/units/dimension.ts` (a re-wrap, no logic
+  change), and confirmed by full verification. **Not done**: wiring
+  `format:check` into `npm run verify` or CI — the user's request was
+  scoped to the formatting fix itself; adding a new enforced gate is a
+  separate decision the Open Questions entry never asked for either, so it
+  stays a possible follow-up rather than assumed in scope.
+  Verified: `npm run lint` (0 warnings), `npm run typecheck` (0 errors),
+  `npm run test` (568/568 passed, 204 skipped — unchanged), `npm run build`
+  all green — none of the four regressed from the pre-formatting baseline.
+
 - **2026-08-05 (same session, continued): axis-frame `vector_quantity` input
   editing is complete end to end — read model, editor UI, and save path —
   closing the vector-input-authoring half of `context/
@@ -2689,9 +2719,11 @@ The 2026-07-30 integrity-hardening pass is complete and CI-verified (commit
     Access" and `code-standards.md` "Catalog" for the recorded policy. A
     stricter, role-gated policy remains deferred to whenever this codebase
     gets a role/reviewer concept (Phase 4)
-  - **`format:check` is red on 124 files and is not in CI.** Most predate this
-    work. A formatting-only commit would fix it, but mixing it into a
-    behavior change makes review impossible — so it needs its own commit
+  - **RESOLVED (2026-08-05).** `npx prettier --write .` applied repo-wide in
+    its own formatting-only commit, excluding the 17 protected/hash-pinned
+    files named in Current Phase. `format:check` is still not wired into
+    `npm run verify` or CI — that remains a separate, un-asked-for decision,
+    not silently done alongside the formatting fix.
 - Licensing: ID39/ID42 are third-party training PDFs and the Omron/ATLANTA
   guides are vendor method references. Store METHOD + clause/source
   metadata only (per licensing policy), never embed their copyrighted

@@ -36,7 +36,10 @@ describe("trace shape validation", () => {
   });
 
   it("rejects a trace written under a different format version", () => {
-    const result = CalculationTraceSchema.safeParse({ ...trace, v: TRACE_FORMAT_VERSION + 1 });
+    const result = CalculationTraceSchema.safeParse({
+      ...trace,
+      v: TRACE_FORMAT_VERSION + 1,
+    });
     expect(result.success).toBe(false);
   });
 
@@ -48,7 +51,14 @@ describe("trace shape validation", () => {
   it("rejects a node with an unknown discriminator", () => {
     const bad = {
       v: TRACE_FORMAT_VERSION,
-      sections: [{ node: "section", id: "x", title: "T", children: [{ node: "widget" }] }],
+      sections: [
+        {
+          node: "section",
+          id: "x",
+          title: "T",
+          children: [{ node: "widget" }],
+        },
+      ],
     };
     expect(CalculationTraceSchema.safeParse(bad).success).toBe(false);
   });
@@ -69,7 +79,17 @@ describe("trace shape validation", () => {
   });
 
   it("rejects an empty step ID", () => {
-    const bad = { ...trace, sections: [{ node: "section", id: "s", title: "T", children: [{ ...step, id: "" }] }] };
+    const bad = {
+      ...trace,
+      sections: [
+        {
+          node: "section",
+          id: "s",
+          title: "T",
+          children: [{ ...step, id: "" }],
+        },
+      ],
+    };
     expect(CalculationTraceSchema.safeParse(bad).success).toBe(false);
   });
 });
@@ -83,30 +103,50 @@ describe("check / warning / validity shape validation", () => {
       criterion: "SF_s ≥ 2.0",
       observed: qty(3.1, "ratio"),
       allowable: qty(2.0, "ratio"),
-      sources: [{ sourceRevisionId: asSourceRevisionId("us.ansi.b11_0@2023"), clause: "6.1" }],
+      sources: [
+        {
+          sourceRevisionId: asSourceRevisionId("us.ansi.b11_0@2023"),
+          clause: "6.1",
+        },
+      ],
     });
     expect(check.status).toBe("pass");
   });
 
   it("rejects a check with an unknown status", () => {
-    expect(() => parseCheckResult({ id: "c", status: "maybe", message: "m" })).toThrow(z.ZodError);
+    expect(() =>
+      parseCheckResult({ id: "c", status: "maybe", message: "m" }),
+    ).toThrow(z.ZodError);
   });
 
   it("rejects a check with an empty message", () => {
-    expect(() => parseCheckResult({ id: "c", status: "pass", message: "" })).toThrow(z.ZodError);
+    expect(() =>
+      parseCheckResult({ id: "c", status: "pass", message: "" }),
+    ).toThrow(z.ZodError);
   });
 
   it("accepts a warning and rejects an empty ID", () => {
-    expect(parseWarning({ id: "near-critical", message: "operating near critical speed" }).id).toBe(
-      "near-critical",
-    );
+    expect(
+      parseWarning({
+        id: "near-critical",
+        message: "operating near critical speed",
+      }).id,
+    ).toBe("near-critical");
     expect(() => parseWarning({ id: "", message: "m" })).toThrow(z.ZodError);
   });
 
   it("accepts each validity status and rejects an invalid one", () => {
-    for (const status of ["within_limits", "out_of_range", "not_evaluated"] as const) {
-      expect(parseValidityResult({ id: "v", status, limit: "L" }).status).toBe(status);
+    for (const status of [
+      "within_limits",
+      "out_of_range",
+      "not_evaluated",
+    ] as const) {
+      expect(parseValidityResult({ id: "v", status, limit: "L" }).status).toBe(
+        status,
+      );
     }
-    expect(() => parseValidityResult({ id: "v", status: "unknown", limit: "L" })).toThrow(z.ZodError);
+    expect(() =>
+      parseValidityResult({ id: "v", status: "unknown", limit: "L" }),
+    ).toThrow(z.ZodError);
   });
 });

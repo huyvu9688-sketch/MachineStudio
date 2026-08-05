@@ -31,7 +31,9 @@ function main(): void {
   try {
     result = generateModuleScaffold({ moduleId, version });
   } catch (error) {
-    fail(`Scaffold error: ${error instanceof Error ? error.message : String(error)}`);
+    fail(
+      `Scaffold error: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 
   const repoRoot = process.cwd();

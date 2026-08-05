@@ -48,7 +48,9 @@ export function compareSemver(a: string, b: string): -1 | 0 | 1 {
   const pa = parseSemver(a);
   const pb = parseSemver(b);
   if (pa === undefined || pb === undefined) {
-    throw new RangeError(`Malformed semantic version in compare("${a}", "${b}").`);
+    throw new RangeError(
+      `Malformed semantic version in compare("${a}", "${b}").`,
+    );
   }
   for (let i = 0; i < 3; i++) {
     if (pa[i] < pb[i]) return -1;
@@ -61,7 +63,10 @@ export function compareSemver(a: string, b: string): -1 | 0 | 1 {
 export function isValidSdkRange(range: SdkRange): boolean {
   if (!isValidSemver(range.min)) return false;
   if (range.maxExclusive === undefined) return true;
-  return isValidSemver(range.maxExclusive) && compareSemver(range.min, range.maxExclusive) < 0;
+  return (
+    isValidSemver(range.maxExclusive) &&
+    compareSemver(range.min, range.maxExclusive) < 0
+  );
 }
 
 /**
@@ -75,7 +80,10 @@ export function isSdkCompatible(
 ): boolean {
   if (!isValidSdkRange(range) || !isValidSemver(engineVersion)) return false;
   if (compareSemver(engineVersion, range.min) < 0) return false;
-  if (range.maxExclusive !== undefined && compareSemver(engineVersion, range.maxExclusive) >= 0) {
+  if (
+    range.maxExclusive !== undefined &&
+    compareSemver(engineVersion, range.maxExclusive) >= 0
+  ) {
     return false;
   }
   return true;

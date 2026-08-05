@@ -48,7 +48,10 @@ export type AuditRepositoryErrorCode = "invalid_input";
 export class AuditRepositoryError extends Error {
   readonly code: AuditRepositoryErrorCode;
 
-  constructor(message: string, code: AuditRepositoryErrorCode = "invalid_input") {
+  constructor(
+    message: string,
+    code: AuditRepositoryErrorCode = "invalid_input",
+  ) {
     super(message);
     this.name = "AuditRepositoryError";
     this.code = code;

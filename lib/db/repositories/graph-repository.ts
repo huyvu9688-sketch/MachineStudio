@@ -64,10 +64,7 @@ import { asParameterLinkId, asParameterValueId } from "./graph-types";
 
 /** Machine-readable classification of a graph-repository failure. */
 export type GraphRepositoryErrorCode =
-  | "invalid_input"
-  | "invalid_snapshot"
-  | "cycle"
-  | "duplicate_link";
+  "invalid_input" | "invalid_snapshot" | "cycle" | "duplicate_link";
 
 /** Thrown by the graph repository for validation, cycle, or duplicate failures. */
 export class GraphRepositoryError extends Error {
@@ -130,7 +127,9 @@ const createParameterLinkSchema = z
     path: ["sourceKind"],
   })
   .refine(
-    (v) => v.sourceKind !== "module_output" || v.sourceModuleInstanceId !== undefined,
+    (v) =>
+      v.sourceKind !== "module_output" ||
+      v.sourceModuleInstanceId !== undefined,
     {
       message: "A module-output source requires sourceModuleInstanceId",
       path: ["sourceModuleInstanceId"],
@@ -208,13 +207,19 @@ function toParameterValueRecord(row: ParameterValueRow): ParameterValueRecord {
     configurationId: asMachineConfigurationId(row.configurationId),
     assemblyId: row.assemblyId === null ? null : asAssemblyId(row.assemblyId),
     moduleInstanceId:
-      row.moduleInstanceId === null ? null : asModuleInstanceId(row.moduleInstanceId),
+      row.moduleInstanceId === null
+        ? null
+        : asModuleInstanceId(row.moduleInstanceId),
     nodeKind: row.nodeKind,
     parameterId: row.parameterId,
     loadCase: row.loadCase,
     source: row.source,
     // Re-validate the JSONB on read (never trust stored payloads).
-    value: parseValue(row.value, `parameter_value ${row.id}`, "invalid_snapshot"),
+    value: parseValue(
+      row.value,
+      `parameter_value ${row.id}`,
+      "invalid_snapshot",
+    ),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -296,7 +301,10 @@ function sourceDescriptor(link: ParameterLinkRow): GraphNodeDescriptor {
  * traversal (only suggestion ranking uses it), so a single scope keeps the
  * reconstruction minimal.
  */
-function graphNodeOf(descriptor: GraphNodeDescriptor, scopeId: string): GraphNode {
+function graphNodeOf(
+  descriptor: GraphNodeDescriptor,
+  scopeId: string,
+): GraphNode {
   return {
     id: parameterGraphNodeId(descriptor),
     kind: descriptor.kind,
@@ -380,7 +388,11 @@ export async function createParameterValue(
   client: DbClient = prisma,
 ): Promise<ParameterValueRecord> {
   const data = parse(createParameterValueSchema, input);
-  const value = parseValue(input.value, "createParameterValue", "invalid_input");
+  const value = parseValue(
+    input.value,
+    "createParameterValue",
+    "invalid_input",
+  );
   const row = await client.parameterValue.create({
     data: {
       configurationId: data.configurationId,
@@ -542,7 +554,10 @@ export async function listParameterLinksForConfiguration(
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
   const rows: ParameterLinkRow[] = await client.parameterLink.findMany({
-    where: { configurationId: id, configuration: { project: { ownerId: owner } } },
+    where: {
+      configurationId: id,
+      configuration: { project: { ownerId: owner } },
+    },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
   return rows.map(toParameterLinkRecord);
@@ -566,7 +581,10 @@ export async function listCurrentParameterValuesForConfiguration(
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
   const rows: ParameterValueRow[] = await client.parameterValue.findMany({
-    where: { configurationId: id, configuration: { project: { ownerId: owner } } },
+    where: {
+      configurationId: id,
+      configuration: { project: { ownerId: owner } },
+    },
     // `createdAt` alone is not a total order: two rows written in the same
     // transaction (or inside the same clock tick) tie, and the tie is broken
     // by whatever order Postgres happens to return — so "the current value"
@@ -617,7 +635,10 @@ export async function findCurrentParameterValueForNode(
 
 // --- Input resolution (ownership-scoped) ---------------------------------
 
-function portKey(parameterId: string, loadCase: LoadCaseCategory | null): string {
+function portKey(
+  parameterId: string,
+  loadCase: LoadCaseCategory | null,
+): string {
   return `${parameterId}|${loadCase ?? ""}`;
 }
 

@@ -44,8 +44,7 @@ import { asComponentAssignmentId } from "./component-assignment-types";
 
 /** Machine-readable classification of a component-assignment-repository failure. */
 export type ComponentAssignmentRepositoryErrorCode =
-  | "invalid_input"
-  | "invalid_snapshot";
+  "invalid_input" | "invalid_snapshot";
 
 /** Thrown by the component-assignment repository for validation failures. */
 export class ComponentAssignmentRepositoryError extends Error {
@@ -86,9 +85,12 @@ const createComponentAssignmentSchema = z
     assignedByUserId: nonEmpty.optional(),
   })
   .refine(
-    (v) => (v.targetKind === "module_instance") === (v.moduleInstanceId !== undefined),
+    (v) =>
+      (v.targetKind === "module_instance") ===
+      (v.moduleInstanceId !== undefined),
     {
-      message: 'moduleInstanceId must be set if, and only if, targetKind is "module_instance"',
+      message:
+        'moduleInstanceId must be set if, and only if, targetKind is "module_instance"',
       path: ["moduleInstanceId"],
     },
   )
@@ -97,23 +99,29 @@ const createComponentAssignmentSchema = z
     path: ["assemblyId"],
   })
   .refine(
-    (v) => (v.partSource === "catalog") === (v.manufacturerPartRevisionId !== undefined),
+    (v) =>
+      (v.partSource === "catalog") ===
+      (v.manufacturerPartRevisionId !== undefined),
     {
-      message: 'manufacturerPartRevisionId must be set if, and only if, partSource is "catalog"',
+      message:
+        'manufacturerPartRevisionId must be set if, and only if, partSource is "catalog"',
       path: ["manufacturerPartRevisionId"],
     },
   )
   .refine(
     (v) => (v.partSource === "manual") === (v.manualPartDetails !== undefined),
     {
-      message: 'manualPartDetails must be set if, and only if, partSource is "manual"',
+      message:
+        'manualPartDetails must be set if, and only if, partSource is "manual"',
       path: ["manualPartDetails"],
     },
   )
   .refine(
-    (v) => v.targetKind !== "module_instance" || v.calculationRunId !== undefined,
+    (v) =>
+      v.targetKind !== "module_instance" || v.calculationRunId !== undefined,
     {
-      message: 'calculationRunId is required when targetKind is "module_instance" (a calculated component)',
+      message:
+        'calculationRunId is required when targetKind is "module_instance" (a calculated component)',
       path: ["calculationRunId"],
     },
   );
@@ -181,7 +189,9 @@ function toComponentAssignmentRecord(
     configurationId: asMachineConfigurationId(row.configurationId),
     targetKind: row.targetKind,
     moduleInstanceId:
-      row.moduleInstanceId === null ? null : asModuleInstanceId(row.moduleInstanceId),
+      row.moduleInstanceId === null
+        ? null
+        : asModuleInstanceId(row.moduleInstanceId),
     assemblyId: row.assemblyId === null ? null : asAssemblyId(row.assemblyId),
     partSource: row.partSource,
     manufacturerPartRevisionId:
@@ -199,7 +209,9 @@ function toComponentAssignmentRecord(
           ),
     quantity: row.quantity,
     calculationRunId:
-      row.calculationRunId === null ? null : asCalculationRunId(row.calculationRunId),
+      row.calculationRunId === null
+        ? null
+        : asCalculationRunId(row.calculationRunId),
     stale: row.stale,
     staleReason: row.staleReason,
     assignedByUserId:
@@ -237,7 +249,10 @@ export async function createComponentAssignment(
       // Omit the key entirely (rather than assigning `null`) when there is no
       // payload, so a nullable JSONB column stores real SQL NULL.
       ...(data.manualPartDetails !== undefined
-        ? { manualPartDetails: data.manualPartDetails as unknown as Prisma.InputJsonValue }
+        ? {
+            manualPartDetails:
+              data.manualPartDetails as unknown as Prisma.InputJsonValue,
+          }
         : {}),
       quantity: data.quantity ?? 1,
       calculationRunId: data.calculationRunId ?? null,
@@ -278,7 +293,10 @@ export async function listComponentAssignmentsForConfiguration(
   const id = parse(nonEmpty, configurationId);
   const owner = parse(nonEmpty, ownerId);
   const rows = await client.componentAssignment.findMany({
-    where: { configurationId: id, configuration: { project: { ownerId: owner } } },
+    where: {
+      configurationId: id,
+      configuration: { project: { ownerId: owner } },
+    },
     // A total order (`id` breaks same-timestamp ties): Unit 2.9's baseline
     // snapshot freezes this list, so two baselines of unchanged data must
     // serialize their assignments identically.
@@ -302,7 +320,10 @@ export async function listComponentAssignmentsForModuleInstance(
   const id = parse(nonEmpty, moduleInstanceId);
   const owner = parse(nonEmpty, ownerId);
   const rows = await client.componentAssignment.findMany({
-    where: { moduleInstanceId: id, configuration: { project: { ownerId: owner } } },
+    where: {
+      moduleInstanceId: id,
+      configuration: { project: { ownerId: owner } },
+    },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
   return rows.map(toComponentAssignmentRecord);

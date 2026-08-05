@@ -79,11 +79,19 @@ function validateDocuments(
   for (const raw of documents) {
     const result = SourceDocumentSchema.safeParse(raw);
     if (!result.success) {
-      fail("invalid_shape", `Malformed source document: ${result.error.message}`, raw.id);
+      fail(
+        "invalid_shape",
+        `Malformed source document: ${result.error.message}`,
+        raw.id,
+      );
     }
     const doc = result.data;
     if (byId.has(doc.id)) {
-      fail("duplicate_document_id", `Duplicate source document ID "${doc.id}".`, doc.id);
+      fail(
+        "duplicate_document_id",
+        `Duplicate source document ID "${doc.id}".`,
+        doc.id,
+      );
     }
     byId.set(doc.id, doc);
   }
@@ -98,11 +106,19 @@ function validateRevisions(
   for (const raw of revisions) {
     const result = SourceRevisionSchema.safeParse(raw);
     if (!result.success) {
-      fail("invalid_shape", `Malformed source revision: ${result.error.message}`, raw.id);
+      fail(
+        "invalid_shape",
+        `Malformed source revision: ${result.error.message}`,
+        raw.id,
+      );
     }
     const rev = result.data;
     if (byId.has(rev.id)) {
-      fail("duplicate_revision_id", `Duplicate source revision ID "${rev.id}".`, rev.id);
+      fail(
+        "duplicate_revision_id",
+        `Duplicate source revision ID "${rev.id}".`,
+        rev.id,
+      );
     }
     const doc = documents.get(rev.documentId);
     if (doc === undefined) {
@@ -113,7 +129,11 @@ function validateRevisions(
       );
     }
     if (rev.edition.trim() === "") {
-      fail("missing_edition", `Revision "${rev.id}" has an empty edition.`, rev.id);
+      fail(
+        "missing_edition",
+        `Revision "${rev.id}" has an empty edition.`,
+        rev.id,
+      );
     }
     if (rev.excerpt !== undefined && doc.access === "licensed") {
       fail(
@@ -132,7 +152,11 @@ function validateSupersession(byId: ReadonlyMap<string, SourceRevision>): void {
   for (const rev of byId.values()) {
     if (rev.supersedes === undefined) continue;
     if (rev.supersedes === rev.id) {
-      fail("self_supersession", `Revision "${rev.id}" cannot supersede itself.`, rev.id);
+      fail(
+        "self_supersession",
+        `Revision "${rev.id}" cannot supersede itself.`,
+        rev.id,
+      );
     }
     const seen = new Set<string>([rev.id]);
     let current: SourceRevision = rev;
@@ -147,7 +171,11 @@ function validateSupersession(byId: ReadonlyMap<string, SourceRevision>): void {
         );
       }
       if (seen.has(next.id)) {
-        fail("supersession_cycle", `Supersession cycle involving "${rev.id}".`, rev.id);
+        fail(
+          "supersession_cycle",
+          `Supersession cycle involving "${rev.id}".`,
+          rev.id,
+        );
       }
       seen.add(next.id);
       current = next;
@@ -163,11 +191,19 @@ function validateProfiles(
   for (const raw of profiles) {
     const result = MarketProfileSchema.safeParse(raw);
     if (!result.success) {
-      fail("invalid_shape", `Malformed market profile: ${result.error.message}`, raw.id);
+      fail(
+        "invalid_shape",
+        `Malformed market profile: ${result.error.message}`,
+        raw.id,
+      );
     }
     const profile = result.data;
     if (byId.has(profile.id)) {
-      fail("duplicate_profile_id", `Duplicate market profile ID "${profile.id}".`, profile.id);
+      fail(
+        "duplicate_profile_id",
+        `Duplicate market profile ID "${profile.id}".`,
+        profile.id,
+      );
     }
     for (const entry of profile.entries) {
       if (!revisions.has(entry.sourceRevisionId)) {

@@ -59,10 +59,7 @@ export interface ExecuteModuleInstanceInput {
 
 /** Machine-readable classification of an `executeModuleInstance` failure. */
 export type ExecuteModuleInstanceErrorCode =
-  | "unauthorized"
-  | "module_not_found"
-  | "invalid_input"
-  | "stale_upstream";
+  "unauthorized" | "module_not_found" | "invalid_input" | "stale_upstream";
 
 /** A failed {@link executeModuleInstance} outcome. */
 export interface ExecuteModuleInstanceError {
@@ -117,7 +114,11 @@ async function resolveModuleOutputValue(
   ownerId: UserId,
   client: DbClient,
 ): Promise<UpstreamValue> {
-  const sourceContext = await loadModuleInstanceForOwner(sourceModuleInstanceId, ownerId, client);
+  const sourceContext = await loadModuleInstanceForOwner(
+    sourceModuleInstanceId,
+    ownerId,
+    client,
+  );
   if (sourceContext === null) {
     return { kind: "unresolved" };
   }
@@ -137,7 +138,11 @@ async function resolveModuleOutputValue(
     return { kind: "unresolved" };
   }
 
-  const summaries = await listRunsForModuleInstance(sourceModuleInstanceId, ownerId, client);
+  const summaries = await listRunsForModuleInstance(
+    sourceModuleInstanceId,
+    ownerId,
+    client,
+  );
   const latest = summaries[0];
   if (latest === undefined) {
     return { kind: "unresolved" };
@@ -147,13 +152,19 @@ async function resolveModuleOutputValue(
   }
   const latestRun = await loadCalculationRun(latest.id, ownerId, client);
   const value = latestRun?.snapshot.computation.outputs[outputPort.key];
-  return value === undefined ? { kind: "unresolved" } : { kind: "value", value };
+  return value === undefined
+    ? { kind: "unresolved" }
+    : { kind: "value", value };
 }
 
 /** What the inner transaction settles on — resolved to an `ExecuteModuleInstanceResult` after it commits. */
 type ExecuteOutcome =
   | { readonly kind: "unauthorized" }
-  | { readonly kind: "module_not_found"; readonly modulePackageId: string; readonly moduleVersion: string }
+  | {
+      readonly kind: "module_not_found";
+      readonly modulePackageId: string;
+      readonly moduleVersion: string;
+    }
   | { readonly kind: "stale_upstream"; readonly message: string }
   | { readonly kind: "executed"; readonly run: CalculationRunRecord };
 
@@ -188,13 +199,20 @@ export async function executeModuleInstance(
   try {
     outcome = await prisma.$transaction(
       async (tx): Promise<ExecuteOutcome> => {
-        const context = await loadModuleInstanceForOwner(input.moduleInstanceId, input.ownerId, tx);
+        const context = await loadModuleInstanceForOwner(
+          input.moduleInstanceId,
+          input.ownerId,
+          tx,
+        );
         if (context === null) {
           return { kind: "unauthorized" };
         }
         const { moduleInstance, projectId } = context;
 
-        const pkg = getModulePackage(moduleInstance.modulePackageId, moduleInstance.moduleVersion);
+        const pkg = getModulePackage(
+          moduleInstance.modulePackageId,
+          moduleInstance.moduleVersion,
+        );
         if (pkg === undefined) {
           return {
             kind: "module_not_found",
@@ -257,7 +275,9 @@ export async function executeModuleInstance(
 
         const rawInput: unknown = {
           values,
-          ...(input.loadCaseId !== undefined ? { loadCaseId: input.loadCaseId } : {}),
+          ...(input.loadCaseId !== undefined
+            ? { loadCaseId: input.loadCaseId }
+            : {}),
         };
 
         // Throws ModuleSdkError on invalid input — deliberately uncaught here,
@@ -315,7 +335,10 @@ export async function executeModuleInstance(
     );
   } catch (error) {
     if (error instanceof ModuleSdkError) {
-      return { ok: false, error: { code: "invalid_input", message: error.message } };
+      return {
+        ok: false,
+        error: { code: "invalid_input", message: error.message },
+      };
     }
     throw error;
   }
@@ -338,7 +361,10 @@ export async function executeModuleInstance(
         },
       };
     case "stale_upstream":
-      return { ok: false, error: { code: "stale_upstream", message: outcome.message } };
+      return {
+        ok: false,
+        error: { code: "stale_upstream", message: outcome.message },
+      };
     case "executed":
       return { ok: true, run: outcome.run };
   }

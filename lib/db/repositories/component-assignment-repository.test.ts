@@ -102,7 +102,13 @@ describe.skipIf(!liveDatabaseAvailable)(
         componentTypeId: componentType.id,
         version: "1.0.0",
         fields: [
-          { key: "lead", label: "Lead", valueKind: "quantity", required: true, unit: "mm" },
+          {
+            key: "lead",
+            label: "Lead",
+            valueKind: "quantity",
+            required: true,
+            unit: "mm",
+          },
         ],
       });
       const partRevision = await catalog.createManufacturerPartRevision({
@@ -181,7 +187,10 @@ describe.skipIf(!liveDatabaseAvailable)(
         assignedByUserId: f.ownerId,
       });
 
-      const loaded = await assignments.loadComponentAssignmentForOwner(created.id, f.ownerId);
+      const loaded = await assignments.loadComponentAssignmentForOwner(
+        created.id,
+        f.ownerId,
+      );
       expect(loaded?.manufacturerPartRevisionId).toBe(f.partRevisionId);
       expect(loaded?.calculationRunId).toBe(f.runId);
       expect(loaded?.quantity).toBe(2);
@@ -218,10 +227,15 @@ describe.skipIf(!liveDatabaseAvailable)(
         manualPartDetails: { description: "Custom mounting bracket" },
       });
 
-      const loaded = await assignments.loadComponentAssignmentForOwner(created.id, f.ownerId);
+      const loaded = await assignments.loadComponentAssignmentForOwner(
+        created.id,
+        f.ownerId,
+      );
       expect(loaded?.assemblyId).toBe(f.assemblyId);
       expect(loaded?.moduleInstanceId).toBeNull();
-      expect(loaded?.manualPartDetails).toEqual({ description: "Custom mounting bracket" });
+      expect(loaded?.manualPartDetails).toEqual({
+        description: "Custom mounting bracket",
+      });
       expect(loaded?.calculationRunId).toBeNull();
       expect(loaded?.quantity).toBe(1);
     });
@@ -348,12 +362,23 @@ describe.skipIf(!liveDatabaseAvailable)(
       const stranger = await projects.upsertUser(`test-user-${randomUUID()}`);
       createdUserIds.push(stranger.id);
 
-      expect(await assignments.loadComponentAssignmentForOwner(created.id, stranger.id)).toBeNull();
       expect(
-        await assignments.listComponentAssignmentsForConfiguration(f.configId, stranger.id),
+        await assignments.loadComponentAssignmentForOwner(
+          created.id,
+          stranger.id,
+        ),
+      ).toBeNull();
+      expect(
+        await assignments.listComponentAssignmentsForConfiguration(
+          f.configId,
+          stranger.id,
+        ),
       ).toEqual([]);
       expect(
-        await assignments.listComponentAssignmentsForConfiguration(f.configId, f.ownerId),
+        await assignments.listComponentAssignmentsForConfiguration(
+          f.configId,
+          f.ownerId,
+        ),
       ).toHaveLength(1);
     });
 
@@ -367,19 +392,30 @@ describe.skipIf(!liveDatabaseAvailable)(
         manufacturerPartRevisionId: f.partRevisionId,
         calculationRunId: f.runId,
       });
-      expect((await assignments.loadComponentAssignmentForOwner(created.id, f.ownerId))?.stale).toBe(
-        false,
-      );
+      expect(
+        (
+          await assignments.loadComponentAssignmentForOwner(
+            created.id,
+            f.ownerId,
+          )
+        )?.stale,
+      ).toBe(false);
 
-      const updated = await assignments.markComponentAssignmentsStaleForModuleInstances(
-        [f.moduleInstanceId],
-        "The supporting calculation run changed.",
-      );
+      const updated =
+        await assignments.markComponentAssignmentsStaleForModuleInstances(
+          [f.moduleInstanceId],
+          "The supporting calculation run changed.",
+        );
       expect(updated).toBe(1);
 
-      const loaded = await assignments.loadComponentAssignmentForOwner(created.id, f.ownerId);
+      const loaded = await assignments.loadComponentAssignmentForOwner(
+        created.id,
+        f.ownerId,
+      );
       expect(loaded?.stale).toBe(true);
-      expect(loaded?.staleReason).toBe("The supporting calculation run changed.");
+      expect(loaded?.staleReason).toBe(
+        "The supporting calculation run changed.",
+      );
 
       // Idempotent: already-stale rows are not counted again.
       expect(
@@ -391,7 +427,12 @@ describe.skipIf(!liveDatabaseAvailable)(
     });
 
     it("is a no-op for an empty module instance list", async () => {
-      expect(await assignments.markComponentAssignmentsStaleForModuleInstances([], "n/a")).toBe(0);
+      expect(
+        await assignments.markComponentAssignmentsStaleForModuleInstances(
+          [],
+          "n/a",
+        ),
+      ).toBe(0);
     });
   },
 );

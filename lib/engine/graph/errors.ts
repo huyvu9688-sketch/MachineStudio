@@ -30,7 +30,11 @@ export class ParameterGraphError extends Error {
   readonly code: ParameterGraphErrorCode;
   readonly subjectId?: string;
 
-  constructor(code: ParameterGraphErrorCode, message: string, subjectId?: string) {
+  constructor(
+    code: ParameterGraphErrorCode,
+    message: string,
+    subjectId?: string,
+  ) {
     super(message);
     this.name = "ParameterGraphError";
     this.code = code;

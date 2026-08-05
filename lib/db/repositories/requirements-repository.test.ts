@@ -26,7 +26,9 @@ describe.skipIf(!liveDatabaseAvailable)(
     }
 
     // Creates an owned project + configuration, returning the configuration id.
-    async function newConfiguration(ownerId: UserId): Promise<MachineConfigurationId> {
+    async function newConfiguration(
+      ownerId: UserId,
+    ): Promise<MachineConfigurationId> {
       const project = await projects.createProject({
         ownerId,
         name: "Axis",
@@ -101,10 +103,15 @@ describe.skipIf(!liveDatabaseAvailable)(
 
       const assumptions = await repo.listDesignAssumptions(configId, ownerId);
       expect(assumptions).toHaveLength(1);
-      expect(assumptions[0].rationale).toBe("Manufacturer datasheet, lubricated.");
+      expect(assumptions[0].rationale).toBe(
+        "Manufacturer datasheet, lubricated.",
+      );
 
       const loadCases = await repo.listLoadCases(configId, ownerId);
-      expect(loadCases.map((c) => c.category).sort()).toEqual(["holding", "peak"]);
+      expect(loadCases.map((c) => c.category).sort()).toEqual([
+        "holding",
+        "peak",
+      ]);
     });
 
     it("enforces ownership isolation on the requirements reads", async () => {
@@ -125,7 +132,9 @@ describe.skipIf(!liveDatabaseAvailable)(
       // A stranger sees nothing, even with the real configuration id.
       expect(await repo.listRequirements(configId, strangerId)).toHaveLength(0);
       expect(await repo.listLoadCases(configId, strangerId)).toHaveLength(0);
-      expect(await repo.listDesignAssumptions(configId, strangerId)).toHaveLength(0);
+      expect(
+        await repo.listDesignAssumptions(configId, strangerId),
+      ).toHaveLength(0);
       // The real owner still sees them.
       expect(await repo.listRequirements(configId, ownerId)).toHaveLength(1);
     });
@@ -139,10 +148,14 @@ describe.skipIf(!liveDatabaseAvailable)(
         statement: "Owned requirement.",
       });
 
-      expect(await repo.loadRequirementForOwner(requirement.id, ownerId)).not.toBeNull();
+      expect(
+        await repo.loadRequirementForOwner(requirement.id, ownerId),
+      ).not.toBeNull();
 
       const strangerId = asUserId(`test-user-${randomUUID()}`);
-      expect(await repo.loadRequirementForOwner(requirement.id, strangerId)).toBeNull();
+      expect(
+        await repo.loadRequirementForOwner(requirement.id, strangerId),
+      ).toBeNull();
     });
 
     it("rejects invalid input at the persistence boundary", async () => {

@@ -29,18 +29,25 @@ export type ModuleInputFieldDescriptor =
       readonly displayUnits: readonly string[];
       readonly frame: "axis";
     }
-  | { readonly kind: "enum"; readonly enumId: string; readonly options: readonly string[] }
+  | {
+      readonly kind: "enum";
+      readonly enumId: string;
+      readonly options: readonly string[];
+    }
   | { readonly kind: "boolean" }
   /** A `curve` parameter, or a `vector_quantity` whose frame is not `"axis"`. */
   | { readonly kind: "unsupported"; readonly valueType: ParameterValueType };
 
-export function describeField(valueType: ParameterValueType, definition: {
-  readonly canonicalUnit?: string;
-  readonly displayUnits?: readonly string[];
-  readonly enumId?: string;
-  readonly enumOptions?: readonly string[];
-  readonly frame?: FrameRequirement;
-}): ModuleInputFieldDescriptor {
+export function describeField(
+  valueType: ParameterValueType,
+  definition: {
+    readonly canonicalUnit?: string;
+    readonly displayUnits?: readonly string[];
+    readonly enumId?: string;
+    readonly enumOptions?: readonly string[];
+    readonly frame?: FrameRequirement;
+  },
+): ModuleInputFieldDescriptor {
   switch (valueType) {
     case "quantity": {
       if (definition.canonicalUnit === undefined) {
@@ -56,7 +63,11 @@ export function describeField(valueType: ParameterValueType, definition: {
       if (definition.enumId === undefined) {
         throw new Error("Enum parameter is missing its enumId.");
       }
-      return { kind: "enum", enumId: definition.enumId, options: definition.enumOptions ?? [] };
+      return {
+        kind: "enum",
+        enumId: definition.enumId,
+        options: definition.enumOptions ?? [],
+      };
     }
     case "boolean":
       return { kind: "boolean" };
@@ -65,7 +76,9 @@ export function describeField(valueType: ParameterValueType, definition: {
         return { kind: "unsupported", valueType };
       }
       if (definition.canonicalUnit === undefined) {
-        throw new Error("Vector quantity parameter is missing its canonicalUnit.");
+        throw new Error(
+          "Vector quantity parameter is missing its canonicalUnit.",
+        );
       }
       return {
         kind: "vector_quantity",

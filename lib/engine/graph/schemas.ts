@@ -20,7 +20,9 @@ import type {
 } from "./types";
 
 const nonEmptyString = z.string().min(1);
-const parameterId = nonEmptyString.transform((v): ParameterId => v as ParameterId);
+const parameterId = nonEmptyString.transform(
+  (v): ParameterId => v as ParameterId,
+);
 const scopeId = nonEmptyString.transform((v): ScopeId => v as ScopeId);
 const nodeId = nonEmptyString.transform((v): NodeId => v as NodeId);
 const linkId = nonEmptyString.transform((v): LinkId => v as LinkId);
@@ -87,7 +89,9 @@ export type _GraphSchemaParity = [
   Assert<MutuallyAssignable<GraphScope, z.infer<typeof GraphScopeSchema>>>,
   Assert<MutuallyAssignable<GraphNode, z.infer<typeof GraphNodeSchema>>>,
   Assert<MutuallyAssignable<GraphLink, z.infer<typeof GraphLinkSchema>>>,
-  Assert<MutuallyAssignable<ParameterGraph, z.infer<typeof ParameterGraphSchema>>>,
+  Assert<
+    MutuallyAssignable<ParameterGraph, z.infer<typeof ParameterGraphSchema>>
+  >,
   Assert<
     MutuallyAssignable<
       ApprovedParameterMapping,

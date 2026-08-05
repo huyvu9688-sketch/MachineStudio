@@ -7,7 +7,9 @@ import type { MachineBaselineSnapshot } from "../../configuration";
 import type { MachineConfigurationId, UserId } from "./types";
 
 /** A `MachineBaseline` ID. */
-export type MachineBaselineId = string & { readonly __brand: "MachineBaselineId" };
+export type MachineBaselineId = string & {
+  readonly __brand: "MachineBaselineId";
+};
 
 /** Casts a raw string to a {@link MachineBaselineId}. Identity at runtime. */
 export function asMachineBaselineId(id: string): MachineBaselineId {

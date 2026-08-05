@@ -1,5 +1,8 @@
 import { convert } from "@/lib/engine/units";
-import { SERIALIZATION_FORMAT_VERSION, type VectorQuantity } from "@/lib/engine/values";
+import {
+  SERIALIZATION_FORMAT_VERSION,
+  type VectorQuantity,
+} from "@/lib/engine/values";
 
 export type SubmittedVectorParseResult =
   | { readonly ok: true; readonly value: VectorQuantity }
@@ -35,9 +38,14 @@ export function parseSubmittedVector(
 
   const unit = rawUnit || canonicalUnit;
   try {
-    const convertedComponents = components.map((component) => convert(component, unit, canonicalUnit));
+    const convertedComponents = components.map((component) =>
+      convert(component, unit, canonicalUnit),
+    );
     if (!convertedComponents.every((component) => Number.isFinite(component))) {
-      return { ok: false, message: `Unit "${unit}" is not valid for this value.` };
+      return {
+        ok: false,
+        message: `Unit "${unit}" is not valid for this value.`,
+      };
     }
     return {
       ok: true,

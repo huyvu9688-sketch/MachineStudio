@@ -58,20 +58,30 @@ export function baseDraft(): ModulePackageDraft {
     },
     ports: {
       inputs: [
-        { key: "mass", parameterId: asParameterId("motion.axis.payload_mass"), required: true },
+        {
+          key: "mass",
+          parameterId: asParameterId("motion.axis.payload_mass"),
+          required: true,
+        },
       ],
-      outputs: [{ key: "out", parameterId: asParameterId("motion.axis.thrust_force") }],
+      outputs: [
+        { key: "out", parameterId: asParameterId("motion.axis.thrust_force") },
+      ],
     },
     inputSchema: ModuleInputSchema,
     compute: baseCompute,
-    uiSchema: { groups: [{ id: "g", title: "G", fields: [{ portKey: "mass" }] }] },
+    uiSchema: {
+      groups: [{ id: "g", title: "G", fields: [{ portKey: "mass" }] }],
+    },
     reportSchema: { sections: [{ id: "r", title: "R", include: "outputs" }] },
     validation: {
       moduleId: "test-mod",
       moduleVersion: "1.0.0",
       methods: ["identity"],
       sourceRevisionIds: [],
-      referenceExamples: [{ id: "ex", description: "example", tolerance: "0%" }],
+      referenceExamples: [
+        { id: "ex", description: "example", tolerance: "0%" },
+      ],
       independentBenchmark: "hand",
       reviewer: "self",
       reviewDate: "2026-07-28",

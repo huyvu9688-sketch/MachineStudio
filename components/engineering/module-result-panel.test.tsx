@@ -4,7 +4,12 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ModuleResultPanel } from "./module-result-panel";
 import { runModuleInstanceAction } from "@/app/(workspace)/workspace/actions";
-import type { CalculationTrace, CheckResult, EngineeringValue, Warning } from "@/lib/engine";
+import type {
+  CalculationTrace,
+  CheckResult,
+  EngineeringValue,
+  Warning,
+} from "@/lib/engine";
 import type { ModuleResultView } from "@/lib/application";
 
 // module-result-panel.tsx imports this Server Action directly (an inline
@@ -20,8 +25,18 @@ beforeEach(() => {
   vi.mocked(runModuleInstanceAction).mockResolvedValue({ status: "success" });
 });
 
-const thrustForceOut: EngineeringValue = { v: 1, kind: "quantity", value: 12, unit: "N" };
-const thrustForceIn: EngineeringValue = { v: 1, kind: "quantity", value: 12, unit: "N" };
+const thrustForceOut: EngineeringValue = {
+  v: 1,
+  kind: "quantity",
+  value: 12,
+  unit: "N",
+};
+const thrustForceIn: EngineeringValue = {
+  v: 1,
+  kind: "quantity",
+  value: 12,
+  unit: "N",
+};
 
 const checks: CheckResult[] = [
   {
@@ -100,7 +115,11 @@ function view(overrides: Partial<ModuleResultView> = {}): ModuleResultView {
 
 describe("ModuleResultPanel", () => {
   it("renders the empty state and no output/check content when never run", () => {
-    render(<ModuleResultPanel view={view({ run: null, outputs: [], checks: [], trace: null })} />);
+    render(
+      <ModuleResultPanel
+        view={view({ run: null, outputs: [], checks: [], trace: null })}
+      />,
+    );
 
     expect(screen.getByText("Not run yet")).toBeInTheDocument();
     expect(screen.getByText("Not configured")).toBeInTheDocument();
@@ -131,7 +150,9 @@ describe("ModuleResultPanel", () => {
     const user = userEvent.setup();
     render(<ModuleResultPanel view={view()} />);
 
-    await user.click(screen.getByRole("button", { name: "Relay thrust force" }));
+    await user.click(
+      screen.getByRole("button", { name: "Relay thrust force" }),
+    );
 
     expect(screen.getByText(/F_in = 12 N/)).toBeInTheDocument();
     expect(screen.getByText(/F_out = 12 N/)).toBeInTheDocument();
@@ -166,7 +187,9 @@ describe("ModuleResultPanel", () => {
 
   it("renders warnings", () => {
     render(<ModuleResultPanel view={view({ warnings })} />);
-    expect(screen.getByText("Result is near the validated envelope limit.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Result is near the validated envelope limit."),
+    ).toBeInTheDocument();
   });
 
   it("shows an honest empty note when no run cites a source", () => {
@@ -179,12 +202,20 @@ describe("ModuleResultPanel", () => {
       <ModuleResultPanel
         view={view({
           sources: [
-            { documentTitle: "ANSI B11.19", edition: "2019", clause: "5.2", page: null, label: null },
+            {
+              documentTitle: "ANSI B11.19",
+              edition: "2019",
+              clause: "5.2",
+              page: null,
+              label: null,
+            },
           ],
         })}
       />,
     );
-    expect(screen.getByText(/ANSI B11\.19 \(2019\) — 5\.2/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/ANSI B11\.19 \(2019\) — 5\.2/),
+    ).toBeInTheDocument();
   });
 
   it("renders a previous-run comparison when one is available", () => {
@@ -215,7 +246,9 @@ describe("ModuleResultPanel", () => {
 
   it("omits the previous-run comparison section when there is nothing to compare", () => {
     render(<ModuleResultPanel view={view()} />);
-    expect(screen.queryByText("Previous-run comparison")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Previous-run comparison"),
+    ).not.toBeInTheDocument();
   });
 
   it("labels a load-case-pinned output so same-parameter outputs stay distinguishable", () => {
@@ -280,13 +313,15 @@ describe("ModuleResultPanel", () => {
   it("shows the action's error message when running fails", async () => {
     vi.mocked(runModuleInstanceAction).mockResolvedValueOnce({
       status: "error",
-      message: "Input \"thrust_force_in\" is linked to a stale upstream result.",
+      message: 'Input "thrust_force_in" is linked to a stale upstream result.',
     });
     const user = userEvent.setup();
     render(<ModuleResultPanel view={view()} />);
 
     await user.click(screen.getByRole("button", { name: "Run" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("stale upstream result");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "stale upstream result",
+    );
   });
 });

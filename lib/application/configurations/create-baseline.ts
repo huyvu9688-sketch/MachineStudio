@@ -71,7 +71,8 @@ export interface CreateBaselineInput {
 }
 
 /** Machine-readable classification of a `createBaseline` failure. */
-export type CreateBaselineErrorCode = "unauthorized" | "not_ready" | "invalid_input";
+export type CreateBaselineErrorCode =
+  "unauthorized" | "not_ready" | "invalid_input";
 
 /** A failed {@link createBaseline} outcome. */
 export interface CreateBaselineError {
@@ -91,7 +92,9 @@ export type CreateBaselineResult =
   | { readonly ok: true; readonly baseline: MachineBaselineRecord }
   | { readonly ok: false; readonly error: CreateBaselineError };
 
-function toBaselineModuleInstance(m: ModuleInstanceRecord): BaselineModuleInstance {
+function toBaselineModuleInstance(
+  m: ModuleInstanceRecord,
+): BaselineModuleInstance {
   return {
     id: m.id,
     modulePackageId: m.modulePackageId,
@@ -114,7 +117,9 @@ function toBaselineAssemblyNode(node: AssemblyNode): BaselineAssemblyNode {
 }
 
 /** Flattens the nested assembly forest into every module instance it contains. */
-function collectModuleInstances(nodes: readonly AssemblyNode[]): ModuleInstanceRecord[] {
+function collectModuleInstances(
+  nodes: readonly AssemblyNode[],
+): ModuleInstanceRecord[] {
   const result: ModuleInstanceRecord[] = [];
   const visit = (node: AssemblyNode): void => {
     result.push(...node.moduleInstances);
@@ -161,7 +166,10 @@ async function loadCalculationRunRefs(
 /** What the inner transaction settles on — resolved to a `CreateBaselineResult` after it commits. */
 type CreateBaselineOutcome =
   | { readonly kind: "unauthorized" }
-  | { readonly kind: "not_ready"; readonly blockers: readonly BaselineBlocker[] }
+  | {
+      readonly kind: "not_ready";
+      readonly blockers: readonly BaselineBlocker[];
+    }
   | { readonly kind: "created"; readonly baseline: MachineBaselineRecord };
 
 /**
@@ -199,11 +207,19 @@ export async function createBaseline(
   try {
     outcome = await prisma.$transaction(
       async (tx): Promise<CreateBaselineOutcome> => {
-        const context = await loadConfigurationForOwner(input.configurationId, ownerId, tx);
+        const context = await loadConfigurationForOwner(
+          input.configurationId,
+          ownerId,
+          tx,
+        );
         if (context === null) {
           return { kind: "unauthorized" };
         }
-        const tree = await loadConfigurationTree(input.configurationId, ownerId, tx);
+        const tree = await loadConfigurationTree(
+          input.configurationId,
+          ownerId,
+          tx,
+        );
         if (tree === null) {
           return { kind: "unauthorized" };
         }
@@ -221,64 +237,85 @@ export async function createBaseline(
           listRequirements(input.configurationId, ownerId, tx),
           listDesignAssumptions(input.configurationId, ownerId, tx),
           listLoadCases(input.configurationId, ownerId, tx),
-          listCurrentParameterValuesForConfiguration(input.configurationId, ownerId, tx),
-          listParameterLinksForConfiguration(input.configurationId, ownerId, tx),
-          listComponentAssignmentsForConfiguration(input.configurationId, ownerId, tx),
+          listCurrentParameterValuesForConfiguration(
+            input.configurationId,
+            ownerId,
+            tx,
+          ),
+          listParameterLinksForConfiguration(
+            input.configurationId,
+            ownerId,
+            tx,
+          ),
+          listComponentAssignmentsForConfiguration(
+            input.configurationId,
+            ownerId,
+            tx,
+          ),
           loadCalculationRunRefs(allModuleInstances, ownerId, tx),
         ]);
 
-        const requirements: BaselineRequirement[] = requirementNodes.map((r) => ({
-          id: r.id,
-          assemblyId: r.assemblyId,
-          code: r.code,
-          statement: r.statement,
-          acceptanceCriteria: r.acceptanceCriteria.map((ac) => ({ id: ac.id, statement: ac.statement })),
-        }));
-        const designAssumptions: BaselineDesignAssumption[] = designAssumptionRecords.map((a) => ({
-          id: a.id,
-          assemblyId: a.assemblyId,
-          statement: a.statement,
-          rationale: a.rationale,
-        }));
+        const requirements: BaselineRequirement[] = requirementNodes.map(
+          (r) => ({
+            id: r.id,
+            assemblyId: r.assemblyId,
+            code: r.code,
+            statement: r.statement,
+            acceptanceCriteria: r.acceptanceCriteria.map((ac) => ({
+              id: ac.id,
+              statement: ac.statement,
+            })),
+          }),
+        );
+        const designAssumptions: BaselineDesignAssumption[] =
+          designAssumptionRecords.map((a) => ({
+            id: a.id,
+            assemblyId: a.assemblyId,
+            statement: a.statement,
+            rationale: a.rationale,
+          }));
         const loadCases: BaselineLoadCase[] = loadCaseRecords.map((l) => ({
           id: l.id,
           category: l.category,
           label: l.label,
           description: l.description,
         }));
-        const parameterValues: BaselineParameterValue[] = parameterValueRecords.map((v) => ({
-          id: v.id,
-          assemblyId: v.assemblyId,
-          moduleInstanceId: v.moduleInstanceId,
-          nodeKind: v.nodeKind,
-          parameterId: v.parameterId,
-          loadCase: v.loadCase,
-          source: v.source,
-          value: v.value,
-        }));
-        const parameterLinks: BaselineParameterLink[] = parameterLinkRecords.map((l) => ({
-          id: l.id,
-          targetModuleInstanceId: l.targetModuleInstanceId,
-          targetParameterId: l.targetParameterId,
-          targetLoadCase: l.targetLoadCase,
-          sourceKind: l.sourceKind,
-          sourceModuleInstanceId: l.sourceModuleInstanceId,
-          sourceAssemblyId: l.sourceAssemblyId,
-          sourceParameterId: l.sourceParameterId,
-          sourceLoadCase: l.sourceLoadCase,
-        }));
-        const componentAssignments: BaselineComponentAssignment[] = assignmentRecords.map((a) => ({
-          id: a.id,
-          targetKind: a.targetKind,
-          moduleInstanceId: a.moduleInstanceId,
-          assemblyId: a.assemblyId,
-          partSource: a.partSource,
-          manufacturerPartRevisionId: a.manufacturerPartRevisionId,
-          manualPartDetails: a.manualPartDetails,
-          quantity: a.quantity,
-          calculationRunId: a.calculationRunId,
-          stale: a.stale,
-        }));
+        const parameterValues: BaselineParameterValue[] =
+          parameterValueRecords.map((v) => ({
+            id: v.id,
+            assemblyId: v.assemblyId,
+            moduleInstanceId: v.moduleInstanceId,
+            nodeKind: v.nodeKind,
+            parameterId: v.parameterId,
+            loadCase: v.loadCase,
+            source: v.source,
+            value: v.value,
+          }));
+        const parameterLinks: BaselineParameterLink[] =
+          parameterLinkRecords.map((l) => ({
+            id: l.id,
+            targetModuleInstanceId: l.targetModuleInstanceId,
+            targetParameterId: l.targetParameterId,
+            targetLoadCase: l.targetLoadCase,
+            sourceKind: l.sourceKind,
+            sourceModuleInstanceId: l.sourceModuleInstanceId,
+            sourceAssemblyId: l.sourceAssemblyId,
+            sourceParameterId: l.sourceParameterId,
+            sourceLoadCase: l.sourceLoadCase,
+          }));
+        const componentAssignments: BaselineComponentAssignment[] =
+          assignmentRecords.map((a) => ({
+            id: a.id,
+            targetKind: a.targetKind,
+            moduleInstanceId: a.moduleInstanceId,
+            assemblyId: a.assemblyId,
+            partSource: a.partSource,
+            manufacturerPartRevisionId: a.manufacturerPartRevisionId,
+            manualPartDetails: a.manualPartDetails,
+            quantity: a.quantity,
+            calculationRunId: a.calculationRunId,
+            stale: a.stale,
+          }));
 
         const readiness = evaluateBaselineReadiness({
           calculationRuns,
@@ -329,7 +366,10 @@ export async function createBaseline(
             payload: {
               configurationId: input.configurationId,
               label: input.label,
-              acknowledgedBlockers: readiness.blockers.map((b) => ({ kind: b.kind, id: b.id })),
+              acknowledgedBlockers: readiness.blockers.map((b) => ({
+                kind: b.kind,
+                id: b.id,
+              })),
             },
           },
           tx,
@@ -340,7 +380,10 @@ export async function createBaseline(
     );
   } catch (error) {
     if (error instanceof BaselineRepositoryError) {
-      return { ok: false, error: { code: "invalid_input", message: error.message } };
+      return {
+        ok: false,
+        error: { code: "invalid_input", message: error.message },
+      };
     }
     throw error;
   }
@@ -349,14 +392,18 @@ export async function createBaseline(
     case "unauthorized":
       return {
         ok: false,
-        error: { code: "unauthorized", message: "Configuration not found or not owned by this user." },
+        error: {
+          code: "unauthorized",
+          message: "Configuration not found or not owned by this user.",
+        },
       };
     case "not_ready":
       return {
         ok: false,
         error: {
           code: "not_ready",
-          message: "Baseline creation is blocked by stale or failed items. Acknowledge to proceed.",
+          message:
+            "Baseline creation is blocked by stale or failed items. Acknowledge to proceed.",
           blockers: outcome.blockers,
         },
       };

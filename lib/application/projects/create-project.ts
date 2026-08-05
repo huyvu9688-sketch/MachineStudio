@@ -31,7 +31,8 @@ import {
 export const INITIAL_CONFIGURATION_NAME = "Working configuration";
 
 /** Machine-readable classification of a {@link createMachineProject} failure. */
-export type CreateMachineProjectErrorCode = "invalid_input" | "unknown_market_profile";
+export type CreateMachineProjectErrorCode =
+  "invalid_input" | "unknown_market_profile";
 
 /** A failed {@link createMachineProject} outcome. */
 export interface CreateMachineProjectError {
@@ -94,7 +95,9 @@ export async function createMachineProject(
     };
   }
 
-  const releasedKeys = new Set(SOURCE_REGISTRY.listProfiles().map(marketProfileKey));
+  const releasedKeys = new Set(
+    SOURCE_REGISTRY.listProfiles().map(marketProfileKey),
+  );
   if (!releasedKeys.has(parsed.data.marketProfileKey)) {
     return {
       ok: false,
@@ -108,7 +111,11 @@ export async function createMachineProject(
   const { project, configuration } = await prisma.$transaction(async (tx) => {
     await upsertUser(ownerId, tx);
     const project = await createProject(
-      { ownerId, name: parsed.data.name, marketProfileKey: parsed.data.marketProfileKey },
+      {
+        ownerId,
+        name: parsed.data.name,
+        marketProfileKey: parsed.data.marketProfileKey,
+      },
       tx,
     );
     const configuration = await createConfiguration(

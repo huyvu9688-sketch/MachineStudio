@@ -32,13 +32,15 @@ describe("formatSignificant", () => {
 
 describe("formatQuantity", () => {
   it("formats value and unit", () => {
-    expect(formatQuantity(makeQuantity(12.3456, "mm"), { significantFigures: 4 })).toBe(
-      "12.35 mm",
-    );
+    expect(
+      formatQuantity(makeQuantity(12.3456, "mm"), { significantFigures: 4 }),
+    ).toBe("12.35 mm");
   });
 
   it("converts to a requested display unit", () => {
-    expect(formatQuantity(makeQuantity(1, "m"), { unit: "mm" })).toBe("1000 mm");
+    expect(formatQuantity(makeQuantity(1, "m"), { unit: "mm" })).toBe(
+      "1000 mm",
+    );
   });
 
   it("uses the quantity's display unit when asked", () => {

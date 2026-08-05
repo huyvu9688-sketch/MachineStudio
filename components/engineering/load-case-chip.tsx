@@ -9,11 +9,18 @@ import type { LoadCaseCategory } from "@/lib/engine";
  * "shared module, not a second copy" call `load-case-labels.ts` itself and
  * `format-engineering-value.ts` already made.
  */
-export function LoadCaseChip({ loadCase }: { readonly loadCase: LoadCaseCategory }) {
+export function LoadCaseChip({
+  loadCase,
+}: {
+  readonly loadCase: LoadCaseCategory;
+}) {
   return (
     <span
       className="inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[11px] font-medium"
-      style={{ color: "var(--state-info)", backgroundColor: "rgba(29, 78, 216, 0.08)" }}
+      style={{
+        color: "var(--state-info)",
+        backgroundColor: "rgba(29, 78, 216, 0.08)",
+      }}
     >
       {LOAD_CASE_LABELS[loadCase]} load case
     </span>

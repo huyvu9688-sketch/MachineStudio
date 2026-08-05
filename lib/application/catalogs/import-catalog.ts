@@ -256,8 +256,8 @@ export async function importCatalog(
 
   // Batch creation and every valid row's upsert are atomic
   // (context/code-standards.md "Application Services").
-  const { batchId, rowOutcomes, persistedCount, conflictCount } = await prisma.$transaction(
-    async (tx) => {
+  const { batchId, rowOutcomes, persistedCount, conflictCount } =
+    await prisma.$transaction(async (tx) => {
       const batch = await createCatalogImportBatch(
         {
           componentTypeId: input.componentTypeId,
@@ -323,7 +323,10 @@ export async function importCatalog(
           // outcome, not a failed import: the remaining rows are still valid
           // data, and the conflict is detected before any write is issued, so
           // the transaction is intact and can continue.
-          if (err instanceof CatalogRepositoryError && err.code === "conflict") {
+          if (
+            err instanceof CatalogRepositoryError &&
+            err.code === "conflict"
+          ) {
             conflicts += 1;
             outcomes.push({
               rowNumber: row.rowNumber,
@@ -345,8 +348,7 @@ export async function importCatalog(
         persistedCount: persisted,
         conflictCount: conflicts,
       };
-    },
-  );
+    });
 
   return {
     ok: true,

@@ -35,8 +35,12 @@ describe("SDK range validity", () => {
 
   it("rejects a malformed or inverted range", () => {
     expect(isValidSdkRange({ min: "abc" })).toBe(false);
-    expect(isValidSdkRange({ min: "2.0.0", maxExclusive: "1.0.0" })).toBe(false);
-    expect(isValidSdkRange({ min: "1.0.0", maxExclusive: "1.0.0" })).toBe(false);
+    expect(isValidSdkRange({ min: "2.0.0", maxExclusive: "1.0.0" })).toBe(
+      false,
+    );
+    expect(isValidSdkRange({ min: "1.0.0", maxExclusive: "1.0.0" })).toBe(
+      false,
+    );
   });
 });
 
@@ -48,8 +52,12 @@ describe("SDK compatibility", () => {
   it("includes min and excludes maxExclusive", () => {
     expect(isSdkCompatible({ min: "1.0.0" }, "1.0.0")).toBe(true);
     expect(isSdkCompatible({ min: "1.0.0" }, "0.9.9")).toBe(false);
-    expect(isSdkCompatible({ min: "1.0.0", maxExclusive: "2.0.0" }, "1.5.0")).toBe(true);
-    expect(isSdkCompatible({ min: "1.0.0", maxExclusive: "2.0.0" }, "2.0.0")).toBe(false);
+    expect(
+      isSdkCompatible({ min: "1.0.0", maxExclusive: "2.0.0" }, "1.5.0"),
+    ).toBe(true);
+    expect(
+      isSdkCompatible({ min: "1.0.0", maxExclusive: "2.0.0" }, "2.0.0"),
+    ).toBe(false);
   });
 
   it("a malformed range is never compatible", () => {

@@ -20,7 +20,11 @@ export function StatusBar({ marketProfileKey, summary }: StatusBarProps) {
       <Field label="Units">SI (canonical)</Field>
       <Divider />
       <Field label="Run status">
-        {summary ? <StatusBadge status={summary.overallStatus} /> : <Value>—</Value>}
+        {summary ? (
+          <StatusBadge status={summary.overallStatus} />
+        ) : (
+          <Value>—</Value>
+        )}
       </Field>
       <Divider />
       <Field label="Failed checks">
@@ -81,5 +85,10 @@ function Value({
 }
 
 function Divider() {
-  return <span aria-hidden="true" className="h-3.5 w-px shrink-0 bg-border-default" />;
+  return (
+    <span
+      aria-hidden="true"
+      className="h-3.5 w-px shrink-0 bg-border-default"
+    />
+  );
 }

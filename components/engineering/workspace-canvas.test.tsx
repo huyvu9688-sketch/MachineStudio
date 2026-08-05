@@ -29,7 +29,9 @@ describe("WorkspaceCanvas", () => {
       />,
     );
     expect(screen.getByText("No machine projects yet")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New project" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "New project" }),
+    ).toBeInTheDocument();
   });
 
   it("shows the no-configurations state once a project exists", () => {
@@ -56,7 +58,9 @@ describe("WorkspaceCanvas", () => {
       />,
     );
     expect(screen.getByText("This configuration is empty")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add assembly" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add assembly" }),
+    ).toBeInTheDocument();
   });
 
   it("shows the select-an-item state once real content exists", () => {
@@ -69,6 +73,8 @@ describe("WorkspaceCanvas", () => {
         configurationId="c1"
       />,
     );
-    expect(screen.getByText("Select an item in the navigator")).toBeInTheDocument();
+    expect(
+      screen.getByText("Select an item in the navigator"),
+    ).toBeInTheDocument();
   });
 });

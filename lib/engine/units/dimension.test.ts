@@ -22,12 +22,12 @@ describe("dimension", () => {
   });
 
   it("compares base exponents for equality", () => {
-    expect(dimensionsEqual(dimension({ length: 1 }), dimension({ length: 1 }))).toBe(
-      true,
-    );
-    expect(dimensionsEqual(dimension({ length: 1 }), dimension({ mass: 1 }))).toBe(
-      false,
-    );
+    expect(
+      dimensionsEqual(dimension({ length: 1 }), dimension({ length: 1 })),
+    ).toBe(true);
+    expect(
+      dimensionsEqual(dimension({ length: 1 }), dimension({ mass: 1 })),
+    ).toBe(false);
   });
 
   it("adds and subtracts dimensions component-wise", () => {
@@ -51,12 +51,12 @@ describe("dimension", () => {
 
   it("generates canonical base symbols", () => {
     expect(canonicalDimensionSymbol(DIMENSIONLESS)).toBe("ratio");
-    expect(canonicalDimensionSymbol(dimension({ mass: 1, length: 1, time: -2 }))).toBe(
-      "kg*m*s^-2",
-    );
-    expect(canonicalDimensionSymbol(dimension({ mass: 1, length: 2, time: -3 }))).toBe(
-      "kg*m^2*s^-3",
-    );
+    expect(
+      canonicalDimensionSymbol(dimension({ mass: 1, length: 1, time: -2 })),
+    ).toBe("kg*m*s^-2");
+    expect(
+      canonicalDimensionSymbol(dimension({ mass: 1, length: 2, time: -3 })),
+    ).toBe("kg*m^2*s^-3");
     expect(canonicalDimensionSymbol(dimension({ angle: 1 }))).toBe("rad");
   });
 });

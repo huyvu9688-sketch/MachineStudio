@@ -168,14 +168,21 @@ async function describeAssignment(
     );
     // Part revisions are write-once and not deleted in normal operation
     // (ADR-0006); degrade to `null` rather than failing the whole panel.
-    part = revision === null ? null : await describePart(revision, manufacturerNames);
+    part =
+      revision === null
+        ? null
+        : await describePart(revision, manufacturerNames);
   }
 
   let supportingRun: ComponentAssignmentView["supportingRun"] = null;
   if (assignment.calculationRunId !== null) {
     const run = await loadCalculationRun(assignment.calculationRunId, ownerId);
     if (run !== null) {
-      supportingRun = { id: run.id, status: run.status, createdAt: run.createdAt };
+      supportingRun = {
+        id: run.id,
+        status: run.status,
+        createdAt: run.createdAt,
+      };
     }
   }
 
@@ -184,7 +191,8 @@ async function describeAssignment(
     partSource: assignment.partSource,
     part,
     manualDescription: assignment.manualPartDetails?.description ?? null,
-    manualManufacturerName: assignment.manualPartDetails?.manufacturerName ?? null,
+    manualManufacturerName:
+      assignment.manualPartDetails?.manufacturerName ?? null,
     manualPartNumber: assignment.manualPartDetails?.partNumber ?? null,
     quantity: assignment.quantity,
     stale: assignment.stale,
@@ -223,7 +231,10 @@ export async function loadComponentAssignmentView(
   }
   const { moduleInstance } = context;
 
-  const pkg = getModulePackage(moduleInstance.modulePackageId, moduleInstance.moduleVersion);
+  const pkg = getModulePackage(
+    moduleInstance.modulePackageId,
+    moduleInstance.moduleVersion,
+  );
   if (pkg === undefined) {
     return null;
   }
@@ -235,7 +246,9 @@ export async function loadComponentAssignmentView(
   );
   const assignments: ComponentAssignmentView[] = [];
   for (const record of assignmentRecords) {
-    assignments.push(await describeAssignment(record, ownerId, manufacturerNames));
+    assignments.push(
+      await describeAssignment(record, ownerId, manufacturerNames),
+    );
   }
 
   const summaries = await listRunsForModuleInstance(moduleInstanceId, ownerId);
@@ -257,7 +270,11 @@ export async function loadComponentAssignmentView(
 
   const adapter = pkg.catalogAdapter;
   if (adapter === undefined) {
-    return { ...base, componentType: null, matchingUnavailableReason: NO_ADAPTER_REASON };
+    return {
+      ...base,
+      componentType: null,
+      matchingUnavailableReason: NO_ADAPTER_REASON,
+    };
   }
   if (latestRunId === null) {
     return {

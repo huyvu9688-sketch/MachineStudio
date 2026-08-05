@@ -19,7 +19,9 @@ import {
 
 function subdirectories(dir: string): string[] {
   if (!existsSync(dir)) return [];
-  return readdirSync(dir).filter((name) => statSync(join(dir, name)).isDirectory());
+  return readdirSync(dir).filter((name) =>
+    statSync(join(dir, name)).isDirectory(),
+  );
 }
 
 function main(): void {
@@ -30,7 +32,11 @@ function main(): void {
     for (const version of subdirectories(join(modulesDir, moduleId))) {
       const indexPath = join(modulesDir, moduleId, version, "index.ts");
       if (existsSync(indexPath)) {
-        entries.push({ moduleId, version, importPath: `./${moduleId}/${version}` });
+        entries.push({
+          moduleId,
+          version,
+          importPath: `./${moduleId}/${version}`,
+        });
       }
     }
   }

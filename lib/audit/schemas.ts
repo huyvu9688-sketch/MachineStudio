@@ -29,7 +29,11 @@ export const AuditEventInputSchema: z.ZodType<AuditEventInput> = z
 
 // --- Compile-time schema/interface parity guard -----------------------------
 
-type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type MutuallyAssignable<A, B> = [A] extends [B]
+  ? [B] extends [A]
+    ? true
+    : false
+  : false;
 type Assert<T extends true> = T;
 
 export type _AuditSchemaParity = Assert<

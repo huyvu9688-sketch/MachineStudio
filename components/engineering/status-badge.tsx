@@ -35,7 +35,11 @@ const STATUS_META: Record<ModuleStatus, StatusMeta> = {
   },
   pass: { label: "Pass", icon: CheckCircle2, colorVar: "var(--state-success)" },
   fail: { label: "Fail", icon: XCircle, colorVar: "var(--state-error)" },
-  warning: { label: "Warning", icon: AlertTriangle, colorVar: "var(--state-stale)" },
+  warning: {
+    label: "Warning",
+    icon: AlertTriangle,
+    colorVar: "var(--state-stale)",
+  },
   invalid_input: {
     label: "Invalid input",
     icon: CircleAlert,
@@ -59,7 +63,11 @@ export interface StatusBadgeProps {
  * Status indicator pairing an icon with a label — state is never conveyed by
  * color alone (context/ui-context.md "Colors").
  */
-export function StatusBadge({ status, iconOnly = false, className }: StatusBadgeProps) {
+export function StatusBadge({
+  status,
+  iconOnly = false,
+  className,
+}: StatusBadgeProps) {
   const meta = STATUS_META[status];
   const Icon = meta.icon;
 
@@ -70,14 +78,21 @@ export function StatusBadge({ status, iconOnly = false, className }: StatusBadge
         aria-label={meta.label}
         className={cn("inline-flex shrink-0", className)}
       >
-        <Icon aria-hidden="true" className="h-4 w-4" style={{ color: meta.colorVar }} />
+        <Icon
+          aria-hidden="true"
+          className="h-4 w-4"
+          style={{ color: meta.colorVar }}
+        />
       </span>
     );
   }
 
   return (
     <span
-      className={cn("inline-flex items-center gap-1.5 text-[13px] font-medium", className)}
+      className={cn(
+        "inline-flex items-center gap-1.5 text-[13px] font-medium",
+        className,
+      )}
       style={{ color: meta.colorVar }}
     >
       <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />

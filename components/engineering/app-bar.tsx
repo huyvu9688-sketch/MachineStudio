@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, ChevronsLeft, ChevronsRight, Pencil, Plus, type LucideIcon } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronsLeft,
+  ChevronsRight,
+  Pencil,
+  Plus,
+  type LucideIcon,
+} from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import {
   DropdownMenu,
@@ -11,10 +18,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { CreateProjectDialog, type MarketProfileOption } from "./create-project-dialog";
+import {
+  CreateProjectDialog,
+  type MarketProfileOption,
+} from "./create-project-dialog";
 import { RenameDialog } from "./rename-dialog";
 import { renameProjectAction } from "@/app/(workspace)/workspace/actions";
-import type { MachineConfigurationRecord, MachineProjectRecord } from "@/lib/db";
+import type {
+  MachineConfigurationRecord,
+  MachineProjectRecord,
+} from "@/lib/db";
 
 export interface AppBarProps {
   readonly projects: readonly MachineProjectRecord[];
@@ -55,7 +68,11 @@ export function AppBar({
         variant="ghost"
         size="icon-sm"
         onClick={onToggleNavigator}
-        aria-label={navigatorCollapsed ? "Show machine navigator" : "Hide machine navigator"}
+        aria-label={
+          navigatorCollapsed
+            ? "Show machine navigator"
+            : "Hide machine navigator"
+        }
         aria-pressed={!navigatorCollapsed}
         className="text-text-on-accent hover:bg-white/10 hover:text-text-on-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
@@ -121,7 +138,10 @@ export function AppBar({
             icon={Plus}
             label="New project"
             renderAsChild={(trigger) => (
-              <CreateProjectDialog marketProfiles={marketProfiles} trigger={trigger} />
+              <CreateProjectDialog
+                marketProfiles={marketProfiles}
+                trigger={trigger}
+              />
             )}
           />
         </div>
@@ -171,13 +191,19 @@ function Picker({
           className="flex max-w-48 items-center gap-1 rounded-md px-2 py-1 font-medium text-text-on-accent transition-colors duration-150 ease-out hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           <span className="truncate">{triggerLabel}</span>
-          <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0 opacity-80" />
+          <ChevronDown
+            aria-hidden="true"
+            className="h-3.5 w-3.5 shrink-0 opacity-80"
+          />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
         {items.map((item) => (
           <DropdownMenuItem key={item.key} asChild>
-            <Link href={item.href} aria-current={item.active ? "true" : undefined}>
+            <Link
+              href={item.href}
+              aria-current={item.active ? "true" : undefined}
+            >
               {item.label}
             </Link>
           </DropdownMenuItem>

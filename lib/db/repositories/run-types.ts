@@ -11,7 +11,9 @@ import type { ModuleComputation, ModuleInput } from "../../engine/module-sdk";
 import type { ModuleInstanceId } from "./types";
 
 /** A `CalculationRun` ID. */
-export type CalculationRunId = string & { readonly __brand: "CalculationRunId" };
+export type CalculationRunId = string & {
+  readonly __brand: "CalculationRunId";
+};
 
 /** Casts a raw string to a {@link CalculationRunId}. Identity at runtime. */
 export function asCalculationRunId(id: string): CalculationRunId {

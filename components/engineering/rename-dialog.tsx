@@ -18,7 +18,10 @@ import type { ActionState } from "@/app/(workspace)/workspace/action-state";
 
 export interface RenameDialogProps {
   readonly title: string;
-  readonly action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
+  readonly action: (
+    prevState: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
   /** The hidden form field name the action reads the target id from. */
   readonly idFieldName: string;
   readonly idValue: string;
@@ -43,7 +46,10 @@ export function RenameDialog({
   trigger,
 }: RenameDialogProps) {
   const [open, setOpen] = useState(false);
-  const [state, formAction, isPending] = useActionState(action, IDLE_ACTION_STATE);
+  const [state, formAction, isPending] = useActionState(
+    action,
+    IDLE_ACTION_STATE,
+  );
   const nameId = useId();
 
   // "Adjusting state during render" (React's documented alternative to an
@@ -83,7 +89,11 @@ export function RenameDialog({
               />
             </div>
             {state.status === "error" ? (
-              <p role="alert" className="text-[13px]" style={{ color: "var(--state-error)" }}>
+              <p
+                role="alert"
+                className="text-[13px]"
+                style={{ color: "var(--state-error)" }}
+              >
                 {state.message}
               </p>
             ) : null}

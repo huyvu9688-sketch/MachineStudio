@@ -74,14 +74,21 @@ function semanticReasons(
     ) {
       reasons.push("dimension");
     }
-  } else if (sourceDef.valueType === "enum" && sourceDef.enumId !== sinkDef.enumId) {
+  } else if (
+    sourceDef.valueType === "enum" &&
+    sourceDef.enumId !== sinkDef.enumId
+  ) {
     reasons.push("enum_type");
   }
 
   // Qualifier axes: only a populated-on-both, differing axis constrains.
   const sq = sourceDef.qualifiers;
   const kq = sinkDef.qualifiers;
-  if (sq.bound !== undefined && kq.bound !== undefined && sq.bound !== kq.bound) {
+  if (
+    sq.bound !== undefined &&
+    kq.bound !== undefined &&
+    sq.bound !== kq.bound
+  ) {
     reasons.push("bound");
   }
   if (
@@ -128,7 +135,11 @@ export function evaluateLinkCompatibility(
   const sinkDef = registry.get(sink.parameterId);
   if (sourceDef === undefined || sinkDef === undefined) {
     // A node references an unregistered parameter: no basis for identity.
-    return { compatible: false, reasons: ["parameter_identity"], mapped: false };
+    return {
+      compatible: false,
+      reasons: ["parameter_identity"],
+      mapped: false,
+    };
   }
 
   const sameParameter = source.parameterId === sink.parameterId;
@@ -137,7 +148,11 @@ export function evaluateLinkCompatibility(
     hasApprovedMapping(mappings, source.parameterId, sink.parameterId);
 
   if (!sameParameter && !mapped) {
-    return { compatible: false, reasons: ["parameter_identity"], mapped: false };
+    return {
+      compatible: false,
+      reasons: ["parameter_identity"],
+      mapped: false,
+    };
   }
 
   const reasons: LinkIncompatibilityReason[] = mapped

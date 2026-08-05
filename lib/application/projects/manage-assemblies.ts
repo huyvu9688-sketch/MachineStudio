@@ -15,7 +15,8 @@ import {
 } from "@/lib/db";
 
 /** Machine-readable classification of an assembly-management failure. */
-export type ManageAssemblyErrorCode = "invalid_input" | "unauthorized" | "not_found";
+export type ManageAssemblyErrorCode =
+  "invalid_input" | "unauthorized" | "not_found";
 
 /** A failed assembly-management outcome. */
 export interface ManageAssemblyError {
@@ -23,12 +24,22 @@ export interface ManageAssemblyError {
   readonly message: string;
 }
 
-const nameSchema = z.string().trim().min(1, "Assembly name is required.").max(200);
+const nameSchema = z
+  .string()
+  .trim()
+  .min(1, "Assembly name is required.")
+  .max(200);
 
 function invalidName(): { ok: false; error: ManageAssemblyError } {
-  return { ok: false, error: { code: "invalid_input", message: "Assembly name is required." } };
+  return {
+    ok: false,
+    error: { code: "invalid_input", message: "Assembly name is required." },
+  };
 }
-function unauthorized(message: string): { ok: false; error: ManageAssemblyError } {
+function unauthorized(message: string): {
+  ok: false;
+  error: ManageAssemblyError;
+} {
   return { ok: false, error: { code: "unauthorized", message } };
 }
 
@@ -62,7 +73,10 @@ export async function createMachineAssembly(
     return invalidName();
   }
 
-  const configOwned = await isConfigurationOwnedBy(input.configurationId, ownerId);
+  const configOwned = await isConfigurationOwnedBy(
+    input.configurationId,
+    ownerId,
+  );
   if (!configOwned) {
     return unauthorized("Configuration not found or not owned by this user.");
   }
@@ -70,10 +84,14 @@ export async function createMachineAssembly(
   if (input.parentId !== undefined) {
     const parent = await loadAssemblyForOwner(input.parentId, ownerId);
     if (parent === null) {
-      return unauthorized("Parent assembly not found or not owned by this user.");
+      return unauthorized(
+        "Parent assembly not found or not owned by this user.",
+      );
     }
     if (parent.configurationId !== input.configurationId) {
-      return unauthorized("Parent assembly does not belong to the given configuration.");
+      return unauthorized(
+        "Parent assembly does not belong to the given configuration.",
+      );
     }
   }
 
@@ -104,7 +122,10 @@ export async function renameMachineAssembly(
   if (!renamed) {
     return {
       ok: false,
-      error: { code: "not_found", message: "Assembly not found or not owned by this user." },
+      error: {
+        code: "not_found",
+        message: "Assembly not found or not owned by this user.",
+      },
     };
   }
   return { ok: true };

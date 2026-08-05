@@ -56,8 +56,5 @@ export {
   isComponentReference,
 } from "./guards";
 
-export {
-  engineeringValuesEqual,
-  engineeringValuesClose,
-} from "./equality";
+export { engineeringValuesEqual, engineeringValuesClose } from "./equality";
 export type { ToleranceOptions } from "./equality";

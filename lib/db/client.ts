@@ -79,7 +79,8 @@ function createPrismaClient(): PrismaClient {
  * instead of opening a new one on every server-file change. In
  * production, exactly one client is created per server process.
  */
-export const prisma: PrismaClient = globalThis.prismaGlobal ?? createPrismaClient();
+export const prisma: PrismaClient =
+  globalThis.prismaGlobal ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.prismaGlobal = prisma;

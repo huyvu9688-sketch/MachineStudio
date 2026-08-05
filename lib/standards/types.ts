@@ -37,10 +37,14 @@ export type SourceClassification =
 export type SourceAccess = "public" | "licensed";
 
 /** Stable identifier of a {@link SourceDocument}, e.g. `"us.osha.1910_212"`. */
-export type SourceDocumentId = string & { readonly __brand: "SourceDocumentId" };
+export type SourceDocumentId = string & {
+  readonly __brand: "SourceDocumentId";
+};
 
 /** Stable identifier of a {@link SourceRevision}, e.g. `"us.ansi.b11_0@2023"`. */
-export type SourceRevisionId = string & { readonly __brand: "SourceRevisionId" };
+export type SourceRevisionId = string & {
+  readonly __brand: "SourceRevisionId";
+};
 
 /** Stable identifier of a {@link MarketProfile}. */
 export type MarketProfileId = string & { readonly __brand: "MarketProfileId" };

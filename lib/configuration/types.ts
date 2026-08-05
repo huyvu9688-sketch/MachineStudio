@@ -35,7 +35,8 @@ import type { ManualPartDetails } from "../catalog";
 /** Current baseline-snapshot envelope format version. */
 export const BASELINE_SNAPSHOT_FORMAT_VERSION = 1 as const;
 /** Type of {@link BASELINE_SNAPSHOT_FORMAT_VERSION}. */
-export type BaselineSnapshotFormatVersion = typeof BASELINE_SNAPSHOT_FORMAT_VERSION;
+export type BaselineSnapshotFormatVersion =
+  typeof BASELINE_SNAPSHOT_FORMAT_VERSION;
 
 /** A frozen `AcceptanceCriterion`. */
 export interface BaselineAcceptanceCriterion {
@@ -143,7 +144,8 @@ export interface BaselineCalculationRunRef {
 }
 
 /** What a frozen `ComponentAssignment` is attached to (mirrors the persisted enum). */
-export type BaselineComponentAssignmentTargetKind = "module_instance" | "assembly";
+export type BaselineComponentAssignmentTargetKind =
+  "module_instance" | "assembly";
 /** How a frozen `ComponentAssignment`'s part is identified (mirrors the persisted enum). */
 export type BaselineComponentAssignmentPartSource = "catalog" | "manual";
 

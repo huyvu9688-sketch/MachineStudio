@@ -8,7 +8,9 @@ import { compareBaselineSnapshots } from "./comparison";
 import { BASELINE_SNAPSHOT_FORMAT_VERSION } from "./types";
 import type { MachineBaselineSnapshot } from "./types";
 
-function baseline(overrides: Partial<MachineBaselineSnapshot> = {}): MachineBaselineSnapshot {
+function baseline(
+  overrides: Partial<MachineBaselineSnapshot> = {},
+): MachineBaselineSnapshot {
   return {
     snapshotVersion: BASELINE_SNAPSHOT_FORMAT_VERSION,
     projectId: "project-1",
@@ -34,7 +36,13 @@ describe("compareBaselineSnapshots — requirements", () => {
     const before = baseline();
     const after = baseline({
       requirements: [
-        { id: "req-1", assemblyId: null, code: "REQ-01", statement: "Move fast.", acceptanceCriteria: [] },
+        {
+          id: "req-1",
+          assemblyId: null,
+          code: "REQ-01",
+          statement: "Move fast.",
+          acceptanceCriteria: [],
+        },
       ],
     });
     const diff = compareBaselineSnapshots(before, after);
@@ -45,13 +53,23 @@ describe("compareBaselineSnapshots — requirements", () => {
   });
 
   it("reports a changed requirement (statement edited)", () => {
-    const req = { id: "req-1", assemblyId: null, code: "REQ-01", statement: "Move fast.", acceptanceCriteria: [] };
+    const req = {
+      id: "req-1",
+      assemblyId: null,
+      code: "REQ-01",
+      statement: "Move fast.",
+      acceptanceCriteria: [],
+    };
     const before = baseline({ requirements: [req] });
-    const after = baseline({ requirements: [{ ...req, statement: "Move fast and quiet." }] });
+    const after = baseline({
+      requirements: [{ ...req, statement: "Move fast and quiet." }],
+    });
     const diff = compareBaselineSnapshots(before, after);
     expect(diff.requirements.changed).toHaveLength(1);
     expect(diff.requirements.changed[0].before.statement).toBe("Move fast.");
-    expect(diff.requirements.changed[0].after.statement).toBe("Move fast and quiet.");
+    expect(diff.requirements.changed[0].after.statement).toBe(
+      "Move fast and quiet.",
+    );
   });
 
   it("reports a changed requirement when its acceptance criteria change", () => {
@@ -64,14 +82,25 @@ describe("compareBaselineSnapshots — requirements", () => {
     };
     const before = baseline({ requirements: [req] });
     const after = baseline({
-      requirements: [{ ...req, acceptanceCriteria: [{ id: "ac-1", statement: "Under 1.5 s." }] }],
+      requirements: [
+        {
+          ...req,
+          acceptanceCriteria: [{ id: "ac-1", statement: "Under 1.5 s." }],
+        },
+      ],
     });
     const diff = compareBaselineSnapshots(before, after);
     expect(diff.requirements.changed).toHaveLength(1);
   });
 
   it("reports no diff for an unchanged requirement", () => {
-    const req = { id: "req-1", assemblyId: null, code: "REQ-01", statement: "Move fast.", acceptanceCriteria: [] };
+    const req = {
+      id: "req-1",
+      assemblyId: null,
+      code: "REQ-01",
+      statement: "Move fast.",
+      acceptanceCriteria: [],
+    };
     const before = baseline({ requirements: [req] });
     const after = baseline({ requirements: [{ ...req }] });
     const diff = compareBaselineSnapshots(before, after);
@@ -81,7 +110,13 @@ describe("compareBaselineSnapshots — requirements", () => {
   });
 
   it("reports a removed requirement", () => {
-    const req = { id: "req-1", assemblyId: null, code: "REQ-01", statement: "Move fast.", acceptanceCriteria: [] };
+    const req = {
+      id: "req-1",
+      assemblyId: null,
+      code: "REQ-01",
+      statement: "Move fast.",
+      acceptanceCriteria: [],
+    };
     const before = baseline({ requirements: [req] });
     const after = baseline();
     const diff = compareBaselineSnapshots(before, after);
@@ -100,18 +135,26 @@ describe("compareBaselineSnapshots — parameter values (diffed by graph-node sl
       source: "manual" as const,
     };
     const before = baseline({
-      parameterValues: [{ ...nodeShape, id: "pv-1", value: makeQuantity(10, "kg") }],
+      parameterValues: [
+        { ...nodeShape, id: "pv-1", value: makeQuantity(10, "kg") },
+      ],
     });
     const after = baseline({
       // A new row (append-only history), same node, new value.
-      parameterValues: [{ ...nodeShape, id: "pv-2", value: makeQuantity(12, "kg") }],
+      parameterValues: [
+        { ...nodeShape, id: "pv-2", value: makeQuantity(12, "kg") },
+      ],
     });
     const diff = compareBaselineSnapshots(before, after);
     expect(diff.parameterValues.added).toEqual([]);
     expect(diff.parameterValues.removed).toEqual([]);
     expect(diff.parameterValues.changed).toHaveLength(1);
-    expect(diff.parameterValues.changed[0].before.value).toEqual(makeQuantity(10, "kg"));
-    expect(diff.parameterValues.changed[0].after.value).toEqual(makeQuantity(12, "kg"));
+    expect(diff.parameterValues.changed[0].before.value).toEqual(
+      makeQuantity(10, "kg"),
+    );
+    expect(diff.parameterValues.changed[0].after.value).toEqual(
+      makeQuantity(12, "kg"),
+    );
   });
 
   it("reports no diff when the same node keeps the same value, even with a new row id", () => {
@@ -124,10 +167,14 @@ describe("compareBaselineSnapshots — parameter values (diffed by graph-node sl
       source: "manual" as const,
     };
     const before = baseline({
-      parameterValues: [{ ...nodeShape, id: "pv-1", value: makeQuantity(10, "kg") }],
+      parameterValues: [
+        { ...nodeShape, id: "pv-1", value: makeQuantity(10, "kg") },
+      ],
     });
     const after = baseline({
-      parameterValues: [{ ...nodeShape, id: "pv-2", value: makeQuantity(10, "kg") }],
+      parameterValues: [
+        { ...nodeShape, id: "pv-2", value: makeQuantity(10, "kg") },
+      ],
     });
     const diff = compareBaselineSnapshots(before, after);
     expect(diff.parameterValues.changed).toEqual([]);
@@ -180,7 +227,9 @@ describe("compareBaselineSnapshots — calculation runs (diffed by module instan
   };
 
   it("reports a changed run when the module gets a new run id", () => {
-    const before = baseline({ calculationRuns: [{ ...runShape, id: "run-1" }] });
+    const before = baseline({
+      calculationRuns: [{ ...runShape, id: "run-1" }],
+    });
     const after = baseline({ calculationRuns: [{ ...runShape, id: "run-2" }] });
     const diff = compareBaselineSnapshots(before, after);
     expect(diff.calculationRuns.changed).toHaveLength(1);
@@ -189,8 +238,12 @@ describe("compareBaselineSnapshots — calculation runs (diffed by module instan
   });
 
   it("reports a changed run when the same run id goes stale between baselines", () => {
-    const before = baseline({ calculationRuns: [{ ...runShape, id: "run-1", stale: false }] });
-    const after = baseline({ calculationRuns: [{ ...runShape, id: "run-1", stale: true }] });
+    const before = baseline({
+      calculationRuns: [{ ...runShape, id: "run-1", stale: false }],
+    });
+    const after = baseline({
+      calculationRuns: [{ ...runShape, id: "run-1", stale: true }],
+    });
     const diff = compareBaselineSnapshots(before, after);
     expect(diff.calculationRuns.changed).toHaveLength(1);
   });
@@ -209,8 +262,12 @@ describe("compareBaselineSnapshots — component assignments and module tree", (
       quantity: 1,
       calculationRunId: "run-1",
     };
-    const before = baseline({ componentAssignments: [{ ...assignmentShape, stale: false }] });
-    const after = baseline({ componentAssignments: [{ ...assignmentShape, stale: true }] });
+    const before = baseline({
+      componentAssignments: [{ ...assignmentShape, stale: false }],
+    });
+    const after = baseline({
+      componentAssignments: [{ ...assignmentShape, stale: true }],
+    });
     const diff = compareBaselineSnapshots(before, after);
     expect(diff.componentAssignments.changed).toHaveLength(1);
   });

@@ -104,7 +104,10 @@ export type RemoveParameterLinkResult =
     }
   | { readonly ok: false; readonly error: StalePropagationError };
 
-function unauthorized(message: string): { ok: false; error: StalePropagationError } {
+function unauthorized(message: string): {
+  ok: false;
+  error: StalePropagationError;
+} {
   return { ok: false, error: { code: "unauthorized", message } };
 }
 function failure(
@@ -254,9 +257,14 @@ export async function setParameterValue(
   // nothing to do with, where it would then resolve as a real input.
   let extraNodes: readonly GraphNodeDescriptor[] = [];
   if (input.moduleInstanceId !== undefined) {
-    const context = await loadModuleInstanceForOwner(input.moduleInstanceId, ownerId);
+    const context = await loadModuleInstanceForOwner(
+      input.moduleInstanceId,
+      ownerId,
+    );
     if (context === null) {
-      return unauthorized("Module instance not found or not owned by this user.");
+      return unauthorized(
+        "Module instance not found or not owned by this user.",
+      );
     }
     if (context.configurationId !== input.configurationId) {
       return unauthorized(
@@ -279,7 +287,9 @@ export async function setParameterValue(
         return unauthorized("Assembly not found or not owned by this user.");
       }
       if (assembly.configurationId !== input.configurationId) {
-        return unauthorized("Assembly does not belong to the given configuration.");
+        return unauthorized(
+          "Assembly does not belong to the given configuration.",
+        );
       }
     }
   }
@@ -310,7 +320,10 @@ export async function setParameterValue(
         current.source === input.source &&
         engineeringValuesClose(current.value, input.value)
       ) {
-        return { value: current, staleModuleInstanceIds: [] as readonly ModuleInstanceId[] };
+        return {
+          value: current,
+          staleModuleInstanceIds: [] as readonly ModuleInstanceId[],
+        };
       }
 
       // Impact is computed inside the transaction so the traversal and the
@@ -340,7 +353,10 @@ export async function setParameterValue(
     return { ok: true, ...result };
   } catch (error) {
     if (error instanceof GraphRepositoryError) {
-      return { ok: false, error: { code: "invalid_input", message: error.message } };
+      return {
+        ok: false,
+        error: { code: "invalid_input", message: error.message },
+      };
     }
     throw error;
   }
@@ -371,9 +387,14 @@ export async function confirmParameterLink(
   input: CreateParameterLinkInput,
   ownerId: UserId,
 ): Promise<ConfirmParameterLinkResult> {
-  const context = await loadModuleInstanceForOwner(input.targetModuleInstanceId, ownerId);
+  const context = await loadModuleInstanceForOwner(
+    input.targetModuleInstanceId,
+    ownerId,
+  );
   if (context === null) {
-    return unauthorized("Target module instance not found or not owned by this user.");
+    return unauthorized(
+      "Target module instance not found or not owned by this user.",
+    );
   }
   if (context.configurationId !== input.configurationId) {
     return unauthorized(
@@ -431,7 +452,9 @@ export async function confirmParameterLink(
       ownerId,
     );
     if (sourceContext === null) {
-      return unauthorized("Source module instance not found or not owned by this user.");
+      return unauthorized(
+        "Source module instance not found or not owned by this user.",
+      );
     }
     if (sourceContext.configurationId !== input.configurationId) {
       return unauthorized(
@@ -461,9 +484,14 @@ export async function confirmParameterLink(
       );
     }
   } else if (input.sourceAssemblyId !== undefined) {
-    const assembly = await loadAssemblyForOwner(input.sourceAssemblyId, ownerId);
+    const assembly = await loadAssemblyForOwner(
+      input.sourceAssemblyId,
+      ownerId,
+    );
     if (assembly === null) {
-      return unauthorized("Source assembly not found or not owned by this user.");
+      return unauthorized(
+        "Source assembly not found or not owned by this user.",
+      );
     }
     if (assembly.configurationId !== input.configurationId) {
       return unauthorized(
@@ -513,7 +541,10 @@ export async function confirmParameterLink(
     return { ok: true, ...result };
   } catch (error) {
     if (error instanceof GraphRepositoryError) {
-      const code = error.code === "cycle" || error.code === "duplicate_link" ? error.code : "invalid_input";
+      const code =
+        error.code === "cycle" || error.code === "duplicate_link"
+          ? error.code
+          : "invalid_input";
       return { ok: false, error: { code, message: error.message } };
     }
     throw error;
@@ -522,7 +553,10 @@ export async function confirmParameterLink(
 
 /** Result of {@link previewRemoveParameterLinkImpact}. */
 export type PreviewRemoveParameterLinkImpactResult =
-  | { readonly ok: true; readonly staleModuleInstanceIds: readonly ModuleInstanceId[] }
+  | {
+      readonly ok: true;
+      readonly staleModuleInstanceIds: readonly ModuleInstanceId[];
+    }
   | { readonly ok: false; readonly error: StalePropagationError };
 
 /**
@@ -543,7 +577,10 @@ export async function previewRemoveParameterLinkImpact(
     return unauthorized("Parameter link not found or not owned by this user.");
   }
 
-  const context = await loadModuleInstanceForOwner(link.targetModuleInstanceId, ownerId);
+  const context = await loadModuleInstanceForOwner(
+    link.targetModuleInstanceId,
+    ownerId,
+  );
   const extraNodes =
     context === null
       ? []
@@ -585,7 +622,10 @@ export async function removeParameterLink(
     return unauthorized("Parameter link not found or not owned by this user.");
   }
 
-  const context = await loadModuleInstanceForOwner(link.targetModuleInstanceId, ownerId);
+  const context = await loadModuleInstanceForOwner(
+    link.targetModuleInstanceId,
+    ownerId,
+  );
   const extraNodes =
     context === null
       ? []

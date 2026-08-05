@@ -54,7 +54,8 @@ export async function loadWorkspaceView(
     requestedProjectId !== undefined
       ? await loadProjectTree(requestedProjectId, ownerId)
       : null;
-  const selectedProject = requested ?? (await loadProjectTree(projects[0].id, ownerId));
+  const selectedProject =
+    requested ?? (await loadProjectTree(projects[0].id, ownerId));
 
   return { projects, selectedProject };
 }

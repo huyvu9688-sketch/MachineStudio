@@ -43,7 +43,10 @@ describe("ParameterDefinitionSchema", () => {
   });
 
   it("rejects an unknown value type", () => {
-    const result = ParameterDefinitionSchema.safeParse({ ...valid, valueType: "curve" });
+    const result = ParameterDefinitionSchema.safeParse({
+      ...valid,
+      valueType: "curve",
+    });
     expect(result.success).toBe(false);
   });
 

@@ -15,7 +15,11 @@
 
 import "server-only";
 import { z } from "zod";
-import { overallCheckStatus, type CheckResult, type CheckStatus } from "../../engine/trace";
+import {
+  overallCheckStatus,
+  type CheckResult,
+  type CheckStatus,
+} from "../../engine/trace";
 import { getDimensionOf, hasUnit, isDimensionless } from "../../engine/units";
 import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "../client";
@@ -73,7 +77,10 @@ function deriveCriticalMargin(checks: readonly CheckResult[]): number | null {
   for (const check of checks) {
     const margin = check.margin;
     if (margin === undefined || margin.kind !== "quantity") continue;
-    if (!hasUnit(margin.unit) || !isDimensionless(getDimensionOf(margin.unit))) {
+    if (
+      !hasUnit(margin.unit) ||
+      !isDimensionless(getDimensionOf(margin.unit))
+    ) {
       continue;
     }
     if (min === null || margin.value < min) min = margin.value;
@@ -101,7 +108,9 @@ interface RunRow {
   snapshot: Prisma.JsonValue;
 }
 
-function toRunSummary(row: Omit<RunRow, "snapshot" | "updatedAt">): CalculationRunSummary {
+function toRunSummary(
+  row: Omit<RunRow, "snapshot" | "updatedAt">,
+): CalculationRunSummary {
   return {
     id: asCalculationRunId(row.id),
     moduleInstanceId: asModuleInstanceId(row.moduleInstanceId),
@@ -202,7 +211,9 @@ export async function loadCalculationRun(
   const row = await client.calculationRun.findFirst({
     where: {
       id,
-      moduleInstance: { assembly: { configuration: { project: { ownerId: owner } } } },
+      moduleInstance: {
+        assembly: { configuration: { project: { ownerId: owner } } },
+      },
     },
   });
   return row === null ? null : toRunRecord(row);
@@ -227,7 +238,9 @@ export async function listRunsForModuleInstance(
   const rows = await client.calculationRun.findMany({
     where: {
       moduleInstanceId: id,
-      moduleInstance: { assembly: { configuration: { project: { ownerId: owner } } } },
+      moduleInstance: {
+        assembly: { configuration: { project: { ownerId: owner } } },
+      },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     omit: { snapshot: true, updatedAt: true },

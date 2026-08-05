@@ -23,7 +23,8 @@ export const jpDocuments: readonly SourceDocument[] = [
     authority: "Government of Japan (MHLW)",
     market: "JP",
     access: "public",
-    officialUrl: "https://www.japaneselawtranslation.go.jp/en/laws/view/3440/en",
+    officialUrl:
+      "https://www.japaneselawtranslation.go.jp/en/laws/view/3440/en",
     note: "Act No. 57 of 1972. Article 28-2 risk assessment (effort obligation since April 2006), Article 42 structural standards for specified machines, and Chapter V machine regulations. The Japanese text is authoritative; the English translation is unofficial.",
   },
   {
@@ -35,7 +36,8 @@ export const jpDocuments: readonly SourceDocument[] = [
     authority: "MHLW",
     market: "JP",
     access: "public",
-    officialUrl: "https://www.japaneselawtranslation.go.jp/en/laws/view/3878/en",
+    officialUrl:
+      "https://www.japaneselawtranslation.go.jp/en/laws/view/3878/en",
     note: "MHLW ministerial ordinance. Machine-specific guarding, equipment, and work provisions when applicable, including industrial-robot provisions.",
   },
   {

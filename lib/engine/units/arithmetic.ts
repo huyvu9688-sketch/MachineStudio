@@ -12,7 +12,11 @@ import {
   subtractDimensions,
   type Dimension,
 } from "./dimension";
-import { AffineUnitError, DimensionMismatchError, NonFiniteValueError } from "./errors";
+import {
+  AffineUnitError,
+  DimensionMismatchError,
+  NonFiniteValueError,
+} from "./errors";
 import { convert } from "./convert";
 import { makeQuantity } from "./quantity";
 import { Dimensions, getUnit, preferredSymbol } from "./registry";
@@ -108,7 +112,10 @@ export function divideQuantities(a: Quantity, b: Quantity): Quantity {
   const unitA = getUnit(a.unit);
   const unitB = getUnit(b.unit);
   const si = (a.value * unitA.factor) / (b.value * unitB.factor);
-  return resultQuantity(si, subtractDimensions(unitA.dimension, unitB.dimension));
+  return resultQuantity(
+    si,
+    subtractDimensions(unitA.dimension, unitB.dimension),
+  );
 }
 
 /**

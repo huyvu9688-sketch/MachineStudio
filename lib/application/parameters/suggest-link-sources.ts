@@ -104,7 +104,10 @@ function flattenAssemblies(nodes: readonly AssemblyNode[]): AssemblyNode[] {
 }
 
 /** Builds a `GraphNode` for `descriptor`, scoped to `scopeId` (unlike `lib/db`'s single-scope reconstruction). */
-function graphNodeAt(descriptor: GraphNodeDescriptor, scopeId: string): GraphNode {
+function graphNodeAt(
+  descriptor: GraphNodeDescriptor,
+  scopeId: string,
+): GraphNode {
   return {
     id: parameterGraphNodeId(descriptor),
     kind: descriptor.kind,
@@ -145,24 +148,29 @@ export async function buildConfigurationSuggestionIndex(
   const rootScopeId = asScopeId(configurationId);
   const scopes: GraphScope[] = [
     { id: rootScopeId },
-    ...assemblies.map(
-      (a): GraphScope => ({
-        id: asScopeId(a.id),
-        parentId: asScopeId(a.parentId ?? configurationId),
-      }),
-    ),
+    ...assemblies.map((a): GraphScope => ({
+      id: asScopeId(a.id),
+      parentId: asScopeId(a.parentId ?? configurationId),
+    })),
   ];
 
-  const scopeLabelByScopeId = new Map<string, string>([[configurationId, "Machine"]]);
+  const scopeLabelByScopeId = new Map<string, string>([
+    [configurationId, "Machine"],
+  ]);
   for (const a of assemblies) scopeLabelByScopeId.set(a.id, a.name);
 
-  const moduleLabelByInstanceId = new Map(moduleInstances.map((mi) => [mi.id as string, mi.label]));
+  const moduleLabelByInstanceId = new Map(
+    moduleInstances.map((mi) => [mi.id as string, mi.label]),
+  );
   const moduleAssemblyById = new Map(
     moduleInstances.map((mi) => [mi.id as string, mi.assemblyId as string]),
   );
 
   const nodes = new Map<string, GraphNode>();
-  const addNode = (descriptor: GraphNodeDescriptor, scopeId: string): GraphNode => {
+  const addNode = (
+    descriptor: GraphNodeDescriptor,
+    scopeId: string,
+  ): GraphNode => {
     const node = graphNodeAt(descriptor, scopeId);
     nodes.set(node.id, node);
     return node;
@@ -198,7 +206,10 @@ export async function buildConfigurationSuggestionIndex(
   }
 
   const valueByNodeId = new Map<NodeId, EngineeringValue>();
-  const currentValues = await listCurrentParameterValuesForConfiguration(configurationId, ownerId);
+  const currentValues = await listCurrentParameterValuesForConfiguration(
+    configurationId,
+    ownerId,
+  );
   for (const row of currentValues) {
     // A module_input value is an authored sink value (a manual/workflow input),
     // never a provider — it must never appear as a suggestible source.
@@ -214,7 +225,10 @@ export async function buildConfigurationSuggestionIndex(
     valueByNodeId.set(node.id, row.value);
   }
 
-  const linkRows = await listParameterLinksForConfiguration(configurationId, ownerId);
+  const linkRows = await listParameterLinksForConfiguration(
+    configurationId,
+    ownerId,
+  );
   const links: GraphLink[] = linkRows.map((link) => {
     const targetDescriptor: GraphNodeDescriptor = {
       kind: "module_input",
@@ -230,20 +244,32 @@ export async function buildConfigurationSuggestionIndex(
       parameterId: link.sourceParameterId,
       loadCase: link.sourceLoadCase,
     };
-    const targetScope = moduleAssemblyById.get(link.targetModuleInstanceId) ?? configurationId;
+    const targetScope =
+      moduleAssemblyById.get(link.targetModuleInstanceId) ?? configurationId;
     const sourceScope =
       link.sourceModuleInstanceId !== null
-        ? moduleAssemblyById.get(link.sourceModuleInstanceId) ?? configurationId
-        : link.sourceAssemblyId ?? configurationId;
+        ? (moduleAssemblyById.get(link.sourceModuleInstanceId) ??
+          configurationId)
+        : (link.sourceAssemblyId ?? configurationId);
     const targetNode = addNode(targetDescriptor, targetScope);
     const sourceNode = addNode(sourceDescriptor, sourceScope);
-    return { id: asLinkId(link.id), sourceNodeId: sourceNode.id, targetNodeId: targetNode.id };
+    return {
+      id: asLinkId(link.id),
+      sourceNodeId: sourceNode.id,
+      targetNodeId: targetNode.id,
+    };
   });
 
   const graph: ParameterGraph = { scopes, nodes: [...nodes.values()], links };
   const indexed = buildParameterGraph(graph);
 
-  return { indexed, rootScopeId, scopeLabelByScopeId, moduleLabelByInstanceId, valueByNodeId };
+  return {
+    indexed,
+    rootScopeId,
+    scopeLabelByScopeId,
+    moduleLabelByInstanceId,
+    valueByNodeId,
+  };
 }
 
 /**
@@ -258,30 +284,39 @@ export function describeLinkSuggestions(
   sinkNodeId: NodeId,
 ): LinkSuggestionSourceView[] {
   const suggestions = suggestSources(index.indexed, sinkNodeId);
-  return suggestions.slice(0, MAX_LINK_SUGGESTIONS_PER_FIELD).map((suggestion) => {
-    const node = index.indexed.nodeById.get(suggestion.sourceNodeId);
-    if (node === undefined) {
-      // suggestSources only ever returns node IDs it read out of the same
-      // `index.indexed`, so this would be an invariant violation, not a
-      // reachable user-facing state.
-      throw new Error(`Suggested source node "${suggestion.sourceNodeId}" is missing from the index.`);
-    }
-    const definition = getParameter(node.parameterId);
-    const isModuleOutput = node.kind === "module_output";
-    return {
-      sourceKind: node.kind as LinkSuggestionSourceKind,
-      sourceModuleInstanceId: node.moduleInstanceId ?? null,
-      sourceAssemblyId: isModuleOutput || node.scopeId === index.rootScopeId ? null : node.scopeId,
-      sourceParameterId: node.parameterId,
-      sourceLoadCase: node.loadCase ?? null,
-      parameterLabel: definition?.displayName ?? node.parameterId,
-      scopeLabel: index.scopeLabelByScopeId.get(node.scopeId) ?? node.scopeId,
-      moduleLabel:
-        isModuleOutput && node.moduleInstanceId !== undefined
-          ? index.moduleLabelByInstanceId.get(node.moduleInstanceId) ?? null
-          : null,
-      origin: suggestion.origin,
-      value: isModuleOutput ? null : index.valueByNodeId.get(node.id) ?? null,
-    };
-  });
+  return suggestions
+    .slice(0, MAX_LINK_SUGGESTIONS_PER_FIELD)
+    .map((suggestion) => {
+      const node = index.indexed.nodeById.get(suggestion.sourceNodeId);
+      if (node === undefined) {
+        // suggestSources only ever returns node IDs it read out of the same
+        // `index.indexed`, so this would be an invariant violation, not a
+        // reachable user-facing state.
+        throw new Error(
+          `Suggested source node "${suggestion.sourceNodeId}" is missing from the index.`,
+        );
+      }
+      const definition = getParameter(node.parameterId);
+      const isModuleOutput = node.kind === "module_output";
+      return {
+        sourceKind: node.kind as LinkSuggestionSourceKind,
+        sourceModuleInstanceId: node.moduleInstanceId ?? null,
+        sourceAssemblyId:
+          isModuleOutput || node.scopeId === index.rootScopeId
+            ? null
+            : node.scopeId,
+        sourceParameterId: node.parameterId,
+        sourceLoadCase: node.loadCase ?? null,
+        parameterLabel: definition?.displayName ?? node.parameterId,
+        scopeLabel: index.scopeLabelByScopeId.get(node.scopeId) ?? node.scopeId,
+        moduleLabel:
+          isModuleOutput && node.moduleInstanceId !== undefined
+            ? (index.moduleLabelByInstanceId.get(node.moduleInstanceId) ?? null)
+            : null,
+        origin: suggestion.origin,
+        value: isModuleOutput
+          ? null
+          : (index.valueByNodeId.get(node.id) ?? null),
+      };
+    });
 }

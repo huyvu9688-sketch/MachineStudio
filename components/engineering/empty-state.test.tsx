@@ -16,7 +16,9 @@ describe("EmptyState", () => {
 
     expect(screen.getByText("No machine projects yet")).toBeInTheDocument();
     expect(
-      screen.getByText("Machine projects will appear here once one is created."),
+      screen.getByText(
+        "Machine projects will appear here once one is created.",
+      ),
     ).toBeInTheDocument();
   });
 

@@ -8,11 +8,7 @@
 // something modules do at runtime. Module code must never hardcode a
 // conversion constant; it goes through this package (Unit 1.2 exit criterion).
 
-import {
-  dimension,
-  dimensionKey,
-  type Dimension,
-} from "./dimension";
+import { dimension, dimensionKey, type Dimension } from "./dimension";
 import { UnknownUnitError } from "./errors";
 
 /** A single registered unit. */

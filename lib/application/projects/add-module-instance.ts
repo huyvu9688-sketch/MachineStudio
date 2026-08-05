@@ -13,7 +13,8 @@ import {
 } from "@/lib/db";
 
 /** Machine-readable classification of an {@link addModuleInstance} failure. */
-export type AddModuleInstanceErrorCode = "invalid_input" | "unauthorized" | "module_not_found";
+export type AddModuleInstanceErrorCode =
+  "invalid_input" | "unauthorized" | "module_not_found";
 
 /** A failed {@link addModuleInstance} outcome. */
 export interface AddModuleInstanceError {
@@ -35,7 +36,11 @@ export type AddModuleInstanceResult =
   | { readonly ok: true; readonly moduleInstance: ModuleInstanceRecord }
   | { readonly ok: false; readonly error: AddModuleInstanceError };
 
-const labelSchema = z.string().trim().min(1, "Module label is required.").max(200);
+const labelSchema = z
+  .string()
+  .trim()
+  .min(1, "Module label is required.")
+  .max(200);
 
 /**
  * Adds a module instance to an assembly, from a module package actually
@@ -62,13 +67,19 @@ export async function addModuleInstance(
   if (assembly === null) {
     return {
       ok: false,
-      error: { code: "unauthorized", message: "Assembly not found or not owned by this user." },
+      error: {
+        code: "unauthorized",
+        message: "Assembly not found or not owned by this user.",
+      },
     };
   }
   if (assembly.configurationId !== input.configurationId) {
     return {
       ok: false,
-      error: { code: "unauthorized", message: "Assembly does not belong to the given configuration." },
+      error: {
+        code: "unauthorized",
+        message: "Assembly does not belong to the given configuration.",
+      },
     };
   }
 

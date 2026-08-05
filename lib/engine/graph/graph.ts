@@ -70,7 +70,9 @@ function validateScopeHierarchy(
  *
  * @throws {@link ParameterGraphError} on the first integrity violation.
  */
-export function buildParameterGraph(graph: ParameterGraph): IndexedParameterGraph {
+export function buildParameterGraph(
+  graph: ParameterGraph,
+): IndexedParameterGraph {
   const parsed = ParameterGraphSchema.safeParse(graph);
   if (!parsed.success) {
     fail("invalid_shape", `Malformed parameter graph: ${parsed.error.message}`);
@@ -92,7 +94,11 @@ export function buildParameterGraph(graph: ParameterGraph): IndexedParameterGrap
       fail("duplicate_id", `Duplicate node ID "${node.id}".`, node.id);
     }
     if (!scopeById.has(node.scopeId)) {
-      fail("unknown_scope", `Node "${node.id}" references unknown scope "${node.scopeId}".`, node.id);
+      fail(
+        "unknown_scope",
+        `Node "${node.id}" references unknown scope "${node.scopeId}".`,
+        node.id,
+      );
     }
     if (
       (node.kind === "module_input" || node.kind === "module_output") &&
@@ -126,10 +132,18 @@ export function buildParameterGraph(graph: ParameterGraph): IndexedParameterGrap
     const source = nodeById.get(link.sourceNodeId);
     const target = nodeById.get(link.targetNodeId);
     if (source === undefined) {
-      fail("unknown_node", `Link "${link.id}" references unknown source "${link.sourceNodeId}".`, link.id);
+      fail(
+        "unknown_node",
+        `Link "${link.id}" references unknown source "${link.sourceNodeId}".`,
+        link.id,
+      );
     }
     if (target === undefined) {
-      fail("unknown_node", `Link "${link.id}" references unknown target "${link.targetNodeId}".`, link.id);
+      fail(
+        "unknown_node",
+        `Link "${link.id}" references unknown target "${link.targetNodeId}".`,
+        link.id,
+      );
     }
     if (target.kind !== "module_input") {
       fail(
@@ -153,7 +167,12 @@ export function buildParameterGraph(graph: ParameterGraph): IndexedParameterGrap
   const moduleOutputs = new Map<string, string[]>();
   for (const node of value.nodes) {
     if (node.moduleInstanceId === undefined) continue;
-    const bucket = node.kind === "module_input" ? moduleInputs : node.kind === "module_output" ? moduleOutputs : undefined;
+    const bucket =
+      node.kind === "module_input"
+        ? moduleInputs
+        : node.kind === "module_output"
+          ? moduleOutputs
+          : undefined;
     if (bucket === undefined) continue;
     const list = bucket.get(node.moduleInstanceId) ?? [];
     list.push(node.id);
@@ -247,10 +266,16 @@ export function computeStaleImpact(
   const seen = new Set<string>();
   for (const id of downstream) {
     const node = indexed.nodeById.get(id);
-    if (node?.moduleInstanceId !== undefined && !seen.has(node.moduleInstanceId)) {
+    if (
+      node?.moduleInstanceId !== undefined &&
+      !seen.has(node.moduleInstanceId)
+    ) {
       seen.add(node.moduleInstanceId);
       moduleInstanceIds.push(node.moduleInstanceId);
     }
   }
-  return { downstreamNodeIds: downstream, staleModuleInstanceIds: moduleInstanceIds };
+  return {
+    downstreamNodeIds: downstream,
+    staleModuleInstanceIds: moduleInstanceIds,
+  };
 }

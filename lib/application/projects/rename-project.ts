@@ -18,7 +18,11 @@ export type RenameMachineProjectResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly error: RenameMachineProjectError };
 
-const nameSchema = z.string().trim().min(1, "Project name is required.").max(200);
+const nameSchema = z
+  .string()
+  .trim()
+  .min(1, "Project name is required.")
+  .max(200);
 
 /**
  * Renames a project owned by `ownerId`. `not_found` covers both an unknown
@@ -34,7 +38,10 @@ export async function renameMachineProject(
   if (!parsed.success) {
     return {
       ok: false,
-      error: { code: "invalid_input", message: parsed.error.issues[0]?.message ?? "Invalid name." },
+      error: {
+        code: "invalid_input",
+        message: parsed.error.issues[0]?.message ?? "Invalid name.",
+      },
     };
   }
 
@@ -42,7 +49,10 @@ export async function renameMachineProject(
   if (!renamed) {
     return {
       ok: false,
-      error: { code: "not_found", message: "Project not found or not owned by this user." },
+      error: {
+        code: "not_found",
+        message: "Project not found or not owned by this user.",
+      },
     };
   }
   return { ok: true };

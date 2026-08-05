@@ -148,17 +148,27 @@ type Assert<T extends true> = T;
 
 export type _SchemaTypeParity = [
   Assert<MutuallyAssignable<Quantity, z.infer<typeof QuantitySchema>>>,
-  Assert<MutuallyAssignable<VectorQuantity, z.infer<typeof VectorQuantitySchema>>>,
+  Assert<
+    MutuallyAssignable<VectorQuantity, z.infer<typeof VectorQuantitySchema>>
+  >,
   Assert<MutuallyAssignable<Curve, z.infer<typeof CurveSchema>>>,
   Assert<MutuallyAssignable<LoadSpectrum, z.infer<typeof LoadSpectrumSchema>>>,
   Assert<MutuallyAssignable<TableValue, z.infer<typeof TableValueSchema>>>,
   Assert<MutuallyAssignable<EnumValue, z.infer<typeof EnumValueSchema>>>,
   Assert<MutuallyAssignable<BooleanValue, z.infer<typeof BooleanValueSchema>>>,
   Assert<
-    MutuallyAssignable<MaterialReference, z.infer<typeof MaterialReferenceSchema>>
+    MutuallyAssignable<
+      MaterialReference,
+      z.infer<typeof MaterialReferenceSchema>
+    >
   >,
   Assert<
-    MutuallyAssignable<ComponentReference, z.infer<typeof ComponentReferenceSchema>>
+    MutuallyAssignable<
+      ComponentReference,
+      z.infer<typeof ComponentReferenceSchema>
+    >
   >,
-  Assert<MutuallyAssignable<EngineeringValue, z.infer<typeof EngineeringValueSchema>>>,
+  Assert<
+    MutuallyAssignable<EngineeringValue, z.infer<typeof EngineeringValueSchema>>
+  >,
 ];

@@ -56,7 +56,11 @@ describe.skipIf(!liveDatabaseAvailable)(
       return { ownerId: user.id, configId: config.id, assemblyId: assembly.id };
     }
 
-    async function newRelay(s: Scaffold, assemblyId: AssemblyId, label: string): Promise<ModuleInstanceId> {
+    async function newRelay(
+      s: Scaffold,
+      assemblyId: AssemblyId,
+      label: string,
+    ): Promise<ModuleInstanceId> {
       const mi = await projects.createModuleInstance({
         assemblyId,
         configurationId: s.configId,
@@ -97,7 +101,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const stranger = await projects.upsertUser(`test-user-${randomUUID()}`);
       createdUserIds.push(stranger.id);
 
-      const index = await suggest.buildConfigurationSuggestionIndex(s.configId, stranger.id);
+      const index = await suggest.buildConfigurationSuggestionIndex(
+        s.configId,
+        stranger.id,
+      );
       expect(index).toBeNull();
     });
 
@@ -106,11 +113,17 @@ describe.skipIf(!liveDatabaseAvailable)(
       const source = await newRelay(s, s.assemblyId, "Upstream relay");
       const target = await newRelay(s, s.assemblyId, "Downstream relay");
 
-      const index = await suggest.buildConfigurationSuggestionIndex(s.configId, s.ownerId);
+      const index = await suggest.buildConfigurationSuggestionIndex(
+        s.configId,
+        s.ownerId,
+      );
       expect(index).not.toBeNull();
       if (index === null) return;
 
-      const suggestions = suggest.describeLinkSuggestions(index, targetInputSinkId(target));
+      const suggestions = suggest.describeLinkSuggestions(
+        index,
+        targetInputSinkId(target),
+      );
       expect(suggestions).toHaveLength(1);
       expect(suggestions[0]).toMatchObject({
         sourceKind: "module_output",
@@ -129,13 +142,19 @@ describe.skipIf(!liveDatabaseAvailable)(
       const s = await scaffold();
       const target = await newRelay(s, s.assemblyId, "Only relay");
 
-      const index = await suggest.buildConfigurationSuggestionIndex(s.configId, s.ownerId);
+      const index = await suggest.buildConfigurationSuggestionIndex(
+        s.configId,
+        s.ownerId,
+      );
       expect(index).not.toBeNull();
       if (index === null) return;
 
       // With no other module instance and no authored provider value, there
       // is nothing to suggest — not even the sink's own input port.
-      const suggestions = suggest.describeLinkSuggestions(index, targetInputSinkId(target));
+      const suggestions = suggest.describeLinkSuggestions(
+        index,
+        targetInputSinkId(target),
+      );
       expect(suggestions).toEqual([]);
     });
 
@@ -172,17 +191,33 @@ describe.skipIf(!liveDatabaseAvailable)(
         value: makeQuantity(300, "N"),
       });
 
-      const index = await suggest.buildConfigurationSuggestionIndex(s.configId, s.ownerId);
+      const index = await suggest.buildConfigurationSuggestionIndex(
+        s.configId,
+        s.ownerId,
+      );
       expect(index).not.toBeNull();
       if (index === null) return;
 
-      const suggestions = suggest.describeLinkSuggestions(index, targetInputSinkId(target));
+      const suggestions = suggest.describeLinkSuggestions(
+        index,
+        targetInputSinkId(target),
+      );
       expect(suggestions).toHaveLength(3);
-      expect(suggestions.map((sg) => (sg.value?.kind === "quantity" ? sg.value.value : null))).toEqual([
-        100, 200, 300,
+      expect(
+        suggestions.map((sg) =>
+          sg.value?.kind === "quantity" ? sg.value.value : null,
+        ),
+      ).toEqual([100, 200, 300]);
+      expect(suggestions.map((sg) => sg.sourceAssemblyId)).toEqual([
+        child.id,
+        s.assemblyId,
+        null,
       ]);
-      expect(suggestions.map((sg) => sg.sourceAssemblyId)).toEqual([child.id, s.assemblyId, null]);
-      expect(suggestions.map((sg) => sg.scopeLabel)).toEqual(["Sub-assembly", "X axis", "Machine"]);
+      expect(suggestions.map((sg) => sg.scopeLabel)).toEqual([
+        "Sub-assembly",
+        "X axis",
+        "Machine",
+      ]);
     });
 
     it("does not suggest a source that would close a dependency cycle", async () => {
@@ -192,26 +227,30 @@ describe.skipIf(!liveDatabaseAvailable)(
 
       // Confirm A -> B, then check that B is not offered back to A (that
       // would close a cycle: A already feeds B).
-      const confirmed = await graph.createParameterLink(
-        {
-          configurationId: s.configId,
-          targetModuleInstanceId: b,
-          targetParameterId: THRUST_FORCE,
-          sourceKind: "module_output",
-          sourceModuleInstanceId: a,
-          sourceParameterId: THRUST_FORCE,
-        },
-      );
+      const confirmed = await graph.createParameterLink({
+        configurationId: s.configId,
+        targetModuleInstanceId: b,
+        targetParameterId: THRUST_FORCE,
+        sourceKind: "module_output",
+        sourceModuleInstanceId: a,
+        sourceParameterId: THRUST_FORCE,
+      });
       expect(confirmed.id).toBeTruthy();
 
-      const index = await suggest.buildConfigurationSuggestionIndex(s.configId, s.ownerId);
+      const index = await suggest.buildConfigurationSuggestionIndex(
+        s.configId,
+        s.ownerId,
+      );
       expect(index).not.toBeNull();
       if (index === null) return;
 
       // Both candidates are excluded: B's output would close the A → B → A
       // loop just confirmed, and A's own output would close the trivial
       // self-loop through its own input → output feed edge.
-      const suggestions = suggest.describeLinkSuggestions(index, targetInputSinkId(a));
+      const suggestions = suggest.describeLinkSuggestions(
+        index,
+        targetInputSinkId(a),
+      );
       expect(suggestions).toEqual([]);
     });
   },

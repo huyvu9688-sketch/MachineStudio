@@ -75,7 +75,10 @@ describe.skipIf(!liveDatabaseAvailable)(
     async function newModuleWithRun(
       s: Scaffold,
       label: string,
-    ): Promise<{ moduleInstanceId: ModuleInstanceId; runId: CalculationRunId }> {
+    ): Promise<{
+      moduleInstanceId: ModuleInstanceId;
+      runId: CalculationRunId;
+    }> {
       const mi = await projects.createModuleInstance({
         assemblyId: s.assemblyId,
         configurationId: s.configId,
@@ -95,7 +98,8 @@ describe.skipIf(!liveDatabaseAvailable)(
         moduleInstanceId: mi.id,
         ownerId: s.ownerId,
       });
-      if (!result.ok) throw new Error(`seed execution failed: ${result.error.message}`);
+      if (!result.ok)
+        throw new Error(`seed execution failed: ${result.error.message}`);
       return { moduleInstanceId: mi.id, runId: result.run.id };
     }
 
@@ -137,7 +141,11 @@ describe.skipIf(!liveDatabaseAvailable)(
       return mi.id;
     }
 
-    function linkInput(s: Scaffold, sourceModuleInstanceId: ModuleInstanceId, targetModuleInstanceId: ModuleInstanceId) {
+    function linkInput(
+      s: Scaffold,
+      sourceModuleInstanceId: ModuleInstanceId,
+      targetModuleInstanceId: ModuleInstanceId,
+    ) {
       return {
         configurationId: s.configId,
         targetModuleInstanceId,
@@ -155,7 +163,9 @@ describe.skipIf(!liveDatabaseAvailable)(
       return row.stale;
     }
 
-    async function isAssignmentStale(id: ComponentAssignmentId): Promise<boolean> {
+    async function isAssignmentStale(
+      id: ComponentAssignmentId,
+    ): Promise<boolean> {
       const row = await client.prisma.componentAssignment.findUniqueOrThrow({
         where: { id },
       });
@@ -172,7 +182,9 @@ describe.skipIf(!liveDatabaseAvailable)(
         targetKind: "module_instance",
         moduleInstanceId: m.moduleInstanceId,
         partSource: "manual",
-        manualPartDetails: { description: "Stand-in part for stale-propagation tests" },
+        manualPartDetails: {
+          description: "Stand-in part for stale-propagation tests",
+        },
         calculationRunId: m.runId,
       });
       return created.id;
@@ -192,12 +204,14 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     beforeAll(async () => {
       stalePropagation = await import("./stale-propagation");
-      executeModuleInstance = (await import("../calculations/execute-module-instance"))
-        .executeModuleInstance;
+      executeModuleInstance = (
+        await import("../calculations/execute-module-instance")
+      ).executeModuleInstance;
       projects = await import("../../db/repositories/project-repository");
       graph = await import("../../db/repositories/graph-repository");
       runs = await import("../../db/repositories/run-repository");
-      assignments = await import("../../db/repositories/component-assignment-repository");
+      assignments =
+        await import("../../db/repositories/component-assignment-repository");
       client = await import("../../db/client");
     });
 
@@ -316,7 +330,9 @@ describe.skipIf(!liveDatabaseAvailable)(
       );
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.staleModuleInstanceIds).not.toContain(unrelated.moduleInstanceId);
+      expect(result.staleModuleInstanceIds).not.toContain(
+        unrelated.moduleInstanceId,
+      );
       expect(await isRunStale(unrelated.runId)).toBe(false);
     });
 
@@ -335,7 +351,10 @@ describe.skipIf(!liveDatabaseAvailable)(
 
       // newModuleWithRun seeds THRUST_FORCE at exactly 274 N (manual).
       const rowCountBefore = await client.prisma.parameterValue.count({
-        where: { moduleInstanceId: a.moduleInstanceId, parameterId: THRUST_FORCE },
+        where: {
+          moduleInstanceId: a.moduleInstanceId,
+          parameterId: THRUST_FORCE,
+        },
       });
 
       const result = await stalePropagation.setParameterValue(
@@ -356,7 +375,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(await isRunStale(b.runId)).toBe(false);
 
       const rowCountAfter = await client.prisma.parameterValue.count({
-        where: { moduleInstanceId: a.moduleInstanceId, parameterId: THRUST_FORCE },
+        where: {
+          moduleInstanceId: a.moduleInstanceId,
+          parameterId: THRUST_FORCE,
+        },
       });
       expect(rowCountAfter).toBe(rowCountBefore);
     });
@@ -417,7 +439,9 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(ab.ok).toBe(true);
       await resetRunFresh(b.runId);
 
-      const invalidValue = { kind: "not_a_real_kind" } as unknown as EngineeringValue;
+      const invalidValue = {
+        kind: "not_a_real_kind",
+      } as unknown as EngineeringValue;
       const result = await stalePropagation.setParameterValue(
         {
           configurationId: s.configId,
@@ -467,7 +491,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       if (!confirmed.ok) return;
       await resetRunFresh(b.runId);
 
-      const removed = await stalePropagation.removeParameterLink(confirmed.link.id, s.ownerId);
+      const removed = await stalePropagation.removeParameterLink(
+        confirmed.link.id,
+        s.ownerId,
+      );
       expect(removed.ok).toBe(true);
       if (!removed.ok) return;
       expect(removed.staleModuleInstanceIds).toContain(b.moduleInstanceId);
@@ -510,7 +537,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(await isRunStale(b.runId)).toBe(false);
 
       // Actually removing it now causes exactly the previewed impact.
-      const removed = await stalePropagation.removeParameterLink(confirmed.link.id, s.ownerId);
+      const removed = await stalePropagation.removeParameterLink(
+        confirmed.link.id,
+        s.ownerId,
+      );
       expect(removed.ok).toBe(true);
       if (!removed.ok) return;
       expect(new Set(removed.staleModuleInstanceIds)).toEqual(
@@ -608,7 +638,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const stranger = await projects.upsertUser(`test-user-${randomUUID()}`);
       createdUserIds.push(stranger.id);
 
-      const result = await stalePropagation.removeParameterLink(confirmed.link.id, stranger.id);
+      const result = await stalePropagation.removeParameterLink(
+        confirmed.link.id,
+        stranger.id,
+      );
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("unauthorized");
@@ -663,7 +696,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       if (!confirmed.ok) return;
 
-      const removed = await stalePropagation.removeParameterLink(confirmed.link.id, s.ownerId);
+      const removed = await stalePropagation.removeParameterLink(
+        confirmed.link.id,
+        s.ownerId,
+      );
       expect(removed.ok).toBe(true);
       expect(await isAssignmentStale(assignmentId)).toBe(true);
     });

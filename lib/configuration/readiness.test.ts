@@ -4,9 +4,14 @@
 
 import { describe, expect, it } from "vitest";
 import { evaluateBaselineReadiness } from "./readiness";
-import type { BaselineCalculationRunRef, BaselineComponentAssignment } from "./types";
+import type {
+  BaselineCalculationRunRef,
+  BaselineComponentAssignment,
+} from "./types";
 
-function run(overrides: Partial<BaselineCalculationRunRef> = {}): BaselineCalculationRunRef {
+function run(
+  overrides: Partial<BaselineCalculationRunRef> = {},
+): BaselineCalculationRunRef {
   return {
     id: "run-1",
     moduleInstanceId: "mi-1",
@@ -39,7 +44,10 @@ function assignment(
 
 describe("evaluateBaselineReadiness", () => {
   it("is ready with no runs or assignments", () => {
-    const result = evaluateBaselineReadiness({ calculationRuns: [], componentAssignments: [] });
+    const result = evaluateBaselineReadiness({
+      calculationRuns: [],
+      componentAssignments: [],
+    });
     expect(result.ready).toBe(true);
     expect(result.blockers).toEqual([]);
   });
@@ -84,7 +92,10 @@ describe("evaluateBaselineReadiness", () => {
 
   it("does not block on a warning or not_applicable status", () => {
     const result = evaluateBaselineReadiness({
-      calculationRuns: [run({ status: "warning" }), run({ id: "run-2", status: "not_applicable" })],
+      calculationRuns: [
+        run({ status: "warning" }),
+        run({ id: "run-2", status: "not_applicable" }),
+      ],
       componentAssignments: [],
     });
     expect(result.ready).toBe(true);
@@ -96,7 +107,10 @@ describe("evaluateBaselineReadiness", () => {
       componentAssignments: [],
     });
     expect(result.ready).toBe(false);
-    expect(result.blockers.map((b) => b.kind).sort()).toEqual(["failed_run", "stale_run"]);
+    expect(result.blockers.map((b) => b.kind).sort()).toEqual([
+      "failed_run",
+      "stale_run",
+    ]);
   });
 
   it("blocks on a stale component assignment", () => {

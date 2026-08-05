@@ -89,7 +89,11 @@ export const WarningSchema = z.strictObject({
   sources: clauseReferences.optional(),
 });
 
-const validityStatus = z.enum(["within_limits", "out_of_range", "not_evaluated"]);
+const validityStatus = z.enum([
+  "within_limits",
+  "out_of_range",
+  "not_evaluated",
+]);
 
 export const ValidityResultSchema = z.strictObject({
   id: nonEmptyString,
@@ -147,5 +151,7 @@ export type _TraceSchemaParity = [
   >,
   Assert<MutuallyAssignable<CheckResult, z.infer<typeof CheckResultSchema>>>,
   Assert<MutuallyAssignable<Warning, z.infer<typeof WarningSchema>>>,
-  Assert<MutuallyAssignable<ValidityResult, z.infer<typeof ValidityResultSchema>>>,
+  Assert<
+    MutuallyAssignable<ValidityResult, z.infer<typeof ValidityResultSchema>>
+  >,
 ];

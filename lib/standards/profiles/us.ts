@@ -170,7 +170,8 @@ export const usProfile: MarketProfile = {
   version: "1.0.0-draft",
   market: "US",
   displayName: "US General Industrial Machinery",
-  scope: "General industrial automated machinery designed for use in the United States.",
+  scope:
+    "General industrial automated machinery designed for use in the United States.",
   verificationDate: "2026-07-28",
   disclaimer:
     "Initial regulatory and consensus-standard reference structure. Not legal advice, product certification, an NRTL listing, or proof that a complete machine complies with all applicable requirements. Applicability depends on machine type, process, installation, state and local adoption, customer specifications, and the Authority Having Jurisdiction.",

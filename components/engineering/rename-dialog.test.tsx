@@ -8,7 +8,8 @@ import type { ActionState } from "@/app/(workspace)/workspace/action-state";
 describe("RenameDialog", () => {
   it("pre-fills the name field with the current name", async () => {
     const user = userEvent.setup();
-    const action = vi.fn<(prev: ActionState, data: FormData) => Promise<ActionState>>();
+    const action =
+      vi.fn<(prev: ActionState, data: FormData) => Promise<ActionState>>();
     render(
       <RenameDialog
         title="Rename project"
@@ -29,7 +30,10 @@ describe("RenameDialog", () => {
     const user = userEvent.setup();
     const action = vi
       .fn<(prev: ActionState, data: FormData) => Promise<ActionState>>()
-      .mockResolvedValue({ status: "error", message: "Project name is required." });
+      .mockResolvedValue({
+        status: "error",
+        message: "Project name is required.",
+      });
     render(
       <RenameDialog
         title="Rename project"
@@ -44,7 +48,9 @@ describe("RenameDialog", () => {
     await user.click(screen.getByRole("button", { name: "Rename" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Project name is required.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Project name is required.",
+    );
     expect(screen.getByLabelText("Name")).toBeInTheDocument();
   });
 

@@ -2,7 +2,10 @@
 import { describe, expect, vi, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CreateProjectDialog, type MarketProfileOption } from "./create-project-dialog";
+import {
+  CreateProjectDialog,
+  type MarketProfileOption,
+} from "./create-project-dialog";
 import { createProjectAction } from "@/app/(workspace)/workspace/actions";
 
 vi.mock("@/app/(workspace)/workspace/actions", () => ({
@@ -22,7 +25,9 @@ describe("CreateProjectDialog", () => {
     await user.click(screen.getByRole("button", { name: "New project" }));
 
     expect(screen.getByLabelText("Project name")).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "United States" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "United States" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Japan" })).toBeInTheDocument();
   });
 
@@ -36,10 +41,15 @@ describe("CreateProjectDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "New project" }));
     await user.type(screen.getByLabelText("Project name"), "Test project");
-    await user.selectOptions(screen.getByLabelText("Market profile"), MARKET_PROFILES[0].key);
+    await user.selectOptions(
+      screen.getByLabelText("Market profile"),
+      MARKET_PROFILES[0].key,
+    );
     await user.click(screen.getByRole("button", { name: "Create project" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Project name is required.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Project name is required.",
+    );
   });
 
   it("renders a custom trigger when given one", () => {
@@ -49,7 +59,11 @@ describe("CreateProjectDialog", () => {
         trigger={<button type="button">Custom trigger</button>}
       />,
     );
-    expect(screen.getByRole("button", { name: "Custom trigger" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "New project" })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Custom trigger" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "New project" }),
+    ).not.toBeInTheDocument();
   });
 });

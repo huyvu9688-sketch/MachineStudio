@@ -30,7 +30,10 @@ export function CreateAssemblyDialog({
   trigger,
 }: CreateAssemblyDialogProps) {
   const [open, setOpen] = useState(false);
-  const [state, formAction, isPending] = useActionState(createAssemblyAction, IDLE_ACTION_STATE);
+  const [state, formAction, isPending] = useActionState(
+    createAssemblyAction,
+    IDLE_ACTION_STATE,
+  );
   const nameId = useId();
 
   // "Adjusting state during render," not an effect — see rename-dialog.tsx.
@@ -52,17 +55,29 @@ export function CreateAssemblyDialog({
             <input type="hidden" name="parentId" value={parentId} />
           ) : null}
           <DialogHeader>
-            <DialogTitle>{parentId !== undefined ? "New sub-assembly" : "New assembly"}</DialogTitle>
+            <DialogTitle>
+              {parentId !== undefined ? "New sub-assembly" : "New assembly"}
+            </DialogTitle>
             <DialogDescription>Name the assembly.</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="grid gap-1.5">
               <Label htmlFor={nameId}>Assembly name</Label>
-              <Input id={nameId} name="name" required maxLength={200} autoFocus />
+              <Input
+                id={nameId}
+                name="name"
+                required
+                maxLength={200}
+                autoFocus
+              />
             </div>
             {state.status === "error" ? (
-              <p role="alert" className="text-[13px]" style={{ color: "var(--state-error)" }}>
+              <p
+                role="alert"
+                className="text-[13px]"
+                style={{ color: "var(--state-error)" }}
+              >
                 {state.message}
               </p>
             ) : null}

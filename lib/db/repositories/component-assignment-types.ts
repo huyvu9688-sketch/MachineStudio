@@ -10,7 +10,12 @@
 import type { ManualPartDetails } from "../../catalog";
 import type { ManufacturerPartRevisionId } from "./catalog-types";
 import type { CalculationRunId } from "./run-types";
-import type { AssemblyId, MachineConfigurationId, ModuleInstanceId, UserId } from "./types";
+import type {
+  AssemblyId,
+  MachineConfigurationId,
+  ModuleInstanceId,
+  UserId,
+} from "./types";
 
 /** A `ComponentAssignment` ID. */
 export type ComponentAssignmentId = string & {

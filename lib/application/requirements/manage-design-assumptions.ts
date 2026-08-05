@@ -25,7 +25,11 @@ export interface ManageDesignAssumptionsError {
   readonly message: string;
 }
 
-const statementSchema = z.string().trim().min(1, "A statement is required.").max(2000);
+const statementSchema = z
+  .string()
+  .trim()
+  .min(1, "A statement is required.")
+  .max(2000);
 const rationaleSchema = z.string().trim().max(2000).optional();
 
 /** Input to {@link createMachineDesignAssumption}. Omit `assemblyId` for a machine-level assumption. */
@@ -52,20 +56,30 @@ export async function createMachineDesignAssumption(
       ok: false,
       error: {
         code: "invalid_input",
-        message: statementResult.error.issues[0]?.message ?? "Invalid statement.",
+        message:
+          statementResult.error.issues[0]?.message ?? "Invalid statement.",
       },
     };
   }
   const rationaleResult = rationaleSchema.safeParse(input.rationale);
   if (!rationaleResult.success) {
-    return { ok: false, error: { code: "invalid_input", message: "Rationale is too long." } };
+    return {
+      ok: false,
+      error: { code: "invalid_input", message: "Rationale is too long." },
+    };
   }
 
-  const configOwned = await isConfigurationOwnedBy(input.configurationId, ownerId);
+  const configOwned = await isConfigurationOwnedBy(
+    input.configurationId,
+    ownerId,
+  );
   if (!configOwned) {
     return {
       ok: false,
-      error: { code: "unauthorized", message: "Configuration not found or not owned by this user." },
+      error: {
+        code: "unauthorized",
+        message: "Configuration not found or not owned by this user.",
+      },
     };
   }
 
@@ -74,7 +88,10 @@ export async function createMachineDesignAssumption(
     if (assembly === null) {
       return {
         ok: false,
-        error: { code: "unauthorized", message: "Assembly not found or not owned by this user." },
+        error: {
+          code: "unauthorized",
+          message: "Assembly not found or not owned by this user.",
+        },
       };
     }
     if (assembly.configurationId !== input.configurationId) {

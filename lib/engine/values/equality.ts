@@ -29,7 +29,11 @@ export interface ToleranceOptions {
 const DEFAULT_RELATIVE = 1e-9;
 const DEFAULT_ABSOLUTE = 1e-12;
 
-function numbersClose(a: number, b: number, options: ToleranceOptions): boolean {
+function numbersClose(
+  a: number,
+  b: number,
+  options: ToleranceOptions,
+): boolean {
   const relative = options.relative ?? DEFAULT_RELATIVE;
   const absolute = options.absolute ?? DEFAULT_ABSOLUTE;
   const scale = Math.max(Math.abs(a), Math.abs(b));
@@ -65,9 +69,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
 }
 
 function assertNever(value: never): never {
-  throw new Error(
-    `Unhandled engineering value kind: ${JSON.stringify(value)}`,
-  );
+  throw new Error(`Unhandled engineering value kind: ${JSON.stringify(value)}`);
 }
 
 /**

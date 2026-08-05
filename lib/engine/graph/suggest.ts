@@ -80,7 +80,11 @@ export function suggestSources(
     const crossExposed = crossAssembly.has(source.id);
     if (distance === undefined && !crossExposed) continue; // not visible
 
-    const compatibility = evaluateLinkCompatibility(source, sink, compatibilityOptions);
+    const compatibility = evaluateLinkCompatibility(
+      source,
+      sink,
+      compatibilityOptions,
+    );
     if (!compatibility.compatible) continue;
     if (wouldCreateCycle(indexed, source.id, sink.id)) continue;
 
@@ -94,10 +98,17 @@ export function suggestSources(
   }
 
   suggestions.sort((a, b) => {
-    const originRank = Number(a.origin === "cross_assembly") - Number(b.origin === "cross_assembly");
+    const originRank =
+      Number(a.origin === "cross_assembly") -
+      Number(b.origin === "cross_assembly");
     if (originRank !== 0) return originRank;
-    if (a.scopeDistance !== b.scopeDistance) return a.scopeDistance - b.scopeDistance;
-    return a.sourceNodeId < b.sourceNodeId ? -1 : a.sourceNodeId > b.sourceNodeId ? 1 : 0;
+    if (a.scopeDistance !== b.scopeDistance)
+      return a.scopeDistance - b.scopeDistance;
+    return a.sourceNodeId < b.sourceNodeId
+      ? -1
+      : a.sourceNodeId > b.sourceNodeId
+        ? 1
+        : 0;
   });
 
   return suggestions;

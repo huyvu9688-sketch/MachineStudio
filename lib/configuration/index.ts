@@ -25,7 +25,10 @@ export type {
 } from "./types";
 export { BASELINE_SNAPSHOT_FORMAT_VERSION } from "./types";
 
-export { MachineBaselineSnapshotSchema, safeParseMachineBaselineSnapshot } from "./schemas";
+export {
+  MachineBaselineSnapshotSchema,
+  safeParseMachineBaselineSnapshot,
+} from "./schemas";
 
 export type {
   BaselineBlocker,

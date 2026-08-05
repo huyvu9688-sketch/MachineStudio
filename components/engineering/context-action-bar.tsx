@@ -12,7 +12,10 @@ export interface ContextActionBarProps {
  * do. A later unit populates the right-hand slot without changing this
  * shell (context/architecture.md invariant "Generic extension").
  */
-export function ContextActionBar({ projectName, configurationName }: ContextActionBarProps) {
+export function ContextActionBar({
+  projectName,
+  configurationName,
+}: ContextActionBarProps) {
   return (
     <div className="flex h-9 shrink-0 items-center justify-between border-b border-border-default bg-bg-surface px-4">
       <p className="truncate text-[13px]">

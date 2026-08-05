@@ -13,6 +13,7 @@
 ### Task 1: Add red regression coverage for quantity integrity
 
 **Files:**
+
 - Modify: `components/engineering/module-input-workspace.test.tsx`
 - Create: `components/engineering/format-engineering-value.test.ts`
 - Modify: `lib/engine/units/convert.test.ts`
@@ -27,7 +28,13 @@
     ...quantityDefaultField,
     resolved: {
       source: "manual",
-      value: { v: 1, kind: "quantity", value: 0.5, unit: "m", displayUnit: "mm" },
+      value: {
+        v: 1,
+        kind: "quantity",
+        value: 0.5,
+        unit: "m",
+        displayUnit: "mm",
+      },
     },
   } satisfies ModuleInputFieldView;
 
@@ -42,12 +49,28 @@
   Cover a scalar display-unit conversion, canonical-only scalar behavior, and component-wise vector conversion:
 
   ```ts
-  expect(formatEngineeringValue({ v: 1, kind: "quantity", value: 0.5, unit: "m", displayUnit: "mm" }))
-    .toBe("500 mm");
-  expect(formatEngineeringValue({ v: 1, kind: "quantity", value: 0.5, unit: "m" }))
-    .toBe("0.5 m");
-  expect(formatEngineeringValue({ v: 1, kind: "vector_quantity", components: [0.5, 1], unit: "m", displayUnit: "mm", frame: "axis" }))
-    .toBe("[500, 1000] mm");
+  expect(
+    formatEngineeringValue({
+      v: 1,
+      kind: "quantity",
+      value: 0.5,
+      unit: "m",
+      displayUnit: "mm",
+    }),
+  ).toBe("500 mm");
+  expect(
+    formatEngineeringValue({ v: 1, kind: "quantity", value: 0.5, unit: "m" }),
+  ).toBe("0.5 m");
+  expect(
+    formatEngineeringValue({
+      v: 1,
+      kind: "vector_quantity",
+      components: [0.5, 1],
+      unit: "m",
+      displayUnit: "mm",
+      frame: "axis",
+    }),
+  ).toBe("[500, 1000] mm");
   ```
 
 - [ ] **Step 3: Add a pure submitted-quantity parser test.**
@@ -80,7 +103,11 @@
   ```ts
   const expected = makeQuantity(value, canonicalUnit, displayUnit);
   const restored = makeQuantity(
-    convert(convert(value, canonicalUnit, displayUnit), displayUnit, canonicalUnit),
+    convert(
+      convert(value, canonicalUnit, displayUnit),
+      displayUnit,
+      canonicalUnit,
+    ),
     canonicalUnit,
     displayUnit,
   );
@@ -100,6 +127,7 @@
 ### Task 2: Implement the smallest UI, formatting, and parsing corrections
 
 **Files:**
+
 - Modify: `components/engineering/module-input-workspace.tsx`
 - Modify: `components/engineering/format-engineering-value.ts`
 - Create: `app/(workspace)/workspace/parse-submitted-quantity.ts`
@@ -110,14 +138,15 @@
   Import `convert` from `@/lib/engine/units` (not the full `@/lib/engine` barrel, which is unsafe for this client bundle), retain `displayUnit ?? unit ?? canonicalUnit`, and use no rounding:
 
   ```tsx
-  const defaultMagnitude = current === undefined
-    ? undefined
-    : convert(current.value, current.unit, defaultUnit);
+  const defaultMagnitude =
+    current === undefined
+      ? undefined
+      : convert(current.value, current.unit, defaultUnit);
 
   <input
     // existing attributes unchanged
     defaultValue={defaultMagnitude}
-  />
+  />;
   ```
 
 - [ ] **Step 2: Make every formatter magnitude agree with its label.**
@@ -153,10 +182,17 @@
     try {
       return {
         ok: true,
-        value: makeQuantity(convert(magnitude, unit, canonicalUnit), canonicalUnit, unit),
+        value: makeQuantity(
+          convert(magnitude, unit, canonicalUnit),
+          canonicalUnit,
+          unit,
+        ),
       };
     } catch {
-      return { ok: false, message: `Unit "${unit}" is not valid for this value.` };
+      return {
+        ok: false,
+        message: `Unit "${unit}" is not valid for this value.`,
+      };
     }
   }
   ```
@@ -170,6 +206,7 @@
 ### Task 3: Synchronize the documented behavior and deferred guard decision
 
 **Files:**
+
 - Modify: `context/ui-context.md`
 - Modify: `context/progress/unit-3.md`
 - Modify: `context/progress-tracker.md`
@@ -196,6 +233,7 @@
 ### Task 4: Verify and commit the work unit
 
 **Files:**
+
 - Verify: all Task 1–3 files
 
 - [ ] **Step 1: Run formatter check, lint, typecheck, the full unit suite, and production build outside the sandbox when Vitest/Next need child-process spawning.**

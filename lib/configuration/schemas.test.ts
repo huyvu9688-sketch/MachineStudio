@@ -22,14 +22,26 @@ function validSnapshot(): MachineBaselineSnapshot {
         assemblyId: null,
         code: "REQ-01",
         statement: "The axis shall move 500 mm in under 2 s.",
-        acceptanceCriteria: [{ id: "ac-1", statement: "Move time <= 2 s at rated payload." }],
+        acceptanceCriteria: [
+          { id: "ac-1", statement: "Move time <= 2 s at rated payload." },
+        ],
       },
     ],
     designAssumptions: [
-      { id: "da-1", assemblyId: null, statement: "Ambient 25 C.", rationale: "Indoor factory." },
+      {
+        id: "da-1",
+        assemblyId: null,
+        statement: "Ambient 25 C.",
+        rationale: "Indoor factory.",
+      },
     ],
     loadCases: [
-      { id: "lc-1", category: "normal", label: "Normal cycle", description: null },
+      {
+        id: "lc-1",
+        category: "normal",
+        label: "Normal cycle",
+        description: null,
+      },
     ],
     assemblies: [
       {
@@ -182,7 +194,10 @@ describe("MachineBaselineSnapshotSchema", () => {
     const corrupted = {
       ...snapshot,
       parameterValues: [
-        { ...snapshot.parameterValues[0], value: { kind: "quantity" /* missing v/value/unit */ } },
+        {
+          ...snapshot.parameterValues[0],
+          value: { kind: "quantity" /* missing v/value/unit */ },
+        },
       ],
     };
     const result = MachineBaselineSnapshotSchema.safeParse(corrupted);
@@ -194,7 +209,10 @@ describe("MachineBaselineSnapshotSchema", () => {
     const corrupted = {
       ...snapshot,
       componentAssignments: [
-        { ...snapshot.componentAssignments[0], manualPartDetails: { notes: "no description" } },
+        {
+          ...snapshot.componentAssignments[0],
+          manualPartDetails: { notes: "no description" },
+        },
       ],
     };
     const result = MachineBaselineSnapshotSchema.safeParse(corrupted);

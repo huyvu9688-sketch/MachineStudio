@@ -28,12 +28,7 @@ const qualifiersSchema = z.strictObject({
   loadNature: z.enum(["static", "dynamic"]).optional(),
 });
 
-const loadCaseSchema = z.enum([
-  "normal",
-  "peak",
-  "holding",
-  "emergency_stop",
-]);
+const loadCaseSchema = z.enum(["normal", "peak", "holding", "emergency_stop"]);
 
 const rangeSchema = z.strictObject({
   min: z.number().optional(),
@@ -44,7 +39,10 @@ const rangeSchema = z.strictObject({
 const defaultPolicySchema = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("required") }),
   z.strictObject({ kind: z.literal("optional") }),
-  z.strictObject({ kind: z.literal("constant"), value: EngineeringValueSchema }),
+  z.strictObject({
+    kind: z.literal("constant"),
+    value: EngineeringValueSchema,
+  }),
 ]);
 
 export const ParameterDefinitionSchema = z.strictObject({
@@ -93,10 +91,17 @@ type MutuallyAssignable<A, B> = [A] extends [B]
 type Assert<T extends true> = T;
 
 export type _ParameterSchemaParity = [
-  Assert<MutuallyAssignable<ParameterQualifiers, z.infer<typeof qualifiersSchema>>>,
-  Assert<MutuallyAssignable<ValidRange, z.infer<typeof rangeSchema>>>,
-  Assert<MutuallyAssignable<DefaultPolicy, z.infer<typeof defaultPolicySchema>>>,
   Assert<
-    MutuallyAssignable<ParameterDefinition, z.infer<typeof ParameterDefinitionSchema>>
+    MutuallyAssignable<ParameterQualifiers, z.infer<typeof qualifiersSchema>>
+  >,
+  Assert<MutuallyAssignable<ValidRange, z.infer<typeof rangeSchema>>>,
+  Assert<
+    MutuallyAssignable<DefaultPolicy, z.infer<typeof defaultPolicySchema>>
+  >,
+  Assert<
+    MutuallyAssignable<
+      ParameterDefinition,
+      z.infer<typeof ParameterDefinitionSchema>
+    >
   >,
 ];

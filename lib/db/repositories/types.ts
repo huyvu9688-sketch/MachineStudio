@@ -12,7 +12,9 @@ import type { CheckStatus } from "../../engine/trace";
 /** A Clerk user ID used as the local ownership reference. */
 export type UserId = string & { readonly __brand: "UserId" };
 /** A `MachineProject` ID. */
-export type MachineProjectId = string & { readonly __brand: "MachineProjectId" };
+export type MachineProjectId = string & {
+  readonly __brand: "MachineProjectId";
+};
 /** A `MachineConfiguration` ID. */
 export type MachineConfigurationId = string & {
   readonly __brand: "MachineConfigurationId";
@@ -24,7 +26,9 @@ export type WorkflowInstanceId = string & {
   readonly __brand: "WorkflowInstanceId";
 };
 /** A `ModuleInstance` ID. */
-export type ModuleInstanceId = string & { readonly __brand: "ModuleInstanceId" };
+export type ModuleInstanceId = string & {
+  readonly __brand: "ModuleInstanceId";
+};
 
 /** Casts a raw string to a {@link UserId}. Identity at runtime. */
 export function asUserId(id: string): UserId {
@@ -53,10 +57,7 @@ export function asModuleInstanceId(id: string): ModuleInstanceId {
 
 /** Lifecycle of a workflow instance; mirrors the Prisma enum. */
 export type WorkflowInstanceStatus =
-  | "draft"
-  | "active"
-  | "completed"
-  | "abandoned";
+  "draft" | "active" | "completed" | "abandoned";
 
 // --- Records (a single row, IDs branded) ---------------------------------
 

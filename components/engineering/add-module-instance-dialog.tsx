@@ -65,7 +65,9 @@ export function AddModuleInstanceDialog({
           <input type="hidden" name="configurationId" value={configurationId} />
           <DialogHeader>
             <DialogTitle>Add module instance</DialogTitle>
-            <DialogDescription>Pick a registered module package.</DialogDescription>
+            <DialogDescription>
+              Pick a registered module package.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -80,7 +82,9 @@ export function AddModuleInstanceDialog({
                 className="h-9 rounded-md border border-border-default bg-bg-surface px-3 text-[14px] text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary"
               >
                 <option value="" disabled>
-                  {modulePackages.length === 0 ? "No modules registered yet" : "Select a module"}
+                  {modulePackages.length === 0
+                    ? "No modules registered yet"
+                    : "Select a module"}
                 </option>
                 {modulePackages.map((pkg) => (
                   <option
@@ -97,14 +101,21 @@ export function AddModuleInstanceDialog({
               <Input id={labelId} name="label" required maxLength={200} />
             </div>
             {state.status === "error" ? (
-              <p role="alert" className="text-[13px]" style={{ color: "var(--state-error)" }}>
+              <p
+                role="alert"
+                className="text-[13px]"
+                style={{ color: "var(--state-error)" }}
+              >
                 {state.message}
               </p>
             ) : null}
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={isPending || modulePackages.length === 0}>
+            <Button
+              type="submit"
+              disabled={isPending || modulePackages.length === 0}
+            >
               {isPending ? "Adding…" : "Add module"}
             </Button>
           </DialogFooter>

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { convert, convertQuantity } from "./convert";
-import { DimensionMismatchError, NonFiniteValueError, UnknownUnitError } from "./errors";
+import {
+  DimensionMismatchError,
+  NonFiniteValueError,
+  UnknownUnitError,
+} from "./errors";
 import { makeQuantity } from "./quantity";
 import { engineeringValuesClose } from "../values";
 
@@ -62,7 +66,11 @@ describe("convert — canonical/display quantity round trips", () => {
     (value, canonicalUnit, displayUnit) => {
       const expected = makeQuantity(value, canonicalUnit, displayUnit);
       const restored = makeQuantity(
-        convert(convert(value, canonicalUnit, displayUnit), displayUnit, canonicalUnit),
+        convert(
+          convert(value, canonicalUnit, displayUnit),
+          displayUnit,
+          canonicalUnit,
+        ),
         canonicalUnit,
         displayUnit,
       );

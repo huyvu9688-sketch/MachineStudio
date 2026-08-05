@@ -6,7 +6,12 @@ import {
   type LoadCaseCategory,
 } from "../parameters";
 import { evaluateLinkCompatibility } from "./compatibility";
-import { asNodeId, asScopeId, type GraphNode, type GraphNodeKind } from "./types";
+import {
+  asNodeId,
+  asScopeId,
+  type GraphNode,
+  type GraphNodeKind,
+} from "./types";
 
 const SCOPE = asScopeId("axis");
 

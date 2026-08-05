@@ -23,7 +23,9 @@ const SEVERITY: readonly Exclude<CheckStatus, "not_applicable">[] = [
  * A `warning` therefore never masks a `fail`, and a `fail` never presents as a
  * `pass` — warnings are surfaced separately and cannot rescue a failed check.
  */
-export function overallCheckStatus(checks: readonly CheckResult[]): CheckStatus {
+export function overallCheckStatus(
+  checks: readonly CheckResult[],
+): CheckStatus {
   let rank = SEVERITY.length; // start below the least-severe contributing status
   for (const check of checks) {
     if (check.status === "not_applicable") continue;

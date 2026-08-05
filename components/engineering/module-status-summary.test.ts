@@ -54,7 +54,9 @@ describe("summarizeModuleStatuses", () => {
   });
 
   it("counts an un-run module as not_configured, not not_applicable", () => {
-    const summary = summarizeModuleStatuses([assembly("a", [moduleInstance("m1", null)])]);
+    const summary = summarizeModuleStatuses([
+      assembly("a", [moduleInstance("m1", null)]),
+    ]);
     expect(summary.total).toBe(1);
     expect(summary.notConfigured).toBe(1);
     expect(summary.overallStatus).toBe("not_configured");
@@ -65,7 +67,12 @@ describe("summarizeModuleStatuses", () => {
       assembly(
         "root",
         [moduleInstance("m1", "pass")],
-        [assembly("child", [moduleInstance("m2", "fail"), moduleInstance("m3", "warning")])],
+        [
+          assembly("child", [
+            moduleInstance("m2", "fail"),
+            moduleInstance("m3", "warning"),
+          ]),
+        ],
       ),
     ];
 
@@ -81,7 +88,9 @@ describe("summarizeModuleStatuses", () => {
   });
 
   it("ignores not-yet-run modules when computing the overall status", () => {
-    const tree = [assembly("a", [moduleInstance("m1", "pass"), moduleInstance("m2", null)])];
+    const tree = [
+      assembly("a", [moduleInstance("m1", "pass"), moduleInstance("m2", null)]),
+    ];
 
     const summary = summarizeModuleStatuses(tree);
 

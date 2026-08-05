@@ -36,10 +36,7 @@ export {
   parseClauseReference,
 } from "./schemas";
 
-export {
-  SourceRegistryError,
-  type SourceRegistryErrorCode,
-} from "./errors";
+export { SourceRegistryError, type SourceRegistryErrorCode } from "./errors";
 
 export type { ResolvedReference, SourceRegistry } from "./registry";
 export { buildSourceRegistry, marketProfileKey } from "./registry";

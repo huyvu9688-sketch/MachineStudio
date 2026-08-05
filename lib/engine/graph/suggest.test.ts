@@ -52,7 +52,11 @@ function baseGraph(includeSameScope = true): ParameterGraph {
     nodes.push(n("s_same", "module_output", TF, ASM_X, "prodSame"));
   }
   return {
-    scopes: [{ id: MACHINE }, { id: ASM_X, parentId: MACHINE }, { id: ASM_Y, parentId: MACHINE }],
+    scopes: [
+      { id: MACHINE },
+      { id: ASM_X, parentId: MACHINE },
+      { id: ASM_Y, parentId: MACHINE },
+    ],
     nodes,
     // consumer.out feeds down.in, so down.out is downstream of the sink.
     links: [link("L_cd", "k_out", "d_in")],
@@ -60,13 +64,19 @@ function baseGraph(includeSameScope = true): ParameterGraph {
 }
 
 function link(id: string, from: string, to: string) {
-  return { id: asLinkId(id), sourceNodeId: asNodeId(from), targetNodeId: asNodeId(to) };
+  return {
+    id: asLinkId(id),
+    sourceNodeId: asNodeId(from),
+    targetNodeId: asNodeId(to),
+  };
 }
 
 describe("suggestSources — scope proximity", () => {
   it("prefers a same-assembly source over an ancestor source", () => {
     const indexed = buildParameterGraph(baseGraph());
-    const ranked = suggestSources(indexed, asNodeId("k")).map((s) => s.sourceNodeId);
+    const ranked = suggestSources(indexed, asNodeId("k")).map(
+      (s) => s.sourceNodeId,
+    );
     expect(ranked).toEqual(["s_same", "s_parent"]);
   });
 
@@ -83,14 +93,20 @@ describe("suggestSources — scope proximity", () => {
     const suggestions = suggestSources(indexed, asNodeId("k"), {
       crossAssemblySourceIds: [asNodeId("s_sib")],
     });
-    expect(suggestions.map((s) => s.sourceNodeId)).toEqual(["s_same", "s_parent", "s_sib"]);
+    expect(suggestions.map((s) => s.sourceNodeId)).toEqual([
+      "s_same",
+      "s_parent",
+      "s_sib",
+    ]);
     const sibling = suggestions.find((s) => s.sourceNodeId === "s_sib");
     expect(sibling?.origin).toBe("cross_assembly");
   });
 
   it("hides a sibling-assembly source that is not exposed", () => {
     const indexed = buildParameterGraph(baseGraph());
-    const ids = suggestSources(indexed, asNodeId("k")).map((s) => s.sourceNodeId);
+    const ids = suggestSources(indexed, asNodeId("k")).map(
+      (s) => s.sourceNodeId,
+    );
     expect(ids).not.toContain("s_sib");
   });
 });
@@ -98,13 +114,17 @@ describe("suggestSources — scope proximity", () => {
 describe("suggestSources — filtering", () => {
   it("skips semantically incompatible sources", () => {
     const indexed = buildParameterGraph(baseGraph());
-    const ids = suggestSources(indexed, asNodeId("k")).map((s) => s.sourceNodeId);
+    const ids = suggestSources(indexed, asNodeId("k")).map(
+      (s) => s.sourceNodeId,
+    );
     expect(ids).not.toContain("s_bad");
   });
 
   it("skips sources that would create a cycle", () => {
     const indexed = buildParameterGraph(baseGraph());
-    const ids = suggestSources(indexed, asNodeId("k")).map((s) => s.sourceNodeId);
+    const ids = suggestSources(indexed, asNodeId("k")).map(
+      (s) => s.sourceNodeId,
+    );
     // consumer's own output and the downstream module's output both cycle.
     expect(ids).not.toContain("k_out");
     expect(ids).not.toContain("d_out");

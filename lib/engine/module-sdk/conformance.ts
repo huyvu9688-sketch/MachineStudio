@@ -33,7 +33,11 @@ import type { ParameterRegistry } from "../parameters";
 import { PARAMETER_REGISTRY } from "../parameters";
 import { moduleSourceHash } from "./hash";
 import { validateModulePackage } from "./validate";
-import { computeIsDeterministic, executeModule, resolveModuleInput } from "./execute";
+import {
+  computeIsDeterministic,
+  executeModule,
+  resolveModuleInput,
+} from "./execute";
 import { ENGINE_SDK_VERSION } from "./sdk";
 import type { ModulePackage } from "./types";
 
@@ -116,22 +120,30 @@ export interface ConformanceOptions {
  * (context/code-standards.md "Module Packages"; context/architecture.md
  * `lib/modules/`). This is a heuristic source scan, not a full import graph.
  */
-const FORBIDDEN_IMPORTS: readonly { readonly pattern: RegExp; readonly reason: string }[] = [
+const FORBIDDEN_IMPORTS: readonly {
+  readonly pattern: RegExp;
+  readonly reason: string;
+}[] = [
   { pattern: /^@\/app(\/|$)/, reason: "application/route layer" },
   { pattern: /^@\/components(\/|$)/, reason: "UI components" },
   {
-    pattern: /^@\/lib\/(db|catalog|application|reports|audit|configuration|requirements|workflows)(\/|$)/,
+    pattern:
+      /^@\/lib\/(db|catalog|application|reports|audit|configuration|requirements|workflows)(\/|$)/,
     reason: "non-engine library boundary",
   },
   { pattern: /^@prisma(\/|$)/, reason: "database client" },
   { pattern: /(^|[./])\.prisma(\/|$)/, reason: "generated Prisma client" },
   { pattern: /^prisma(\/|$)/, reason: "Prisma" },
   { pattern: /^@clerk(\/|$)/, reason: "authentication" },
-  { pattern: /^server-only$/, reason: "server-only marker (persistence/UI concern)" },
+  {
+    pattern: /^server-only$/,
+    reason: "server-only marker (persistence/UI concern)",
+  },
   { pattern: /^next(\/|$)/, reason: "Next.js framework" },
   { pattern: /^react(-dom)?(\/|$)/, reason: "React UI runtime" },
   {
-    pattern: /^(node:)?(fs|path|http|https|net|tls|dns|dgram|child_process|os|worker_threads|cluster)(\/|$)/,
+    pattern:
+      /^(node:)?(fs|path|http|https|net|tls|dns|dgram|child_process|os|worker_threads|cluster)(\/|$)/,
     reason: "Node I/O builtin",
   },
 ];
@@ -176,7 +188,11 @@ export function checkImportBoundary(
 }
 
 /** Runs `fn`, returning a passing or failing check depending on whether it throws. */
-function runCheck(id: string, description: string, fn: () => void): ConformanceCheck {
+function runCheck(
+  id: string,
+  description: string,
+  fn: () => void,
+): ConformanceCheck {
   try {
     fn();
     return { id, description, status: "pass" };
@@ -191,7 +207,11 @@ function runCheck(id: string, description: string, fn: () => void): ConformanceC
 }
 
 /** A skipped check with a reason. */
-function skipped(id: string, description: string, detail: string): ConformanceCheck {
+function skipped(
+  id: string,
+  description: string,
+  detail: string,
+): ConformanceCheck {
   return { id, description, status: "skipped", detail };
 }
 
@@ -244,7 +264,10 @@ export function runModuleConformance(
     );
   }
 
-  if (options.sources !== undefined && options.expectedSourceHash !== undefined) {
+  if (
+    options.sources !== undefined &&
+    options.expectedSourceHash !== undefined
+  ) {
     const sources = options.sources;
     const expected = options.expectedSourceHash;
     checks.push(

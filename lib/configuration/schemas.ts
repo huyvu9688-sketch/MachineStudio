@@ -39,20 +39,25 @@ const graphNodeKindSchema = z.enum([
   "module_input",
   "module_output",
 ]);
-const loadCaseCategorySchema = z.enum(["normal", "peak", "holding", "emergency_stop"]);
-const checkStatusSchema = z.enum(["pass", "fail", "warning", "not_applicable", "invalid_input"]);
-const parameterValueSourceSchema: z.ZodType<BaselineParameterValueSource> = z.enum([
-  "manual",
-  "workflow",
+const loadCaseCategorySchema = z.enum([
+  "normal",
+  "peak",
+  "holding",
+  "emergency_stop",
 ]);
-const targetKindSchema: z.ZodType<BaselineComponentAssignmentTargetKind> = z.enum([
-  "module_instance",
-  "assembly",
+const checkStatusSchema = z.enum([
+  "pass",
+  "fail",
+  "warning",
+  "not_applicable",
+  "invalid_input",
 ]);
-const partSourceSchema: z.ZodType<BaselineComponentAssignmentPartSource> = z.enum([
-  "catalog",
-  "manual",
-]);
+const parameterValueSourceSchema: z.ZodType<BaselineParameterValueSource> =
+  z.enum(["manual", "workflow"]);
+const targetKindSchema: z.ZodType<BaselineComponentAssignmentTargetKind> =
+  z.enum(["module_instance", "assembly"]);
+const partSourceSchema: z.ZodType<BaselineComponentAssignmentPartSource> =
+  z.enum(["catalog", "manual"]);
 
 const acceptanceCriterionSchema: z.ZodType<BaselineAcceptanceCriterion> = z
   .object({ id: nonEmpty, statement: nonEmpty })
@@ -167,26 +172,27 @@ const componentAssignmentSchema: z.ZodType<BaselineComponentAssignment> = z
   .strict();
 
 /** Validates an unknown payload as a {@link MachineBaselineSnapshot}. */
-export const MachineBaselineSnapshotSchema: z.ZodType<MachineBaselineSnapshot> = z
-  .object({
-    snapshotVersion: z.literal(BASELINE_SNAPSHOT_FORMAT_VERSION),
-    projectId: nonEmpty,
-    projectName: nonEmpty,
-    configurationId: nonEmpty,
-    configurationName: nonEmpty,
-    marketProfileKey: nonEmpty,
-    requirements: z.array(requirementSchema).readonly(),
-    designAssumptions: z.array(designAssumptionSchema).readonly(),
-    loadCases: z.array(loadCaseSchema).readonly(),
-    assemblies: z.array(assemblyNodeSchema).readonly(),
-    parameterValues: z.array(parameterValueSchema).readonly(),
-    parameterLinks: z.array(parameterLinkSchema).readonly(),
-    calculationRuns: z.array(calculationRunRefSchema).readonly(),
-    componentAssignments: z.array(componentAssignmentSchema).readonly(),
-    createdAt: nonEmpty,
-    createdByUserId: nonEmpty.optional(),
-  })
-  .strict();
+export const MachineBaselineSnapshotSchema: z.ZodType<MachineBaselineSnapshot> =
+  z
+    .object({
+      snapshotVersion: z.literal(BASELINE_SNAPSHOT_FORMAT_VERSION),
+      projectId: nonEmpty,
+      projectName: nonEmpty,
+      configurationId: nonEmpty,
+      configurationName: nonEmpty,
+      marketProfileKey: nonEmpty,
+      requirements: z.array(requirementSchema).readonly(),
+      designAssumptions: z.array(designAssumptionSchema).readonly(),
+      loadCases: z.array(loadCaseSchema).readonly(),
+      assemblies: z.array(assemblyNodeSchema).readonly(),
+      parameterValues: z.array(parameterValueSchema).readonly(),
+      parameterLinks: z.array(parameterLinkSchema).readonly(),
+      calculationRuns: z.array(calculationRunRefSchema).readonly(),
+      componentAssignments: z.array(componentAssignmentSchema).readonly(),
+      createdAt: nonEmpty,
+      createdByUserId: nonEmpty.optional(),
+    })
+    .strict();
 
 /**
  * Non-throwing validation of an untrusted/stored baseline snapshot, returning

@@ -12,11 +12,12 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "./status-badge";
-import { LinkedFieldControl, LinkSuggestionPanel } from "./link-suggestion-panel";
-import { LoadCaseChip } from "./load-case-chip";
 import {
-  setModuleInputValueAction,
-} from "@/app/(workspace)/workspace/actions";
+  LinkedFieldControl,
+  LinkSuggestionPanel,
+} from "./link-suggestion-panel";
+import { LoadCaseChip } from "./load-case-chip";
+import { setModuleInputValueAction } from "@/app/(workspace)/workspace/actions";
 import { IDLE_ACTION_STATE } from "@/app/(workspace)/workspace/action-state";
 import { convert } from "@/lib/engine/units";
 import { cn } from "@/lib/utils";
@@ -93,13 +94,17 @@ export function ModuleInputWorkspace({ view }: ModuleInputWorkspaceProps) {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-6">
       <header className="flex items-center gap-3 border-b border-border-default pb-4">
-        <Boxes aria-hidden="true" className="h-5 w-5 shrink-0 text-text-muted" />
+        <Boxes
+          aria-hidden="true"
+          className="h-5 w-5 shrink-0 text-text-muted"
+        />
         <div className="min-w-0">
           <h1 className="truncate text-[18px] font-semibold text-text-primary">
             {view.moduleInstance.label}
           </h1>
           <p className="truncate font-mono text-[12px] text-text-muted">
-            {view.moduleInstance.modulePackageId}@{view.moduleInstance.moduleVersion}
+            {view.moduleInstance.modulePackageId}@
+            {view.moduleInstance.moduleVersion}
           </p>
         </div>
         <StatusBadge
@@ -109,7 +114,9 @@ export function ModuleInputWorkspace({ view }: ModuleInputWorkspaceProps) {
       </header>
 
       {view.groups.length === 0 ? (
-        <p className="text-[13px] text-text-muted">This module declares no input fields.</p>
+        <p className="text-[13px] text-text-muted">
+          This module declares no input fields.
+        </p>
       ) : (
         view.groups.map((group) => (
           <FieldGroup
@@ -135,7 +142,9 @@ function FieldGroup({
 }) {
   return (
     <section className="flex flex-col gap-5 rounded-lg border border-border-default bg-bg-surface p-4">
-      <h2 className="text-[14px] font-semibold text-text-primary">{group.title}</h2>
+      <h2 className="text-[14px] font-semibold text-text-primary">
+        {group.title}
+      </h2>
       <div className="flex flex-col gap-5">
         {group.fields.map((field) => (
           <ModuleInputFieldRow
@@ -150,7 +159,10 @@ function FieldGroup({
   );
 }
 
-const SOURCE_META: Record<ResolvedInputSource["source"], { label: string; icon: LucideIcon }> = {
+const SOURCE_META: Record<
+  ResolvedInputSource["source"],
+  { label: string; icon: LucideIcon }
+> = {
   manual: { label: "Manual", icon: PenLine },
   workflow: { label: "Workflow", icon: Workflow },
   linked: { label: "Linked", icon: Link2 },
@@ -158,7 +170,11 @@ const SOURCE_META: Record<ResolvedInputSource["source"], { label: string; icon: 
 };
 
 /** Source badge: manual, linked, default, or workflow (ui-context.md "Generic Module Workspace"). */
-function SourceBadge({ source }: { readonly source: ResolvedInputSource["source"] }) {
+function SourceBadge({
+  source,
+}: {
+  readonly source: ResolvedInputSource["source"];
+}) {
   const meta = SOURCE_META[source];
   const Icon = meta.icon;
   return (
@@ -192,7 +208,9 @@ function ModuleInputFieldRow({
           <span className="text-[11px] text-text-muted">(required)</span>
         ) : null}
         <SourceBadge source={field.resolved.source} />
-        {field.loadCase !== null ? <LoadCaseChip loadCase={field.loadCase} /> : null}
+        {field.loadCase !== null ? (
+          <LoadCaseChip loadCase={field.loadCase} />
+        ) : null}
       </div>
       {field.help !== null ? (
         <p className="text-[12px] text-text-muted">{field.help}</p>
@@ -207,14 +225,29 @@ function ModuleInputFieldRow({
         <>
           {field.field.kind === "unsupported" ? (
             <p className="text-[12px] text-text-muted italic">
-              Editing {field.field.valueType.replace("_", " ")} values is not supported yet — link
-              a source instead.
+              Editing {field.field.valueType.replace("_", " ")} values is not
+              supported yet — link a source instead.
             </p>
           ) : (
-            <form action={formAction} className="flex flex-wrap items-start gap-2">
-              <input type="hidden" name="configurationId" value={configurationId} />
-              <input type="hidden" name="moduleInstanceId" value={moduleInstanceId} />
-              <input type="hidden" name="parameterId" value={field.parameterId} />
+            <form
+              action={formAction}
+              className="flex flex-wrap items-start gap-2"
+            >
+              <input
+                type="hidden"
+                name="configurationId"
+                value={configurationId}
+              />
+              <input
+                type="hidden"
+                name="moduleInstanceId"
+                value={moduleInstanceId}
+              />
+              <input
+                type="hidden"
+                name="parameterId"
+                value={field.parameterId}
+              />
               {field.loadCase !== null ? (
                 <input type="hidden" name="loadCase" value={field.loadCase} />
               ) : null}
@@ -222,7 +255,12 @@ function ModuleInputFieldRow({
 
               <FieldControl field={field} inputId={inputId} />
 
-              <Button type="submit" size="sm" variant="outline" disabled={isPending}>
+              <Button
+                type="submit"
+                size="sm"
+                variant="outline"
+                disabled={isPending}
+              >
                 {isPending ? "Saving…" : "Save"}
               </Button>
             </form>
@@ -236,7 +274,11 @@ function ModuleInputFieldRow({
       )}
 
       {state.status === "error" ? (
-        <p role="alert" className="text-[12px]" style={{ color: "var(--state-error)" }}>
+        <p
+          role="alert"
+          className="text-[12px]"
+          style={{ color: "var(--state-error)" }}
+        >
           {state.message}
         </p>
       ) : null}
@@ -255,13 +297,18 @@ function FieldControl({
   const resolved = field.resolved;
   // "linked"/"unsupported" never reach here (handled by the caller), so
   // `resolved` here is always "manual" | "workflow" | "default".
-  const currentValue = resolved.source === "default" ? undefined : resolved.value;
+  const currentValue =
+    resolved.source === "default" ? undefined : resolved.value;
 
   if (descriptor.kind === "quantity") {
-    const current = currentValue?.kind === "quantity" ? currentValue : undefined;
-    const defaultUnit = current?.displayUnit ?? current?.unit ?? descriptor.canonicalUnit;
+    const current =
+      currentValue?.kind === "quantity" ? currentValue : undefined;
+    const defaultUnit =
+      current?.displayUnit ?? current?.unit ?? descriptor.canonicalUnit;
     const defaultMagnitude =
-      current === undefined ? undefined : convert(current.value, current.unit, defaultUnit);
+      current === undefined
+        ? undefined
+        : convert(current.value, current.unit, defaultUnit);
     return (
       <div className="flex items-center gap-2">
         <input
@@ -290,8 +337,10 @@ function FieldControl({
   }
 
   if (descriptor.kind === "vector_quantity") {
-    const current = currentValue?.kind === "vector_quantity" ? currentValue : undefined;
-    const defaultUnit = current?.displayUnit ?? current?.unit ?? descriptor.canonicalUnit;
+    const current =
+      currentValue?.kind === "vector_quantity" ? currentValue : undefined;
+    const defaultUnit =
+      current?.displayUnit ?? current?.unit ?? descriptor.canonicalUnit;
     const defaultComponents = current?.components.map((component) =>
       convert(component, current.unit, defaultUnit),
     );
@@ -299,7 +348,9 @@ function FieldControl({
       <div className="flex flex-wrap items-start gap-2">
         {AXIS_COMPONENT_LABELS.map((axisLabel, index) => (
           <div key={axisLabel} className="flex flex-col gap-0.5">
-            <span className="text-[11px] text-text-muted">{AXIS_COMPONENT_CAPTIONS[index]}</span>
+            <span className="text-[11px] text-text-muted">
+              {AXIS_COMPONENT_CAPTIONS[index]}
+            </span>
             <input
               id={index === 0 ? inputId : undefined}
               type="number"

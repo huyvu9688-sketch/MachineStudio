@@ -20,7 +20,9 @@ describe("MODULE_REGISTRY", () => {
   for (const [key, pkg] of entries) {
     describe(key, () => {
       it("is keyed by its manifest id@version", () => {
-        expect(key).toBe(moduleRegistryKey(pkg.manifest.id, pkg.manifest.version));
+        expect(key).toBe(
+          moduleRegistryKey(pkg.manifest.id, pkg.manifest.version),
+        );
       });
 
       it("validates as a registrable package", () => {

@@ -16,7 +16,10 @@ describe.skipIf(!liveDatabaseAvailable)(
     let client: typeof import("../client");
     const createdUserIds: string[] = [];
 
-    async function scaffold(): Promise<{ ownerId: UserId; projectId: MachineProjectId }> {
+    async function scaffold(): Promise<{
+      ownerId: UserId;
+      projectId: MachineProjectId;
+    }> {
       const user = await projects.upsertUser(`test-user-${randomUUID()}`);
       createdUserIds.push(user.id);
       const project = await projects.createProject({
@@ -56,7 +59,9 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(event.entityId).toBe("run-1");
       expect(event.payload).toEqual({ status: "pass" });
 
-      const row = await client.prisma.auditEvent.findUnique({ where: { id: event.id } });
+      const row = await client.prisma.auditEvent.findUnique({
+        where: { id: event.id },
+      });
       expect(row?.entityType).toBe("CalculationRun");
     });
 
@@ -84,7 +89,9 @@ describe.skipIf(!liveDatabaseAvailable)(
         payload: {},
       });
       await projects.deleteProject(s.projectId, s.ownerId);
-      const row = await client.prisma.auditEvent.findUnique({ where: { id: event.id } });
+      const row = await client.prisma.auditEvent.findUnique({
+        where: { id: event.id },
+      });
       expect(row).toBeNull();
     });
 
@@ -105,7 +112,10 @@ describe.skipIf(!liveDatabaseAvailable)(
         payload: { label: "Review 1" },
       });
 
-      const listed = await audit.listAuditEventsForProject(s.projectId, s.ownerId);
+      const listed = await audit.listAuditEventsForProject(
+        s.projectId,
+        s.ownerId,
+      );
       expect(listed.map((e) => e.id)).toEqual([second.id, first.id]);
     });
 
@@ -121,7 +131,9 @@ describe.skipIf(!liveDatabaseAvailable)(
       const stranger = await projects.upsertUser(`test-user-${randomUUID()}`);
       createdUserIds.push(stranger.id);
 
-      expect(await audit.listAuditEventsForProject(s.projectId, stranger.id)).toEqual([]);
+      expect(
+        await audit.listAuditEventsForProject(s.projectId, stranger.id),
+      ).toEqual([]);
     });
   },
 );

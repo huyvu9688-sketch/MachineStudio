@@ -5,14 +5,15 @@ import { StatusBadge } from "./status-badge";
 
 describe("StatusBadge", () => {
   it("renders a label for every status so color is never the only signal", () => {
-    const cases: Array<[Parameters<typeof StatusBadge>[0]["status"], string]> = [
-      ["not_configured", "Not configured"],
-      ["pass", "Pass"],
-      ["fail", "Fail"],
-      ["warning", "Warning"],
-      ["invalid_input", "Invalid input"],
-      ["not_applicable", "Not applicable"],
-    ];
+    const cases: Array<[Parameters<typeof StatusBadge>[0]["status"], string]> =
+      [
+        ["not_configured", "Not configured"],
+        ["pass", "Pass"],
+        ["fail", "Fail"],
+        ["warning", "Warning"],
+        ["invalid_input", "Invalid input"],
+        ["not_applicable", "Not applicable"],
+      ];
 
     for (const [status, label] of cases) {
       const { unmount } = render(<StatusBadge status={status} />);

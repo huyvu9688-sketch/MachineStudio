@@ -101,7 +101,13 @@ describe.skipIf(!liveDatabaseAvailable)(
         componentTypeId: componentType.id,
         version: "1.0.0",
         fields: [
-          { key: "lead", label: "Lead", valueKind: "quantity", required: true, unit: "mm" },
+          {
+            key: "lead",
+            label: "Lead",
+            valueKind: "quantity",
+            required: true,
+            unit: "mm",
+          },
         ],
       });
       const partRevision = await catalog.createManufacturerPartRevision({
@@ -172,7 +178,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const result = await assignComponent(
         {
           configurationId: f.configId,
-          target: { kind: "module_instance", moduleInstanceId: f.moduleInstanceId },
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: f.moduleInstanceId,
+          },
           partSource: "catalog",
           manufacturerPartRevisionId: f.partRevisionId,
           calculationRunId: f.runId,
@@ -181,7 +190,9 @@ describe.skipIf(!liveDatabaseAvailable)(
       );
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      expect(result.assignment.manufacturerPartRevisionId).toBe(f.partRevisionId);
+      expect(result.assignment.manufacturerPartRevisionId).toBe(
+        f.partRevisionId,
+      );
       expect(result.assignment.assignedByUserId).toBe(f.ownerId);
     });
 
@@ -225,7 +236,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const result = await assignComponent(
         {
           configurationId: f.configId,
-          target: { kind: "module_instance", moduleInstanceId: f.moduleInstanceId },
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: f.moduleInstanceId,
+          },
           partSource: "catalog",
           manufacturerPartRevisionId: f.partRevisionId,
           calculationRunId: f.runId,
@@ -316,7 +330,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const result = await assignComponent(
         {
           configurationId: f.configId,
-          target: { kind: "module_instance", moduleInstanceId: f.moduleInstanceId },
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: f.moduleInstanceId,
+          },
           partSource: "catalog",
           manufacturerPartRevisionId: f.partRevisionId,
           calculationRunId: strangerRun.run.id,
@@ -354,7 +371,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const result = await assignComponent(
         {
           configurationId: f.configId,
-          target: { kind: "module_instance", moduleInstanceId: f.moduleInstanceId },
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: f.moduleInstanceId,
+          },
           partSource: "catalog",
           manufacturerPartRevisionId: f.partRevisionId,
           calculationRunId: otherRun.run.id,
@@ -388,9 +408,13 @@ describe.skipIf(!liveDatabaseAvailable)(
       const result = await assignComponent(
         {
           configurationId: f.configId,
-          target: { kind: "module_instance", moduleInstanceId: f.moduleInstanceId },
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: f.moduleInstanceId,
+          },
           partSource: "catalog",
-          manufacturerPartRevisionId: "does-not-exist" as ManufacturerPartRevisionId,
+          manufacturerPartRevisionId:
+            "does-not-exist" as ManufacturerPartRevisionId,
           calculationRunId: f.runId,
         },
         f.ownerId,
@@ -405,7 +429,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const result = await assignComponent(
         {
           configurationId: f.configId,
-          target: { kind: "module_instance", moduleInstanceId: f.moduleInstanceId },
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: f.moduleInstanceId,
+          },
           partSource: "catalog",
           manufacturerPartRevisionId: f.partRevisionId,
           // calculationRunId omitted: the repository's "supporting run
@@ -436,7 +463,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       const result = await assignComponent(
         {
           configurationId: otherConfig.id,
-          target: { kind: "module_instance", moduleInstanceId: f.moduleInstanceId },
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: f.moduleInstanceId,
+          },
           partSource: "catalog",
           manufacturerPartRevisionId: f.partRevisionId,
           calculationRunId: f.runId,

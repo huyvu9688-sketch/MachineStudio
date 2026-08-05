@@ -56,7 +56,9 @@ describe("runModuleConformance — a conforming module", () => {
   });
 
   it("skips source-immutability when sources are given without an expected hash", () => {
-    const sources: ModuleSourceFile[] = [{ path: "compute.ts", contents: "// x" }];
+    const sources: ModuleSourceFile[] = [
+      { path: "compute.ts", contents: "// x" },
+    ];
     const report = runModuleConformance(exampleThrustModule, { sources });
     expect(checkStatus(report, "source-immutability")).toBe("skipped");
   });
@@ -89,7 +91,9 @@ describe("runModuleConformance — non-conforming modules", () => {
 
   it("fails execution for an input missing a required value", () => {
     const pkg = sealModulePackage(baseDraft());
-    const report = runModuleConformance(pkg, { sampleInputs: [{ values: {} }] });
+    const report = runModuleConformance(pkg, {
+      sampleInputs: [{ values: {} }],
+    });
     expect(report.ok).toBe(false);
     expect(checkStatus(report, "execution")).toBe("fail");
   });
@@ -124,7 +128,10 @@ describe("runModuleConformance — non-conforming modules", () => {
     ];
     const pinned = moduleSourceHash(original);
     const edited: ModuleSourceFile[] = [
-      { path: "compute.ts", contents: "export const x = 2; // silently changed" },
+      {
+        path: "compute.ts",
+        contents: "export const x = 2; // silently changed",
+      },
     ];
     const report = runModuleConformance(exampleThrustModule, {
       sources: edited,

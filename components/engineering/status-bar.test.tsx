@@ -32,7 +32,9 @@ describe("StatusBar", () => {
     );
 
     expect(screen.getByText("2")).toBeInTheDocument(); // failed checks
-    expect(screen.getByText("US-General-Industrial-Machinery@1")).toBeInTheDocument();
+    expect(
+      screen.getByText("US-General-Industrial-Machinery@1"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Fail")).toBeInTheDocument(); // overall run-status badge
   });
 });

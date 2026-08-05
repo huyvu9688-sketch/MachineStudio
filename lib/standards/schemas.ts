@@ -114,11 +114,22 @@ type MutuallyAssignable<A, B> = [A] extends [B]
 type Assert<T extends true> = T;
 
 export type _SourceSchemaParity = [
-  Assert<MutuallyAssignable<SourceDocument, z.infer<typeof SourceDocumentSchema>>>,
-  Assert<MutuallyAssignable<SourceRevision, z.infer<typeof SourceRevisionSchema>>>,
-  Assert<MutuallyAssignable<ClauseReference, z.infer<typeof ClauseReferenceSchema>>>,
   Assert<
-    MutuallyAssignable<MarketProfileEntry, z.infer<typeof MarketProfileEntrySchema>>
+    MutuallyAssignable<SourceDocument, z.infer<typeof SourceDocumentSchema>>
   >,
-  Assert<MutuallyAssignable<MarketProfile, z.infer<typeof MarketProfileSchema>>>,
+  Assert<
+    MutuallyAssignable<SourceRevision, z.infer<typeof SourceRevisionSchema>>
+  >,
+  Assert<
+    MutuallyAssignable<ClauseReference, z.infer<typeof ClauseReferenceSchema>>
+  >,
+  Assert<
+    MutuallyAssignable<
+      MarketProfileEntry,
+      z.infer<typeof MarketProfileEntrySchema>
+    >
+  >,
+  Assert<
+    MutuallyAssignable<MarketProfile, z.infer<typeof MarketProfileSchema>>
+  >,
 ];

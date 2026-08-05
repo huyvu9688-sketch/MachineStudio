@@ -63,7 +63,10 @@ import {
   previewRemoveParameterLinkImpact,
   type LinkSuggestionSourceView,
 } from "../parameters";
-import { describeField, type ModuleInputFieldDescriptor } from "./describe-field";
+import {
+  describeField,
+  type ModuleInputFieldDescriptor,
+} from "./describe-field";
 
 export { describeField };
 export type { ModuleInputFieldDescriptor };
@@ -143,7 +146,10 @@ export async function loadModuleWorkspaceView(
   }
   const { moduleInstance } = context;
 
-  const pkg = getModulePackage(moduleInstance.modulePackageId, moduleInstance.moduleVersion);
+  const pkg = getModulePackage(
+    moduleInstance.modulePackageId,
+    moduleInstance.moduleVersion,
+  );
   if (pkg === undefined) {
     return null;
   }
@@ -182,8 +188,14 @@ export async function loadModuleWorkspaceView(
   const removalImpactByPortKey = new Map<string, number>();
   for (const [portKey, resolved] of resolvedByPortKey) {
     if (resolved.source !== "linked") continue;
-    const preview = await previewRemoveParameterLinkImpact(resolved.link.id, ownerId);
-    removalImpactByPortKey.set(portKey, preview.ok ? preview.staleModuleInstanceIds.length : 0);
+    const preview = await previewRemoveParameterLinkImpact(
+      resolved.link.id,
+      ownerId,
+    );
+    removalImpactByPortKey.set(
+      portKey,
+      preview.ok ? preview.staleModuleInstanceIds.length : 0,
+    );
   }
 
   const groups: ModuleInputGroupView[] = pkg.uiSchema.groups.map((group) => ({
@@ -230,7 +242,9 @@ export async function loadModuleWorkspaceView(
         resolved,
         suggestions,
         linkRemovalImpact:
-          resolved.source === "linked" ? removalImpactByPortKey.get(field.portKey) ?? 0 : null,
+          resolved.source === "linked"
+            ? (removalImpactByPortKey.get(field.portKey) ?? 0)
+            : null,
       };
     }),
   }));

@@ -14,7 +14,9 @@ const DEFAULT_SIGNIFICANT_FIGURES = 6;
  */
 export function toSignificantFigures(value: number, sigFigs: number): number {
   if (!Number.isInteger(sigFigs) || sigFigs < 1) {
-    throw new RangeError(`significant figures must be a positive integer, got ${sigFigs}`);
+    throw new RangeError(
+      `significant figures must be a positive integer, got ${sigFigs}`,
+    );
   }
   if (value === 0) return 0;
   return Number(value.toPrecision(sigFigs));
@@ -50,7 +52,9 @@ export function formatQuantity(
   const sigFigs = options.significantFigures ?? DEFAULT_SIGNIFICANT_FIGURES;
   const target =
     options.unit ??
-    (options.useDisplayUnit ? (quantity.displayUnit ?? quantity.unit) : quantity.unit);
+    (options.useDisplayUnit
+      ? (quantity.displayUnit ?? quantity.unit)
+      : quantity.unit);
   const value =
     target === quantity.unit
       ? quantity.value

@@ -182,7 +182,10 @@ describe.skipIf(!liveDatabaseAvailable)(
     });
 
     it("reports module_not_found for an unregistered module package/version", async () => {
-      const s = await scaffold({ modulePackageId: "does-not-exist", moduleVersion: "9.9.9" });
+      const s = await scaffold({
+        modulePackageId: "does-not-exist",
+        moduleVersion: "9.9.9",
+      });
 
       const result = await application.executeModuleInstance({
         moduleInstanceId: s.moduleInstanceId,
@@ -309,7 +312,11 @@ describe.skipIf(!liveDatabaseAvailable)(
       // Once the upstream run is stale, its outputs no longer follow from the
       // current design, so executing the downstream module would persist a
       // fresh-looking run built on superseded numbers.
-      await runs.markRunStale(upstreamRun.run.id, true, "An upstream value changed.");
+      await runs.markRunStale(
+        upstreamRun.run.id,
+        true,
+        "An upstream value changed.",
+      );
       const stale = await application.executeModuleInstance({
         moduleInstanceId: downstream.id,
         ownerId: s.ownerId,

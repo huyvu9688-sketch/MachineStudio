@@ -28,6 +28,7 @@
 ### Task 1: Read model — `describeField`'s new `"vector_quantity"` branch
 
 **Files:**
+
 - Modify: `lib/application/calculations/load-module-workspace-view.ts:41-64` (imports), `:66-76` (`ModuleInputFieldDescriptor`), `:129-161` (`describeField`)
 - Test: `lib/application/calculations/load-module-workspace-view.test.ts`
 
@@ -41,7 +42,8 @@ describe("describeField (pure, no live database)", () => {
   let getParameter: typeof import("@/lib/engine").getParameter;
 
   beforeAll(async () => {
-    describeField = (await import("./load-module-workspace-view")).describeField;
+    describeField = (await import("./load-module-workspace-view"))
+      .describeField;
     getParameter = (await import("@/lib/engine")).getParameter;
   });
 
@@ -68,7 +70,10 @@ describe("describeField (pure, no live database)", () => {
       frame: "world",
     });
 
-    expect(descriptor).toEqual({ kind: "unsupported", valueType: "vector_quantity" });
+    expect(descriptor).toEqual({
+      kind: "unsupported",
+      valueType: "vector_quantity",
+    });
   });
 });
 ```
@@ -117,7 +122,11 @@ export type ModuleInputFieldDescriptor =
       readonly canonicalUnit: string;
       readonly displayUnits: readonly string[];
     }
-  | { readonly kind: "enum"; readonly enumId: string; readonly options: readonly string[] }
+  | {
+      readonly kind: "enum";
+      readonly enumId: string;
+      readonly options: readonly string[];
+    }
   | { readonly kind: "boolean" }
   /** `vector_quantity` today; would also cover a future `curve` parameter type. */
   | { readonly kind: "unsupported"; readonly valueType: ParameterValueType };
@@ -147,7 +156,11 @@ export type ModuleInputFieldDescriptor =
       readonly displayUnits: readonly string[];
       readonly frame: "axis";
     }
-  | { readonly kind: "enum"; readonly enumId: string; readonly options: readonly string[] }
+  | {
+      readonly kind: "enum";
+      readonly enumId: string;
+      readonly options: readonly string[];
+    }
   | { readonly kind: "boolean" }
   /** A `curve` parameter, or a `vector_quantity` whose frame is not `"axis"`. */
   | { readonly kind: "unsupported"; readonly valueType: ParameterValueType };
@@ -158,12 +171,15 @@ export type ModuleInputFieldDescriptor =
 The current function (around line 129-161) is:
 
 ```ts
-function describeField(valueType: ParameterValueType, definition: {
-  readonly canonicalUnit?: string;
-  readonly displayUnits?: readonly string[];
-  readonly enumId?: string;
-  readonly enumOptions?: readonly string[];
-}): ModuleInputFieldDescriptor {
+function describeField(
+  valueType: ParameterValueType,
+  definition: {
+    readonly canonicalUnit?: string;
+    readonly displayUnits?: readonly string[];
+    readonly enumId?: string;
+    readonly enumOptions?: readonly string[];
+  },
+): ModuleInputFieldDescriptor {
   switch (valueType) {
     case "quantity": {
       if (definition.canonicalUnit === undefined) {
@@ -179,7 +195,11 @@ function describeField(valueType: ParameterValueType, definition: {
       if (definition.enumId === undefined) {
         throw new Error("Enum parameter is missing its enumId.");
       }
-      return { kind: "enum", enumId: definition.enumId, options: definition.enumOptions ?? [] };
+      return {
+        kind: "enum",
+        enumId: definition.enumId,
+        options: definition.enumOptions ?? [],
+      };
     }
     case "boolean":
       return { kind: "boolean" };
@@ -196,13 +216,16 @@ function describeField(valueType: ParameterValueType, definition: {
 Replace it with (note the added `frame` field on the parameter, `export` added, and the new `"vector_quantity"` case body):
 
 ```ts
-export function describeField(valueType: ParameterValueType, definition: {
-  readonly canonicalUnit?: string;
-  readonly displayUnits?: readonly string[];
-  readonly enumId?: string;
-  readonly enumOptions?: readonly string[];
-  readonly frame?: FrameRequirement;
-}): ModuleInputFieldDescriptor {
+export function describeField(
+  valueType: ParameterValueType,
+  definition: {
+    readonly canonicalUnit?: string;
+    readonly displayUnits?: readonly string[];
+    readonly enumId?: string;
+    readonly enumOptions?: readonly string[];
+    readonly frame?: FrameRequirement;
+  },
+): ModuleInputFieldDescriptor {
   switch (valueType) {
     case "quantity": {
       if (definition.canonicalUnit === undefined) {
@@ -218,7 +241,11 @@ export function describeField(valueType: ParameterValueType, definition: {
       if (definition.enumId === undefined) {
         throw new Error("Enum parameter is missing its enumId.");
       }
-      return { kind: "enum", enumId: definition.enumId, options: definition.enumOptions ?? [] };
+      return {
+        kind: "enum",
+        enumId: definition.enumId,
+        options: definition.enumOptions ?? [],
+      };
     }
     case "boolean":
       return { kind: "boolean" };
@@ -227,7 +254,9 @@ export function describeField(valueType: ParameterValueType, definition: {
         return { kind: "unsupported", valueType };
       }
       if (definition.canonicalUnit === undefined) {
-        throw new Error("Vector quantity parameter is missing its canonicalUnit.");
+        throw new Error(
+          "Vector quantity parameter is missing its canonicalUnit.",
+        );
       }
       return {
         kind: "vector_quantity",
@@ -268,6 +297,7 @@ git commit -m "feat: describe axis-frame vector_quantity parameters as editable 
 ### Task 2: `parseSubmittedVector` pure helper
 
 **Files:**
+
 - Create: `app/(workspace)/workspace/parse-submitted-vector.ts`
 - Create: `app/(workspace)/workspace/parse-submitted-vector.test.ts`
 
@@ -318,11 +348,14 @@ describe("parseSubmittedVector", () => {
     ["blank middle component", ["1", "", "2"]],
     ["blank last component", ["1", "2", ""]],
     ["whitespace-only component", ["1", "   ", "2"]],
-  ])("rejects with %s without storing a partial vector", (_label, components) => {
-    const result = parseSubmittedVector(components, "N", "N", "axis");
+  ])(
+    "rejects with %s without storing a partial vector",
+    (_label, components) => {
+      const result = parseSubmittedVector(components, "N", "N", "axis");
 
-    expect(result).toEqual({ ok: false, message: "Enter a numeric value." });
-  });
+      expect(result).toEqual({ ok: false, message: "Enter a numeric value." });
+    },
+  );
 
   it("rejects a non-numeric component", () => {
     const result = parseSubmittedVector(["1", "abc", "2"], "N", "N", "axis");
@@ -331,7 +364,12 @@ describe("parseSubmittedVector", () => {
   });
 
   it("rejects an invalid unit", () => {
-    const result = parseSubmittedVector(["1", "2", "3"], "not-a-unit", "N", "axis");
+    const result = parseSubmittedVector(
+      ["1", "2", "3"],
+      "not-a-unit",
+      "N",
+      "axis",
+    );
 
     expect(result).toEqual({
       ok: false,
@@ -352,7 +390,10 @@ Create `app/(workspace)/workspace/parse-submitted-vector.ts`:
 
 ```ts
 import { convert } from "@/lib/engine/units";
-import { SERIALIZATION_FORMAT_VERSION, type VectorQuantity } from "@/lib/engine/values";
+import {
+  SERIALIZATION_FORMAT_VERSION,
+  type VectorQuantity,
+} from "@/lib/engine/values";
 
 export type SubmittedVectorParseResult =
   | { readonly ok: true; readonly value: VectorQuantity }
@@ -393,7 +434,9 @@ export function parseSubmittedVector(
       value: {
         v: SERIALIZATION_FORMAT_VERSION,
         kind: "vector_quantity",
-        components: components.map((component) => convert(component, unit, canonicalUnit)),
+        components: components.map((component) =>
+          convert(component, unit, canonicalUnit),
+        ),
         unit: canonicalUnit,
         frame,
         displayUnit: unit,
@@ -430,6 +473,7 @@ git commit -m "feat: add parseSubmittedVector, the vector counterpart to parseSu
 ### Task 3: Wire the save path — `setModuleInputValueAction`
 
 **Files:**
+
 - Modify: `app/(workspace)/workspace/actions.ts:1-56` (imports), `:163-245` (`setModuleInputValueAction`)
 
 No new test file for this step: `setModuleInputValueAction` has no existing dedicated test file today (it is a thin `"use server"` wrapper, exercised indirectly through component tests that mock it — the real parsing logic lives in, and is fully tested by, `parseSubmittedQuantity`/`parseSubmittedVector`). This matches the file's own established "thin glue only" convention. Task 4 adds component-level coverage that exercises this action's contract (its expected `FormData` field names) through the mock.
@@ -555,6 +599,7 @@ git commit -m "feat: accept vector_quantity submissions in setModuleInputValueAc
 ### Task 4: Editor UI — `FieldControl`'s new branch
 
 **Files:**
+
 - Modify: `components/engineering/module-input-workspace.tsx:34-35` (add a constant), `:216-301` (`FieldControl`)
 - Modify: `components/engineering/module-input-workspace.test.tsx`
 
@@ -599,19 +644,19 @@ const unsupportedField: ModuleInputFieldView = {
 Then update the one assertion in the "renders the module header, group title, and every field kind generically" test (around line 240-243) that checked this fixture's text and comment:
 
 ```ts
-    // Unsupported (vector_quantity): honest deferral notice, not a crash or invented editor.
-    expect(
-      screen.getByText(/Editing vector quantity values is not supported yet/),
-    ).toBeInTheDocument();
+// Unsupported (vector_quantity): honest deferral notice, not a crash or invented editor.
+expect(
+  screen.getByText(/Editing vector quantity values is not supported yet/),
+).toBeInTheDocument();
 ```
 
 Replace with:
 
 ```ts
-    // Unsupported (curve): honest deferral notice, not a crash or invented editor.
-    expect(
-      screen.getByText(/Editing curve values is not supported yet/),
-    ).toBeInTheDocument();
+// Unsupported (curve): honest deferral notice, not a crash or invented editor.
+expect(
+  screen.getByText(/Editing curve values is not supported yet/),
+).toBeInTheDocument();
 ```
 
 - [ ] **Step 2: Add the new vector fixtures**
@@ -670,7 +715,7 @@ const vectorDefaultField: ModuleInputFieldView = {
 
 Two of these tests intentionally implement the design spec's testing-plan wording more precisely than its literal text, rather than following it verbatim — noted here so this isn't mistaken for a missed requirement during review:
 
-- The spec says a submit test should confirm the action is called "with the 3 component fields plus the shared unit field." `setModuleInputValueAction` is mocked in this file (see the `vi.mock` at the top), so no test here can observe what a *real* `setParameterValue` call received — only whether the mock was invoked. The existing quantity-field submit test one section up (`"submits a quantity field's manual value..."`) already establishes the file's precedent for this: a shallow `toHaveBeenCalled()`, not a deep `FormData` inspection. This task's submit test matches that precedent instead of inventing a new, deeper assertion style the mock can't actually support meaningfully.
+- The spec says a submit test should confirm the action is called "with the 3 component fields plus the shared unit field." `setModuleInputValueAction` is mocked in this file (see the `vi.mock` at the top), so no test here can observe what a _real_ `setParameterValue` call received — only whether the mock was invoked. The existing quantity-field submit test one section up (`"submits a quantity field's manual value..."`) already establishes the file's precedent for this: a shallow `toHaveBeenCalled()`, not a deep `FormData` inspection. This task's submit test matches that precedent instead of inventing a new, deeper assertion style the mock can't actually support meaningfully.
 - The spec says a test should submit "with one blank component" and expect the error "without calling the action." Taken literally, that's not achievable through the mock either — the mock always "calls" successfully or with whatever `mockResolvedValueOnce` configures, regardless of what was typed. What's actually testable and meaningful here is native HTML5 `required` validation: every component input carries `required={field.required}` (Step 6 below), so on a required field, leaving one component blank blocks the browser from ever submitting the form — the same class of behavior this project's own history already documents catching for a different field in Unit 3.2 (`context/progress-tracker.md`: "a required-field HTML5-validation block"). The test below asserts that real, observable behavior (`setModuleInputValueAction` never called) instead of the spec's literal (not test-observable) framing. Server-side rejection of a blank component is fully covered instead by Task 2's `parseSubmittedVector` tests, which exercise the real parsing function directly.
 
 Add these tests at the end of the `describe("ModuleInputWorkspace", ...)` block in `components/engineering/module-input-workspace.test.tsx` (right before its closing `});`):
@@ -894,6 +939,7 @@ git commit -m "feat: add an axis-frame vector_quantity editor to the generic mod
 ### Task 5: Documentation sync
 
 **Files:**
+
 - Modify: `context/ui-context.md`
 - Modify: `context/axis-load-cases-stage-2-contract.md`
 - Modify: `context/progress-tracker.md`

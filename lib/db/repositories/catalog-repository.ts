@@ -68,9 +68,7 @@ import {
  * content — the corrected data needs its own source revision (ADR-0006).
  */
 export type CatalogRepositoryErrorCode =
-  | "invalid_input"
-  | "invalid_snapshot"
-  | "conflict";
+  "invalid_input" | "invalid_snapshot" | "conflict";
 
 /** Thrown by the catalog repository for validation failures. */
 export class CatalogRepositoryError extends Error {

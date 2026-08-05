@@ -23,17 +23,31 @@ describe("generateRegistrySource", () => {
 
   it("emits an import and a keyed entry per module", () => {
     const entries: RegistryModuleEntry[] = [
-      { moduleId: "ball-screw", version: "1.0.0", importPath: "./ball-screw/1.0.0" },
+      {
+        moduleId: "ball-screw",
+        version: "1.0.0",
+        importPath: "./ball-screw/1.0.0",
+      },
     ];
     const source = generateRegistrySource(entries);
-    expect(source).toContain('import mod_ball_screw_1_0_0 from "./ball-screw/1.0.0";');
+    expect(source).toContain(
+      'import mod_ball_screw_1_0_0 from "./ball-screw/1.0.0";',
+    );
     expect(source).toContain('"ball-screw@1.0.0": mod_ball_screw_1_0_0,');
   });
 
   it("produces a unique import identifier per module and version", () => {
     const entries: RegistryModuleEntry[] = [
-      { moduleId: "ball-screw", version: "1.0.0", importPath: "./ball-screw/1.0.0" },
-      { moduleId: "ball-screw", version: "2.0.0", importPath: "./ball-screw/2.0.0" },
+      {
+        moduleId: "ball-screw",
+        version: "1.0.0",
+        importPath: "./ball-screw/1.0.0",
+      },
+      {
+        moduleId: "ball-screw",
+        version: "2.0.0",
+        importPath: "./ball-screw/2.0.0",
+      },
     ];
     const source = generateRegistrySource(entries);
     expect(source).toContain("mod_ball_screw_1_0_0");

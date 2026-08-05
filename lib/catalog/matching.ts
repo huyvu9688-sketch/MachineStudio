@@ -79,7 +79,10 @@ function evaluateQuantityCriterion(
       required.unit,
     );
   } catch (err) {
-    if (err instanceof UnknownUnitError || err instanceof DimensionMismatchError) {
+    if (
+      err instanceof UnknownUnitError ||
+      err instanceof DimensionMismatchError
+    ) {
       return failure(
         criterion,
         "dimension_mismatch",
@@ -126,7 +129,8 @@ function evaluateQuantityCriterion(
       );
     }
     case "eq": {
-      const tolerance = criterion.tolerance ?? DEFAULT_EQUALITY_RELATIVE_TOLERANCE;
+      const tolerance =
+        criterion.tolerance ?? DEFAULT_EQUALITY_RELATIVE_TOLERANCE;
       const scale = Math.max(Math.abs(required.value), 1e-12);
       const withinTolerance =
         Math.abs(candidateInRequiredUnit - required.value) <= tolerance * scale;
@@ -144,7 +148,9 @@ function evaluateQuantityCriterion(
     }
     /* c8 ignore next 2 -- exhaustive ComparisonOperator union */
     default:
-      throw new MatchCriterionError(`Unsupported operator: ${String(criterion.operator)}`);
+      throw new MatchCriterionError(
+        `Unsupported operator: ${String(criterion.operator)}`,
+      );
   }
 }
 
@@ -179,7 +185,8 @@ function evaluateNonQuantityCriterion(
   const candidateDisplay = displayEngineeringValue(candidate);
   const equal =
     required.kind === "enum" && candidate.kind === "enum"
-      ? required.enumId === candidate.enumId && required.value === candidate.value
+      ? required.enumId === candidate.enumId &&
+        required.value === candidate.value
       : required.kind === "boolean" && candidate.kind === "boolean"
         ? required.value === candidate.value
         : required.kind === "material_ref" && candidate.kind === "material_ref"
@@ -231,7 +238,11 @@ export function evaluateCriterion(
       candidateValue as Quantity,
     );
   }
-  return evaluateNonQuantityCriterion(criterion, criterion.value, candidateValue);
+  return evaluateNonQuantityCriterion(
+    criterion,
+    criterion.value,
+    candidateValue,
+  );
 }
 
 /**
@@ -292,12 +303,20 @@ export function rankCandidates<C extends CandidatePart>(
       margins.length > 0
         ? margins.reduce((sum, m) => sum + m, 0) / margins.length
         : 0;
-    accepted.push({ candidate: evaluation.candidate, score, criteria: evaluation.criteria });
+    accepted.push({
+      candidate: evaluation.candidate,
+      score,
+      criteria: evaluation.criteria,
+    });
   }
 
   accepted.sort((a, b) => {
     if (a.score !== b.score) return a.score - b.score;
-    return a.candidate.id < b.candidate.id ? -1 : a.candidate.id > b.candidate.id ? 1 : 0;
+    return a.candidate.id < b.candidate.id
+      ? -1
+      : a.candidate.id > b.candidate.id
+        ? 1
+        : 0;
   });
 
   return { accepted, rejected };
