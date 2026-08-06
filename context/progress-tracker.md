@@ -31,6 +31,35 @@ Update this file after every meaningful implementation change.
   but the change does touch `.github/workflows/ci.yml` and has not yet
   had one.
 
+- **2026-08-06 (same session, continued — the pushed `format:check` commit
+  triggered a real CI failure, but not from `format:check` itself): CI run
+  31098459164 failed at "Audit production dependencies," a step ahead of
+  the new "Format check" step in the pipeline (which never got to run —
+  it's marked `skipped`).** Confirmed by reproducing `npm audit --omit=dev`
+  locally: a real, newly-flagged high-severity advisory
+  (GHSA-7p8r-x3mc-p8w7, "fast-uri vulnerable to host confusion via
+  backslash authority introducer") in `fast-uri@3.1.4`, pulled in through
+  `@prisma/client` (a real `dependencies` entry) →`prisma` →
+  `@prisma/dev` → `@prisma/streams-local` → `ajv@8.20.0` — unrelated to
+  the format:check change itself, just the next CI step in line. Fixed
+  the same way this project already fixes this exact class of problem for
+  `postcss`/`sharp`: added `"fast-uri": "^3.1.5"` (the advisory's
+  `first_patched_version`) to `package.json`'s `overrides`, confirmed
+  `ajv@8.20.0`'s own `^3.0.0` range accepts it, ran `npm install` to
+  regenerate `package-lock.json`, and reconfirmed `npm audit --omit=dev`
+  reports 0 vulnerabilities. Verified: `npm run verify` green with
+  `DATABASE_URL` unset (568/568 passed, 204 skipped — unchanged,
+  confirming the override touches nothing at runtime); separately, a
+  live-database run against the real Neon instance surfaced the same
+  pre-existing, already-documented Neon-free-tier-latency timeout on
+  `stale-propagation.test.ts` "marks a multi-level dependency chain
+  stale" and `compare-baselines.test.ts` "shows a changed parameter value
+  and a changed run between two real baselines" (both exceed Vitest's
+  default 5000ms against this specific database, not a code defect —
+  matching the exact prior incident recorded in the 2026-07-31 Current
+  Goal entry), not a regression from this change. Not yet re-pushed to
+  confirm the CI round trip.
+
 - **2026-08-05 (new session — user said "read claude.md and context files,
   build next task"): repo-wide Prettier formatting applied, closing the
   standing `format:check` gap.** The prior session's Open Questions entry
