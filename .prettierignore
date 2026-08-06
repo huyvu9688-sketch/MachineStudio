@@ -7,3 +7,20 @@ package-lock.json
 # Hand-authored specification documents; not reformatted by tooling.
 context/
 validation/
+
+# Protected per context/ai-workflow-rules.md "Protected Files and Records":
+# hand-configured shadcn-generated primitives, not reformatted without
+# explicit reason.
+components/ui/*
+
+# The example-relay and example-scaffold dev fixture modules pin an exact-
+# source-text expectedSourceHash (moduleSourceHash, lib/engine/module-sdk/
+# hash.ts) in their own test files as the Stage 6 release-reference pattern.
+# Reformatting these files would change that hash and break the assertion.
+lib/modules/example-relay/0.1.0/example-relay.test.ts
+lib/modules/example-relay/0.1.0/manifest.ts
+lib/modules/example-scaffold/0.1.0/checks.ts
+lib/modules/example-scaffold/0.1.0/compute.ts
+lib/modules/example-scaffold/0.1.0/example-scaffold.test.ts
+lib/modules/example-scaffold/0.1.0/manifest.ts
+lib/modules/example-scaffold/0.1.0/validation.ts

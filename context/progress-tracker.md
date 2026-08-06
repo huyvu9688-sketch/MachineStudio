@@ -4,6 +4,33 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
+- **2026-08-06 (new session — user said "move to other tasks" after
+  deferring Unit 4.1 Stage 2 items 1-3, which stay evidence-gated):
+  `format:check` is now wired into `npm run verify` and CI, closing the
+  "possible follow-up" the 2026-08-05 entry below explicitly left open.**
+  `package.json`'s `verify` script now runs `npm run format:check` first,
+  before lint/typecheck/test/build; `.github/workflows/ci.yml` gained a
+  matching "Format check" step ahead of "Lint". The 17 files the
+  2026-08-05 Prettier pass deliberately left unformatted (10
+  `components/ui/*` primitives, plus `example-relay`/`example-scaffold`'s
+  hash-pinned `manifest.ts`/test files and, for `example-scaffold` only,
+  `checks.ts`/`compute.ts`/`validation.ts`) would otherwise fail this new
+  gate, so `.prettierignore` gained explicit entries for exactly those 17
+  paths (confirmed against a fresh `npx prettier --check .` run, not
+  guessed from the prose above — the exact file list differs slightly
+  from that entry's "all 7 source files under" wording: it is 7 files
+  total across both module directories, not 7 each, and which specific 7
+  depends on which files' current content happens to already match
+  Prettier's style). Each ignored file carries a comment explaining why
+  (protected shadcn primitive vs. source-hash-pinned module fixture).
+  Verified: `npm run verify` end-to-end green — `format:check` clean,
+  `npm run lint` (0 warnings), `npm run typecheck` (0 errors), `npm run
+  test` (568/568 passed, 204 skipped — unchanged), `npm run build` clean.
+  No `lib/db` schema change, no module registered — pure tooling/CI
+  configuration, so no CI round trip is strictly required to trust this,
+  but the change does touch `.github/workflows/ci.yml` and has not yet
+  had one.
+
 - **2026-08-05 (new session — user said "read claude.md and context files,
   build next task"): repo-wide Prettier formatting applied, closing the
   standing `format:check` gap.** The prior session's Open Questions entry

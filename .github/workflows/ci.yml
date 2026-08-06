@@ -76,6 +76,9 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev
 
+      - name: Format check
+        run: npm run format:check
+
       - name: Lint
         run: npm run lint
 
