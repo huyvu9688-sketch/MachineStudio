@@ -13,9 +13,8 @@ export type SubmittedVectorParseResult =
  * them, matching `VectorQuantity.unit`/`displayUnit`) into a canonical
  * `VectorQuantity`. Mirrors `parseSubmittedQuantity` component-wise: any
  * blank or non-finite component rejects the whole submission rather than
- * storing a partial vector (docs/superpowers/specs/
- * 2026-08-05-vector-quantity-input-editor-design.md, "Validation" — the
- * generalized form of Unit 3.9's Defect 3 guard).
+ * storing a partial vector (docs/design/vector-quantity-input-editor.md,
+ * "Validation" — the generalized form of Unit 3.9's Defect 3 guard).
  */
 export function parseSubmittedVector(
   rawComponents: readonly string[],

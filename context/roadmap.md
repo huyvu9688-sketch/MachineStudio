@@ -1,5 +1,19 @@
 # Roadmap
 
+## How phases map to milestones
+
+This file plans in **phases**. `context/implementation-map.md` and
+`context/progress-tracker.md` execute in **milestones and units**. Same
+work, two labels:
+
+| Roadmap phase | Milestone |
+| --- | --- |
+| 0A, 0B, 0C | 0, 1, 2 |
+| 1A | 3, 4 |
+| 1B, 1C | 4 (later units) |
+| 1D | 5 |
+| 2 and later | after MVP |
+
 ## Product Strategy
 
 The MVP is a complete linear-axis engineering workflow for machines

@@ -37,10 +37,10 @@ const CONTROL_CLASS =
 
 /**
  * axis.v1's fixed 3-component order and physical meaning
- * (context/axis-load-cases-stage-1-spec.md): X = the engineer-declared
+ * (context/modules/axis-load-cases/stage-1-spec.md): X = the engineer-declared
  * positive travel direction, Y = horizontal transverse, Z = the resulting
  * right-handed axis. Only `frame: "axis"` vectors are editable today — see
- * docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md.
+ * docs/design/vector-quantity-input-editor.md.
  */
 const AXIS_COMPONENT_LABELS = [
   "X (travel direction)",
@@ -68,7 +68,7 @@ const AXIS_COMPONENT_CAPTIONS = ["X", "Y", "Z"] as const;
  * Suggestion UI"). Renders `quantity` (with an explicit unit selector),
  * `enum`, `boolean`, and axis-frame `vector_quantity` (three labeled
  * component inputs plus a shared unit selector — see
- * docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md)
+ * docs/design/vector-quantity-input-editor.md)
  * fields, grouped per the module's declared `ModuleUiSchema` — the same
  * component for every module, per the "No module-specific form is permitted
  * in this unit" rule. A non-linked field also renders its ranked link

@@ -6,7 +6,7 @@
 - Proposed module ID: `axis-load-cases`
 - Proposed first released version: `0.1.0`
 - Status: **Stage 1 complete.** The follow-on Stage 2 record is
-  `context/axis-load-cases-stage-2-contract.md`; the module is still not
+  `context/modules/axis-load-cases/stage-2-contract.md`; the module is still not
   registered or released.
 - Date: 2026-07-31
 
@@ -136,7 +136,7 @@ model. The later package must use per-port `loadCase` declarations and stable,
 distinct output keys. **CLOSED (2026-08-01)**: the generic result surface used
 to lose that metadata; it no longer does — `loadModuleResultView` and
 `ModuleResultPanel` now carry and render each output port's `loadCase`. See
-`context/axis-load-cases-stage-2-contract.md` deferred item 4.
+`context/modules/axis-load-cases/stage-2-contract.md` deferred item 4.
 
 ## Existing Parameter Review
 

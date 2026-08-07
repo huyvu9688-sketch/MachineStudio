@@ -62,7 +62,10 @@ Run `npm run registry:generate` after adding or removing a module package.
 - `lib/application/` — authorized, transactional use cases
 - `lib/db/` and `prisma/` — persistence adapters, schema, and migrations
 - `lib/standards/` — source-document and market-profile metadata
-- `context/` — product specification, architecture, ADRs, and progress
+- `context/` — product specification, architecture, ADRs, and current status
+- `context/archive/` — frozen history; not read during normal work
+- `docs/design/` — design specs for shipped work
+- `docs/archive/` — completed implementation plans
 - `validation/` — engineering validation records
 - `reference/` — third-party engineering source material, deliberately outside
   `public/` so it is never web-served

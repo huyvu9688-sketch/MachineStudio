@@ -35,26 +35,8 @@ Split work when it combines:
 
 ## Required Read Order
 
-Before implementation, read:
-
-1. `project-overview.md`
-2. `roadmap.md`
-3. `architecture.md`
-4. `us-market-profile.md`
-5. `jp-market-profile.md`
-6. `ui-context.md`
-7. `code-standards.md`
-8. `ai-workflow-rules.md`
-9. `implementation-map.md`
-10. `progress-tracker.md`
-
-For normal Unit 3.x (Milestone 3) continuation work, read
-`progress/unit-3.md` instead of the full progress tracker — it holds
-complete Unit 3.1+ history, decisions, and the next Unit 3 brief. Read
-both files for a full project audit.
-
-Read relevant ADRs and validation records before changing affected
-behavior.
+See `CLAUDE.md`. It is the single source for read order — do not maintain
+a second copy here.
 
 ## Generic Platform Workflow
 
@@ -221,8 +203,23 @@ Update documentation whenever implementation changes:
 - UI patterns
 - Implementation sequence
 
-Update `progress-tracker.md` after every meaningful implementation unit;
-update `progress/unit-3.md` instead for a Unit 3.x change.
+Update `progress-tracker.md` when status, blockers, or open decisions
+change. Edit the relevant section in place. Do not append a dated narrative
+entry — the tracker is a status file, not a changelog, and it is capped at
+roughly 150 lines.
+
+Where each kind of record belongs:
+
+| Record | Goes in |
+| --- | --- |
+| Current status, blockers, next work | `context/progress-tracker.md` |
+| A decision that constrains future code | `context/adr/` |
+| Why a past change was made | `context/archive/history.md` |
+| Module engineering contract | `context/modules/<module>/` |
+| Validated calculation evidence | `validation/` |
+
+A source-file comment cites an ADR or a module spec. It does not cite the
+progress tracker.
 
 ## Required Verification Before Completing a Unit
 

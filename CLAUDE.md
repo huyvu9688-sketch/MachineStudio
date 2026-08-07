@@ -1,49 +1,48 @@
 # MachineStudio (working name)
 
-## Application Building Context
+## Read order
 
-Read the following files in order before implementing or making an
-architectural decision:
+Read these before implementing or making an architectural decision:
 
-1. `context/project-overview.md` — product definition and scope
-2. `context/roadmap.md` — phases, priorities, and phase gates
-3. `context/architecture.md` — boundaries, domain model, and invariants
-4. `context/us-market-profile.md` — US source and compliance-reference
-   policy
-5. `context/jp-market-profile.md` — Japan source and compliance-reference
-   policy
-6. `context/ui-context.md` — UI system and engineering workspace patterns
-7. `context/code-standards.md` — implementation and verification rules
-8. `context/ai-workflow-rules.md` — work-unit and module delivery workflow
-9. `context/implementation-map.md` — detailed ordered execution plan
-10. `context/progress-tracker.md` — current state and next work unit
+1. `context/progress-tracker.md` — current state, active work, blockers.
+   **Start here.** It tells you whether the thing you are about to build is
+   actually next.
+2. `context/project-overview.md` — product definition and scope
+3. `context/roadmap.md` — phases, priorities, and phase gates
+4. `context/architecture.md` — boundaries, domain model, and invariants
+5. `context/ai-workflow-rules.md` — work-unit and module delivery workflow
+6. `context/code-standards.md` — implementation and verification rules
 
-For normal Unit 3.x (Milestone 3) continuation work, read
-`context/progress/unit-3.md` instead of the full progress tracker — it
-holds complete Unit 3.1+ history, decisions, and the next Unit 3 brief.
-Read both files for a full project audit.
+Read as needed, not by default:
 
-For Unit 4.x (Milestone 4) continuation work, also read
-`context/progress/unit-4.md` — it holds the Unit 4.1 status summary and
-the next safe work unit. Unlike `progress/unit-3.md`, it is a short
-pointer, not full detail: the module-contract record lives in
-`context/axis-load-cases-stage-1-spec.md` and
-`context/axis-load-cases-stage-2-contract.md`, and generic-engine/UI work
-this milestone motivates is recorded in `context/progress-tracker.md`
-directly (it is not module-specific, so it does not belong in a
-per-module spec file).
+- `context/implementation-map.md` — the ordered unit-by-unit execution plan.
+  Read the milestone you are working in, not the whole file.
+- `context/ui-context.md` — before any UI work
+- `context/us-market-profile.md` / `context/jp-market-profile.md` — before
+  any standards, source-citation, or market-specific work
+- `context/adr/` — before changing behaviour an ADR covers
+- `context/modules/<module>/` — before working on that module
+- `validation/` — before changing a validated calculation
 
-Also read relevant files under `context/adr/` and `validation/` before
-changing affected behavior.
+Do not read by default:
 
-Update `context/progress-tracker.md` after every meaningful implementation
-change; update `context/progress/unit-3.md` instead for a Unit 3.x change.
-Update `context/progress/unit-4.md`'s status summary too for a Unit 4.x
-change (in addition to, not instead of, `progress-tracker.md` — see above).
+- `context/archive/` — frozen history. Read only when you need the reasoning
+  behind a past decision, or when a source comment cites
+  `context/progress-tracker.md` for rationale that is no longer there.
+- `docs/archive/` — completed implementation plans, kept for reference only.
+
+## Updating documentation
+
+Update `context/progress-tracker.md` when status, blockers, or open
+decisions change — by editing the relevant section, never by appending a
+dated narrative entry.
 
 If implementation changes architecture, scope, standards policy, module
 contracts, parameter semantics, UI conventions, or roadmap order, update
-the relevant context file before continuing.
+that context file too. A decision that constrains future implementation
+belongs in an ADR, not in the tracker.
 
-Released module versions, released parameter-registry versions,
-calculation runs, validation records, and machine baselines are immutable.
+## Invariants
+
+Released module versions, released parameter-registry versions, calculation
+runs, validation records, and machine baselines are immutable.

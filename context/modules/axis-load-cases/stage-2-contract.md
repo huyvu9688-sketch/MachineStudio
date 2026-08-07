@@ -5,7 +5,7 @@
 - Work unit: Unit 4.1, first Stage 2 parameter-contract increment
 - Date: 2026-07-31
 - Coordinate convention: `axis.v1`, defined in
-  `context/axis-load-cases-stage-1-spec.md`
+  `context/modules/axis-load-cases/stage-1-spec.md`
 - Released registry change: parameter registry `1.1.0`
 - Module status: draft pure kernel only; no `ModulePackage`, registry entry,
   calculation run, validation record, or release
@@ -128,7 +128,7 @@ have a source-backed contract:
      rows). This closes the literal "so a separate generic UI unit must add
      output load-case labels before four same-parameter thrust outputs are
      exposed to users" requirement from
-     `context/axis-load-cases-stage-1-spec.md`. No engine contract changed —
+     `context/modules/axis-load-cases/stage-1-spec.md`. No engine contract changed —
      `CheckResult`/`Warning`/`ValidityResult` stay unlabeled by load case,
      since they are not themselves port-scoped and Stage 1 only named
      *output* labels as the blocker. **The vector-input-authoring half
@@ -147,7 +147,7 @@ have a source-backed contract:
      exactly the case `motion.axis.center_of_mass_offset`,
      `motion.axis.external_force`, and `motion.axis.external_moment` all
      need. See
-     `docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md`
+     `docs/design/vector-quantity-input-editor.md`
      and `context/progress-tracker.md` Current Phase for full detail. Item 4
      is now fully closed — both halves (result-load-case labels,
      2026-08-01, and vector-input authoring, 2026-08-05) are done.

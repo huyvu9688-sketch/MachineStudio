@@ -198,7 +198,7 @@ export async function setModuleInputValueAction(
     // (ui-context.md "Server Actions"). A tampered request could otherwise
     // write an axis-framed vector onto a parameter whose real frame differs
     // — exactly what axis.v1 says must be rejected, not silently reinterpreted
-    // (context/axis-load-cases-stage-1-spec.md).
+    // (context/modules/axis-load-cases/stage-1-spec.md).
     if (definition.frame !== "axis") {
       return {
         status: "error",

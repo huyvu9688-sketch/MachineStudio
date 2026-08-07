@@ -3,8 +3,8 @@
 ## Status
 
 - Generic-platform work, not tied to a released module. Motivated by
-  `context/progress/unit-4.md`'s "Next Safe Work Unit" and
-  `context/axis-load-cases-stage-2-contract.md` deferred item 4
+  `context/progress-tracker.md`'s Milestone 4 blockers and
+  `context/modules/axis-load-cases/stage-2-contract.md` deferred item 4
   (vector-input authoring), which named this "a real generic-UI/value-type
   design decision... likely worth a brainstorm/user check before
   implementation."
@@ -24,7 +24,7 @@ notice (the `"unsupported"` field-descriptor branch,
 deferred by Unit 3.3 and re-confirmed by Unit 3.9, since no released
 value-type contract existed for what a generic editor needs. That gap is now
 closed for one concrete, evidence-backed case:
-`context/axis-load-cases-stage-1-spec.md`'s `axis.v1` convention normatively
+`context/modules/axis-load-cases/stage-1-spec.md`'s `axis.v1` convention normatively
 fixes any `frame: "axis"` vector to exactly 3 ordered components `[X, Y, Z]` with
 defined physical meaning (`+X` = the engineer-declared positive travel
 direction, `+Y` = horizontal transverse, `+Z` = the resulting right-handed
@@ -215,7 +215,7 @@ live-DB test, since nothing here touches `lib/db`), `npm run build`.
 - `context/ui-context.md` "Generic Module Workspace": update the Unit 3.3
   deferral note — `vector_quantity` editing is no longer universally
   deferred; record the `frame: "axis"` scope and point to this spec.
-- `context/axis-load-cases-stage-2-contract.md` deferred item 4: mark the
+- `context/modules/axis-load-cases/stage-2-contract.md` deferred item 4: mark the
   vector-input-authoring half closed, matching how the result-load-case-labels
   half was already marked closed on 2026-08-01.
 - `context/progress-tracker.md` Current Phase: new dated entry recording the

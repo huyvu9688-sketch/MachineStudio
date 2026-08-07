@@ -1,6 +1,6 @@
 // Coverage for setModuleInputValueAction's "vector_quantity" branch (the
 // axis-frame vector-quantity input editor's save path — Task 3 of
-// docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md
+// docs/design/vector-quantity-input-editor.md
 // "Save path"). This is the one file in app/(workspace)/workspace that had
 // no dedicated test coverage at all before this: every other test that
 // touches this action (components/engineering/*.test.tsx) fully mocks the

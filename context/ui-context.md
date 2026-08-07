@@ -324,7 +324,7 @@ convention — is now editable in the generic renderer, each component with
 both a screen-reader `aria-label` and a visible X/Y/Z caption; any other
 frame still renders the "not yet editable" notice, since no other frame has
 a defined convention. See
-`docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md`.
+`docs/design/vector-quantity-input-editor.md`.
 
 **Implemented (Unit 3.5, Result pane — `components/engineering/
 module-result-panel.tsx`):** `WorkspaceShell` stacks `ModuleResultPanel`

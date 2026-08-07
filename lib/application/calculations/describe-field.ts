@@ -22,7 +22,7 @@ export type ModuleInputFieldDescriptor =
        * narrowed to the literal `"axis"` rather than the full
        * `FrameRequirement` union so a second frame is a visible signature
        * change here, not a silent fallthrough — see
-       * docs/superpowers/specs/2026-08-05-vector-quantity-input-editor-design.md.
+       * docs/design/vector-quantity-input-editor.md.
        */
       readonly kind: "vector_quantity";
       readonly canonicalUnit: string;
