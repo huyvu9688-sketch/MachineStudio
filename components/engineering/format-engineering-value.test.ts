@@ -20,7 +20,20 @@ describe("formatEngineeringValue", () => {
     ).toBe("0.5 m");
   });
 
-  it("converts every vector component into the displayed unit", () => {
+  it("labels each component X/Y/Z for a frame: axis vector and converts to the displayed unit", () => {
+    expect(
+      formatEngineeringValue({
+        v: 1,
+        kind: "vector_quantity",
+        components: [0.5, 1, -0.25],
+        unit: "m",
+        displayUnit: "mm",
+        frame: "axis",
+      }),
+    ).toBe("[X: 500, Y: 1000, Z: -250] mm");
+  });
+
+  it("leaves components unlabeled for a vector whose frame is not axis", () => {
     expect(
       formatEngineeringValue({
         v: 1,
@@ -28,7 +41,6 @@ describe("formatEngineeringValue", () => {
         components: [0.5, 1],
         unit: "m",
         displayUnit: "mm",
-        frame: "axis",
       }),
     ).toBe("[500, 1000] mm");
   });
