@@ -9,7 +9,7 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-06
+Last updated: 2026-08-08
 
 ---
 
@@ -21,7 +21,7 @@ Last updated: 2026-08-06
 | 1 | Generic engineering engine | Done |
 | 2 | Persistence and application services | Done |
 | 3 | Generic user experience (Units 3.1-3.9) | Done |
-| 4 | Linear-axis engineering modules | **In progress — blocked** |
+| 4 | Linear-axis engineering modules | **In progress** |
 | 5 | BOM, reports, MVP release | Not started |
 
 Roadmap phases map onto these milestones as follows (the roadmap uses phase
@@ -35,7 +35,7 @@ same work, two labels):
 - Phase 2+ → after MVP
 
 **Health:** `npm run verify` green (format, lint 0 warnings, typecheck 0
-errors, 568 tests passed / 204 database-gated skips, build clean).
+errors, 649 tests passed / 204 database-gated skips, build clean).
 Production dependencies audit clean.
 
 ---
@@ -44,50 +44,211 @@ Production dependencies audit clean.
 
 Unit 4.1 — `axis-load-cases`, the first production module.
 
-- Stage 1 (engineering specification): **done**. See
-  `context/modules/axis-load-cases/stage-1-spec.md`.
-- Stage 2 (parameter contract): **partly done, blocked**. See
+- Stage 1 (spec): **done**. Stage 2 (parameter contract): **resolved
+  2026-08-07**, scoped to `normal`/`peak` only — `holding`/`emergency_stop`
+  deferred (see Open decisions). No new registry version needed; `1.1.0`
+  already covers this scope. Details:
   `context/modules/axis-load-cases/stage-2-contract.md`.
-- Stages 3-6: not started. No module is registered. Do not register one,
-  claim a phase gate, or write a validation record until the blockers below
-  clear.
+- Stage 3 (compute and trace): **draft package built 2026-08-07**. A full
+  `ModulePackage` (manifest, ports, input schema, compute, trace, checks, UI
+  schema, report schema, draft validation record) wraps the existing kernel
+  in `lib/modules/axis-load-cases/0.1.0/` — see that directory's `README.md`.
+  Named `package.ts`, not `index.ts`, so `npm run registry:generate` still
+  can't discover it — no module is registered; do not register one or claim a
+  phase gate until the Stage 1 validation gate below clears.
+- Stage 4 (validation): **partly done, blocked**. The "three published
+  reference examples reproduced within stated tolerances" item is now met:
+  `thk-reference-examples.test.ts` reproduces THK's published B15-72
+  (horizontal), B15-86 (vertical), and B2-22 (vertical) worked examples from
+  `stage-1-spec.md` to within ±1 N, and `validation.ts` records them as real
+  `referenceExamples` entries. The "independent numerical benchmark" item is
+  now also met (**2026-08-07**): `reference/source-material/Atlanta_Rack and
+  Pinion Drive Calculations and Selection.pdf` (found while searching for the
+  third fixture — see below) has two complete worked examples for a
+  rack-and-pinion drive (a different mechanism than THK's ball screw),
+  reproduced in `lib/modules/axis-load-cases/0.1.0/atlanta-benchmark.ts` and
+  cross-checked against `resolveAxisLoadPhase` to floating-point precision.
+  Its licensing status is unresolved (see Open decisions), so it's an
+  internal cross-check only, not registered in `lib/standards`. The
+  remaining Stage 4 items are still blocked on evidence — see below.
+
+Unit 4.2 — `motion-profile`. Stage 1 spec drafted 2026-08-07 in parallel
+(roadmap explicitly allows spec/research work in parallel with a blocked
+module; see `context/modules/motion-profile/stage-1-spec.md`). Both
+candidate sources (ABB AN00115; Oriental Motor's H-18/H-23 selection-
+calculations chapter) are now page-verified — the earlier PDF-extraction
+failure was a tooling limitation. `motion-profile/0.1.0/
+oriental-motor-benchmark.ts` reproduces Oriental Motor's general
+asymmetric/non-zero-start-speed method as an independent benchmark of
+`resolveTrapezoidalMove` (`math.ts`), cross-checked in its sibling test
+file. Stage 2 (parameter contract) is **resolved 2026-08-07**:
+`context/modules/motion-profile/stage-2-contract.md`. `motion-profile` owns
+a cycle-level RMS *acceleration* output only (not RMS velocity, not RMS
+torque — that stays a Unit 4.7 output); the multi-segment/cycle outputs are
+cycle-level aggregates only, no per-segment port (the registry has no
+`table`-typed parameter support yet, and adding that is a separate
+generic-platform capability the Split Rules keep out of this module unit).
+Registry `1.2.0` adds `motion.profile.rms_acceleration`.
+`motion-profile/0.1.0/cycle.ts` (`resolveMotionCycle`) extends the kernel
+with multi-segment sequencing and the RMS aggregation (31 kernel tests
+total across `math.test.ts`, `oriental-motor-benchmark.test.ts`, and
+`cycle.test.ts`). Stage 3 (compute and trace): **draft package built
+2026-08-07, extended the same day to wrap one move optionally followed by
+one dwell.** A full `ModulePackage` (manifest, ports, input schema, compute,
+trace, checks, UI schema, report schema, draft validation record) wraps
+`math.ts` and `cycle.ts` in `lib/modules/motion-profile/0.1.0/` — see that
+directory's `README.md` "Stage 3 package". `dwell_time` is an optional port
+reusing an already-released parameter (no new registry version, no
+arbitrary segment-count invention); its absence means the cycle is the move
+alone. More than one move per cycle remains unsupported — that still needs
+either `table`-valued parameter support or a deliberate, evidence-backed
+maximum segment count. No module is registered (`package.ts`, not
+`index.ts`); release stays gated behind Unit 4.1 regardless.
+
+Unit 4.3 — `ball-screw`. Stage 1 spec drafted 2026-08-08, in parallel with
+`axis-load-cases`' evidence wait (same allowance already used for Unit 4.2;
+see `context/modules/ball-screw/stage-1-spec.md`). Covers lead/speed, drive
+torque, equivalent dynamic load, nominal life, buckling, critical speed, and
+static safety factor — a draft kernel now computes all six checks (39
+tests) — `lib/modules/ball-screw/0.1.0/math.ts`, see that directory's
+`README.md`. THK's own catalog (already cited for Unit 4.1) returned HTTP
+403 on every direct-domain fetch attempted this session; two other sources
+filled the gap instead: Rockford Ball Screw's "How To Size A Ball Screw"
+(fetched directly, full worked numerical example) explicitly states its
+buckling/critical-speed formulas use the screw's **minor (root) diameter,
+not nominal diameter** — resolving the question that had been blocking
+those two checks — and independently cross-checks the drive-torque formula;
+WY Ball Screw supplied the static safety factor formula (`fs = C0 /
+Fas_max`). The kernel reproduces Rockford's own worked numbers for drive
+torque, buckling, and critical speed within whole-unit catalog rounding.
+These sources surfaced two new discrepancies: Rockford's own buckling
+safety margin (`Fs = 0.8`) disagrees with Steinmeyer's (`0.5`) for the
+identical formula, and Rockford's own catalog dynamic-load ratings are
+calibrated against `10^6` inches traveled, not `10^6` revolutions the way
+this kernel's life formula assumes — silently mixing the two would misstate
+life by a factor tied to the screw's lead.
+
+**Stage 2 (parameter contract) resolved 2026-08-08:**
+`context/modules/ball-screw/stage-2-contract.md`, registry `1.3.0`. A second
+sourcing pass for the static safety factor minimum and the buckling margin
+found a directly-read handbook source (MITcalc's ball-screw calculation
+documentation) for the former but no manufacturer/standards-body number
+that met this project's evidence bar for either — THK's own buckling PDF
+and Nook Industries' catalog both still return HTTP 403 on direct fetch;
+a University of Utah lecture PDF that might have settled the static-factor
+range hit the same `pdftoppm` page-range limitation as before, even at only
+14 pages (see Environment notes). Both are therefore released as **required
+module inputs with no built-in default**
+(`screw.static_safety_factor_minimum`, `screw.buckling_safety_margin`)
+rather than a hardcoded number — a deliberate resolution, not a deferral.
+Registry `1.3.0` also adds the full `screw.*` group (14 new parameters) and
+two new `motion.axis.*` per-case parameters
+(`case_time_fraction`, `case_linear_velocity`) that let the duty-cycle
+equivalent-load formula reuse `axis-load-cases`' own `normal`/`peak` cases
+as duty-cycle phases, resolving the last open Stage 1 item.
+
+**Stage 3 (compute and trace) draft package built 2026-08-08, same day as
+Stage 2.** A full `ModulePackage` (manifest, ports, input schema, compute,
+trace, checks, UI schema, report schema, draft validation record) wraps the
+Stage 1 kernel in `lib/modules/ball-screw/0.1.0/` — see that directory's
+`README.md` "Stage 3 package". Two package-level wiring decisions: the input
+schema rejects a `"distance"`-basis `dynamic_load_rating_basis` outright (no
+documented conversion exists), and `compute.ts` ignores the kernel's own
+baked-in `0.5` buckling margin, instead recomputing the permissible
+compressive load from the registry-supplied `buckling_safety_margin` input —
+the kernel itself (`math.ts`) is unchanged. 19 new package-level tests pass
+alongside the 39 existing kernel tests. Named `package.ts`, not `index.ts`,
+so `npm run registry:generate` still can't discover it — no module is
+registered. Production release remains sequentially gated behind Unit 4.1's
+Definition of Done regardless.
+
+**Stage 4 evidence search attempted 2026-08-08, no new reference example
+found.** Looked for a published worked example for the equivalent-dynamic-
+load/duty-cycle formula and the static safety factor formula — the two
+formulas the current three reference examples (all Rockford, one shared
+scenario) don't cover. Found that a real THK example exists (model
+WTF2040-2, `C0a = 13.6 kN`, `fs = 2.5`) via WebSearch synthesis only; the
+source document itself is still unreachable (`thk.com` blocked more broadly
+than previously known — see Environment notes), so it was not recorded as
+a verified reference example. See `context/modules/ball-screw/
+stage-1-spec.md` "Evidence Gaps and Verification Confidence" for the full
+account.
 
 ---
 
 ## Blocked — needs evidence, not code
 
-These three Stage 2 decisions cannot be resolved by writing code. They need
-real source documents and sanitized historical cases the project does not
-yet have.
+Stage 4 (validation) and release, not Stage 3, wait on this — see
+`context/modules/axis-load-cases/stage-1-spec.md` "Validation Gate and
+Evidence Intake":
 
-1. **Per-case external force/moment vectors.** Whether `holding` and
-   `emergency_stop` get their own vector parameters, and whether canonical
-   resolved force/moment outputs are needed.
-2. **Where per-case load vectors live.** Per-case parameters vs. a generic
-   load-case container. An unpinned existing port must not be overloaded to
-   dodge load-case validation.
-3. **Emergency-stop and holding semantics.** Deceleration and process-force
-   evidence; holding static resistance and brake behaviour.
+- Release-grade ID39/ID42 records (original document revision, confirmed
+  final installation/corrections) — the current fixtures are draft-only.
+  **Checked 2026-08-07:** all 26 previously-unreviewed images in
+  `reference/source-material/` were read; none carries a revision mark, date,
+  correction, or holding/brake note (see the two fixture READMEs' "Additional
+  source pages reviewed" notes). Still missing — not found among files
+  currently in the repo.
+- The third long-stroke/high-speed fixture required by Unit 0.1. **Checked
+  2026-08-07:** the same 26-image review found only additional pages of the
+  existing ID39/ID42 source documents (confirmed by each image's own app
+  title bar), no third project. Still missing.
+- A completed `validation/axis-load-cases/0.1.0.md`, reviewer or documented
+  solo-review substitute, and `validation/source-index.md` rows.
 
-**What unblocks them:** sanitized horizontal (ID39) and vertical (ID42)
-historical fixtures, plus one independent numerical benchmark to compare
-against. Until those exist, Milestone 4 cannot advance past Stage 2.
+`motion-profile` Stage 2 has no remaining evidence blocker: both candidate
+sources are now page-verified (see Active work). RMS ownership and the
+multi-segment port shape are resolved (`stage-2-contract.md`); a Stage 3
+draft package exists for the single-move kernel. What remains is the
+multi-segment package port-cardinality decision, not an evidence gap.
+
+The authenticated-route E2E test (Next up item 3) needs a Clerk Development
+instance and four GitHub Actions repository secrets this session cannot
+provision itself (no dashboard/repository-settings access, no `gh` CLI
+installed) — see Next up item 3 for exactly what and `.env.example` for the
+variable names.
 
 ---
 
 ## Next up
 
-1. **Collect the evidence above.** This is the only thing on the critical
-   path. Everything below is optional and does not move Milestone 4.
-2. Unit 0.1 — structure ID39 and ID42 into validation fixtures. Deferred
-   since Milestone 0; clearing item 1 makes this actionable.
-3. Playwright CI round trip for the authenticated route. Needs Clerk
-   test-instance credentials, never configured. Unauthenticated smoke
-   coverage already exists and passes.
+1. Collect the Stage 4 evidence below — the only thing blocking
+   `axis-load-cases` from release now that Stage 3 has a passing draft
+   package.
+2. Unit 0.1 — add the third long-stroke/high-speed fixture alongside ID39 and
+   ID42 in `tests/fixtures/axes/`.
+3. Playwright CI round trip for the authenticated route. **Paused
+   2026-08-07 by user request** ("leave this authentication here, we move
+   to other tasks") — not abandoned, just not being worked further right
+   now. Code is ready (`@clerk/testing`, `e2e/clerk-global-setup.ts`,
+   `e2e/authenticated.spec.ts`, CI secret wiring in
+   `.github/workflows/ci.yml`). A real Clerk Development-instance key pair
+   is in `.env.local` (gitignored, local-only). Still open: the E2E test
+   user's password was never captured (only its email,
+   `josvu@wanekfurniture.com` — flagged as possibly a real personal/work
+   address rather than a dedicated throwaway; worth reconsidering before
+   this goes further), and none of the four values have been added as
+   GitHub Actions repository secrets yet, so CI cannot exercise this path
+   yet. Unauthenticated smoke coverage already exists and passes.
 4. Downstream parameter groups (screw, guide, coupling, support bearing,
    drive train). Approved but deliberately unreleased — each ships with the
-   module that needs it, at that module's Stage 2 contract, bumping the
-   registry version. See `lib/engine/parameters/README.md`.
+   module that needs it, at that module's Stage 2 contract. See
+   `lib/engine/parameters/README.md`.
+5. Unit 4.2 (`motion-profile`): the Stage 3 draft package (single move plus
+   optional dwell) is done (see Active work). What remains is a product/
+   design decision on supporting more than one move per cycle (a
+   `table`-valued parameter, or a deliberate bounded segment count) before
+   the package can express a longer sequence. Optional parallel work; does
+   not move Unit 4.1's critical path.
+6. Unit 4.3 (`ball-screw`): Stage 3 draft package is done (see Active work).
+   Next is Stage 4 — the same evidence items Unit 4.1 is blocked on don't
+   apply here (no historical ID39/ID42-style fixtures exist for a ball
+   screw), so this needs its own published reference examples/independent
+   benchmark search, a real reviewer or documented substitute, and
+   `validation/` records — see `lib/modules/ball-screw/0.1.0/validation.ts`
+   for what's already reproduced (three formula reproductions from one
+   shared Rockford worked scenario, not yet three independent scenarios).
+   Optional parallel work; does not move Unit 4.1's critical path.
 
 ---
 
@@ -102,6 +263,10 @@ past calls.
 - Initial manufacturer data sources for screws, guides, couplings, motors,
   and drives.
 - Which three historical axis projects can be sanitized for validation.
+- `holding`/`emergency_stop` support for `axis-load-cases` (deferred out of
+  `0.1.0`, see Active work): needs sanitized evidence of a holding/brake case
+  and an emergency-stop deceleration/process-force case before a `0.2.0`
+  proposal is possible. Neither ID39 nor ID42 contains either case.
 - Whether S-curve motion is mandatory for the first live-axis replacement.
 - Whether the first live project needs 480 V three-phase drive-system data.
 - Whether the first Japanese project is 50 Hz (East) or 60 Hz (West).
@@ -135,6 +300,41 @@ anything on the roadmap.
   `components/ui/*` primitives, and the source-hash-pinned files in
   `lib/modules/example-relay/` and `lib/modules/example-scaffold/`.
   Reformatting those would break their `expectedSourceHash` assertions.
+- The PDF-reading tool cannot render page ranges from a PDF longer than it
+  can read in one pass — `pdftoppm` (poppler-utils), needed for ranged
+  rendering, is not installed. Short PDFs (up to ~19 pages, confirmed) read
+  fine either from a local file or a `WebFetch`-cached download; a 20-page
+  PDF already fails ("too many pages... use the `pages` parameter"), and the
+  `pages` parameter itself then fails with the `pdftoppm`-not-installed
+  error — there is currently no way to read any individual page of a PDF
+  once it crosses that threshold. Confirmed 2026-08-08 against a cached
+  `WebFetch` download, a local `reference/source-material/` file, and again
+  against a 20-page and a 78-page cached download. **The "up to ~19 pages"
+  figure is an upper bound, not a guarantee:** a later same-day attempt hit
+  the same "too many pages" error on a cached 14-page PDF (a University of
+  Utah lecture slide deck, image-dense), so page count alone does not
+  predict whether a given PDF reads in one pass — content density likely
+  matters too.
+- `thk.com` (THK's own PDF catalog host, already cited for
+  `axis-load-cases`) returned HTTP 403 on every URL `WebFetch` tried against
+  it on 2026-08-08 across two separate attempts in the same session,
+  including individual chapter PDFs, not just the full catalog — looks like
+  host-side bot protection, not the TLS-interception proxy noted above (that
+  shows up as a certificate error instead, seen the same session against
+  other hosts). A prior session evidently reached THK successfully (its
+  URLs are cited with specific pages in `context/modules/axis-load-cases/
+  stage-1-spec.md`); this looks like a host-side block on that specific
+  domain rather than a permanent one, so retry rather than assume it will
+  always fail. **Workaround found 2026-08-08:** THK's own catalog PDFs are
+  also mirrored on non-`thk.com` hosts (e.g. a Contentful CDN asset URL, and
+  `technico.com`) that are not subject to the same block — useful when the
+  content is needed and the direct domain is down, though the mirrored PDFs
+  found this way were long enough to hit the `pdftoppm` limitation above
+  instead. **Confirmed 2026-08-08 (later same day) that the block covers
+  more than `tech.thk.com`:** `www.thk.com` (a different subdomain, THK's
+  own ball-screw selection-guide site) also returned HTTP 403 on direct
+  fetch — treat any `thk.com` subdomain as likely blocked this session, not
+  just the `tech.` one.
 
 ---
 
