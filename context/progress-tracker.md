@@ -93,16 +93,26 @@ Registry `1.2.0` adds `motion.profile.rms_acceleration`.
 with multi-segment sequencing and the RMS aggregation (31 kernel tests
 total across `math.test.ts`, `oriental-motor-benchmark.test.ts`, and
 `cycle.test.ts`). Stage 3 (compute and trace): **draft package built
-2026-08-07, extended the same day to wrap one move optionally followed by
-one dwell.** A full `ModulePackage` (manifest, ports, input schema, compute,
-trace, checks, UI schema, report schema, draft validation record) wraps
-`math.ts` and `cycle.ts` in `lib/modules/motion-profile/0.1.0/` — see that
-directory's `README.md` "Stage 3 package". `dwell_time` is an optional port
-reusing an already-released parameter (no new registry version, no
-arbitrary segment-count invention); its absence means the cycle is the move
-alone. More than one move per cycle remains unsupported — that still needs
-either `table`-valued parameter support or a deliberate, evidence-backed
-maximum segment count. No module is registered (`package.ts`, not
+2026-08-07**, extended the same day to wrap one move optionally followed by
+one dwell, then **extended again 2026-08-08 to a bounded sequence of up to
+5 moves**, each optionally followed by its own dwell. The multi-move
+port-cardinality question (`table`-valued parameter support vs. a fixed
+maximum) had no evidence in the repo either way — no fixture records a real
+multi-move cycle's segment count, and this is a project-specific scoping
+choice, not an engineering formula — so it was raised directly to the
+founder, who chose a fixed maximum of 5
+(`context/modules/motion-profile/stage-2-contract.md` "Decisions" item 4).
+A full `ModulePackage` (manifest, ports, input schema, compute, trace,
+checks, UI schema, report schema, draft validation record) wraps `math.ts`
+and `cycle.ts` in `lib/modules/motion-profile/0.1.0/` — see that directory's
+`README.md` "Stage 3 package". Each move has its own
+`move_{index}_distance`/`max_velocity`/`max_acceleration` port trio (only
+move 1 required) plus an optional `dwell_{index}_time`; the input schema
+rejects a gap, a partially-supplied move, or an orphaned dwell. The
+single-move package's `move_time` output port was removed — it no longer
+has an unambiguous meaning with multiple moves possible — in favor of
+per-move detail in the calculation trace only, since a declared output port
+cannot be conditionally absent. No module is registered (`package.ts`, not
 `index.ts`); release stays gated behind Unit 4.1 regardless.
 
 Unit 4.3 — `ball-screw`. Stage 1 spec drafted 2026-08-08, in parallel with
@@ -234,12 +244,12 @@ variable names.
    drive train). Approved but deliberately unreleased — each ships with the
    module that needs it, at that module's Stage 2 contract. See
    `lib/engine/parameters/README.md`.
-5. Unit 4.2 (`motion-profile`): the Stage 3 draft package (single move plus
-   optional dwell) is done (see Active work). What remains is a product/
-   design decision on supporting more than one move per cycle (a
-   `table`-valued parameter, or a deliberate bounded segment count) before
-   the package can express a longer sequence. Optional parallel work; does
-   not move Unit 4.1's critical path.
+5. Unit 4.2 (`motion-profile`): the Stage 3 draft package now supports up to
+   5 moves per cycle (see Active work) — the multi-move port-cardinality
+   decision is resolved. What remains is the same as Unit 4.3: Stage 4
+   validation (published reference examples/independent benchmark, a
+   reviewer or documented substitute, `validation/` records). Optional
+   parallel work; does not move Unit 4.1's critical path.
 6. Unit 4.3 (`ball-screw`): Stage 3 draft package is done (see Active work).
    Next is Stage 4 — the same evidence items Unit 4.1 is blocked on don't
    apply here (no historical ID39/ID42-style fixtures exist for a ball

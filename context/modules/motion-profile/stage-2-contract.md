@@ -11,19 +11,18 @@
   assumption. See "Decisions" below for the two items
   `stage-1-spec.md` "Stage 2 Entry Criteria" left open.
 - Module status: **Stage 3 draft package built 2026-08-07**, extended the
-  same day to wrap one move optionally followed by one dwell. A full
-  `ModulePackage` (manifest, ports, input schema, compute, trace, checks, UI
-  schema, report schema, draft validation record) wraps `math.ts`
-  (`resolveTrapezoidalMove`) and `cycle.ts` (`resolveMotionCycle`) in
-  `lib/modules/motion-profile/0.1.0/` — see that directory's `README.md`
-  "Stage 3 package". More than one move per cycle remains unsupported: that
-  still needs either `table`-valued parameter support (a generic-platform
-  capability the registry does not have) or a deliberate, evidence-backed
-  maximum segment count, neither invented here (see "Existing Parameter
-  Mapping" below). Named `package.ts`, not `index.ts`, so `npm run
-  registry:generate` still can't discover it — no module is registered.
-  Production release remains sequentially gated behind Unit 4.1's Definition
-  of Done regardless (`context/implementation-map.md` Milestone 4 header).
+  same day to wrap one move optionally followed by one dwell, then extended
+  again 2026-08-08 to a bounded sequence of up to 5 moves (each optionally
+  followed by its own dwell) once "Decisions" item 4 below resolved the
+  port-cardinality question. A full `ModulePackage` (manifest, ports, input
+  schema, compute, trace, checks, UI schema, report schema, draft validation
+  record) wraps `math.ts` (`resolveTrapezoidalMove`) and `cycle.ts`
+  (`resolveMotionCycle`) in `lib/modules/motion-profile/0.1.0/` — see that
+  directory's `README.md` "Stage 3 package". Named `package.ts`, not
+  `index.ts`, so `npm run registry:generate` still can't discover it — no
+  module is registered. Production release remains sequentially gated behind
+  Unit 4.1's Definition of Done regardless (`context/implementation-map.md`
+  Milestone 4 header).
 
 This record does not release a `ModulePackage`, register a module, or create a
 calculation run. It only resolves the parameter contract and extends the pure
@@ -128,6 +127,35 @@ method is verified (see `stage-1-spec.md` "Evidence Gaps" — no verified
 source exists yet). This was already answered by the roadmap, not a Stage 2
 question this contract needed to resolve.
 
+### 4. Bounded segment count (resolved 2026-08-08, after Stage 3)
+
+**Resolved: the package supports a fixed maximum of 5 moves per cycle
+(`MAX_MOVES` in `lib/modules/motion-profile/0.1.0/manifest.ts`), each
+optionally followed by its own dwell — a deliberate product decision made
+directly by the founder, not derived from a published source or an in-repo
+fixture.**
+
+Decision item 2 above ("Multi-segment port shape") already resolved that
+every multi-segment *output* is a cycle-level aggregate; it deliberately left
+the package's exact *input* port cardinality open, offering two paths:
+`table`-valued parameter support (a generic-platform capability the registry
+still does not have) or "a deliberate, evidence-backed maximum segment
+count." Neither this document nor `stage-1-spec.md` had evidence in hand for
+what that maximum should be — no historical fixture in `tests/fixtures/axes/`
+records a real multi-move cycle's segment count, and no published source
+addresses it (it is a project-specific scoping choice, not an engineering
+formula). Rather than invent a number or silently default to one move
+forever, this was raised directly to the founder, who chose 5 as a
+conservative-but-not-minimal ceiling covering more complex multi-station or
+multi-axis-coordinated cycles.
+
+This is recorded as a *scope* decision, not evidence: if a real project later
+needs more than 5 moves in one cycle, that is a new Stage 2 decision (a
+higher `MAX_MOVES`, or revisiting the `table`-valued-parameter path), not a
+silent extension of this one. See `lib/modules/motion-profile/0.1.0/
+README.md` "Stage 3 package" for the resulting port shape (`move_{index}_*`
+/ `dwell_{index}_time`, `index` 1-5) and its input-schema contiguity rules.
+
 ## Released Additive Contract
 
 Registry `1.2.0` adds one released canonical parameter. It does not edit a
@@ -148,7 +176,7 @@ definitions without changing their meaning:
 | Velocity ceiling (input) | `motion.profile.max_velocity` |
 | Acceleration ceiling (input) | `motion.profile.max_acceleration` |
 | Dwell duration (input, per dwell segment) | `motion.profile.dwell_time` |
-| Move time (output, single-move case) | `motion.profile.move_time` |
+| Move time (per move, trace-only — see "Decisions" item 4) | `motion.profile.move_time` |
 | Cycle time (output, cycle-level sum) | `motion.profile.cycle_time` |
 | Peak velocity (output, cycle-level max) | `motion.profile.peak_velocity` |
 | Peak acceleration (output, cycle-level max) | `motion.profile.peak_acceleration` |
@@ -160,15 +188,16 @@ resolved here — this contract fixes parameter *meaning*, not the input
 form.
 
 **Stage 3 update (2026-08-07):** the draft package built from this contract
-wraps the single-move kernel (`math.ts`) plus one optional dwell via
-`cycle.ts`'s `resolveMotionCycle` — the smallest extension that exercises
+first wrapped the single-move kernel (`math.ts`) plus one optional dwell via
+`cycle.ts`'s `resolveMotionCycle` — the smallest extension that exercised
 the cycle kernel without inventing an N-segment port cardinality, since
 `dwell_time` reuses an already-released parameter as one extra optional
-port rather than needing a new cardinality decision at all. More than one
-move per cycle still needs its own resolution (table-valued parameter
-support, or a deliberate bounded segment count) before a future package
-extension can express it — see
-`lib/modules/motion-profile/0.1.0/README.md` "Stage 3 package".
+port rather than needing a new cardinality decision at all.
+
+**Stage 3 update (2026-08-08):** extended to a bounded sequence of up to 5
+moves once "Decisions" item 4 resolved the port-cardinality question — see
+`lib/modules/motion-profile/0.1.0/README.md` "Stage 3 package" for the
+resulting `move_{index}_*` / `dwell_{index}_time` port shape.
 
 ## Method Sources
 

@@ -49,31 +49,48 @@ renders as an image, not text, in the source).
 `math.ts` and `cycle.ts` in a full `ModulePackage`, the same shape
 `lib/modules/axis-load-cases/0.1.0/` used for its own Stage 3 draft.
 `package.test.ts` runs the module conformance suite plus boundary/
-invalid-input, dimensional-output, and cycle (move-plus-dwell) tests.
+invalid-input, dimensional-output, and multi-move cycle tests.
 
-The package models **one move, optionally followed by one dwell**, as the
-whole motion cycle — not an arbitrary N-segment sequence.
-`context/modules/motion-profile/stage-2-contract.md` explicitly left the
-package's exact port cardinality unresolved ("how a multi-move sequence's
-per-move inputs are authored in the generic UI is a Stage 3/5 concern, not
-resolved here"): a variable-length sequence of moves and dwells has no fixed
-set of ports to bind, and a fixed maximum move count (e.g. "always exactly
-two moves") would be inventing product scope, not implementing a resolved
-contract. One optional dwell sidesteps that: it reuses the already-released
-`motion.profile.dwell_time` parameter as a single extra optional port — the
-same "per-instance port" pattern `axis-load-cases` used for its normal/peak
-ports — so it needs no new registry version and no arbitrary cardinality
-choice. `dwell_time`'s absence means the cycle is the move alone; its
-presence adds exactly one dwell phase. `compute.ts` calls both kernels:
-`resolveTrapezoidalMove` for the move's own `move_time` and phase detail,
-and `resolveMotionCycle` (fed exactly one move segment, plus the dwell
-segment when supplied) for the cycle-level `cycle_time`, `peak_velocity`,
+The package models **up to `MAX_MOVES` (5) moves, each optionally followed
+by its own dwell**, as the whole motion cycle — a bounded sequence, not an
+arbitrary N-segment one. `context/modules/motion-profile/
+stage-2-contract.md` explicitly left the package's exact port cardinality
+unresolved: a variable-length sequence has no fixed set of ports to bind,
+and either a `table`-valued parameter (a generic-platform capability the
+registry does not have yet) or a fixed maximum move count would be needed.
+**Resolved 2026-08-08 (Decisions item 4 in that document): the founder
+chose a fixed maximum of 5 moves directly** — no published source or
+in-repo fixture fixes a "correct" segment count for this founder's own
+machines, so this is a deliberate product decision, not evidence-backed
+research, and is recorded as such rather than invented silently.
+
+Each move gets its own `move_{index}_distance` / `move_{index}_max_velocity`
+/ `move_{index}_max_acceleration` port trio (only move 1's trio is
+required; moves 2-5 are optional) plus an optional `dwell_{index}_time`
+trailing it, reusing the already-released `motion.profile.move_distance`,
+`max_velocity`, `max_acceleration`, and `dwell_time` parameters as repeated
+per-move-index ports — the same "per-instance port" pattern `axis-load-cases`
+used for its normal/peak ports, applied to a move index instead of a load
+case. No new registry version was needed. `./input-schema.ts` enforces that
+supplied moves are contiguous starting at move 1, that a move's three
+fields are all-present or all-absent, and that a dwell's own move is
+present — a gap, a partial move, or an orphaned dwell is a hard input
+error, not silently reinterpreted.
+
+`compute.ts` reads the ordered move segments (`./values.ts`,
+`readMoveSegments`), resolves each independently via
+`resolveTrapezoidalMove` (for its own move-time and phase detail, reported
+in the trace), and feeds the full ordered move-plus-dwell sequence to
+`resolveMotionCycle` for the cycle-level `cycle_time`, `peak_velocity`,
 `peak_acceleration`, `peak_deceleration`, and `rms_acceleration` outputs.
-
-More than one move per cycle remains unsupported by this package — that
-still needs either a `table`-valued parameter (a generic-platform capability
-the registry does not have yet) or a deliberate, evidence-backed maximum
-segment count, neither of which this Stage 3 pass invents.
+Per-move detail (each move's own move time, peak velocity, phase times) is
+reported only in the calculation trace, not as a canonical output port: an
+output port cannot be conditionally absent (every declared output must be
+produced on every run — `lib/engine/module-sdk/execute.ts`), so a per-move
+port cannot express "this run only used 2 of the 5 possible moves." The
+single-move package's own `move_time` output port was removed for the same
+reason — it stopped having an unambiguous single meaning once more than one
+move could be present.
 
 This directory intentionally has **no `index.ts`**. The module-registry
 generator (`scripts/generate-registry.mts`) only discovers
