@@ -5,11 +5,13 @@ const baseURL = `http://127.0.0.1:${PORT}`;
 
 // Unit 0.3's E2E smoke test runs against `next dev`, not a production
 // build. Clerk's Next.js SDK only auto-provisions its no-keys "keyless"
-// dev instance (see .env.example / lib/env.ts) under `next dev` — a
-// production `next start` throws without real
-// NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY/CLERK_SECRET_KEY values, which this
-// project does not have configured anywhere (no Clerk test-instance
-// secrets exist yet — see context/progress-tracker.md Open Questions).
+// dev instance (see .env.example / lib/env.ts) under `next dev` when no
+// real keys are configured; `next dev` works identically well with real
+// NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY/CLERK_SECRET_KEY values when they are
+// present (only a production `next start` requires them). `globalSetup`
+// below fetches a Clerk Testing Token for e2e/authenticated.spec.ts when
+// those values exist; both are no-ops otherwise. See
+// context/progress-tracker.md for the current credential status.
 //
 // CI history for the `--hostname 0.0.0.0` flag below (see
 // context/progress-tracker.md for the full record): two pushes in a row
@@ -27,6 +29,7 @@ const baseURL = `http://127.0.0.1:${PORT}`;
 // `--hostname 0.0.0.0` forces both interfaces. Not yet re-verified in CI.
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/clerk-global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

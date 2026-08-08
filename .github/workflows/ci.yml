@@ -92,16 +92,12 @@ jobs:
         run: npm run build
 
       # Unit 0.3's E2E smoke test. Runs against `next dev`, not the
-      # production build above: Clerk's Next.js SDK only auto-provisions
-      # its no-keys "keyless" dev instance under `next dev`, and this
-      # project has no Clerk test-instance secrets configured yet (see
-      # playwright.config.ts and context/progress-tracker.md Open
-      # Questions) for a production-mode `next start` to authenticate
-      # against. `--with-deps` installs the OS libraries Chromium needs on
-      # the runner image, not only the browser binary — this step could not
-      # be verified on the primary dev machine, where a group policy blocks
-      # execution of any freshly downloaded browser binary (the same class
-      # of corporate-endpoint restriction already documented for
+      # production build above (see playwright.config.ts). `--with-deps`
+      # installs the OS libraries Chromium needs on the runner image, not
+      # only the browser binary — this step could not be verified on the
+      # primary dev machine, where a group policy blocks execution of any
+      # freshly downloaded browser binary (the same class of
+      # corporate-endpoint restriction already documented for
       # binaries.prisma.sh).
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
@@ -119,7 +115,16 @@ jobs:
       # gated by the same permission check as log downloads, worth testing
       # before concluding this genuinely needs a human with repository access
       # to read.
+      # Clerk test-instance secrets, scoped to this step only. When unset
+      # (a fork PR, or before these repository secrets are configured —
+      # see context/progress-tracker.md), e2e/clerk-global-setup.ts and
+      # e2e/authenticated.spec.ts both no-op/self-skip rather than fail.
       - name: E2E smoke test
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+          E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
         run: npm run test:e2e 2>&1 | tee /tmp/e2e-output.log
 
       - name: Upload E2E diagnostics
