@@ -26,3 +26,19 @@ available. The fixture also retains two documented inconsistencies: the p. 1
 diagram's 75 N acceleration force conflicts with p. 4's explicit 45 N
 calculation, and the source's Keyence motor attribution conflicts with the
 progress tracker's HIWIN attribution.
+
+## Additional source pages reviewed (2026-08-07)
+
+`reference/source-material/Image (29).jpg`, `Image (30).jpg`, and
+`Image (31).jpg` — printed pp. 5-7 of the same 9-page "ID42 Ứng dụng ...
+Keyence.pdf" source, extending the motor-selection chain beyond the four
+pages already transcribed above (pp. 1-4). Not used in this fixture (out of
+scope for a force-only load-case fixture) but recorded here for Unit 4.7
+(servo drive-train): inertia breakdown (screw/load/coupling/motor
+J = 0.249/0.76/0.11/0.556 ×10⁻⁴ kg·m², system total
+J_T = 1.675×10⁻⁴ kg·m², inertia ratio 1.81), phase torques consistent with
+this fixture's phase forces (T1/T2/T3 = 0.758/0.52/0.283 N·m), an effective
+torque check (T_rms = 0.532 N·m, margin 2.38), and a full accessory bill of
+materials: motor SV2-B040AS, driver/amplifier SV2-040L2, encoder cable
+SV2-BE10, power cable SV2-CB. No document revision mark, date, correction,
+or holding/brake note appears on any of the three.

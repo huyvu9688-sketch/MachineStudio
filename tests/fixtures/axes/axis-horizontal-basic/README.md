@@ -20,3 +20,27 @@ future module must not silently map them to `normal`, `peak`, `holding`, or
 This is draft historical evidence, not a release-grade vendor-sizing result:
 the original document revision, confirmed installed parts, later corrections,
 and a complete signed load-case convention are unavailable.
+
+## Additional source pages reviewed (2026-08-07)
+
+`reference/source-material/Image (5).jpg` and `Image (7).jpg` through
+`Image (28).jpg` (21 images) were reviewed while searching for a third
+long-stroke/high-speed historical fixture
+(`context/modules/axis-load-cases/stage-1-spec.md` "Validation Gate and
+Evidence Intake"). Each carries the same source app title bar as the four
+images above ("ID39 Tính toán ... bi_0526.pdf") and is a page of that
+document's front-matter ball-screw-sizing methodology chapter (selection
+flowchart, accuracy/backlash tables, buckling/critical-speed/life formulas
+and generic textbook examples, mounting-method diagrams, motor-torque
+formulas) — not project-specific data, and not a third project. None carries
+a document revision mark, date, correction, or holding/brake note.
+
+Two are worth noting because their generic worked-example numbers reappear
+in this fixture's own `corrections` field: `Image (22).jpg` (buckling
+example, φ15 pitch 5, fixed-fixed, l=820 mm, d=12.5 mm → P=7,225 N) is the
+derivation source of the "7,225 N" figure the `corrections` field flags as
+conflicting with a later "3,660 N" comparison; `Image (20).jpg`
+(critical-speed example, φ15 pitch 5, fixed-supported, l=790 mm →
+Nc=3,024 rpm) derives the "3,024 rpm" limit already summarized on
+`Image (2).jpg`. Neither changes the fixture's recorded values — they
+confirm where those already-recorded numbers come from.

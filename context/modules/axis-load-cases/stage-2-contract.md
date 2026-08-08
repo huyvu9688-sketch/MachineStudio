@@ -2,13 +2,24 @@
 
 ## Status
 
-- Work unit: Unit 4.1, first Stage 2 parameter-contract increment
-- Date: 2026-07-31
+- Work unit: Unit 4.1, Stage 2 parameter contract
+- Date: 2026-07-31; scope-resolution update 2026-08-07
 - Coordinate convention: `axis.v1`, defined in
   `context/modules/axis-load-cases/stage-1-spec.md`
 - Released registry change: parameter registry `1.1.0`
-- Module status: draft pure kernel only; no `ModulePackage`, registry entry,
-  calculation run, validation record, or release
+- Stage 2 status: **resolved for a `normal`/`peak`-only `0.1.0` scope** (see
+  "Deferred Decisions and Release Gates" below). `holding` and
+  `emergency_stop` support is deferred to a future version.
+- Module status: a draft `ModulePackage` exists as of 2026-08-07
+  (`lib/modules/axis-load-cases/0.1.0/package.ts` — see that directory's
+  `README.md`), but it is not registered, has no calculation run, no
+  completed validation record, and no release. Stage 4 (validation) is
+  partly done: `thk-reference-examples.test.ts` reproduces the three
+  published THK worked examples from `stage-1-spec.md` within ±1 N, and
+  `validation.ts` records them as real `referenceExamples` — satisfying that
+  item independent of the still-blocked ID39/ID42 release-grade evidence and
+  independent-benchmark items in `stage-1-spec.md` "Validation Gate and
+  Evidence Intake".
 
 This record freezes only the parts of the contract supported by the recovered
 historical evidence and the published method intake. It does not convert a
@@ -62,7 +73,11 @@ total with a breakdown or select one based on field presence.
 direction and signed axial acceleration. `holding` is stationary: it has no
 direction port and receives no untraced Coulomb-friction or running-resistance
 credit. A future holding contract must explicitly define static resistance,
-brake/screw/support demand, and external process load treatment.
+brake/screw/support demand, and external process load treatment. This is
+registry-level semantics for all four cases; `axis-load-cases 0.1.0` itself
+only implements `normal` and `peak` (see "Deferred Decisions and Release
+Gates" item 1) — `emergency_stop`'s registry-level definition above is ready
+for a future module version, not for `0.1.0`.
 
 The recovered historical phases remain `unclassified` in their fixtures. In
 particular, acceleration is not automatically `peak`, constant speed is not
@@ -106,14 +121,42 @@ Stage 3, validation, or release.
 The final package port map remains intentionally unresolved until these items
 have a source-backed contract:
 
-1. Add per-case vector parameters for external force/moment where `holding` and
-   `emergency_stop` need them, and add canonical resolved force/moment outputs
-   if downstream modules consume them.
-2. Decide whether a future input record supplies external load vectors per case
-   or whether a separate generic load-case container is needed. Do not overload
-   an unpinned existing port to evade load-case validation.
-3. Define emergency-stop deceleration/process-force evidence and holding static
-   resistance/brake semantics.
+1. **RESOLVED (2026-08-07), scope decision:** `axis-load-cases 0.1.0` supports
+   only the `normal` and `peak` load cases. `holding` and `emergency_stop` are
+   valid `LoadCase` enum values elsewhere in the engine, but this module does
+   not accept or emit them in `0.1.0`. The available evidence forces this:
+   `tests/fixtures/axes/axis-horizontal-basic/fixture.ts` and
+   `axis-vertical/fixture.ts` — the only real project evidence this module has
+   — record `externalForces: []` / `externalMoments: []` throughout and list
+   in their own `unknowns` that neither source case states a holding/brake
+   case or an emergency-stop case. There is nothing to source per-case
+   external force/moment vectors, or emergency-stop/holding semantics, from.
+   Rather than invent that semantics, Unit 4.1 ships a smaller module whose
+   supported envelope matches its evidence, and a later `0.2.0` adds `holding`
+   and `emergency_stop` when real evidence for them exists (see
+   `context/progress-tracker.md` Open decisions). This also resolves the
+   canonical-resolved-force/moment-output question: no downstream module
+   consumes a resolved moment yet (the guide module, Unit 4.4, is not built),
+   so `0.1.0` reports resolved force/moment in the calculation trace only, per
+   the Stage 1 trace contract, and defers a canonical output parameter to
+   whichever later module first needs to consume it as a machine-readable
+   port.
+2. **RESOLVED (2026-08-07):** per-case load vectors live as per-case
+   parameters (`loadCases` on the parameter definition), the same pattern
+   already released for `motion.axis.case_travel_direction`,
+   `case_axial_acceleration`, and `guide_resistance_force` — not a separate
+   generic load-case container. No unpinned existing port is overloaded: with
+   scope item 1 above, `0.1.0` needs only the already-released
+   `motion.axis.external_force` / `external_moment` (`normal`, `peak`), so no
+   new registry version is required for `0.1.0`. A future `holding`/
+   `emergency_stop` release extends this by adding new `loadCases` admission
+   to new parameter IDs (or a new parameter version), never by editing the
+   released `1.0.0`/`1.1.0` definitions in place.
+3. **RESOLVED (2026-08-07), deferred to a future version:** emergency-stop
+   deceleration/process-force evidence and holding static-resistance/brake
+   semantics are out of scope for `0.1.0` (see item 1). They remain open
+   items for a `0.2.0` proposal once sanitized evidence exists — see
+   `context/progress-tracker.md` Open decisions.
 4. Add generic vector-input authoring and result load-case labels before the
    package exposes those fields in the workspace.
    - **PARTIALLY CLOSED (2026-08-01)**: the result-load-case-labels half is
@@ -167,9 +210,26 @@ have a source-backed contract:
    a module release; no module exercises this path yet. See
    `context/progress-tracker.md` Current Goal for verification detail.
 
-The module cannot progress to a released Stage 3 package until the final port
-map is complete (items 1-4 above remain open). It cannot progress to Stage 4 or
-Stage 6 until the Stage 1 validation gate is met: release-grade ID39/ID42
-records, a third long-stroke fixture, published worked examples, an
-independent benchmark, reviewer or documented substitute, source-index rows,
-conformance, and full verification.
+All five deferred items above are now resolved for the `0.1.0` scope (items
+1-3 resolved 2026-08-07 by narrowing to `normal`/`peak`; items 4 and 5 closed
+2026-08-01/05). The final `0.1.0` port map is: the existing registry `1.1.0`
+parameters listed under "Existing Parameter Mapping" above, plus
+`motion.axis.external_force` / `external_moment` restricted to their already-
+released `normal`/`peak` cases. No new registry version is required to start
+Stage 3. `holding` and `emergency_stop` support is out of scope for `0.1.0`
+and requires a separate future proposal once real evidence exists.
+
+**Stage 3 (compute and trace) is done as a draft, 2026-08-07:** a full
+`ModulePackage` — manifest, ports, input schema (enforcing the mass-route
+rule), compute, calculation trace, checks, UI schema, report schema, and a
+draft validation record — wraps the existing kernel in
+`lib/modules/axis-load-cases/0.1.0/` (assembled in `package.ts`, not
+`index.ts` — see that directory's `README.md`). The module conformance
+suite, mass-route and boundary/invalid-input tests, and a full-module
+regression against ID39/ID42 all pass (`package.test.ts`). The module still
+cannot progress to a *released* Stage 3 package (i.e. renaming `package.ts`
+to `index.ts` and registering it), or to Stage 4 or Stage 6, until the Stage
+1 validation gate is met: release-grade ID39/ID42 records, a third
+long-stroke fixture, published worked examples, an independent benchmark,
+reviewer or documented substitute, source-index rows, conformance, and full
+verification.

@@ -9,6 +9,12 @@
   `context/modules/axis-load-cases/stage-2-contract.md`; the module is still not
   registered or released.
 - Date: 2026-07-31
+- **Update (2026-08-07):** Stage 2 is now resolved for a `normal`/`peak`-only
+  `0.1.0` scope. `holding` and `emergency_stop` — including the
+  "Load-Case Semantics Still Requiring Stage 2 Resolution" table below — are
+  deferred to a future module version pending real evidence; see
+  `context/modules/axis-load-cases/stage-2-contract.md` and
+  `context/progress-tracker.md` Open decisions.
 
 This document turns the Unit 4.1 brief in `implementation-map.md` into a
 source-backed implementation contract. It deliberately does not claim that the
@@ -216,8 +222,14 @@ executable module or listed in `validation/source-index.md`.
 | [Oriental Motor, *Method for Calculating Moment Loads on Linear Actuators*](https://www.orientalmotor.com/linear-actuators/technology/calculating-moment-load-linear-actuators.html) | manufacturer method | Sections 4–5: center-of-gravity, gravity, acceleration, and installation-direction moment treatment; candidate independent moment benchmark. |
 | [NIST Guide to the SI, Appendix B.8](https://www.nist.gov/pml/special-publication-811/nist-guide-si-appendix-b-conversion-factors/nist-guide-si-appendix-b8) | engineering reference | Standard acceleration of free fall `g_n = 9.80665 m/s^2`; supports the existing gravity default. |
 
-Planned published reference tests, with their source values recorded before
-implementation, are:
+Published reference tests, with their source values recorded before
+implementation, are **reproduced as of 2026-08-07** in
+`lib/modules/axis-load-cases/0.1.0/thk-reference-examples.test.ts`, within a
+±1 N whole-newton-catalog-rounding tolerance using THK's own `g = 9.8 m/s^2`
+convention (not this module's NIST-derived `9.80665 m/s^2` default — supplied
+explicitly per test, since `gravity` is a module input). They are recorded as
+real `referenceExamples` entries in
+`lib/modules/axis-load-cases/0.1.0/validation.ts`:
 
 1. THK B15-72 horizontal case: `m = 80 kg`, `mu = 0.003`, `f = 15 N`,
    `Vmax = 1 m/s`, `t = 0.15 s`; published axial loads include `550 N`,
@@ -226,12 +238,16 @@ implementation, are:
    `t = 0.2 s`; published axial loads include `585 N`, `510 N`, and `435 N`
    for upward phases.
 3. THK B2-22 vertical case: `m = 30 kg`, `a = 2.4 m/s^2`, and documented
-   guide resistance; published axial loads include `304 N`, `376 N`, and
-   `232 N` for the upward phases.
+   guide resistance (10 N, algebraically derived from the published 304 N
+   constant-speed figure: `F = m*g + f`); published axial loads include
+   `304 N`, `376 N`, and `232 N` for the upward phases.
 
 These are source examples, not substitutes for the required project-history
 fixtures. The independent comparison still needs a reproducible numerical case
-from a method/tool other than the primary THK method.
+from a method/tool other than the primary THK method — the Oriental Motor
+moment-method intake is a candidate but is not confirmed: it covers moment
+loads, and this module version outputs no moment port, so it may not actually
+serve as an axial-thrust benchmark without a real evaluation.
 
 ## Validation Gate and Evidence Intake
 
@@ -242,9 +258,41 @@ Unit 4.1 cannot move to Stage 4 or release until all of the following exist:
   components/corrections, and a clear holding/brake record for the vertical
   axis;
 - the third long-stroke/high-speed fixture required by Unit 0.1, so the three
-  fixtures cover the complete linear-axis MVP;
-- three published-reference tests with stated tolerances and an independent
-  numerical benchmark;
+  fixtures cover the complete linear-axis MVP. **Still missing (checked
+  2026-08-07):** every one of the 26 previously-unreviewed images in
+  `reference/source-material/` (`Image (5).jpg`, `Image (7).jpg` through
+  `Image (31).jpg`) was read and identified by its own visible app title bar
+  as additional pages of the *same* ID39 or ID42 source PDFs already in use
+  — methodology/formula chapters for ID39, and further motor/inertia pages
+  for ID42 (see the fixture READMEs' "Additional source pages reviewed"
+  notes). None is a third distinct project, and none carries a document
+  revision mark, date, correction, or holding/brake note either — so this
+  item and the "release-grade... confirmed final
+  installation/corrections... holding/brake record" item above remain open.
+  A genuine third packet, if it exists, is not among the files currently in
+  `reference/source-material/`;
+- **done (2026-08-07):** three published-reference tests with stated
+  tolerances — see "Candidate Sources and Published Examples" above and
+  `thk-reference-examples.test.ts`.
+- **done (2026-08-07):** an independent numerical benchmark distinct from
+  THK's method. `reference/source-material/Atlanta_Rack and Pinion Drive
+  Calculations and Selection.pdf` (found during the same source-material
+  review above) has two complete worked examples — horizontal/friction and
+  vertical/lifting axial-force calculations for a rack-and-pinion drive, a
+  different transmission mechanism than THK's ball screw — reproduced in
+  `lib/modules/axis-load-cases/0.1.0/atlanta-benchmark.ts` and cross-checked
+  against `resolveAxisLoadPhase` in the sibling test file (agreement to
+  floating-point precision on the shared Newtonian/Coulomb-friction physics;
+  it does not exercise ball-screw-specific mechanics). This source's
+  licensing status is unresolved (`context/progress-tracker.md` "Open
+  decisions"), so it is used as an internal cross-check only, not registered
+  in `lib/standards` or cited via a formal source reference anywhere. Two
+  other candidates found in the same review did not qualify: Oriental
+  Motor's "Motor Sizing Calculators" PDF has no filled-in worked example
+  (same defect as the already-rejected `Book1.xlsx`), and OMRON's "Servo
+  Selection" guide has one complete worked example but its headline outputs
+  are motor torques/inertia margins, not a raw axial force, so it would need
+  more adaptation to serve the same purpose;
 - a completed `validation/axis-load-cases/0.1.0.md`, reviewer or documented
   solo-review substitute, and corresponding `validation/source-index.md` rows;
 - vector-input authoring planned as a generic capability, or a documented,
