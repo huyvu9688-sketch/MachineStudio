@@ -67,8 +67,8 @@ describe("parameter registry compatibility", () => {
 });
 
 describe("released registry", () => {
-  it("loads every seed definition and is version 1.1.0", () => {
-    expect(PARAMETER_REGISTRY.version).toBe("1.1.0");
+  it("loads every seed definition and is version 1.3.0", () => {
+    expect(PARAMETER_REGISTRY.version).toBe("1.3.0");
     expect(listParameters().length).toBe(PARAMETER_DEFINITIONS.length);
   });
 
@@ -111,6 +111,8 @@ describe("released registry", () => {
       "motion.axis.duty_cycle",
       "motion.axis.case_travel_direction",
       "motion.axis.case_axial_acceleration",
+      "motion.axis.case_time_fraction",
+      "motion.axis.case_linear_velocity",
       "motion.axis.guide_resistance_force",
       "motion.axis.external_force",
       "motion.axis.external_moment",
@@ -125,10 +127,77 @@ describe("released registry", () => {
       "motion.profile.peak_velocity",
       "motion.profile.peak_acceleration",
       "motion.profile.peak_deceleration",
+      "motion.profile.rms_acceleration",
     ];
     for (const id of expected) {
       expect(hasParameter(id)).toBe(true);
     }
+  });
+
+  it("maps every planned Unit 4.3 (ball-screw) port", () => {
+    // Exit-criterion coverage for the screw.* group released in registry v1.3
+    // (context/modules/ball-screw/stage-2-contract.md).
+    const expected = [
+      "screw.minor_diameter",
+      "screw.lead",
+      "screw.unsupported_length",
+      "screw.end_support_arrangement",
+      "screw.dynamic_load_rating",
+      "screw.dynamic_load_rating_basis",
+      "screw.static_load_rating",
+      "screw.preload",
+      "screw.internal_friction_coefficient",
+      "screw.mechanical_efficiency",
+      "screw.gear_ratio",
+      "screw.static_safety_factor_minimum",
+      "screw.buckling_safety_margin",
+      "screw.manufacturer_speed_limit",
+      "screw.drive_torque",
+      "screw.equivalent_dynamic_load",
+      "screw.mean_rotational_speed",
+      "screw.nominal_life",
+      "screw.nominal_life_hours",
+      "screw.static_safety_factor",
+      "screw.buckling_load",
+      "screw.permissible_compressive_load",
+      "screw.critical_speed",
+      "screw.permissible_speed",
+    ];
+    for (const id of expected) {
+      expect(hasParameter(id)).toBe(true);
+    }
+  });
+
+  it("gives the ball-screw safety-margin inputs no invented default", () => {
+    // Both the static safety factor minimum and the buckling safety margin
+    // are contested/condition-dependent values with no single manufacturer-
+    // agreed number (stage-2-contract.md) — the registry must not silently
+    // pick one via a constant default.
+    const fsMin = getParameter("screw.static_safety_factor_minimum");
+    const bucklingMargin = getParameter("screw.buckling_safety_margin");
+
+    expect(fsMin?.defaultPolicy.kind).toBe("required");
+    expect(bucklingMargin?.defaultPolicy.kind).toBe("required");
+    expect(bucklingMargin?.range).toEqual({ min: 0, max: 1, unit: "ratio" });
+  });
+
+  it("keeps the ball-screw dynamic load rating and its life basis separate", () => {
+    // A revolution-basis and a distance-basis rating are not interchangeable
+    // (stage-1-spec.md item 5) — the registry records the basis explicitly
+    // rather than assuming one.
+    const basis = getParameter("screw.dynamic_load_rating_basis");
+    expect(basis?.valueType).toBe("enum");
+    expect(basis?.enumOptions).toEqual(["revolutions", "distance"]);
+  });
+
+  it("gives the ball-screw drive gear ratio a structural default of 1", () => {
+    // 1 (direct-connected, no gearbox) is a statement about the drive path,
+    // not a guessed physical value, unlike the safety-margin inputs above.
+    const gearRatio = getParameter("screw.gear_ratio");
+    expect(gearRatio?.defaultPolicy).toEqual({
+      kind: "constant",
+      value: expect.objectContaining({ kind: "quantity", unit: "ratio" }),
+    });
   });
 
   it("gives the Stage 2 axis-load inputs precise moving-case semantics", () => {

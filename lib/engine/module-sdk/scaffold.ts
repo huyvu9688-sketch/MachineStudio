@@ -44,7 +44,7 @@ const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 // Keep this aligned with the released parameter registry. It is intentionally
 // duplicated here because this generator must stay directly runnable by Node,
 // and generated module manifests must not import a mutable current-version value.
-const DEFAULT_PARAMETER_REGISTRY_VERSION = "1.1.0";
+const DEFAULT_PARAMETER_REGISTRY_VERSION = "1.3.0";
 
 /** Converts a kebab-case module ID to a camelCase identifier. */
 function toCamelCase(moduleId: string): string {

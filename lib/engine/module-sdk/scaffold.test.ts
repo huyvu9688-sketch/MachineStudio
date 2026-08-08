@@ -41,7 +41,7 @@ describe("generateModuleScaffold", () => {
     expect(manifest?.contents).toContain(
       'asParameterId("motion.axis.thrust_force")',
     );
-    expect(manifest?.contents).toContain('parameterRegistryVersion: "1.1.0"');
+    expect(manifest?.contents).toContain('parameterRegistryVersion: "1.3.0"');
     expect(manifest?.contents).not.toContain("PARAMETER_REGISTRY_VERSION");
   });
 

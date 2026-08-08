@@ -147,6 +147,7 @@ const UNIT_LIST: readonly UnitDefinition[] = [
   def("ratio", Dimensions.dimensionless, 1, { siCoherent: true }),
   def("percent", Dimensions.dimensionless, 1e-2),
   def("efficiency", Dimensions.dimensionless, 1),
+  def("rev", Dimensions.dimensionless, 1),
 ];
 
 const REGISTRY: ReadonlyMap<string, UnitDefinition> = new Map(

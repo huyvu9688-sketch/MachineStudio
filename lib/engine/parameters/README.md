@@ -83,6 +83,20 @@ external force/moment parameters remain normal/peak-only. Axis-frame external
 vectors and resolved force/moment outputs are deferred until their source-backed
 semantics are ready for a later registry release.
 
+Registry v1.2 adds one motion-profile output,
+`motion.profile.rms_acceleration` (`aggregation: rms`): a cycle-level
+time-weighted RMS acceleration demand across every phase of a motion cycle
+(see `context/modules/motion-profile/stage-2-contract.md`). It is a duty-cycle
+demand quantity a downstream module (the servo drive-train module, Unit 4.7)
+scales by its own inertia/friction model into RMS torque; `motion-profile`
+does not compute torque, and does not release an RMS _velocity_ parameter
+(not a piecewise-constant duty quantity, unlike acceleration). The
+multi-segment/cycle outputs remain cycle-level aggregates only — no
+per-segment port exists, because the registry has no `table`-valued parameter
+support yet (`ParameterValueType` in `./types.ts` is `quantity |
+vector_quantity | enum | boolean`); adding that is a separate generic-platform
+capability, not bundled into a single module's parameter contract.
+
 ## Parameter proposal checklist
 
 Follow this before adding a parameter (mirrors context/code-standards.md
