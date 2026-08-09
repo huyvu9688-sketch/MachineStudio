@@ -9,7 +9,7 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-08
+Last updated: 2026-08-09
 
 ---
 
@@ -35,7 +35,7 @@ same work, two labels):
 - Phase 2+ → after MVP
 
 **Health:** `npm run verify` green (format, lint 0 warnings, typecheck 0
-errors, 649 tests passed / 204 database-gated skips, build clean).
+errors, 742 tests passed / 204 database-gated skips, build clean).
 Production dependencies audit clean.
 
 ---
@@ -115,6 +115,29 @@ per-move detail in the calculation trace only, since a declared output port
 cannot be conditionally absent. No module is registered (`package.ts`, not
 `index.ts`); release stays gated behind Unit 4.1 regardless.
 
+**Stage 4 (validation) resolved 2026-08-09.** `validation/motion-profile/
+0.1.0.md` is complete — the second module in this project with a completed
+Stage 4 record (after `ball-screw`), using the same solo-validation
+reviewer-substitute policy. Three published reference examples are now
+reproduced, closing the item that was previously open ("no published worked
+example exists for this method"): re-reading the two already-page-verified
+candidate sources found that a citation in `stage-1-spec.md` had pointed at
+the wrong ABB AN00115 example (the p. 6-7 "Exercise" solves an inverse
+problem this module doesn't implement) — the actually-reproducible example
+was on p. 2-3, and the p. 6-7 exercise's own derived numbers, fed forward,
+gave a second example — plus a third from Oriental Motor's own p. H-19
+catalog example (EAS6, previously unread; only its p. H-23 general formula
+had been used, as the independent benchmark). Three examples from two
+independent manufacturers across three independent scenarios, all in
+`math.test.ts` and `validation.ts`. Two new source revisions registered in
+`lib/standards/engineering-sources.ts`
+(`us.abb.trapezoidal_move_calculations@rev-c-en`,
+`jp.oriental_motor.linear_rotary_actuator_selection_calculations@2015-2016`).
+The cycle-level RMS acceleration output remains without a published example
+or independent benchmark — recorded as an honest gap, not silently assumed
+correct. See `lib/modules/motion-profile/0.1.0/README.md` "Stage 4 evidence
+(2026-08-09)" for the full account.
+
 Unit 4.3 — `ball-screw`. Stage 1 spec drafted 2026-08-08, in parallel with
 `axis-load-cases`' evidence wait (same allowance already used for Unit 4.2;
 see `context/modules/ball-screw/stage-1-spec.md`). Covers lead/speed, drive
@@ -184,6 +207,66 @@ a verified reference example. See `context/modules/ball-screw/
 stage-1-spec.md` "Evidence Gaps and Verification Confidence" for the full
 account.
 
+**Stage 4 evidence found and verified 2026-08-09.** The WTF2040-2 example
+flagged above is now directly read (a third-party distributor mirror of
+THK's own catalog, since `thk.com` itself is still blocked) and three of its
+printed numbers reproduce cleanly against already-implemented kernel
+formulas: drive torque, nominal life, and static safety factor —
+`validation.ts` now has six reference examples across two independent
+manufacturers (three Rockford, three THK), up from three all sharing one
+Rockford scenario. The same source also surfaced two new, unresolved
+discrepancies: a third distinct buckling/critical-speed formula constant,
+and a different methodology for THK's own equivalent-dynamic-load
+calculation on a reversing duty cycle (THK's own numbers don't reproduce
+through this kernel's single-formula implementation). The buckling/critical-
+speed discrepancy is now also an implemented independent benchmark, not just
+a documented finding: `lib/modules/ball-screw/0.1.0/thk-benchmark.ts`
+implements THK's own formula separately, reproduces its three worked
+numbers exactly, and cross-checks against `math.ts`'s Rockford-based
+functions (bounded-ratio agreement, not exact — a genuine second
+computation, same treatment `axis-load-cases/atlanta-benchmark.ts` already
+established). This closes the roadmap's "independent benchmark" item
+(Definition of Done item 9) for every check in this module. See
+`lib/modules/ball-screw/0.1.0/README.md` "Stage 4 evidence (2026-08-09)" and
+`context/modules/ball-screw/stage-1-spec.md` "Evidence Gaps and Verification
+Confidence" for the full account.
+
+**Stage 4 validation record completed 2026-08-09.**
+`validation/ball-screw/0.1.0.md` is written (first module in the project
+with a completed Stage 4 record), using the documented solo-validation
+reviewer-substitute policy (`context/ai-workflow-rules.md` "Stage 4 —
+Validation") since no second engineer is available — the independent
+benchmark comparisons above serve as the review substitute, recorded as
+such rather than left blank. `validation/source-index.md` now has its first
+entries. This is Stage 4 completion, a documentation milestone — it does
+not register or release the module. The record is explicit about its one
+remaining limitation: six reference examples exceed the roadmap's "at least
+three" by count, but come from only two independent worked scenarios
+(Rockford, THK), not three.
+
+**Cross-module link compatibility closed same day.**
+`cross-module-links.test.ts` (new) — the first per-module-pair link-
+compatibility test in this codebase — confirms `axis-load-cases`' real
+output ports link correctly to this module's real input ports (including
+correctly rejecting a load-case mismatch), and confirms, rather than
+assumes, the known gap that no upstream module yet produces
+`case_time_fraction`/`case_linear_velocity`. Closes roadmap Module
+Definition of Done item 13 for `ball-screw`.
+
+**Equivalent-dynamic-load discrepancy given a real second implementation,
+same day.** `thk-benchmark.ts`'s new `resolveThkDirectionalEquivalentLoad`
+implements THK's own bidirectional-duty-cycle equivalent-load method
+separately from `math.ts`'s Steinmeyer-based formula, reproducing THK's own
+printed `225 N`; a test confirms the kernel's own formula gives a materially
+different `~283.5 N` for the identical scenario, rather than leaving the
+discrepancy as unchecked prose. **Correction while doing this:** the
+previously-recorded `~296 N` figure for that comparison was a hand-
+arithmetic addition error, now corrected to `~283.5 N` everywhere it was
+cited (this file, the module README, `validation.ts`,
+`validation/ball-screw/0.1.0.md`) after re-deriving it through the actual
+kernel function. The discrepancy's existence and rough magnitude are
+unchanged; only the precise number was wrong.
+
 ---
 
 ## Blocked — needs evidence, not code
@@ -244,21 +327,28 @@ variable names.
    drive train). Approved but deliberately unreleased — each ships with the
    module that needs it, at that module's Stage 2 contract. See
    `lib/engine/parameters/README.md`.
-5. Unit 4.2 (`motion-profile`): the Stage 3 draft package now supports up to
-   5 moves per cycle (see Active work) — the multi-move port-cardinality
-   decision is resolved. What remains is the same as Unit 4.3: Stage 4
-   validation (published reference examples/independent benchmark, a
-   reviewer or documented substitute, `validation/` records). Optional
-   parallel work; does not move Unit 4.1's critical path.
-6. Unit 4.3 (`ball-screw`): Stage 3 draft package is done (see Active work).
-   Next is Stage 4 — the same evidence items Unit 4.1 is blocked on don't
-   apply here (no historical ID39/ID42-style fixtures exist for a ball
-   screw), so this needs its own published reference examples/independent
-   benchmark search, a real reviewer or documented substitute, and
-   `validation/` records — see `lib/modules/ball-screw/0.1.0/validation.ts`
-   for what's already reproduced (three formula reproductions from one
-   shared Rockford worked scenario, not yet three independent scenarios).
-   Optional parallel work; does not move Unit 4.1's critical path.
+5. Unit 4.2 (`motion-profile`): Stages 3-4 are done (see Active work
+   2026-08-09) — `validation/motion-profile/0.1.0.md` is complete (solo-
+   validation reviewer-substitute policy). What's left is the same as Unit
+   4.3: Stage 5 items that need Unit 4.8 (workflow role integration,
+   workflow integration tests — `workflowRoles` is deliberately empty) and
+   Stage 6 (release), which stays sequentially gated behind Unit 4.1
+   regardless. Cross-module link compatibility is not yet testable in
+   either direction: no other module in this codebase currently declares an
+   input port for any `motion.profile.*` output. Optional parallel work;
+   does not move Unit 4.1's critical path.
+6. Unit 4.3 (`ball-screw`): Stages 3-5 are all done for what's applicable at
+   this point (see Active work 2026-08-09) — `validation/ball-screw/
+   0.1.0.md` is complete (solo-validation reviewer-substitute policy);
+   generic UI/report schema conformance already passes
+   (`package-validation` check); cross-module link compatibility against
+   `axis-load-cases` is tested and passing. A real, documented equivalent-
+   dynamic-load methodology discrepancy (THK vs. this module's own
+   Steinmeyer-based formula) remains open, recorded rather than resolved.
+   What's left is workflow role integration and workflow integration tests
+   (blocked on Unit 4.8, not a Unit 4.3 gap) and Stage 6 (release), which
+   stays sequentially gated behind Unit 4.1 regardless. Optional parallel
+   work; does not move Unit 4.1's critical path.
 
 ---
 
@@ -325,6 +415,16 @@ anything on the roadmap.
   Utah lecture slide deck, image-dense), so page count alone does not
   predict whether a given PDF reads in one pass — content density likely
   matters too.
+  **Update (2026-08-09): the `pages` parameter does work on long PDFs when
+  the requested range itself is small.** A 488-page and a separate 172-page
+  cached `WebFetch` download (both THK ball-screw catalogs, see the
+  `thk.com` note below) both rendered cleanly with `pages: "1-5"` and
+  `pages: "63-77"` (15 pages) requests — no `pdftoppm`-not-installed error.
+  This contradicts the "pages parameter itself then fails" claim above,
+  recorded 2026-08-08 from a 14-20-page document; the constraint is evidently
+  the size of the *requested range* (stay near or under the tool's own
+  20-page cap per call), not the total document length. Re-test before
+  trusting either account fully — this note has now been revised twice.
 - `thk.com` (THK's own PDF catalog host, already cited for
   `axis-load-cases`) returned HTTP 403 on every URL `WebFetch` tried against
   it on 2026-08-08 across two separate attempts in the same session,
@@ -344,7 +444,11 @@ anything on the roadmap.
   more than `tech.thk.com`:** `www.thk.com` (a different subdomain, THK's
   own ball-screw selection-guide site) also returned HTTP 403 on direct
   fetch — treat any `thk.com` subdomain as likely blocked this session, not
-  just the `tech.` one.
+  just the `tech.` one. **Confirmed still blocked 2026-08-09** (a third
+  session, same result). A second working mirror was found this session:
+  `bondy.dk` (a Danish industrial distributor), hosting the same catalog
+  content as `technico.com` — useful as a fallback if one mirror goes down,
+  since both are third-party hosts outside this project's control.
 
 ---
 

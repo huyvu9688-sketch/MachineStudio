@@ -60,9 +60,19 @@ new source edition is adopted), update its rows here in the same change.
 
 ## Entries
 
-No module has completed Stage 4 validation yet
-(`context/progress-tracker.md` "Current Phase": Milestone 1, the generic
-engine, is complete; the first production module, Unit 4.1, has not
-started). This index intentionally has no entries until the first
-module's validation record exists — adding a row ahead of that would
-invent evidence that does not exist yet.
+`ball-screw` 0.1.0 is the first module with a completed Stage 4 validation
+record (`validation/ball-screw/0.1.0.md`, 2026-08-09); `motion-profile` 0.1.0
+is the second (`validation/motion-profile/0.1.0.md`, 2026-08-09) — note this
+is Stage 4 completion, not production release, which stays sequentially
+gated behind Unit 4.1 (`axis-load-cases`, not yet released) regardless
+(`context/progress-tracker.md` "Active work").
+
+| Source Revision ID | Title | Classification | Edition | Used by module(s) | Validation record | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| `jp.oriental_motor.motor_sizing_calculations@web-2026-08-08` | Motor Sizing Calculations | `manufacturer_method` | web page accessed 2026-08-08 | `ball-screw@0.1.0` | `validation/ball-screw/0.1.0.md` | Drive-torque primary source |
+| `us.steinmeyer.ball_screw_technology@web-2026-08-08` | Ball Screw Technology — Service Life and Load Calculations | `manufacturer_method` | web page accessed 2026-08-08 | `ball-screw@0.1.0` | `validation/ball-screw/0.1.0.md` | Equivalent-load and life-law primary source |
+| `us.rockford_ball_screw.how_to_size@update-2018` | How To Size A Ball Screw | `manufacturer_method` | Update 2018 | `ball-screw@0.1.0` | `validation/ball-screw/0.1.0.md` | Buckling/critical-speed primary source; drive-torque cross-check |
+| `us.wy_ball_screw.understanding_load@web-2026-08-08` | Understanding Load in Ball Screw Applications | `manufacturer_method` | web page accessed 2026-08-08 | `ball-screw@0.1.0` | `validation/ball-screw/0.1.0.md` | Static safety factor formula source |
+| `jp.thk.example_ball_screw_selection@bondy-mirror-2026-08-09` | THK Example Ball Screw Selection | `manufacturer_method` | THK Ball Screw General Catalog, "Examples of Selecting a Ball Screw" chapter | `ball-screw@0.1.0` | `validation/ball-screw/0.1.0.md` | Read via a third-party distributor mirror — `tech.thk.com` (this document's registered `officialUrl`) returns HTTP 403 in this environment; see `lib/standards/engineering-sources.ts` for the full provenance note |
+| `us.abb.trapezoidal_move_calculations@rev-c-en` | Trapezoidal Move Calculations | `manufacturer_method` | Rev C (EN) | `motion-profile@0.1.0` | `validation/motion-profile/0.1.0.md` | Reference examples only (pp. 2-3, 6-7); base kinematics is public-domain mechanics, not this source's own contribution |
+| `jp.oriental_motor.linear_rotary_actuator_selection_calculations@2015-2016` | Selection Calculations For Linear & Rotary Actuators | `manufacturer_method` | General Catalog 2015/2016, pp. H-18 through H-28 | `motion-profile@0.1.0` | `validation/motion-profile/0.1.0.md` | Reference example (p. H-19, EAS6); independent benchmark (p. H-23, general asymmetric method) |

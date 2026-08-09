@@ -101,6 +101,30 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
       "https://www.wyballscrew.com/post/understanding-load-in-ball-screw-applications",
     note: "Manufacturer static safety factor formula (fs = C0 / Fas_max), used by the ball-screw module (Unit 4.3). No recommended minimum fs value is stated by this source.",
   },
+  {
+    id: asSourceDocumentId("us.abb.trapezoidal_move_calculations"),
+    classification: "manufacturer_method",
+    title: "Trapezoidal Move Calculations",
+    authority: "ABB",
+    market: "US",
+    access: "public",
+    officialUrl:
+      "https://library.e.abb.com/public/502bd29feb0349cfaa9558537a9d62fd/AN00115-Trapezoidal_Move_Calculations_Rev_C_EN.pdf",
+    note: "Manufacturer application note deriving the symmetric trapezoidal/triangular move kinematics used by the motion-profile module (Unit 4.2) via the area-under-the-velocity-time-graph method. Two worked numerical examples used for reference reproduction: a walkthrough demo (p. 2-3, SPEED=8/ACCEL=DECEL=16/MOVER=12) and an 'Exercise' (p. 6-7, 200 mm ball-screw move in 1 s).",
+  },
+  {
+    id: asSourceDocumentId(
+      "jp.oriental_motor.linear_rotary_actuator_selection_calculations",
+    ),
+    classification: "manufacturer_method",
+    title: "Selection Calculations For Linear & Rotary Actuators",
+    authority: "Oriental Motor Co., Ltd.",
+    market: "JP",
+    access: "public",
+    officialUrl:
+      "https://www.orientalmotor.com/products/pdfs/2015-2016/H/Linear_&_Rotary_Actuators_Selection_Calculations.pdf",
+    note: "General Catalog 2015/2016 technical-reference chapter (pp. H-18 through H-28), used by the motion-profile module (Unit 4.2). p. H-23's general asymmetric/non-zero-starting-speed trapezoidal method is reproduced as an independent benchmark (oriental-motor-benchmark.ts); p. H-19's EAS6 catalog worked example (vertical, 500 mm, 1.77 s) is used for reference-example reproduction.",
+  },
 ];
 
 export const engineeringMethodRevisions: readonly SourceRevision[] = [
@@ -126,6 +150,16 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     edition: "515-1E",
     officialUrl: "https://tech.thk.com/en/products/pdf/en_b15_069.pdf",
     note: "Published worked-example extract; the validation record identifies the reproduced printed pages.",
+  },
+  {
+    id: asSourceRevisionId(
+      "jp.thk.example_ball_screw_selection@bondy-mirror-2026-08-09",
+    ),
+    documentId: asSourceDocumentId("jp.thk.example_ball_screw_selection"),
+    edition:
+      "THK Ball Screw General Catalog, 'Examples of Selecting a Ball Screw' chapter (printed pages A-740 through A-754)",
+    officialUrl: "https://bondy.dk/wp-content/uploads/THK-spindler.pdf",
+    note: "tech.thk.com (this document's own officialUrl) returns HTTP 403 in this environment (context/progress-tracker.md 'Environment notes'); content instead read directly, page-image by page-image, from this third-party distributor's mirror of the same THK catalog on 2026-08-09. Confirms the 'High-speed Transfer Equipment (Horizontal Use)' worked example (model WTF2040-2, Ca=5400N, C0a=13600N, fs=2.5) that a prior session's WebSearch synthesis surfaced but could not verify directly — see context/modules/ball-screw/stage-1-spec.md 'Evidence Gaps and Verification Confidence'. Page-number offset from this mirror's own front matter: physical PDF page = printed 'A-' page number minus 677.",
   },
   {
     id: asSourceRevisionId(
@@ -176,5 +210,25 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     officialUrl:
       "https://www.wyballscrew.com/post/understanding-load-in-ball-screw-applications",
     note: "Access-dated intake. Capture a fixed edition/archive before a released module cites it.",
+  },
+  {
+    id: asSourceRevisionId("us.abb.trapezoidal_move_calculations@rev-c-en"),
+    documentId: asSourceDocumentId("us.abb.trapezoidal_move_calculations"),
+    edition: "Rev C (EN)",
+    officialUrl:
+      "https://library.e.abb.com/public/502bd29feb0349cfaa9558537a9d62fd/AN00115-Trapezoidal_Move_Calculations_Rev_C_EN.pdf",
+    note: "Full 7-page PDF read directly 2026-08-09. Confirms two worked numerical examples: p. 2-3 (SPEED=8, ACCEL=DECEL=16, MOVER=12 -> T=2s) matches resolveTrapezoidalMove's own input/output direction exactly; p. 6-7's 'Exercise' (200mm ball-screw move in 1s) solves the inverse problem (assumes an equal Ta/Ts/Td time split, then derives speed/accel) this module does not implement, but its own derived SPEED/ACCEL/DECEL values, fed forward, reproduce its own printed T=1s exactly.",
+  },
+  {
+    id: asSourceRevisionId(
+      "jp.oriental_motor.linear_rotary_actuator_selection_calculations@2015-2016",
+    ),
+    documentId: asSourceDocumentId(
+      "jp.oriental_motor.linear_rotary_actuator_selection_calculations",
+    ),
+    edition: "General Catalog 2015/2016, pp. H-18 through H-28",
+    officialUrl:
+      "https://www.orientalmotor.com/products/pdfs/2015-2016/H/Linear_&_Rotary_Actuators_Selection_Calculations.pdf",
+    note: "Full 11-page chapter read directly 2026-08-09 (pages 1-11). p. H-19's EAS6 catalog example (vertical, 15 kg, 500 mm, 320 mm/s, 1.5 m/s^2 -> 1.77 s) is a graph-read value, not a full-precision formula result — the module's own reproduction (1.7758 s) is within catalog display-rounding of the 3-significant-figure printed inputs.",
   },
 ];
