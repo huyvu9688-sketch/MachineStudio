@@ -174,4 +174,83 @@ describe("resolveTrapezoidalMove", () => {
       }),
     ).toThrow(MotionProfileInputError);
   });
+
+  it("matches ABB AN00115's own walkthrough demo (p. 2-3, T = 2s)", () => {
+    // ABB, Application Note AN00115 "Trapezoidal Move Calculations", Rev C
+    // (EN), p. 2-3: "SPEED = 8, ACCEL = 16, DECEL = 16, MOVER = 12" — a
+    // relative move 12 units long, reaching 8 units/sec, accelerating and
+    // decelerating at 16 units/sec/sec. Printed answer: Ta = Td = 1/2 sec,
+    // Da = Dd = 2 units, Ds = 8 units, Ts = 1 sec, T = 2 seconds. This is
+    // resolveTrapezoidalMove's own forward direction exactly (distance +
+    // velocity/acceleration ceiling -> time), unlike the p. 6-7 exercise
+    // below. The source's own "Mint scale factor" units are deliberately
+    // generic/user-defined (not necessarily SI) — the underlying kinematics
+    // is unit-system-invariant, so this test assigns them directly as SI
+    // (meters, m/s, m/s^2) without conversion. Read directly 2026-08-09 —
+    // see lib/standards/engineering-sources.ts
+    // "us.abb.trapezoidal_move_calculations@rev-c-en".
+    const result = resolveTrapezoidalMove({
+      moveDistanceM: 12,
+      maxVelocityMps: 8,
+      maxAccelerationMps2: 16,
+    });
+    expect(result.profileType).toBe("trapezoidal");
+    expect(result.peakVelocityMps).toBeCloseTo(8, 9);
+    expect(result.accelerationTimeS).toBeCloseTo(0.5, 9);
+    expect(result.decelerationTimeS).toBeCloseTo(0.5, 9);
+    expect(result.constantVelocityTimeS).toBeCloseTo(1, 9);
+    expect(result.constantVelocityDistanceM).toBeCloseTo(8, 9);
+    expect(result.moveTimeS).toBeCloseTo(2, 9);
+  });
+
+  it("matches ABB AN00115's own Exercise Answer (p. 6-7, T = 1s)", () => {
+    // ABB AN00115 p. 6-7 "Exercise": a 200mm ball-screw move in 1 second.
+    // The exercise itself solves the inverse problem this module does not
+    // implement (assume an equal Ta/Ts/Td time split via the "third rule",
+    // then derive speed/accel from the target total time) — not a direct
+    // reproduction of resolveTrapezoidalMove's own input/output direction.
+    // But its own "Exercise Answer" derives concrete SPEED/ACCEL/DECEL
+    // values (250 mm/sec, 1250 mm/s/s) from that assumption; feeding those
+    // forward through resolveTrapezoidalMove must reproduce the exercise's
+    // own printed Ta = Td = 200ms, Ts = 600ms, T = 1 second exactly, since
+    // the exercise's own algebra is self-consistent. Read directly
+    // 2026-08-09 — see lib/standards/engineering-sources.ts
+    // "us.abb.trapezoidal_move_calculations@rev-c-en".
+    const result = resolveTrapezoidalMove({
+      moveDistanceM: 0.2,
+      maxVelocityMps: 0.25,
+      maxAccelerationMps2: 1.25,
+    });
+    expect(result.profileType).toBe("trapezoidal");
+    expect(result.peakVelocityMps).toBeCloseTo(0.25, 9);
+    expect(result.accelerationTimeS).toBeCloseTo(0.2, 9);
+    expect(result.decelerationTimeS).toBeCloseTo(0.2, 9);
+    expect(result.constantVelocityTimeS).toBeCloseTo(0.6, 9);
+    expect(result.moveTimeS).toBeCloseTo(1, 9);
+  });
+
+  it("matches Oriental Motor's EAS6 catalog example within display rounding (p. H-19, T ~= 1.77s)", () => {
+    // Oriental Motor, General Catalog 2015/2016, p. H-19 "<Example
+    // operation>": EAS6, vertical, load mass 15 kg, positioning distance
+    // 500 mm, positioning time 1.77 s, operating speed 320 mm/s,
+    // acceleration 1.5 m/s^2 (0.15 G) — no starting speed stated (Vs = 0,
+    // this module's own scope), and the catalog's own "Acceleration" graph
+    // is explicitly the shared accel/decel rate (symmetric, also this
+    // module's own scope). Unlike the ABB examples above, this is a
+    // graph-read reference value ("Confirming Using the Positioning
+    // Distance - Positioning Time Graph"), not a full-precision formula
+    // result, and its own inputs are printed to 2-3 significant figures —
+    // resolveTrapezoidalMove's own result (1.7758s) differs from the
+    // printed 1.77s by ~0.33%, within that display rounding. Read directly
+    // 2026-08-09 (pages 1-11 of the cached PDF) — see
+    // lib/standards/engineering-sources.ts
+    // "jp.oriental_motor.linear_rotary_actuator_selection_calculations@2015-2016".
+    const result = resolveTrapezoidalMove({
+      moveDistanceM: 0.5,
+      maxVelocityMps: 0.32,
+      maxAccelerationMps2: 1.5,
+    });
+    expect(result.profileType).toBe("trapezoidal");
+    expect(Math.abs(result.moveTimeS - 1.77)).toBeLessThanOrEqual(0.01);
+  });
 });

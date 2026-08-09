@@ -10,10 +10,9 @@ Trapezoidal Move".
 
 `math.test.ts` tests the kernel against its own internal consistency
 (distance conservation, phase symmetry, the trapezoidal/triangular boundary,
-monotonicity, boundary/invalid input) rather than an external published
-example: neither verified candidate source publishes a worked numeric
-example for this method, so no reference-example reproduction is claimed
-here.
+monotonicity, boundary/invalid input), plus three genuine published-worked-
+example reproductions from two independent manufacturers — see "Stage 4
+evidence (2026-08-09)" below.
 
 `cycle.ts` (`resolveMotionCycle`) extends the kernel with multi-segment
 move/dwell sequencing and the cycle-level RMS acceleration aggregate
@@ -99,3 +98,56 @@ generator (`scripts/generate-registry.mts`) only discovers
 registry. Registration remains gated behind Unit 4.1's Definition of Done
 regardless of how far this package gets
 (`context/implementation-map.md` Milestone 4 header).
+
+## Stage 4 evidence (2026-08-09): three reference examples, two manufacturers
+
+`context/modules/motion-profile/stage-1-spec.md` had cited a "worked
+exercise on p. 6-7" of ABB AN00115 without actually reproducing it. Reading
+the full 7-page PDF directly found that citation pointed at the wrong
+example: p. 6-7's "Exercise" (a 200mm ball-screw move in 1 second) solves
+the _inverse_ problem this module does not implement — it assumes an equal
+accel/cruise/decel time split, then derives speed and acceleration from a
+target total time, the "different port direction" `stage-1-spec.md`'s own
+"Direction Already Fixed by the Released Registry" section already ruled
+out of `0.1.0` scope. The actually-reproducible worked example was on
+**p. 2-3** instead: an unlabeled walkthrough demo (`SPEED=8, ACCEL=DECEL=16,
+MOVER=12 -> T=2s`) that matches `resolveTrapezoidalMove`'s own forward
+direction (distance + velocity/acceleration ceiling -> time) exactly. The
+p. 6-7 exercise is still usable, just not the way originally assumed: its
+own "Exercise Answer" derives concrete SPEED/ACCEL/DECEL values from its
+time-split assumption, and feeding those forward through
+`resolveTrapezoidalMove` reproduces its own printed `T=1s` exactly — a
+second, independent reference example from the same document.
+
+A third example came from re-reading the Oriental Motor source already
+page-verified for the independent benchmark: p. H-19's `<Example
+operation>` for the EAS6 actuator (vertical, 500mm, 320mm/s, 1.5 m/s^2,
+published positioning time 1.77s) is a genuine catalog worked example, not
+just the general H-23 formula the benchmark already reproduces.
+`resolveTrapezoidalMove` computes `1.7758s` for the same inputs — within
+0.33% of the printed value, the expected size of error for a graph-read
+catalog figure quoted to 2-3 significant figures, not a formula
+discrepancy.
+
+All three are added to `math.test.ts` and `validation.ts`'s
+`referenceExamples`, from two independent manufacturers (ABB, Oriental
+Motor) across three independent worked scenarios — see
+`lib/standards/engineering-sources.ts`
+`"us.abb.trapezoidal_move_calculations@rev-c-en"` and
+`"jp.oriental_motor.linear_rotary_actuator_selection_calculations@2015-2016"`.
+This closes the Module Definition of Done's "at least three published
+reference examples" item (roadmap item 6) and completes
+`validation/motion-profile/0.1.0.md`, the second module in this project with
+a completed Stage 4 record, using the same documented solo-validation
+reviewer-substitute policy `validation/ball-screw/0.1.0.md` established
+(`context/ai-workflow-rules.md` "Stage 4 — Validation"): the pre-existing
+`oriental-motor-benchmark.ts` independent-benchmark comparison serves as the
+review substitute. The cycle-level RMS acceleration output remains
+uncorroborated by any published worked example — no candidate source
+publishes one (see "Evidence Gaps" in `stage-1-spec.md`) — and stays
+recorded as an honest gap in `validation.ts`'s `supportedUseLimits`, not
+silently assumed correct.
+
+Stage 4 completion is a documentation milestone, not a release: production
+release remains sequentially gated behind Unit 4.1's Definition of Done
+regardless (`context/implementation-map.md` Milestone 4 header).

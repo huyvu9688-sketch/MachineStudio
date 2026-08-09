@@ -94,14 +94,23 @@ acceleration and deceleration magnitude (`a_lim` used for both); asymmetric
 accel/decel is a later-version scope decision, not assumed here.
 
 [ABB, *Application Note AN00115 — Trapezoidal Move Calculations*, Rev. C
-(EN)](https://library.e.abb.com/public/502bd29feb0349cfaa9558537a9d62fd/AN00115-Trapezoidal_Move_Calculations_Rev_C_EN.pdf),
-pp. 1-5, is now page-verified (2026-08-07) and derives the same symmetric
+(EN)](https://library.e.abb.com/public/502bd29feb0349cfaa9558537a9d62fd/AN00115-Trapezoidal_Move_Calculations_Rev_C_EN.pdf)
+is now page-verified (2026-08-07) and derives the same symmetric
 trapezoidal/triangular result via the area-under-the-velocity-time-graph
-method (`Accel = Sp / Ta`, `Distance = Sp * (Ta + Ts)`, worked exercise on
-p. 6-7). It is cited here as a confirmatory manufacturer treatment of public-
-domain mechanics, not as the source of an otherwise-unverifiable formula —
-consistent with the "no manufacturer page/clause citation is meaningful"
-statement above.
+method (`Accel = Sp / Ta`, `Distance = Sp * (Ta + Ts)`). It is cited here as
+a confirmatory manufacturer treatment of public-domain mechanics, not as the
+source of an otherwise-unverifiable formula — consistent with the "no
+manufacturer page/clause citation is meaningful" statement above.
+**Correction (2026-08-09):** this entry previously cited a "worked exercise
+on p. 6-7" as unreproduced evidence. Reading the full PDF for Stage 4 found
+that citation pointed at the wrong example: p. 6-7's "Exercise" solves the
+inverse problem this module does not implement (assumes a time split, then
+derives speed/acceleration from a target total time — see "Direction
+Already Fixed by the Released Registry" above). The reproducible worked
+example was on p. 2-3 instead — see `lib/modules/motion-profile/0.1.0/
+README.md` "Stage 4 evidence (2026-08-09)" for the full account, including
+how the p. 6-7 exercise's own derived numbers were still usable as a second
+example once fed forward through this module's own direction.
 
 Given move distance `d`, velocity limit `v_lim`, and acceleration limit
 `a_lim` (both `> 0`):
@@ -344,3 +353,21 @@ move/dwell sequence is a separate, still-open design question, not invented
 here. No module is registered (`package.ts`, not `index.ts`); production
 release stays gated behind Unit 4.1 regardless
 (`context/implementation-map.md` Milestone 4 header).
+
+**Done (2026-08-08, not reflected elsewhere in this document):** the Stage 3
+package was extended to a bounded sequence of up to 5 moves — see
+`stage-2-contract.md` "Decisions" item 4 and `lib/modules/motion-profile/
+0.1.0/README.md` "Stage 3 package".
+
+**Done (2026-08-09):** Stage 4 (validation) is done —
+`validation/motion-profile/0.1.0.md` is complete, the second module in this
+project with a completed Stage 4 record (after `ball-screw`). Three
+published reference examples are now reproduced, from two independent
+manufacturers (ABB, Oriental Motor) across three independent worked
+scenarios, closing the "at least three published reference examples" item
+that was open above. See `lib/modules/motion-profile/0.1.0/README.md`
+"Stage 4 evidence (2026-08-09)" for the full account, including a citation
+correction: the "worked exercise on p. 6-7" cited above under "Candidate
+Method — Single Trapezoidal Move" turned out to solve the inverse problem
+this module does not implement; the actually-reproducible example was on
+p. 2-3 instead.
