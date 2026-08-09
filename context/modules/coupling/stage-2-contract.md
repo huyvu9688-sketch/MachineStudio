@@ -9,12 +9,15 @@
   and `ball-screw`'s own `normal`/`peak`-only restriction.** See "Decisions"
   below for the six items `stage-1-spec.md` "Stage 2 Entry Criteria" left
   open.
-- Module status: **no kernel or package exists yet.** Unlike `ball-screw`
-  and `linear-guide`, this Stage 2 record precedes Stage 3 rather than
-  following a same-day draft package — there is no `math.ts` this record
-  needs to reconcile against. Stage 3 (compute and trace) has not started.
-  Production release remains sequentially gated behind Unit 4.1's Definition
-  of Done regardless (`context/implementation-map.md` Milestone 4 header).
+- Module status: **Stage 3 draft package built 2026-08-09** (same day as
+  this contract). A full `ModulePackage` — manifest, ports, input schema,
+  compute, calculation trace, checks, generic UI schema, report schema, and
+  a draft validation record — wraps `math.ts` in
+  `lib/modules/coupling/0.1.0/` (assembled in `package.ts`, not
+  `index.ts` — see that directory's `README.md` "Stage 3 package"). It
+  registers no module and creates no calculation run. Production release
+  remains sequentially gated behind Unit 4.1's Definition of Done regardless
+  (`context/implementation-map.md` Milestone 4 header).
 
 ## Decisions
 
@@ -238,5 +241,12 @@ Mapped against `stage-1-spec.md` "Stage 2 Entry Criteria":
 6. Whether misalignment and bore compatibility are checks or
    informational-only — **resolved (checks)**, "Decisions" item 6.
 
-Stage 2 is complete for `0.1.0`'s scope. Stage 3 (a kernel and package) has
-not started.
+Stage 2 is complete for `0.1.0`'s scope.
+
+**Stage 3 update (2026-08-09):** the draft package built from this contract
+wraps `math.ts` directly — see `lib/modules/coupling/0.1.0/README.md`
+"Stage 3 package" for the two wiring decisions Stage 3 itself had to make
+(the shock-torque check's exact form, and that the coupling operating
+speed is derived locally rather than consuming a `screw.*` port).
+Production release remains sequentially gated behind Unit 4.1's Definition
+of Done regardless (`context/implementation-map.md` Milestone 4 header).

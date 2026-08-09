@@ -158,6 +158,17 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     note: "Manufacturer selection-calculation method for the coupling module (Unit 4.5): required/rated-torque sizing (T_N = 9550 * P[kW] / n[1/min]; T_KN >= T_N * S_B * S_t * S_R for steady load, T_Kmax >= (T_N + T_S) * S_Z * S_t * S_R for torque shocks), with full operating-factor (S_B, by driven-machine type -- a large application table), temperature-factor (S_t), starting-factor (S_Z), and direction-factor (S_R) tables, plus one full worked numerical example (a 200 kW / 1500 rpm motor driving a radial pump). Reached via the English/international ktr.com site; no separate JP-market edition was found (same treatment as us.steinmeyer.ball_screw_technology elsewhere in this file). Does not cover misalignment, torsional stiffness, moment of inertia, or speed limit -- see us.rw_america.coupling_sizing_selection and jp.nbk.coupling_catalog for those.",
   },
   {
+    id: asSourceDocumentId("us.ktr.coupling_selection_din740_part2"),
+    classification: "manufacturer_method",
+    title: "Coupling Selection According to DIN 740 Part II",
+    authority: "KTR Systems GmbH",
+    market: "US",
+    access: "public",
+    officialUrl:
+      "https://www.ktr.com/dam/jcr:621e751c-d0b1-42b6-81ea-6d44148ab8d6/COUPLING_SELECTION_DIN740_PART2.PDF",
+    note: "A second, distinct KTR selection-calculation document from us.ktr.coupling_selection_operating_factors, found via WebSearch on 2026-08-10 while looking for a published shock-torque worked example (neither KTR's other document's own example nor either of R+W's two examples exercises the shock-torque check with real numbers). Gives a more detailed general (non-hydrostatic-drive) torque-shock derivation than the operating-factors document's own (T_N+T_S)*S_Z*S_t*S_R form: T_Kmax >= T_S*S_Z*S_t + T_N*S_t, where the shock torque reaching the coupling is itself T_S = T_AS*M_A*S_A, weighted by a rotational-inertia coefficient M_A = J_L/(J_A+J_L) derived from the driving- and load-side mass moments of inertia. Neither S_B (operating factor) nor S_R (direction factor) appears in this document's own general formula -- S_B appears only in a separate, explicitly simplified hydrostatic-drive path for two specific coupling families (BoWex-ELASTIC, MONOLASTIC), and S_R does not appear anywhere in this document. Recorded as a real disagreement between two KTR documents' own general shock-torque formula shape, not resolved -- the coupling module (Unit 4.5) does not adopt either verbatim (context/modules/coupling/stage-2-contract.md 'Decisions' item 3). Includes one full worked numerical example (a 160 kW/1485 rpm motor driving a screw compressor through a ROTEX Size 90 coupling), reproduced as this module's independent benchmark in lib/modules/coupling/0.1.0/ktr-din740-benchmark.ts.",
+  },
+  {
     id: asSourceDocumentId("us.rw_america.coupling_sizing_selection"),
     classification: "manufacturer_method",
     title: "Sizing and Selection (Safety Couplings)",
@@ -322,6 +333,16 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     officialUrl:
       "https://www.ktr.com/fileadmin/ktr/media/Tools_Downloads/kataloge/coupling_selection_operating_factors.pdf",
     note: "Full 4-page PDF read directly 2026-08-09 (all pages). Covers 'Coupling types', 'Terminology of coupling selection', the S_B/S_t/S_Z/S_R factor tables, the two selection-check formulas, and the worked example.",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.ktr.coupling_selection_din740_part2@web-2026-08-10",
+    ),
+    documentId: asSourceDocumentId("us.ktr.coupling_selection_din740_part2"),
+    edition: "4-page PDF (catalog printed pages 10-13) accessed 2026-08-10",
+    officialUrl:
+      "https://www.ktr.com/dam/jcr:621e751c-d0b1-42b6-81ea-6d44148ab8d6/COUPLING_SELECTION_DIN740_PART2.PDF",
+    note: "Full 4-page excerpt read directly 2026-08-10 from KTR's own domain (ktr.com), no mirror needed, found via WebSearch (the coupling_selection_operating_factors document was found by direct navigation on ktr.com and does not itself carry a full shock-torque worked example). Covers 'Coupling types', a second terminology table (M_A/M_L, S_A/S_L, S_Z, S_t, S_B), the general and hydrostatic-drive selection formulas, and one full worked numerical example (printed page 13): P = 160 kW, n = 1485 rpm, J_Motor = 2.9 kgm^2, screw-compressor load T_LN = 930 Nm / J_compressor = 6.8 kgm^2, ROTEX Size 90 coupling (T_KN = 2400 Nm, T_Kmax = 4800 Nm, J_KA = J_KL = 0.0673 kgm^2) -> T_AN = 1029 Nm, T_KN required = 1348.5 Nm, M_A = 0.7, T_S = 2593.1 Nm, T_Kmax required = 3760 Nm, both checks pass.",
   },
   {
     id: asSourceRevisionId(

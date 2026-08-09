@@ -9,7 +9,7 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-09
+Last updated: 2026-08-10
 
 ---
 
@@ -35,7 +35,7 @@ same work, two labels):
 - Phase 2+ → after MVP
 
 **Health:** `npm run verify` green (format, lint 0 warnings, typecheck 0
-errors, 1006 tests passed / 204 database-gated skips, build clean).
+errors, 1023 tests passed / 204 database-gated skips, build clean).
 Production dependencies audit clean. Parameter registry at `1.7.0`.
 
 ---
@@ -232,24 +232,44 @@ collapse into one required `coupling.service_factor` input, the same
 kernel formula level in `math.test.ts` (Stage 3's own workflow step
 includes reference tests).
 
-**Stage 4 (validation), partly done (2026-08-09):** `rw-reference-
-examples.ts`/`.test.ts` run both of R+W's own worked examples through this
-module's actual compute path (`executeModule`) rather than just the kernel
-formulas — R+W's own printed `T_AN` as `screw.drive_torque`, their combined
-factor as `coupling.service_factor`, their selected coupling's own catalog
-rated torque as `coupling.rated_torque` — and confirm both selections
-(`ST2/10`, `ST4/10`) clear their own printed requirement through the real
-compute path. KTR's own example stays kernel-level-only (KTR's text gives no
-selected-coupling rated torque to run through the real path). Still open:
-the independent-benchmark item and reviewer/reviewDate. Unlike `ball-screw`'s
-and `linear-guide`'s own disagreeing-methodology source pairs, `math.ts`
-already collapses KTR's and R+W's factor tables into one identical formula
-shape, so there is no second, independently-shaped computation left within
-`0.1.0`'s own scope to cross-check against — see `validation.ts`'s own
-`independentBenchmark` field for what one would actually need (a third
-source, or a numeric comparison of KTR's own summed shock-torque form
-against this module's simplified shock-check reuse of the steady-check
-shape, which neither source's own worked examples exercise).
+**Stage 4 (validation), both evidence items now met (2026-08-09 through
+2026-08-10):** `rw-reference-examples.ts`/`.test.ts` run both of R+W's own
+worked examples through this module's actual compute path (`executeModule`)
+rather than just the kernel formulas — R+W's own printed `T_AN` as
+`screw.drive_torque`, their combined factor as `coupling.service_factor`,
+their selected coupling's own catalog rated torque as
+`coupling.rated_torque` — and confirm both selections (`ST2/10`, `ST4/10`)
+clear their own printed requirement through the real compute path. KTR's own
+example stays kernel-level-only (KTR's text gives no selected-coupling rated
+torque to run through the real path).
+
+**The independent-benchmark item closed 2026-08-10.** A second, distinct KTR
+document — "Coupling Selection According to DIN 740 Part II," found via
+WebSearch while looking for a published shock-torque worked example (none of
+the three reference examples above exercises the shock-torque check with
+real numbers) — gives a genuinely different, more detailed shock-torque
+derivation (`T_Kmax >= T_S*S_Z*S_t + T_N*S_t`, `T_S = T_AS*M_A*S_A`, `M_A` a
+mass-distribution coefficient) than the one `stage-1-spec.md` item 2 recorded
+from KTR's other document (`(T_N+T_S)*S_Z*S_t*S_R`) — a real, recorded
+disagreement between two documents from the same manufacturer, not resolved.
+`lib/modules/coupling/0.1.0/ktr-din740-benchmark.ts` reproduces this
+document's own full worked shock-torque example (160 kW/1485 rpm motor,
+screw compressor, ROTEX Size 90 coupling) end to end, then quantifies how
+this module's own simplified shock check relates to it: algebraically
+identical when `coupling.service_factor` is the fully composed
+`M_A*S_A*S_Z*S_t`; understating the true requirement by ~1.2% when
+`serviceFactor` is the catalog shock factor `S_A` alone; overstating it by
+~43% (a false fail on a coupling the detailed method accepts) when
+`S_A*S_Z*S_t` is used without `M_A` — a real, sourced, quantified deviation
+whose practical risk sits with the engineer's own `service_factor` choice,
+since this project has no released motor/load-inertia parameter to compute
+`M_A` internally (`stage-1-spec.md` item 3, Unit 4.7 territory).
+`validation/coupling/0.1.0.md` records the full Stage 4 evidence and invokes
+the solo-validation reviewer-substitute policy; `reviewer`/`reviewDate` in
+`validation.ts` itself stay `TODO` pending Stage 6, the same treatment
+`ball-screw`'s and `linear-guide`'s own `validation.ts` give that pair. This
+module's own Stage 4 gate is now clear; release still waits on Unit 4.1's
+Definition of Done, which gates every Milestone 4 module regardless.
 
 Unit 4.6 — `support-bearing`. **Stages 1-3 done 2026-08-09 through
 2026-08-10**, next in the roadmap's Phase 1B order now that `coupling`'s
@@ -387,16 +407,17 @@ variable names.
    workflow role integration and cross-module link compatibility tests) and
    Stage 6 (release) remain, sequentially gated behind Unit 4.1 regardless.
    Optional parallel work; does not move Unit 4.1's critical path.
-7. Unit 4.5 (`coupling`): **Stages 1-3 done, Stage 4 partly done** (see
-   Active work), registry `1.6.0` released, full draft package in
-   `lib/modules/coupling/0.1.0/`. The reference-example gap is closed
-   (`rw-reference-examples.ts`/`.test.ts`, both of R+W's own worked examples
-   run through the real compute path). What remains: an independent-
-   benchmark comparison (no second independently-shaped formula exists
-   within `0.1.0`'s own scope yet — see `validation.ts`'s own
-   `independentBenchmark` field for what one would need) and a
-   reviewer/reviewDate. Optional parallel work; does not move Unit 4.1's
-   critical path.
+7. Unit 4.5 (`coupling`): **Stages 1-4 done, including the independent
+   benchmark** (see Active work), registry `1.6.0` released, full draft
+   package in `lib/modules/coupling/0.1.0/`,
+   `validation/coupling/0.1.0.md` complete. `ktr-din740-benchmark.ts`
+   implements a second KTR document's own detailed shock-torque method as a
+   genuine second computation, closing what was this module's last
+   own-merits gate. What remains: Stage 5 (generic UI/report schema —
+   already drafted at Stage 3, see its README — plus workflow role
+   integration and cross-module link compatibility tests) and Stage 6
+   (release), sequentially gated behind Unit 4.1 regardless. Optional
+   parallel work; does not move Unit 4.1's critical path.
 8. Unit 4.6 (`support-bearing`): **Stages 1-3 done** (see Active work),
    registry `1.7.0` released, full draft package in
    `lib/modules/support-bearing/0.1.0/`. Stage 4 (validation) is next —
