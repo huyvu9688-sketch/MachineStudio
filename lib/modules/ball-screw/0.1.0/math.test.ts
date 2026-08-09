@@ -207,6 +207,29 @@ describe("resolveDriveTorque", () => {
     const inLbsPerNm = 1 / 0.1129848333;
     expect(result.loadTorqueNm * inLbsPerNm).toBeCloseTo(22.1, 1);
   });
+
+  it("matches THK's published worked example (120 N.mm, no preload)", () => {
+    // THK Ball Screw General Catalog, "Examples of Selecting a Ball Screw" —
+    // "High-speed Transfer Equipment (Horizontal Use)": model WTF2040-2,
+    // lead Ph = 40 mm, efficiency eta = 0.9, no preload ("The Ball Screw is
+    // not provided with a preload"), direct coupling (gear ratio A = 1),
+    // applied axial load during forward uniform motion Fa2 = 17 N. Printed:
+    // "T1 = Fa*Ph/(2*pi*eta)*A = 17*40/(2*pi*0.9)*1 = 120 N.mm" — a genuinely
+    // independent third source (THK, not Oriental Motor or Rockford) for the
+    // same F*P/(2*pi*eta) drive-torque term. Read directly 2026-08-09 via a
+    // third-party mirror (tech.thk.com itself returns HTTP 403 in this
+    // environment) — see lib/standards/engineering-sources.ts
+    // "jp.thk.example_ball_screw_selection@bondy-mirror-2026-08-09".
+    const result = resolveDriveTorque({
+      axialForceN: 17,
+      leadM: 0.04,
+      efficiency: 0.9,
+      preloadN: 0,
+      internalFrictionCoefficient: 0,
+      gearRatio: 1,
+    });
+    expect(result.loadTorqueNm * 1000).toBeCloseTo(120, 0);
+  });
 });
 
 describe("resolveEquivalentDynamicLoad", () => {
@@ -431,6 +454,28 @@ describe("resolveNominalLife and resolvePermissibleMeanLoad", () => {
         targetLifeRevolutions: 0,
       }),
     ).toThrow(BallScrewInputError);
+  });
+
+  it("matches THK's published worked example (WTF2040-2, L = 4.1e9 rev)", () => {
+    // THK Ball Screw General Catalog, "Examples of Selecting a Ball Screw" —
+    // same "High-speed Transfer Equipment" example as the drive-torque test
+    // above. Model WTF2040-2: dynamic load rating Ca = 5400 N (5.4 kN).
+    // THK's own printed average axial load is Fm = 225 N, but its life
+    // formula applies an additional printed "load factor fw = 1.5" before
+    // the standard cubic life law: "L = (Ca / (fw*Fm))^3 * 1e6" — this
+    // kernel's resolveNominalLife does not itself apply any such factor (no
+    // source has confirmed one belongs in the formula this kernel
+    // implements; see this file's own module doc comment), so this test
+    // feeds the already-fw-adjusted load (fw * Fm = 1.5 * 225 = 337.5 N) as
+    // equivalentLoadN to reproduce THK's own printed result — a documented
+    // input adaptation, not a claim that resolveNominalLife implements fw.
+    // Read directly 2026-08-09 — see lib/standards/engineering-sources.ts
+    // "jp.thk.example_ball_screw_selection@bondy-mirror-2026-08-09".
+    const result = resolveNominalLife({
+      dynamicLoadRatingN: 5400,
+      equivalentLoadN: 1.5 * 225,
+    });
+    expect(result.lifeRevolutions / 1e9).toBeCloseTo(4.1, 1);
   });
 });
 
@@ -669,5 +714,25 @@ describe("resolveStaticSafetyFactor", () => {
         appliedLoadN: -1000,
       }),
     ).toThrow(BallScrewInputError);
+  });
+
+  it("matches THK's published worked example (WTF2040-2, fs = 2.5)", () => {
+    // THK Ball Screw General Catalog, "Examples of Selecting a Ball Screw" —
+    // same "High-speed Transfer Equipment" example as the drive-torque and
+    // life tests above. Model WTF2040-2: static load rating C0a = 13.6 kN.
+    // THK sets a target fs = 2.5 (an engineering choice for an application
+    // with impact loading during deceleration) and derives the permissible
+    // axial load from it: "C0a/fs = 13.6/2.5 = 5.44 kN = 5440 N" — the exact
+    // algebraic inverse of this kernel's fs = C0/Fas_max. Feeding THK's own
+    // two printed numbers (C0a and its own derived permissible load) back
+    // into resolveStaticSafetyFactor must reproduce THK's own assumed fs
+    // exactly. Read directly 2026-08-09 — see
+    // lib/standards/engineering-sources.ts
+    // "jp.thk.example_ball_screw_selection@bondy-mirror-2026-08-09".
+    const result = resolveStaticSafetyFactor({
+      staticLoadRatingN: 13_600,
+      appliedLoadN: 5440,
+    });
+    expect(result.staticSafetyFactor).toBeCloseTo(2.5, 6);
   });
 });

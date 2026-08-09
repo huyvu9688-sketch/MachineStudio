@@ -46,6 +46,94 @@
   `lib/modules/ball-screw/0.1.0/README.md` "Stage 3 package". The module is
   still not registered (`package.ts`, not `index.ts`) or released; Stage 4
   (validation) has not started.
+- **Update (2026-08-09, Stage 4 in progress):** a THK Ball Screw General
+  Catalog mirror was read directly (via a third-party distributor host,
+  `thk.com` remains blocked in this environment) and yielded THK's own
+  "High-speed Transfer Equipment" worked example (model WTF2040-2) — the
+  same example a prior session had only seen through unverified WebSearch
+  synthesis. Three of its printed numbers now reproduce cleanly against
+  already-implemented kernel formulas and are recorded as new, genuinely
+  independent (different-manufacturer) reference examples in
+  `validation.ts`: `thk-drive-torque`, `thk-nominal-life`,
+  `thk-static-safety-factor`. The same page also surfaced two new,
+  unresolved discrepancies (a third buckling-margin constant; a different
+  equivalent-dynamic-load methodology for reversing duty cycles) — see
+  "Evidence Gaps and Verification Confidence" below and
+  `lib/modules/ball-screw/0.1.0/README.md`.
+- **Update (2026-08-09, cont'd — independent benchmark implemented):**
+  buckling and critical speed previously had no second-source computation at
+  all (only Rockford's own formula, implemented directly, with no
+  alternative implementation to compare against). THK's own catalog page
+  supplied enough — formula, coefficients for two distinct mounting
+  conditions, and three worked numbers — to implement it as a genuine
+  second, independent computation:
+  `lib/modules/ball-screw/0.1.0/thk-benchmark.ts` (new file), tested in its
+  own sibling test file. It reproduces THK's own three worked numbers
+  exactly and cross-checks against `math.ts`'s Rockford-based functions for
+  the equivalent geometry, agreeing within a bounded ratio (same order of
+  magnitude) but not floating-point precision — expected, since the two
+  sources' mounting-factor constants for nominally identical end conditions
+  differ by roughly 10-15%, a third data point alongside the already-known
+  Steinmeyer/Rockford disagreement. This closes the roadmap's "at least one
+  independent benchmark" item (Definition of Done item 9) for every check in
+  this module.
+- **Update (2026-08-09, cont'd — Stage 4 record completed):**
+  `validation/ball-screw/0.1.0.md` is written, using the solo-validation
+  reviewer-substitute policy (`context/ai-workflow-rules.md` "Stage 4 —
+  Validation") — the THK-vs-Rockford buckling/critical-speed comparison and
+  the three-manufacturer drive-torque agreement serve as the review
+  substitute, since no second engineer is available. `validation/
+  source-index.md` is updated with all five source revisions used. This
+  completes Stage 4 for `ball-screw` 0.1.0 as a documentation matter; it
+  does not register or release the module — that stays sequentially gated
+  behind Unit 4.1 regardless. The record is honest about its remaining
+  limitation: six reference examples exceed the roadmap's "at least three"
+  by count, but come from only two independent worked scenarios (Rockford,
+  THK), not three.
+- **Update (2026-08-09, cont'd — cross-module link compatibility closed):**
+  `lib/modules/ball-screw/0.1.0/cross-module-links.test.ts` (new) is the
+  first per-module-pair link-compatibility test in this codebase, closing
+  roadmap Module Definition of Done item 13 for this module. It runs the
+  real engine evaluator (`evaluateLinkCompatibility`,
+  `lib/engine/graph/compatibility.ts`) against `axis-load-cases` 0.1.0's and
+  this module's actual `manifest.ts` ports — confirming the
+  `normal_thrust_force`/`peak_thrust_force` links work (including correctly
+  rejecting a load-case mismatch), and confirming, rather than assuming,
+  that no `axis-load-cases` output currently satisfies
+  `case_time_fraction`/`case_linear_velocity` (a real, already-documented
+  gap in `stage-2-contract.md`, now also asserted against the real manifest
+  rather than left as a spec-only claim). `validation/ball-screw/0.1.0.md`
+  is updated to record this. Remaining Stage 5 items (workflow role
+  integration, workflow integration tests) stay not-applicable until Unit
+  4.8 exists.
+- **Update (2026-08-09, cont'd — equivalent-dynamic-load discrepancy given a
+  real second implementation, and a documentation error corrected):**
+  `thk-benchmark.ts`'s `resolveThkDirectionalEquivalentLoad` (new) implements
+  THK's own bidirectional/reversing-duty-cycle equivalent-load method as a
+  genuinely separate computation from `math.ts`'s Steinmeyer-based
+  `resolveEquivalentDynamicLoad` — reproducing THK's own printed `225 N` for
+  both directions of its six-phase scenario in `thk-benchmark.test.ts`, and
+  cross-checked there against `math.ts`'s formula fed the mathematically
+  equivalent per-phase inputs, with a test that explicitly asserts the two
+  results are NOT close (a real, substantial, machine-checked disagreement,
+  not a comment that could silently go stale). **In the course of deriving
+  that cross-check precisely, a hand-arithmetic error in this document's own
+  earlier account was found and corrected: the kernel's own formula gives
+  `~283.5 N` for THK's six-phase scenario, not the previously-recorded
+  `~296 N`** (an addition slip — `14,860,695,490` misread as
+  `16,860,695,490` — caught by re-deriving the figure through the actual
+  `resolveEquivalentDynamicLoad` function rather than trusting hand
+  arithmetic a second time). The discrepancy itself is unchanged in kind
+  (a real, unresolved methodological disagreement) and only modestly
+  smaller in magnitude (~26%, not ~32%) — the correction affects the exact
+  number cited, not the conclusion. Every place this document, the module
+  README, `validation.ts`, and `validation/ball-screw/0.1.0.md` cited the
+  wrong figure has been corrected in the same change. Neither
+  implementation is changed to match the other; the open question of what
+  to combine `positiveDirectionLoadN`/`negativeDirectionLoadN` into when
+  they disagree (THK's own example never needs to answer this, since its
+  scenario is direction-symmetric) remains genuinely open, recorded in
+  `resolveThkDirectionalEquivalentLoad`'s own doc comment.
 
 No released parameter, module version, calculation run, or validation record
 is changed by this document.
@@ -355,6 +443,17 @@ as "Manufacturer speed/DN limits **when data exists**" — `0.1.0` treats it as
 an optional check gated on the specific screw's own catalog data being
 supplied, not a formula this module derives.
 
+**Update (2026-08-09):** THK's own "Examples of Selecting a Ball Screw"
+worked example (see "Evidence Gaps and Verification Confidence") does print
+an explicit formula, not just a data-sheet number: `N2 = 70,000 / D`
+(`min^-1`, `D` = ball center-to-center diameter in mm), applied to a
+large-lead rolled ball screw. `70,000` still reads as a THK/series-specific
+constant (the same kind of manufacturer figure NSK's `150,000-160,000` claim
+already illustrated, just with an actual formula shape attached this time),
+not evidence of a universal DN law — the conclusion above is unchanged, this
+just upgrades "a claim exists" to "a formula with one worked number exists,"
+still not implemented in `0.1.0`.
+
 ## Validity Envelope (Proposed)
 
 - One straight ball-screw shaft on one linear axis, consuming exactly one
@@ -554,6 +653,58 @@ post):
   PDF and web page (`us.misumi-ec.com`) and Rockford's own PDF (re-checked
   specifically for these two formulas) were also tried and did not yield a
   worked example either.
+- **Update (2026-08-09, THK example verified directly):** the WTF2040-2
+  example flagged above as WebSearch-synthesis-only is now directly read and
+  verified. `thk.com` remains blocked (confirmed again this session, on top
+  of the two prior confirmations), but a third-party distributor's mirror of
+  the full THK Ball Screw General Catalog
+  (`https://bondy.dk/wp-content/uploads/THK-spindler.pdf`, 3.4 MB, ~172
+  pages of this compiled catalog's "A" technical-description book) rendered
+  page-by-page without hitting the `pdftoppm` page-range limitation
+  documented in `context/progress-tracker.md` "Environment notes" — that
+  limitation is evidently about the size of the *rendered range requested*
+  per `Read` call (worked here at 15 pages per call, within the tool's own
+  20-page cap), not the total document length, contrary to how the note had
+  been read after the 2026-08-08 University of Utah PDF failure. The
+  catalog's own printed page numbers (`A-679` through roughly `A-849`) map
+  to physical PDF pages by a constant offset (`physical = printed − 677`,
+  confirmed against the front-matter table of contents), which located the
+  "Examples of Selecting a Ball Screw" chapter directly at printed pages
+  `A-740`–`A-754` without a blind search. The full "High-speed Transfer
+  Equipment (Horizontal Use)" example was read: selection conditions,
+  screw-shaft sizing, axial-load-per-phase table (6 phases), buckling and
+  critical-speed checks (a different, Steinmeyer-shaped formula — see
+  below), nut selection (`WTF2040-2`, `Ca = 5.4 kN`, `C0a = 13.6 kN`),
+  average axial load (`Fm = 225 N`), nominal life (`L = 4.1e9 rev`, using a
+  `fw = 1.5` "load factor" this kernel does not implement), static safety
+  factor (`fs = 2.5` assumed, permissible load `5440 N` derived), and drive
+  torque (`T1 = 120 N.mm`). Three of these numbers reproduce cleanly against
+  already-implemented kernel formulas and are now `thk-drive-torque`,
+  `thk-nominal-life`, and `thk-static-safety-factor` in `validation.ts` —
+  see `lib/modules/ball-screw/0.1.0/README.md` "Stage 4 evidence
+  (2026-08-09)" for the full account, including two findings **not**
+  resolved by this update:
+  - THK's own buckling/critical-speed formula on this same page
+    (`P1 = factor * d1^4/ls^2 * 10^4`; critical speed linear in `d1`, not
+    quartic) is structurally identical to Steinmeyer's, not Rockford's
+    (which this kernel implements), and uses a third distinct
+    mounting-factor constant (`20` for fixed-fixed buckling, `15.1` for
+    fixed-supported critical speed, vs. Steinmeyer's `22.4`/`17.7` for the
+    same nominal conditions) — a new three-way discrepancy. **Now
+    implemented as a separate independent computation** (not folded into
+    `math.ts`, which is unchanged): `thk-benchmark.ts`, reproducing all
+    three of THK's own worked numbers exactly, cross-checked against
+    `math.ts`'s Rockford-based functions in `thk-benchmark.test.ts` (bounded-
+    ratio, not exact, agreement — see item 7's "Update (2026-08-09, cont'd"
+    entry above and `lib/modules/ball-screw/0.1.0/README.md`).
+  - THK's own equivalent-dynamic-load worked calculation uses a direction-
+    split methodology (positive/negative-direction averages, each
+    normalized against the full round-trip distance) that differs
+    procedurally from the single weighted-cube-mean this kernel's
+    `resolveEquivalentDynamicLoad` implements (Steinmeyer's own formula,
+    evaluated directly) — feeding THK's own six phases through the kernel's
+    formula gives ~283.5 N, not THK's own printed 225 N. Recorded as a new,
+    real discrepancy in `validation.ts`'s `deviations`, not resolved.
 
 This session's PDF-reading tool cannot render page ranges from any PDF
 longer than what it can read in one pass (`pdftoppm`, needed for ranged
