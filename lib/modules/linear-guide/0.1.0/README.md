@@ -53,12 +53,22 @@ the full package" pattern `axis-load-cases`, `motion-profile`, and
 sequentially gated behind Unit 4.1's Definition of Done regardless
 (`context/implementation-map.md` Milestone 4 header).
 
-## A dependency this module will need at Stage 2/3
+## Stage 2 (2026-08-09): a real wiring question found, not resolved by guessing
 
-`axis-load-cases 0.1.0` now exposes `motion.axis.resultant_force` and
-`motion.axis.resultant_moment` (registry `1.4.0`, added 2026-08-09
-specifically for this module — see
-`lib/modules/axis-load-cases/0.1.0/README.md` "Resultant force/moment
-output ports (2026-08-09)"). A future package would link the transverse
-(`Y`, `Z`) components of those two vectors into this kernel's `forceN`
-inputs above; the axial (`X`) component is not used by any function here.
+`context/modules/linear-guide/stage-2-contract.md` registers the new
+`guide.*` catalog/geometry parameters and confirms this module reuses
+`axis-load-cases`' new `motion.axis.resultant_force`/`resultant_moment`
+ports (registry `1.4.0`) as its applied-load input, per case — not a
+re-derivation from mass/gravity/acceleration. Drafting that contract
+surfaced a real problem, not assumed in advance: `resolveHorizontalInertiaBlockLoads`
+and `resolveVerticalInertiaBlockLoads` above are very likely redundant once
+`axis-load-cases` has already resolved a case's gravity+inertia+external
+combination into one snapshot, and the two "uniform" functions take a
+**force at a geometric offset**, not `axis-load-cases`' actual **(force,
+moment)** shape — related by `moment = force * offset`, but that
+substitution is unconfirmed for `resolveVerticalUniformBlockLoads`'s own
+diagram and breaks down entirely for a pure external moment with no
+accompanying force. See the Stage 2 document's "A Finding From Trying To
+Wire This Contract" and "Open Question, Not Resolved Here" for the full
+account. This is why no package exists yet: Stage 3 (`compute.ts`) cannot
+be written responsibly until that question has a source-checked answer.

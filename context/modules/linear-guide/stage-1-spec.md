@@ -595,9 +595,20 @@ Stage 1 (engineering specification) is done as a draft. **Update
 (2026-08-09):** Stage 2 entry criteria 1 and 5 are both resolved the same
 day — `axis-load-cases` now exposes the resultant force/moment ports this
 module needs (registry `1.4.0`), and all four in-scope working-load
-formula sets are re-verified twice against the source images. No kernel or
-package exists yet for this module itself; that is the natural next step,
-against the horizontal/vertical, four-block, ball-type scope above (the
-same "build a kernel ahead of full Stage 2 resolution" pattern `ball-screw`
-and `motion-profile` both used). Production release stays gated behind
-Unit 4.1 regardless (`context/implementation-map.md` Milestone 4 header).
+formula sets are re-verified twice against the source images. A Stage 1
+kernel now exists (`lib/modules/linear-guide/0.1.0/math.ts`, 29 tests).
+
+**Update (2026-08-09, cont'd — Stage 2 partially resolved, a real open
+question found):** `context/modules/linear-guide/stage-2-contract.md`
+registers the new `guide.*` parameters and confirms this module reuses
+`axis-load-cases`' resolved force/moment ports rather than re-deriving
+mass/gravity/acceleration. Drafting it found that the kernel's two
+"inertia" functions are likely redundant once `axis-load-cases` has
+already resolved a case's gravity+inertia+external combination, and that
+the two "uniform" functions take a force-at-an-offset, not
+`axis-load-cases`' actual force-and-moment shape — a real reformulation
+question left open rather than guessed at (see the Stage 2 document's "A
+Finding From Trying To Wire This Contract"). Stage 3 (a package wrapping
+this kernel) is blocked on that question, not merely not-yet-started.
+Production release stays gated behind Unit 4.1 regardless
+(`context/implementation-map.md` Milestone 4 header).

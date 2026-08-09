@@ -150,16 +150,30 @@ images also caught and corrected a real transcription error in this
 document's own first draft (the inertia-phase formulas had used one shared
 acceleration rate instead of the source's own distinct `a1`/`a3`).
 
-**A Stage 1 kernel now exists**, ahead of a full Stage 2 parameter
-contract: `lib/modules/linear-guide/0.1.0/math.ts` implements block-load
-distribution for all four in-scope installation/motion combinations
-(horizontal/vertical × uniform/inertia), equivalent load, static safety
-factor, nominal life (ball-type, distance-basis), service life in hours,
-and mean load under a varying duty cycle — 29 tests, all internal-
-consistency and boundary checks (PMI's own full worked example uses a
-bespoke geometry this session could not confidently map onto the generic
-formulas, so it is reserved for Stage 4, not guessed at). No package,
-manifest, or Stage 2 parameter contract yet.
+**A Stage 1 kernel now exists**: `lib/modules/linear-guide/0.1.0/math.ts`
+implements block-load distribution for all four in-scope installation/
+motion combinations (horizontal/vertical x uniform/inertia), equivalent
+load, static safety factor, nominal life (ball-type, distance-basis),
+service life in hours, and mean load under a varying duty cycle — 29
+tests, all internal-consistency and boundary checks (PMI's own full worked
+example uses a bespoke geometry this session could not confidently map
+onto the generic formulas, so it is reserved for Stage 4, not guessed at).
+
+**Stage 2 partially resolved same day, one real question left open.**
+`context/modules/linear-guide/stage-2-contract.md` registers the new
+`guide.*` geometry/catalog parameters and confirms this module reuses
+`axis-load-cases`' resolved `resultant_force`/`resultant_moment` rather
+than re-deriving mass/gravity/acceleration. Drafting it found that the
+kernel's two "inertia" functions are very likely redundant once
+`axis-load-cases` has already resolved a case's gravity+inertia+external
+combination into one snapshot, and that the two "uniform" functions take a
+force-at-a-geometric-offset, not `axis-load-cases`' actual force-and-moment
+shape (`moment = force * offset` only substitutes cleanly when confirmed
+per diagram, and breaks down entirely for a pure external moment with no
+accompanying force). Not guessed at — recorded as an open Stage 3 question
+(see the contract's "A Finding From Trying To Wire This Contract"). No
+package, manifest, or compute.ts yet; Stage 3 is blocked on that question,
+not merely unstarted.
 
 ---
 
@@ -231,14 +245,17 @@ variable names.
    yet), and Stage 6 (release), sequentially gated behind Unit 4.1
    regardless. Optional parallel work; does not move Unit 4.1's critical
    path.
-6. Unit 4.4 (`linear-guide`): Stage 1 spec and kernel done (see Active work
-   2026-08-09); the `axis-load-cases` port gap is resolved. Next: a Stage 2
-   parameter contract (the `guide.*` group — geometry, catalog ratings,
-   preload grade, rolling-element type; see the spec's "Existing Parameter
-   Review"), then a Stage 3 package (manifest, ports, compute, trace,
-   checks) wrapping the existing kernel, linking to `axis-load-cases`'
-   `resultant_force`/`resultant_moment` ports. Optional parallel work; does
-   not move Unit 4.1's critical path.
+6. Unit 4.4 (`linear-guide`): Stage 1 spec/kernel and a partial Stage 2
+   contract are done (see Active work 2026-08-09). What's left before
+   Stage 3 (a package) can start: resolve whether `compute.ts` reformulates
+   the kernel's offset-based block-load functions in moment terms, or
+   derives an effective offset from `axis-load-cases`' moment/force ratio
+   at the wiring layer — needs re-reading the PMI vertical-installation
+   diagram (B19) to confirm what its own `l2`/`l4` represent, the same
+   confidence level the horizontal diagram (B17) already has. See
+   `context/modules/linear-guide/stage-2-contract.md` "Open Question, Not
+   Resolved Here." Optional parallel work; does not move Unit 4.1's
+   critical path.
 
 ---
 

@@ -17,6 +17,26 @@
  * Values become EngineeringValues only at a future module-package boundary;
  * bare numbers remain internal here, mirroring
  * lib/modules/ball-screw/0.1.0/math.ts.
+ *
+ * IMPORTANT (found while drafting Stage 2, 2026-08-09 — see
+ * context/modules/linear-guide/stage-2-contract.md "A Finding From Trying
+ * To Wire This Contract"): `resolveHorizontalInertiaBlockLoads` and
+ * `resolveVerticalInertiaBlockLoads` re-derive gravity's and inertia's
+ * separate contributions from raw mass/acceleration, matching PMI's own
+ * self-contained worked example. This project's `axis-load-cases` module
+ * already resolves gravity, friction, guide resistance, and external
+ * force/moment into one `resultant_force`/`resultant_moment` snapshot per
+ * load case — feeding that into these two functions would mean
+ * re-deriving the same physics a second time from inputs this module
+ * would have to duplicate from `axis-load-cases`' own surface. They are
+ * very likely NOT part of this module's actual compute path once a
+ * package exists; kept here as a tested, source-faithful reproduction of
+ * PMI's own method, not as a hint that they're the intended integration
+ * point. `resolveHorizontalUniformBlockLoads` and
+ * `resolveVerticalUniformBlockLoads` are the ones that matter for real
+ * integration, and even those take a force at a geometric offset rather
+ * than `axis-load-cases`' actual (force, moment) shape — see the Stage 2
+ * document for the unresolved reformulation question this raises.
  */
 
 export type RollingElementType = "ball";
