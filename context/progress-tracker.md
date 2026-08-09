@@ -35,8 +35,8 @@ same work, two labels):
 - Phase 2+ → after MVP
 
 **Health:** `npm run verify` green (format, lint 0 warnings, typecheck 0
-errors, 917 tests passed / 204 database-gated skips, build clean).
-Production dependencies audit clean. Parameter registry at `1.6.0`.
+errors, 1006 tests passed / 204 database-gated skips, build clean).
+Production dependencies audit clean. Parameter registry at `1.7.0`.
 
 ---
 
@@ -205,7 +205,7 @@ solo-validation reviewer-substitute policy is now invokable — this module's
 own Stage 4 gate is clear; release still waits on Unit 4.1's Definition of
 Done, which gates every Milestone 4 module regardless.
 
-Unit 4.5 — `coupling`. **Stages 1-2 done 2026-08-09**, next in the
+Unit 4.5 — `coupling`. **Stages 1-3 done 2026-08-09**, next in the
 roadmap's Phase 1B order now that `linear-guide` is done through Stage 4.
 Stage 1 spec: `context/modules/coupling/stage-1-spec.md` — two independent
 manufacturer methods (KTR, R+W America, both read via their US-market
@@ -226,8 +226,88 @@ couplings specifically); and the disagreeing correction-factor tables
 collapse into one required `coupling.service_factor` input, the same
 "required input, neither table adopted" treatment
 `guide.static_safety_factor_minimum` received. Adds a new unit dimension
-(`N*m/rad`, torsional stiffness) to the unit registry. No kernel yet —
-Stage 3 is next.
+(`N*m/rad`, torsional stiffness) to the unit registry. Stage 3: a full
+`ModulePackage` in `lib/modules/coupling/0.1.0/` — see that directory's
+`README.md`. KTR's and R+W's own worked examples are reproduced at the
+kernel formula level in `math.test.ts` (Stage 3's own workflow step
+includes reference tests).
+
+**Stage 4 (validation), partly done (2026-08-09):** `rw-reference-
+examples.ts`/`.test.ts` run both of R+W's own worked examples through this
+module's actual compute path (`executeModule`) rather than just the kernel
+formulas — R+W's own printed `T_AN` as `screw.drive_torque`, their combined
+factor as `coupling.service_factor`, their selected coupling's own catalog
+rated torque as `coupling.rated_torque` — and confirm both selections
+(`ST2/10`, `ST4/10`) clear their own printed requirement through the real
+compute path. KTR's own example stays kernel-level-only (KTR's text gives no
+selected-coupling rated torque to run through the real path). Still open:
+the independent-benchmark item and reviewer/reviewDate. Unlike `ball-screw`'s
+and `linear-guide`'s own disagreeing-methodology source pairs, `math.ts`
+already collapses KTR's and R+W's factor tables into one identical formula
+shape, so there is no second, independently-shaped computation left within
+`0.1.0`'s own scope to cross-check against — see `validation.ts`'s own
+`independentBenchmark` field for what one would actually need (a third
+source, or a numeric comparison of KTR's own summed shock-torque form
+against this module's simplified shock-check reuse of the steady-check
+shape, which neither source's own worked examples exercise).
+
+Unit 4.6 — `support-bearing`. **Stages 1-3 done 2026-08-09 through
+2026-08-10**, next in the roadmap's Phase 1B order now that `coupling`'s
+own Stage 4 evidence is as complete as it can get without new sources.
+Stage 1 spec:
+`context/modules/support-bearing/stage-1-spec.md` — two JP-market sources
+(a real asymmetry, recorded rather than glossed over): THK's own Ball
+Screw General Catalog "Support Unit" chapter (already a registered source,
+re-read for its own support-bearing pages, `technico.com` mirror since
+`tech.thk.com` is still blocked) gives per-model catalog/data-sheet values
+and structure (fixed side = angular contact bearing, factory-adjusted
+preload; supported side = deep-groove bearing, floating) but no life or
+safety-factor formula of its own; NTN's own Rolling Bearings Handbook
+(new source, `jp.ntn.rolling_bearings_handbook`) supplies the general
+ISO-281-based methodology THK's catalog lacks — basic rating life,
+dynamic/static equivalent load, preload, allowable speed, shaft/housing
+interface — mapping almost one-to-one onto the roadmap's own required
+checks for this unit. **Two real evidence gaps, not closed:** no full
+published worked numerical example was found (NTN's own handbook lists
+one in its table of contents at printed page 84, but both copies fetched
+this session are identically truncated right before it — a genuine,
+documented gap, not a skipped step), and no independent-benchmark
+candidate exists yet (NSK's own short bulletins corroborate NTN's formula
+shape exactly, which is agreement, not a second implementation). Stage 2
+(`context/modules/support-bearing/stage-2-contract.md`, registry `1.7.0`)
+resolves all six open questions: `0.1.0` models one support bearing per
+calculation run via a new `bearing.location` (`fixed`/`supported`) enum,
+not a combined fixed+floating calculation; axial load reuses
+`motion.axis.thrust_force` directly (satisfying the roadmap's own gate,
+"integrates with the ball-screw module without a custom link mapping");
+radial load has no clean upstream source and becomes a new required
+engineer-supplied input, `bearing.actual_radial_load`; the new parameter
+group uses a `bearing.*` prefix (matching `screw.*`/`guide.*`'s own
+"short domain noun, not the full module ID" precedent); the dynamic/
+static equivalent-load factors (`X`/`Y`/`X0`/`Y0`) are engineer-supplied
+catalog lookups, not a reproduced table (no source gives a universal
+one); the static-safety-factor minimum is required with no built-in
+default, extending every other module's own precedent even though only
+one source's own numbers exist to record, not two disagreeing ones; and
+the two evidence gaps do not block Stage 2/3 — only this module's own
+Stage 4 validation record. Bore/outside diameter and preload are
+released as reported-only catalog values, not evaluated checks — a real
+scope narrowing from Stage 1's own initial "simple bound check" proposal,
+since a support bearing's bore is manufactured to one matched shaft
+diameter, not a clamping range the way `coupling`'s own bore compatibility
+is.
+
+Stage 3: a full `ModulePackage` in `lib/modules/support-bearing/0.1.0/` —
+see that directory's `README.md`. The axial-load-related ports
+(`*_thrust_force`, `dynamic_load_factor_y`, `static_load_factor_y`) are
+optional at the manifest level and required together only when
+`bearing.location` is `"fixed"`, enforced by a new `input-schema.ts`
+`superRefine` rule — the same "generic port shape can't express this, so
+an author-provided schema rule does" pattern `coupling 0.1.0`'s own
+bore-range check already established. `math.test.ts` (18 tests) and
+`package.test.ts` (21 tests) both pass; no published worked example is
+reproduced (the same evidence gap Stage 1 already recorded — see
+`validation.ts`'s own header note).
 
 ---
 
@@ -307,11 +387,24 @@ variable names.
    workflow role integration and cross-module link compatibility tests) and
    Stage 6 (release) remain, sequentially gated behind Unit 4.1 regardless.
    Optional parallel work; does not move Unit 4.1's critical path.
-7. Unit 4.5 (`coupling`): **Stages 1-2 done** (see Active work), registry
-   `1.6.0` released. Stage 3 (compute and trace — a kernel and a
-   `ModulePackage`, the same shape `ball-screw`'s and `linear-guide`'s own
-   Stage 3 drafts took) is next. Optional parallel work; does not move Unit
-   4.1's critical path.
+7. Unit 4.5 (`coupling`): **Stages 1-3 done, Stage 4 partly done** (see
+   Active work), registry `1.6.0` released, full draft package in
+   `lib/modules/coupling/0.1.0/`. The reference-example gap is closed
+   (`rw-reference-examples.ts`/`.test.ts`, both of R+W's own worked examples
+   run through the real compute path). What remains: an independent-
+   benchmark comparison (no second independently-shaped formula exists
+   within `0.1.0`'s own scope yet — see `validation.ts`'s own
+   `independentBenchmark` field for what one would need) and a
+   reviewer/reviewDate. Optional parallel work; does not move Unit 4.1's
+   critical path.
+8. Unit 4.6 (`support-bearing`): **Stages 1-3 done** (see Active work),
+   registry `1.7.0` released, full draft package in
+   `lib/modules/support-bearing/0.1.0/`. Stage 4 (validation) is next —
+   the remaining gap is the same one Stage 1 already recorded: a full
+   published worked numerical example (NTN's own handbook lists one that
+   both mirrors fetched this session are missing) and an independent-
+   benchmark candidate. Optional parallel work; does not move Unit 4.1's
+   critical path.
 
 ---
 

@@ -1,5 +1,6 @@
-// Released seed definitions for the canonical parameter registry v1.6 (Units
-// 1.3, 4.1 Stage 2, 4.2 Stage 2, 4.3 Stage 2, 4.4 Stage 2, and 4.5 Stage 2).
+// Released seed definitions for the canonical parameter registry v1.7 (Units
+// 1.3, 4.1 Stage 2, 4.2 Stage 2, 4.3 Stage 2, 4.4 Stage 2, 4.5 Stage 2, and
+// 4.6 Stage 2).
 //
 // Scope of v1.0: the parameter groups that Phase 1A (axis application + motion
 // profile) concretely needs, plus the shared project/environment group. These
@@ -19,24 +20,26 @@
 // "A Real, Already-Documented Dependency Gap"). v1.5 adds the full guide.*
 // group for linear-guide (context/modules/linear-guide/stage-2-contract.md).
 // v1.6 adds the full coupling.* group for the coupling module
-// (context/modules/coupling/stage-2-contract.md).
+// (context/modules/coupling/stage-2-contract.md). v1.7 adds the full
+// bearing.* group for the support-bearing module
+// (context/modules/support-bearing/stage-2-contract.md).
 //
-// Deliberately NOT released here: the support-bearing and drive-train
-// parameter groups. Their exact semantics (units, qualifiers, frames) depend
-// on each module's own Stage-2 parameter contract, which does not exist yet
-// for either. Released parameter IDs are immutable (context/architecture.md;
-// context/code-standards.md "Canonical Parameters"), so those groups are
-// proposed and released per module at its Stage-2 parameter contract,
-// bumping the registry version. See ./README.md and the progress tracker.
-// The upstream motion outputs below (thrust force, peak velocity, etc.)
-// already serve as the transmission modules' shared input ports.
+// Deliberately NOT released here: the drive-train parameter group. Its exact
+// semantics (units, qualifiers, frames) depend on its own Stage-2 parameter
+// contract, which does not exist yet. Released parameter IDs are immutable
+// (context/architecture.md; context/code-standards.md "Canonical
+// Parameters"), so it is proposed and released at its own module's Stage-2
+// parameter contract, bumping the registry version. See ./README.md and the
+// progress tracker. The upstream motion outputs below (thrust force, peak
+// velocity, etc.) already serve as the transmission modules' shared input
+// ports.
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.6.0";
+export const PARAMETER_REGISTRY_VERSION = "1.7.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -1208,7 +1211,258 @@ const coupling: readonly ParameterDefinition[] = [
   }),
 ];
 
-/** All released parameter definitions for registry v1.6, in authored order. */
+// --- Support bearing (Unit 4.6 Stage 2) -------------------------------------
+// See context/modules/support-bearing/stage-2-contract.md. `support-bearing
+// 0.1.0` models one support bearing per calculation run (the fixed-side
+// angular contact bearing, or the supported/floating-side deep-groove
+// bearing — bearing.location selects which), matching the same "one
+// candidate component, engineer identifies it by model" scope every other
+// Milestone 4 module uses. Reuses motion.axis.thrust_force (per case,
+// already ball-screw 0.1.0's own input) directly for the fixed-side
+// bearing's axial load rather than asking ball-screw to expose a new
+// output port -- the roadmap's own Unit 4.6 gate ("Support-bearing output
+// integrates with the ball-screw module without a custom link mapping",
+// context/implementation-map.md). Radial load has no clean upstream source
+// (stage-1-spec.md "Evidence Gaps") and is a new required engineer-supplied
+// input instead (bearing.actual_radial_load below), the same "no upstream
+// signal exists, so the engineer supplies it directly" treatment
+// coupling.actual_parallel_misalignment already received.
+//
+// Deliberately not released here: a fit-tolerance-class (h6/k5/js5, etc.)
+// compatibility check -- a support bearing's bore is manufactured to match
+// one specific shaft diameter, not a clamping range the way
+// coupling.driving_bore_min/max is, so bearing.bore_diameter and
+// bearing.outside_diameter below are reported catalog values only, not
+// evaluated against an actual shaft/housing diameter in 0.1.0 (a real scope
+// narrowing from stage-1-spec.md's own initial "simple bound check"
+// proposal -- see stage-2-contract.md "Decisions"). bearing.preload is
+// likewise reported only, not evaluated -- no source read gives a pass/fail
+// criterion for it (stage-1-spec.md item 4).
+
+const bearingCases = ["normal", "peak"] as const;
+const bearingLocations = ["fixed", "supported"] as const;
+const lifeDistanceOrHoursDisplay = ["h", "min", "s"] as const;
+
+const supportBearing: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "bearing.location",
+    displayName: "Support bearing location",
+    symbol: "loc",
+    definition:
+      "Which of the axis's two support-bearing locations this calculation represents: the fixed side (an angular contact bearing reacting both axial and radial load) or the supported/floating side (a deep-groove bearing reacting radial load only, matching THK's own Support Unit structure -- stage-1-spec.md item 'Candidate Sources'). Determines which checks apply: the axial-load and dynamic-equivalent-load-factor-Y ports are not meaningful for a 'supported' location bearing (stage-2-contract.md 'Decisions' item 1).",
+    valueType: "enum",
+    enumId: "bearing_location",
+    enumOptions: [...bearingLocations],
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.dynamic_load_rating",
+    displayName: "Basic dynamic load rating",
+    symbol: "C",
+    definition:
+      "Basic dynamic load rating from the specific support bearing's own catalog data (Ca for an angular contact bearing, C for a deep-groove bearing -- THK's own catalog dimension table). Used by the basic rating life formula.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.static_load_rating",
+    displayName: "Basic static load rating",
+    symbol: "C0",
+    definition:
+      "Basic static load rating from the specific support bearing's own catalog data. Checked against the static equivalent load via bearing.static_safety_factor_minimum.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.allowable_speed",
+    displayName: "Support bearing allowable rotational speed",
+    symbol: "n_max",
+    definition:
+      "Maximum rotational speed the candidate support bearing's own catalog data permits.",
+    valueType: "quantity",
+    canonicalUnit: "rad/s",
+    displayUnits: [...angularVelocityDisplay],
+    range: { min: 0, unit: "rad/s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.dynamic_load_factor_x",
+    displayName: "Dynamic equivalent load radial factor",
+    symbol: "X",
+    definition:
+      "Radial-load factor for the dynamic equivalent load formula (P = X*Fr + Y*Fa), from the specific bearing's own catalog dimensions table -- bearing-model-specific, not a universal table (jp.ntn.rolling_bearings_handbook 'the values of X and Y are given in the dimensions table of the catalog').",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.dynamic_load_factor_y",
+    displayName: "Dynamic equivalent load axial factor",
+    symbol: "Y",
+    definition:
+      "Axial-load factor for the dynamic equivalent load formula (P = X*Fr + Y*Fa), from the specific bearing's own catalog dimensions table. Not meaningful for a bearing.location = 'supported' calculation (stage-2-contract.md 'Decisions' item 1).",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.static_load_factor_x",
+    displayName: "Static equivalent load radial factor",
+    symbol: "X0",
+    definition:
+      "Radial-load factor for the static equivalent load formula (P0 = X0*Fr + Y0*Fa), from the specific bearing's own catalog dimensions table.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.static_load_factor_y",
+    displayName: "Static equivalent load axial factor",
+    symbol: "Y0",
+    definition:
+      "Axial-load factor for the static equivalent load formula (P0 = X0*Fr + Y0*Fa), from the specific bearing's own catalog dimensions table. Not meaningful for a bearing.location = 'supported' calculation.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.bore_diameter",
+    displayName: "Support bearing bore diameter",
+    symbol: "d",
+    definition:
+      "Inner (bore) diameter from the specific support bearing's own catalog data. Reported only in 0.1.0, not evaluated against an actual shaft diameter -- a support bearing's bore is manufactured to one specific matched shaft diameter, not a clamping range (stage-2-contract.md 'Decisions').",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.outside_diameter",
+    displayName: "Support bearing outside diameter",
+    symbol: "D",
+    definition:
+      "Outer diameter from the specific support bearing's own catalog data. Reported only in 0.1.0, for the same reason bearing.bore_diameter is.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.preload",
+    displayName: "Support bearing preload",
+    symbol: "F0",
+    definition:
+      "Factory-set preload of the candidate support bearing, from its own catalog data where the manufacturer publishes it (THK's own fixed-side angular contact bearing ships with 'an adjusted preload' -- stage-1-spec.md item 4). Reported only; no source read gives a pass/fail criterion for preload amount.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    defaultPolicy: { kind: "optional" },
+  }),
+  defineParameter({
+    id: "bearing.static_safety_factor_minimum",
+    displayName: "Minimum required static safety factor",
+    symbol: "S0_min",
+    definition:
+      "Minimum acceptable bearing.static_safety_factor for this axis/application, engineer-supplied with no built-in default. jp.ntn.rolling_bearings_handbook Table 6.4 gives lower-limit reference values by operating condition and bearing type (ball bearings: 2 for 'high rolling precision required', 1 for 'normal rolling precision required'), but only one source's own numbers were read this session -- the same 'required input, no built-in default' treatment screw.static_safety_factor_minimum, guide.static_safety_factor_minimum, and coupling.service_factor already received, extended here even without a second source's own disagreeing numbers to record (stage-2-contract.md 'Decisions' item 5).",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.actual_radial_load",
+    displayName: "Actual radial load",
+    symbol: "Fr",
+    definition:
+      "Actual radial load on the candidate support bearing for a declared load case, engineer-supplied -- no released upstream parameter cleanly represents it (unlike axial load, which reuses motion.axis.thrust_force directly). See stage-2-contract.md 'Decisions' item 2 and stage-1-spec.md 'Evidence Gaps'.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    loadCases: bearingCases,
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bearing.dynamic_equivalent_load",
+    displayName: "Support bearing dynamic equivalent load",
+    symbol: "P",
+    definition:
+      "Computed dynamic equivalent load for a declared load case: P = X*Fr + Y*Fa (jp.ntn.rolling_bearings_handbook eq. 7.10), using bearing.dynamic_load_factor_x/y, bearing.actual_radial_load, and (for a fixed-location bearing) motion.axis.thrust_force.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    loadCases: bearingCases,
+  }),
+  defineParameter({
+    id: "bearing.nominal_life",
+    displayName: "Support bearing nominal (L10) fatigue life",
+    symbol: "L10",
+    definition:
+      "Nominal (L10) fatigue life in revolutions for a declared load case: the life expected to be reached by 90% of a sufficiently large number of identical bearings at the given dynamic load rating under the dynamic equivalent load (jp.ntn.rolling_bearings_handbook eq. 6.1).",
+    valueType: "quantity",
+    canonicalUnit: "rev",
+    displayUnits: ["rev"],
+    range: { min: 0, unit: "rev" },
+    loadCases: bearingCases,
+  }),
+  defineParameter({
+    id: "bearing.nominal_life_hours",
+    displayName: "Support bearing nominal (L10) fatigue life in hours",
+    symbol: "L10h",
+    definition:
+      "bearing.nominal_life converted to operating hours using the case rotational speed (jp.ntn.rolling_bearings_handbook eq. 6.2).",
+    valueType: "quantity",
+    canonicalUnit: "s",
+    displayUnits: [...lifeDistanceOrHoursDisplay],
+    range: { min: 0, unit: "s" },
+    loadCases: bearingCases,
+  }),
+  defineParameter({
+    id: "bearing.static_safety_factor",
+    displayName: "Support bearing static safety factor",
+    symbol: "S0",
+    definition:
+      "Computed static safety factor for a declared load case: bearing.static_load_rating divided by the static equivalent load (P0 = X0*Fr + Y0*Fa). Checked against bearing.static_safety_factor_minimum.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: bearingCases,
+  }),
+  defineParameter({
+    id: "bearing.speed_safety_factor",
+    displayName: "Support bearing speed safety factor",
+    symbol: "fs_n",
+    definition:
+      "Computed speed margin for a declared load case: bearing.allowable_speed (with jp.ntn.rolling_bearings_handbook's own fL/fC correction applied when triggered) divided by the operating rotational speed for that case, derived from screw.lead and motion.axis.case_linear_velocity.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: bearingCases,
+  }),
+];
+
+/** All released parameter definitions for registry v1.7, in authored order. */
 export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...projectAndEnvironment,
   ...axisApplication,
@@ -1216,4 +1470,5 @@ export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...ballScrew,
   ...linearGuide,
   ...coupling,
+  ...supportBearing,
 ];

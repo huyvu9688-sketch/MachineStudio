@@ -168,6 +168,16 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     note: "A second, independent manufacturer selection-calculation method for the coupling module (Unit 4.5), explicitly stated as 'According to DIN 740 part 2'. Same required-torque base formula as KTR's (T_AN = 9550 * P_Drive / n), combined with its own branded shock/load factor (S_A, by drive type), temperature factor (S_v), and start factor (S_z) tables into T_KN >= T_AN * S_A * S_v * S_z -- structurally identical shape to KTR's method, different branded factor names and numeric ranges, the same 'two sources agree on shape, differ on specifics' relationship this project's other modules already treat as normal. Also gives an inertia/acceleration-based torque formula (T_AR >= J_L/(J_A+J_L) * T_AS * S_A >= alpha * J_L) and a torsional-resonant-frequency check (f_e = 1/(2*pi) * sqrt(C_T * (J_Masch+J_Mot)/(J_Masch*J_Mot))) neither KTR's document nor PMI/IKO-style catalogs give. Includes two full worked numerical examples at different power levels and service-factor scenarios (450 kW/980 rpm elastic coupling; 800 kW/980 rpm gear coupling). Read via a Canadian distributor mirror (drivecentre.ca) branded throughout as 'RW-AMERICA.COM'; content is R+W America's own, not the distributor's.",
   },
   {
+    id: asSourceDocumentId("jp.ntn.rolling_bearings_handbook"),
+    classification: "manufacturer_method",
+    title: "NTN Rolling Bearings Handbook",
+    authority: "NTN Corporation",
+    market: "JP",
+    access: "public",
+    officialUrl: "https://www.ntnglobal.com/en/products/catalog/pdf/9012E.pdf",
+    note: "General rolling-bearing selection methodology for the support-bearing module (Unit 4.6): basic rating life (L10, ISO 281 catalog method), dynamic/static equivalent load (P = X*Fr + Y*Fa), adjusted rating life (life adjustment factors a1/a2/a3), basic static load rating and allowable static equivalent load (safety factor So = C0/P0, with a lower-limit-value table by operating condition and bearing type), preload (fixed-position vs. fixed-pressure methods, standard preload amounts for duplex angular contact ball bearings), allowable speed (correction factors by load and by combined radial/axial load), and shaft/housing interface requirements (fixing methods, shoulder height and fillet radius, shaft/housing precision grades, allowable misalignment by bearing type). Cited catalog No. 9012E/E; both the ntnglobal.com and ntnamericas.com copies fetched this session are identically truncated after 'Reference material' (printed page 82) and do not include the handbook's own 'Bearing Life Calculation Examples' section its table of contents lists at printed page 84 -- a real, documented evidence gap, not yet resolved (see stage-1-spec.md 'Evidence Gaps').",
+  },
+  {
     id: asSourceDocumentId("jp.nbk.coupling_catalog"),
     classification: "manufacturer_method",
     title: "Flexible Couplings (ORIM VEXTA / NBK)",
@@ -331,5 +341,22 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     officialUrl:
       "https://www.orimvexta.co.jp/files/NBK/Document/1908ov78coupling.pdf",
     note: "Read directly 2026-08-09 via a Japanese distributor mirror (orimvexta.co.jp) after NBK's own domain (nbk1560.com) returned HTTP 403 on every page attempted this session, including non-catalog pages (a selection-procedure article and a terminology glossary) -- see this source's own document-level note.",
+  },
+  {
+    id: asSourceRevisionId(
+      "jp.thk.ball_screw_general_catalog@technico-mirror-2026-08-09",
+    ),
+    documentId: asSourceDocumentId("jp.thk.ball_screw_general_catalog"),
+    edition:
+      "Ball Screw General Catalog, 'Ball Screw Peripherals -- Support Unit' chapter (printed pages A15-313 through A15-322)",
+    officialUrl: "https://technico.com/pdf/Blog/15%20Ball%20Screw.pdf",
+    note: "tech.thk.com (this document's own officialUrl) returns HTTP 403 in this environment (context/progress-tracker.md 'Environment notes'); the Support Unit chapter (models EK, BK, FK, EF, BF, FF) read instead 2026-08-09 from this third-party distributor's mirror of the same THK catalog -- PDF page number equals the printed 'A15-' page number exactly for this mirror (confirmed by reading the divider page), a different offset than the jp.thk.example_ball_screw_selection@bondy-mirror-2026-08-09 revision's own bondy.dk mirror. Gives per-support-unit-model catalog/data-sheet values (fixed-side angular contact bearing: model no., basic dynamic load rating Ca, static permissible load, rigidity; supported-side deep-groove bearing: model no., basic dynamic/static load rating C/C0) and structure (fixed side = JIS Class 5 angular contact bearing, contact angle 30 degrees, DF/face-to-face configuration, adjusted preload; supported side = deep-groove ball bearing, floating). No bearing-life or safety-factor formula of its own -- see jp.ntn.rolling_bearings_handbook for that layer.",
+  },
+  {
+    id: asSourceRevisionId("jp.ntn.rolling_bearings_handbook@cat-9012e"),
+    documentId: asSourceDocumentId("jp.ntn.rolling_bearings_handbook"),
+    edition: "CAT. No. 9012-@/E",
+    officialUrl: "https://www.ntnglobal.com/en/products/catalog/pdf/9012E.pdf",
+    note: "Read directly 2026-08-09 from NTN's own domain (ntnglobal.com); cross-checked against an identical copy on ntnamericas.com the same session. Chapters 6 (Load Rating and Life), 7 (Bearing Load), 9 (Bearing Internal Clearance and Preload), 10 (Allowable Speed), and 15 (Shaft and Housing Design) read in full (printed pages 27-38, 45-53, 67-69). Both copies fetched are identically truncated after printed page 82/83 ('Reference material') and do not include the 'Bearing Life Calculation Examples' section the handbook's own table of contents lists at printed page 84 -- not yet resolved whether this is a persistent block or a one-off; retry with a different mirror before assuming it is permanent.",
   },
 ];
