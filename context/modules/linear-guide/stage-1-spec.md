@@ -349,17 +349,32 @@ own four-block arrangement — the moment is already fully expressed as
 unequal `P1`-`P4` values (item 6), so adding a further moment term would
 double-count it. IKO's formula folds a moment term directly into the
 per-block equivalent load *in addition to* whatever differential loading
-already exists, and requires series-specific conversion-factor tables
-(`kr`, `ka`, `X`, `Y`) this project does not have for any specific PMI or
-IKO product size — only the formula shape is confirmed, not a specific
-guide's own coefficients. **Not resolved here:** whether IKO's more
-elaborate formula would give a materially different answer than PMI's
-simpler one for the same four-block scenario, or whether they are two
-equally valid conventions for different guide-count arrangements the way
-`ball-screw`'s Rockford/THK buckling formulas are. `0.1.0`'s proposed scope
-(item 6, four-block arrangement) uses PMI's simpler, moment-already-
-captured form, since that is the form its own full worked example
-(item 8) verifies end to end.
+already exists.
+
+**Update (2026-08-09, Stage 4): resolved, with one correction to this
+item's own earlier reading.** `X`/`Y` is **not** a per-series table as first
+described above — IKO's own catalog Table 4 (page 7) is a universal
+two-row table keyed only on which of the (already `kr`/`ka`-converted)
+radial or lateral load dominates, the same two rows for every series. Only
+`kr`/`ka` (Table 3) and their static counterparts `kOr`/`kOa` (Table 5) are
+series/size-specific, and the catalog prints those directly — this project
+does hold them, for every series IKO lists.
+`lib/modules/linear-guide/0.1.0/iko-benchmark.ts` implements IKO's own
+formula as a genuine second computation and reproduces IKO's own worked
+"Example 1" (a two-rail/four-block scenario, this module's own `0.1.0`
+arrangement) end to end. The open question is answered, at least for a
+symmetric-conversion-factor series (`kr = ka = 1`, matching Example 1's own
+`ME` size bucket): IKO's `P = X·Frw + Y·Faw` reduces algebraically to
+`PMI's PE − 0.4·min(|Fr|, |Fa|)`, so IKO's figure is always the lower of
+the two — a real, bounded, now-quantified disagreement (5%-20% on Example
+1's own four slide units), not an equally-valid-convention question left
+open. See `validation/linear-guide/0.1.0.md` "Independent Method or Tool
+Comparison" for the full evidence. `0.1.0`'s proposed scope (item 6,
+four-block arrangement) still uses PMI's simpler, moment-already-captured
+form, since that is the form its own full worked example (item 8) verifies
+end to end and the form Stage 2 already resolved to adopt (see "Stage 2
+Entry Criteria" item 4 below) — the benchmark is a comparison, not a
+replacement.
 
 ### 8. Full worked numerical example (PMI, Chapter 9)
 
@@ -558,11 +573,17 @@ Verification Confidence"):
   module). Two independent sources (PMI, IKO) already corroborate the
   life-formula shape and life basis; a third would strengthen but is not
   required to proceed to Stage 2.
-- **Not resolved:** the equivalent-load methodology discrepancy (item 7)
-  and the static-safety-factor value-range discrepancy (item 3) — both
-  recorded as genuine, unresolved disagreements between the two sources,
-  the same treatment `ball-screw`'s own buckling-constant and equivalent-
-  load discrepancies received rather than silently picking one.
+- **Resolved 2026-08-09 (Stage 4):** the equivalent-load methodology
+  discrepancy (item 7) — reading IKO's own catalog Tables 3-5 directly
+  (rather than the earlier, mistaken "per-series `X`/`Y`" description)
+  found this project already held everything needed to implement IKO's own
+  formula as a genuine second computation. See item 7's own update and
+  `validation/linear-guide/0.1.0.md`.
+- **Still not resolved:** the static-safety-factor value-range discrepancy
+  (item 3) — PMI's and IKO's standard-value tables still give different
+  ranges for nominally the same operating conditions; neither is adopted,
+  the same treatment `ball-screw`'s own buckling-constant discrepancy
+  received rather than silently picking one.
 
 ## Stage 2 Entry Criteria
 
@@ -616,3 +637,72 @@ machine-checked equivalence to the source-faithful functions. Stage 3 (a
 package) is no longer blocked; it needs ordinary module-package work.
 Production release stays gated behind Unit 4.1 regardless
 (`context/implementation-map.md` Milestone 4 header).
+
+**Update (2026-08-09, cont'd — Stage 3 done):** a full `ModulePackage` now
+wraps the kernel (`lib/modules/linear-guide/0.1.0/`, see its `README.md`),
+and registry `1.5.0` released the `guide.*` parameters. Three items in this
+document are affected:
+
+- **Stage 2 entry criterion 2** (new `guide.*` registry parameters) is now
+  genuinely closed. The Stage 2 contract decided them, but they reached
+  `lib/engine/parameters/definitions.ts` only at Stage 3.
+- **Entry criterion 3** (which static-safety-factor table to expose) is
+  resolved the way item 3 anticipated: neither table is adopted. The
+  minimum is a required input with no default, and both sources' ranges are
+  recorded in the parameter's own definition text as reference points.
+- **Entry criterion 4** (PMI's simpler equivalent-load form vs. IKO's) is
+  resolved as PMI's, as the proposed scope already indicated — recorded as
+  a documented deviation in the module's validation record, not silently.
+
+The **"Trace Contract (Proposed)"** above is implemented with two deliberate
+differences: there is no `mean-load` step (no distance weighting and no
+mean-load output are in the Stage 2 contract), and a `guide-frame` step is
+added ahead of the block-load steps. Stage 1 did not anticipate the latter
+because it did not yet know this module would consume a resolved
+force/moment vector rather than PMI's own force-at-an-offset inputs; the
+mapping carries real sign choices, so a report must show it.
+
+**Update (2026-08-09, cont'd — Stage 4 reference examples done):** PMI's
+Chapter 9 worked example (item 8) is now reproduced end to end —
+`lib/modules/linear-guide/0.1.0/pmi-chapter-9.ts`,
+`validation/linear-guide/0.1.0.md`. Its carriage numbering maps onto the
+generic `P1`-`P4` convention as `No.1`-`No.4` = `P3`, `P4`, `P1`, `P2`,
+derived from the printed sign patterns rather than the illustration.
+
+**Two corrections to this document arise from that reproduction, and both
+matter for anyone reading item 6 above:**
+
+1. **`l1` is the carriage spacing along the direction of travel; `l2` is
+   the transverse rail spacing.** Item 6 above describes them the other way
+   round ("rail spacing `l1`, block spacing `l2`"), and the Stage 1 kernel
+   inherited the error in its field names. The formulas transcribed in item
+   6 are correct as printed; only the gloss naming the two spacings was
+   wrong. See `context/modules/linear-guide/stage-2-contract.md` "Stage 4"
+   for the evidence.
+2. **The inertia-phase lateral load is signed, not a single shared
+   magnitude.** Item 6 records B23 as printing
+   `P1T=P2T=P3T=P4T` with "no differential sign", which is a faithful
+   reading of that diagram — but PMI's own Chapter 9 prints the same
+   magnitudes with alternating signs that sum to zero. The general diagram
+   states a sizing magnitude; the worked example states the equilibrium
+   distribution. Equivalent load takes `|PT|`, so no result in PMI's own
+   example differs between the two readings.
+
+Item 6 is left as transcribed, with these corrections recorded here rather
+than edited into it, so the original reading and the correction both stay
+visible.
+
+One further finding: **PMI's section 9.1.3 contradicts itself**, printing
+two lateral values whose signs oppose their own stated formulas. The other
+three phases are self-consistent and the module follows the formulas; see
+the validation record for the full argument.
+
+**Update (2026-08-09, cont'd — Stage 4's independent benchmark closed):**
+`lib/modules/linear-guide/0.1.0/iko-benchmark.ts` implements IKO's own
+dynamic/static equivalent-load method as a genuine second computation,
+reproducing IKO's own worked "Example 1" end to end. See item 7's own
+update above and `validation/linear-guide/0.1.0.md` "Independent Method or
+Tool Comparison" for the full evidence and the resolved methodology
+comparison against PMI's own form. This module's own Stage 4 gate is now
+clear; release still waits on Unit 4.1's Definition of Done, which gates
+every Milestone 4 module regardless.

@@ -30,10 +30,10 @@ describe("resolveHorizontalUniformBlockLoads", () => {
   it("distributes force equally when the load is centered", () => {
     const result = resolveHorizontalUniformBlockLoads({
       forceN: 400,
-      railSpacingM: 0.5,
-      blockSpacingM: 0.3,
-      loadOffsetRailM: 0,
-      loadOffsetBlockM: 0,
+      spacingL1M: 0.5,
+      spacingL2M: 0.3,
+      offsetL3M: 0,
+      offsetL4M: 0,
     });
     expect(result.block1.radialN).toBeCloseTo(100, 9);
     expect(result.block2.radialN).toBeCloseTo(100, 9);
@@ -44,10 +44,10 @@ describe("resolveHorizontalUniformBlockLoads", () => {
   it("conserves total force across all four blocks regardless of offset", () => {
     const result = resolveHorizontalUniformBlockLoads({
       forceN: 1000,
-      railSpacingM: 0.6,
-      blockSpacingM: 0.4,
-      loadOffsetRailM: 0.1,
-      loadOffsetBlockM: 0.05,
+      spacingL1M: 0.6,
+      spacingL2M: 0.4,
+      offsetL3M: 0.1,
+      offsetL4M: 0.05,
     });
     const sum =
       result.block1.radialN +
@@ -60,10 +60,10 @@ describe("resolveHorizontalUniformBlockLoads", () => {
   it("produces no lateral component (this installation has none)", () => {
     const result = resolveHorizontalUniformBlockLoads({
       forceN: 500,
-      railSpacingM: 0.5,
-      blockSpacingM: 0.3,
-      loadOffsetRailM: 0.05,
-      loadOffsetBlockM: 0.02,
+      spacingL1M: 0.5,
+      spacingL2M: 0.3,
+      offsetL3M: 0.05,
+      offsetL4M: 0.02,
     });
     expect(result.block1.lateralN).toBe(0);
     expect(result.block4.lateralN).toBe(0);
@@ -72,17 +72,17 @@ describe("resolveHorizontalUniformBlockLoads", () => {
   it("matches the printed sign pattern: block1 and block4 rise together as loadOffsetRailM increases", () => {
     const base = resolveHorizontalUniformBlockLoads({
       forceN: 400,
-      railSpacingM: 0.5,
-      blockSpacingM: 0.3,
-      loadOffsetRailM: 0,
-      loadOffsetBlockM: 0,
+      spacingL1M: 0.5,
+      spacingL2M: 0.3,
+      offsetL3M: 0,
+      offsetL4M: 0,
     });
     const offset = resolveHorizontalUniformBlockLoads({
       forceN: 400,
-      railSpacingM: 0.5,
-      blockSpacingM: 0.3,
-      loadOffsetRailM: 0.1,
-      loadOffsetBlockM: 0,
+      spacingL1M: 0.5,
+      spacingL2M: 0.3,
+      offsetL3M: 0.1,
+      offsetL4M: 0,
     });
     expect(offset.block1.radialN).toBeGreaterThan(base.block1.radialN);
     expect(offset.block4.radialN).toBeGreaterThan(base.block4.radialN);
@@ -94,19 +94,19 @@ describe("resolveHorizontalUniformBlockLoads", () => {
     expect(() =>
       resolveHorizontalUniformBlockLoads({
         forceN: 400,
-        railSpacingM: 0,
-        blockSpacingM: 0.3,
-        loadOffsetRailM: 0,
-        loadOffsetBlockM: 0,
+        spacingL1M: 0,
+        spacingL2M: 0.3,
+        offsetL3M: 0,
+        offsetL4M: 0,
       }),
     ).toThrow(LinearGuideInputError);
     expect(() =>
       resolveHorizontalUniformBlockLoads({
         forceN: 400,
-        railSpacingM: 0.5,
-        blockSpacingM: -0.1,
-        loadOffsetRailM: 0,
-        loadOffsetBlockM: 0,
+        spacingL1M: 0.5,
+        spacingL2M: -0.1,
+        offsetL3M: 0,
+        offsetL4M: 0,
       }),
     ).toThrow(LinearGuideInputError);
   });
@@ -116,9 +116,9 @@ describe("resolveVerticalUniformBlockLoads", () => {
   it("distributes radial and lateral shares equally across all four blocks", () => {
     const result = resolveVerticalUniformBlockLoads({
       forceN: 300,
-      railSpacingM: 0.5,
-      loadOffsetRadialM: 0.2,
-      loadOffsetLateralM: 0.1,
+      spacingL1M: 0.5,
+      offsetL2M: 0.2,
+      offsetL4M: 0.1,
     });
     expect(result.block1).toEqual(result.block2);
     expect(result.block2).toEqual(result.block3);
@@ -131,9 +131,9 @@ describe("resolveVerticalUniformBlockLoads", () => {
     expect(() =>
       resolveVerticalUniformBlockLoads({
         forceN: 300,
-        railSpacingM: 0,
-        loadOffsetRadialM: 0.2,
-        loadOffsetLateralM: 0.1,
+        spacingL1M: 0,
+        offsetL2M: 0.2,
+        offsetL4M: 0.1,
       }),
     ).toThrow(LinearGuideInputError);
   });
@@ -145,9 +145,9 @@ describe("resolveHorizontalInertiaBlockLoads", () => {
     gravityMps2: 9.80665,
     accelerationMps2: 4,
     decelerationMps2: 2,
-    railSpacingM: 0.5,
-    loadOffsetRadialM: 0.3,
-    loadOffsetLateralM: 0.1,
+    spacingL1M: 0.5,
+    offsetL3M: 0.3,
+    offsetL4M: 0.1,
   } as const;
 
   it("gives every block an equal share in uniform motion", () => {
@@ -227,9 +227,9 @@ describe("resolveVerticalInertiaBlockLoads", () => {
     gravityMps2: 9.80665,
     accelerationMps2: 3,
     decelerationMps2: 3,
-    railSpacingM: 0.5,
-    loadOffsetRadialM: 0.2,
-    loadOffsetLateralM: 0.1,
+    spacingL1M: 0.5,
+    offsetL3M: 0.2,
+    offsetL4M: 0.1,
   } as const;
 
   it("orders phase magnitudes as acceleration > uniform > deceleration for equal rates", () => {
@@ -262,7 +262,7 @@ describe("resolveVerticalInertiaBlockLoads", () => {
     expect(() =>
       resolveVerticalInertiaBlockLoads({
         ...base,
-        railSpacingM: -0.1,
+        spacingL1M: -0.1,
         phase: "uniform",
       }),
     ).toThrow(LinearGuideInputError);
@@ -283,20 +283,23 @@ describe("resolveBlockLoadsFromResultant subsumes the offset-based forms", () =>
 
     const offsetBased = resolveHorizontalUniformBlockLoads({
       forceN: F,
-      railSpacingM: l1,
-      blockSpacingM: l2,
-      loadOffsetRailM: l3,
-      loadOffsetBlockM: l4,
+      spacingL1M: l1,
+      spacingL2M: l2,
+      offsetL3M: l3,
+      offsetL4M: l4,
     });
     const momentBased = resolveBlockLoadsFromResultant({
       normalForceN: F,
       lateralForceN: 0,
-      momentLateralNm: 0,
+      yawMomentNm: 0,
       // The whole point: the offsets enter only as F*offset, i.e. a moment.
-      momentAcrossRailsNm: F * l3,
-      momentAlongRailNm: F * l4,
-      railSpacingM: l1,
-      blockSpacingM: l2,
+      // l3 is an along-travel offset, so F*l3 is a pitching moment reacted
+      // over PMI's l1 -- the carriage spacing along travel. l4 is transverse,
+      // so F*l4 is a rolling moment reacted over PMI's l2, the rail spacing.
+      pitchMomentNm: F * l3,
+      rollMomentNm: F * l4,
+      blockSpacingM: l1,
+      railSpacingM: l2,
     });
 
     expect(momentBased).toEqual(offsetBased);
@@ -315,22 +318,24 @@ describe("resolveBlockLoadsFromResultant subsumes the offset-based forms", () =>
       accelerationMps2: a1,
       decelerationMps2: 2,
       phase: "acceleration",
-      railSpacingM: l1,
-      loadOffsetRadialM: l3,
-      loadOffsetLateralM: 0,
+      spacingL1M: l1,
+      offsetL3M: l3,
+      offsetL4M: 0,
     });
-    // B23's own printed sign pattern lowers blocks 1 and 4 during
-    // acceleration, the opposite of B17's, so the equivalent moment is
-    // negative in this kernel's stated sign convention -- a sign choice,
-    // not a discrepancy between the two sources.
+    // B23's l3 is the load's HEIGHT, not a plan offset, so an axial inertia
+    // force acting there is a pitching moment -- reacted over PMI's l1, the
+    // carriage spacing along travel. B23's printed sign pattern lowers blocks
+    // 1 and 4 during acceleration, the opposite of B17's, so the equivalent
+    // moment is negative in this kernel's stated sign convention: a sign
+    // choice, not a discrepancy between the two diagrams.
     const momentBased = resolveBlockLoadsFromResultant({
       normalForceN: m * g,
       lateralForceN: 0,
-      momentLateralNm: 0,
-      momentAcrossRailsNm: -(m * a1 * l3),
-      momentAlongRailNm: 0,
-      railSpacingM: l1,
-      blockSpacingM: 0.4,
+      yawMomentNm: 0,
+      pitchMomentNm: -(m * a1 * l3),
+      rollMomentNm: 0,
+      blockSpacingM: l1,
+      railSpacingM: 0.4,
     });
 
     expect(momentBased.block1.radialN).toBeCloseTo(
@@ -358,15 +363,17 @@ describe("resolveBlockLoadsFromResultant subsumes the offset-based forms", () =>
     const result = resolveBlockLoadsFromResultant({
       normalForceN: 0,
       lateralForceN: 0,
-      momentLateralNm: 0,
-      momentAcrossRailsNm: 120,
-      momentAlongRailNm: 0,
+      yawMomentNm: 0,
+      pitchMomentNm: 120,
+      rollMomentNm: 0,
       railSpacingM: 0.5,
       blockSpacingM: 0.4,
     });
     expect(Number.isFinite(result.block1.radialN)).toBe(true);
-    expect(result.block1.radialN).toBeCloseTo(120 / (2 * 0.5), 9);
-    expect(result.block2.radialN).toBeCloseTo(-120 / (2 * 0.5), 9);
+    // A pitching moment loads blocks 1 and 4 and unloads 2 and 3, over the
+    // carriage spacing along travel.
+    expect(result.block1.radialN).toBeCloseTo(120 / (2 * 0.4), 9);
+    expect(result.block2.radialN).toBeCloseTo(-120 / (2 * 0.4), 9);
     // A pure moment produces no net force: the four blocks must cancel.
     const sum =
       result.block1.radialN +
@@ -380,9 +387,9 @@ describe("resolveBlockLoadsFromResultant subsumes the offset-based forms", () =>
     const result = resolveBlockLoadsFromResultant({
       normalForceN: 800,
       lateralForceN: 0,
-      momentLateralNm: 0,
-      momentAcrossRailsNm: 60,
-      momentAlongRailNm: 25,
+      yawMomentNm: 0,
+      rollMomentNm: 60,
+      pitchMomentNm: 25,
       railSpacingM: 0.5,
       blockSpacingM: 0.4,
     });
@@ -399,9 +406,9 @@ describe("resolveBlockLoadsFromResultant subsumes the offset-based forms", () =>
       resolveBlockLoadsFromResultant({
         normalForceN: 800,
         lateralForceN: 0,
-        momentLateralNm: 0,
-        momentAcrossRailsNm: 0,
-        momentAlongRailNm: 0,
+        yawMomentNm: 0,
+        rollMomentNm: 0,
+        pitchMomentNm: 0,
         railSpacingM: 0,
         blockSpacingM: 0.4,
       }),

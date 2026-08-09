@@ -85,6 +85,12 @@ const UNIT_LIST: readonly UnitDefinition[] = [
   def("m", Dimensions.length, 1, { siCoherent: true }),
   def("mm", Dimensions.length, 1e-3),
   def("cm", Dimensions.length, 1e-2),
+  // Added for the linear-guide module (Unit 4.4): both PMI and IKO publish
+  // rolling-guide nominal life as a travel distance in km, not revolutions
+  // (context/modules/linear-guide/stage-1-spec.md item 4). Canonical storage
+  // stays in metres; this is the display unit that makes a ~5e4 km life
+  // readable.
+  def("km", Dimensions.length, 1e3),
   def("in", Dimensions.length, IN_TO_M),
   def("ft", Dimensions.length, FT_TO_M),
   // Time

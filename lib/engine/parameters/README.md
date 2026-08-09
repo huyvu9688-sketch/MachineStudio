@@ -69,7 +69,10 @@ specification, which does not exist yet; releasing immutable IDs before the
 semantics are pinned would be inventing behavior. They are **approved pending
 proposals**, released per module at its Stage-2 parameter contract (see
 context/ai-workflow-rules.md "New Module Workflow"). The upstream motion outputs
-above already serve as those modules' shared input ports.
+above already serve as those modules' shared input ports. Two of the five have
+since been released on exactly that schedule — `screw.*` in v1.3 and `guide.*`
+in v1.5, each at its own module's Stage-2 contract; coupling, support-bearing,
+and drive-train remain pending.
 
 The `curve`, `load_spectrum`, `table`, `material_ref`, and `component_ref` value
 families are likewise modeled as parameters only when a module first needs them.
@@ -96,6 +99,33 @@ per-segment port exists, because the registry has no `table`-valued parameter
 support yet (`ParameterValueType` in `./types.ts` is `quantity |
 vector_quantity | enum | boolean`); adding that is a separate generic-platform
 capability, not bundled into a single module's parameter contract.
+
+Registry v1.3 adds two axis-scope per-case inputs (`case_time_fraction`,
+`case_linear_velocity`) and the full `screw.*` group
+(`context/modules/ball-screw/stage-2-contract.md`).
+
+Registry v1.4 adds `motion.axis.resultant_force` and
+`motion.axis.resultant_moment` — the full three-component force and moment
+vectors `axis-load-cases`' kernel already resolved internally but exposed only
+as the axial `thrust_force` scalar. Added for `linear-guide`, the first
+downstream consumer that needs the complete guide-reference-point load
+(`context/modules/linear-guide/stage-1-spec.md` "A Real, Already-Documented
+Dependency Gap").
+
+Registry v1.5 adds the `guide.*` group for `linear-guide`
+(`context/modules/linear-guide/stage-2-contract.md`): rail/block spacing,
+static and dynamic load ratings, rolling-element type, preload grade, the
+`fW`/`fH`/`fT` life correction factors, a required static-safety-factor
+minimum, and three per-case outputs (equivalent load, static safety factor,
+nominal life). Two deliberate omissions, each because the `0.1.0` scope does
+not consume it: a static/dynamic **moment rating** (the two-rail arrangement
+expresses moment as differential per-block loading instead), and a
+**dynamic-load-rating basis** qualifier of the kind `screw.*` needs — PMI and
+IKO both publish rolling-guide life as travel distance, so there is no
+revolutions/distance ambiguity to record. `guide.nominal_life` is stored
+canonically in metres and displayed in `km` (a unit this release adds to the
+unit registry), the same canonical-SI/convenient-display split
+`screw.nominal_life_hours` already uses.
 
 ## Parameter proposal checklist
 

@@ -35,8 +35,8 @@ same work, two labels):
 - Phase 2+ → after MVP
 
 **Health:** `npm run verify` green (format, lint 0 warnings, typecheck 0
-errors, 777 tests passed / 204 database-gated skips, build clean).
-Production dependencies audit clean.
+errors, 917 tests passed / 204 database-gated skips, build clean).
+Production dependencies audit clean. Parameter registry at `1.5.0`.
 
 ---
 
@@ -123,71 +123,87 @@ codebase); workflow role integration stays not-applicable until Unit 4.8
 exists. No module is registered; release stays gated behind Unit 4.1
 regardless.
 
-Unit 4.4 — `linear-guide`. Stage 1 spec drafted 2026-08-09, the next module
-in the roadmap's own Phase 1B order (same parallel-work allowance already
-used for Units 4.2-4.3; see `context/modules/linear-guide/stage-1-spec.md`).
-Two independent manufacturer sources read directly: PMI's *Linear Guideway*
-catalog (via a distributor mirror, `bearing.net.au`) with a complete worked
-numerical example covering every required check end to end, and IKO's
-*Linear Way* catalog (read from IKO's own domain) — the first source in
-this project to directly cite ISO 14728-1/14728-2 for the load-rating/life
-formulas, rather than only a WebSearch-synthesized paraphrase. The two
-sources agree on life-formula shape and (distance-km, not revolution)
-basis, but disagree on the equivalent-load formula's complexity and on
-static-safety-factor standard values — both recorded, not resolved.
+Unit 4.4 — `linear-guide`. **Stages 1-3 done 2026-08-09**, drafted under the
+same parallel-work allowance as Units 4.2-4.3. Stage 1 spec:
+`context/modules/linear-guide/stage-1-spec.md` — two independent
+manufacturer sources read directly (PMI's *Linear Guideway* catalog via a
+`bearing.net.au` mirror, with a complete worked example; IKO's *Linear Way*
+catalog from IKO's own domain, the first source in this project to cite ISO
+14728-1/14728-2 directly). They agree on life-formula shape and the
+distance-km basis, and disagree on equivalent-load complexity and
+static-safety-factor standard values — both recorded, not resolved. Stage 2
+(`stage-2-contract.md`) registers the `guide.*` parameters and reuses
+`axis-load-cases`' resolved `resultant_force`/`resultant_moment` rather than
+re-deriving mass/gravity/acceleration; the reformulation question it raised
+(the kernel took a force-at-an-offset, `axis-load-cases` produces a
+force-and-moment) closed the same day, and `resolveBlockLoadsFromResultant`
+implements the general form with machine-checked equivalence to PMI's
+printed B17 and B23 sets. Stage 3: a full `ModulePackage` in
+`lib/modules/linear-guide/0.1.0/` — see that directory's `README.md`
+"Stage 3 package".
 
-**Both Stage 2 entry blockers resolved same day.** The real dependency gap
-this spec found — `axis-load-cases 0.1.0` already anticipated this module
-by name in its own Stage 1/2 documents ("the guide module, Unit 4.4, is not
-built") but exposed only the axial thrust-force scalar, not the full
-resolved force/moment vector this module needs — is now closed: registry
-`1.4.0` adds `motion.axis.resultant_force`/`resultant_moment` (both
-per-case `vector_quantity`) to `axis-load-cases 0.1.0`'s still-unregistered
-draft, built from values its kernel already computed internally
-(`lib/modules/axis-load-cases/0.1.0/README.md` "Resultant force/moment
-output ports"). A second re-verification pass against the PMI source
-images also caught and corrected a real transcription error in this
-document's own first draft (the inertia-phase formulas had used one shared
-acceleration rate instead of the source's own distinct `a1`/`a3`).
+Three things came out of Stage 3 that are not just wiring:
 
-**A Stage 1 kernel now exists**: `lib/modules/linear-guide/0.1.0/math.ts`
-implements block-load distribution for all four in-scope installation/
-motion combinations (horizontal/vertical x uniform/inertia), equivalent
-load, static safety factor, nominal life (ball-type, distance-basis),
-service life in hours, and mean load under a varying duty cycle — 29
-tests, all internal-consistency and boundary checks (PMI's own full worked
-example uses a bespoke geometry this session could not confidently map
-onto the generic formulas, so it is reserved for Stage 4, not guessed at).
+- **Stage 2's own last step had not actually been done.** The contract
+  decided the `guide.*` parameters but nothing wrote them into the
+  registry, so "Release the required parameter-registry version" was
+  outstanding. Registry `1.5.0` releases them (13 parameters, plus a `km`
+  unit for the life display). Doing it also surfaced that `1.4.0` was never
+  added to `PARAMETER_REGISTRY_SUPPORTED_VERSIONS` — it validated only
+  because the builder implicitly supports its own current version, so the
+  bump to `1.5.0` would have stranded `axis-load-cases`' manifest. Both
+  fixed, with a regression test.
+- **A decision Stage 2 did not reach: the `axis.v1` → guide-frame mapping**
+  (`frame.ts`), five sign/axis choices between the resolved force/moment
+  and the kernel's guide terms, checked end to end against PMI's printed
+  B17. One part is an assumption no input can validate (a vertical
+  installation needs the engineer's free `+Y` choice to be the in-plane
+  transverse direction), so it is reported on every calculation.
+- **Orientation selects no formula**, contradicting the Stage 2 contract's
+  own table. Gravity is already resolved upstream, so the distribution is
+  identical for both installations; the input stays for scope-checking
+  `inclined` and for the report. Asserted in a test; the contract is
+  corrected.
 
-**Stage 2 resolved same day**, including a real question it raised then
-closed. `context/modules/linear-guide/stage-2-contract.md` registers the
-new `guide.*` geometry/catalog parameters and confirms this module reuses
-`axis-load-cases`' resolved `resultant_force`/`resultant_moment` rather
-than re-deriving mass/gravity/acceleration. Drafting it found the kernel's
-functions take a force-at-a-geometric-offset while `axis-load-cases`
-produces a force-and-moment — related by `moment = force * offset`, but
-`offset = moment / force` is undefined for a pure moment with no
-accompanying force (a case `external_moment` can produce on its own), and
-it was unclear whether the substitution generalized past the one diagram
-confirmed with highest confidence.
+**Stage 4 (reference examples) done same day — and it found two real bugs.**
+PMI's Chapter 9 worked example is reproduced end to end
+(`lib/modules/linear-guide/0.1.0/pmi-chapter-9.ts`,
+`validation/linear-guide/0.1.0.md`): 64 printed figures — per-carriage
+radial and lateral loads across five motion phases, equivalent loads,
+governing static safety factor, mean loads, nominal lives — each to within
+the ±0.1 N the source prints.
 
-**Re-reading all four PMI diagrams together — rather than one at a time —
-closed it.** Every load-position offset in every in-scope diagram appears
-only inside a force-times-offset product, i.e. as a moment; the spacings
-in the denominators are guide geometry, never load position. So the
-substitution is exact for the radial distribution everywhere, and holds
-regardless of what the vertical diagram's own `l2`/`l4` mean physically
-(the item the Stage 1 spec had flagged as unconfirmed), since those enter
-only as moments too. `resolveBlockLoadsFromResultant` (new) implements the
-general form; `math.test.ts` asserts it reproduces the B17 and B23
-functions exactly and resolves the pure-moment case, so the subsumption is
-machine-checked rather than asserted (34 tests). One part did not reduce
-as cleanly and is recorded, not papered over: PMI prints an equal lateral
-magnitude on all four blocks with no differential sign and always divides
-by rail spacing, which reads as a per-block sizing magnitude rather than a
-signed equilibrium distribution — reproduced as printed, flagged for Stage
-4. No package/manifest/compute.ts yet, but Stage 3 is no longer blocked on
-an open question; it needs ordinary module-package work.
+- **The kernel had the yaw lever arm and the lateral sign pattern wrong.**
+  Root cause: the Stage 1 spec read PMI's `l1` as the rail spacing and `l2`
+  as the carriage spacing; they are reversed. So the recorded suspicion that
+  "PMI reacts a yawing moment across the rails, which is physically
+  impossible" was right about the physics and wrong about PMI — the source
+  was correct and this project misread its letters. Both fixed; the lever
+  arm changes results whenever the two spacings differ.
+- **PMI's section 9.1.3 contains a printing error** (two lateral values
+  transposed against their own formulas). The module follows the formulas;
+  no PMI result depends on it.
+- The carriage-numbering map Stage 1 declined to guess is now pinned from
+  printed sign patterns.
+
+**Stage 4's independent-benchmark item is now met (resolved 2026-08-09).**
+`lib/modules/linear-guide/0.1.0/iko-benchmark.ts` implements IKO's own
+dynamic/static equivalent-load method as a genuine second computation,
+reproducing IKO's own worked "Example 1" (a two-rail/four-block scenario,
+this module's own scope) end to end — `P1`-`P4`, `P01`-`P04`,
+`fs = 6.3`, and the ~4410 km / ~73,500 h rating life, all from IKO's own
+conversion-factor tables. This also corrected a misreading in the Stage 1
+spec: `X`/`Y` is a universal two-row class table, not per-series as first
+described — only `kr`/`ka` (and their static counterparts `kOr`/`kOa`) are
+series/size-specific, and the catalog prints those directly. The
+methodology question Stage 1 left open is answered for a symmetric-factor
+series (`kr = ka = 1`): IKO's figure is algebraically always PMI's figure
+minus `0.4 * min(|Fr|, |Fa|)`, a real 5-20% disagreement, neither form
+"corrected" toward the other. See `validation/linear-guide/0.1.0.md`
+"Independent Method or Tool Comparison". With this closed, the
+solo-validation reviewer-substitute policy is now invokable — this module's
+own Stage 4 gate is clear; release still waits on Unit 4.1's Definition of
+Done, which gates every Milestone 4 module regardless.
 
 ---
 
@@ -259,17 +275,14 @@ variable names.
    yet), and Stage 6 (release), sequentially gated behind Unit 4.1
    regardless. Optional parallel work; does not move Unit 4.1's critical
    path.
-6. Unit 4.4 (`linear-guide`): Stages 1-2 done, kernel done including the
-   general `resolveBlockLoadsFromResultant` integration form (see Active
-   work 2026-08-09). Next is Stage 3 — ordinary module-package work
-   (manifest, ports, input schema, compute, trace, checks, UI/report
-   schemas) wrapping the kernel and linking `axis-load-cases`'
-   `resultant_force`/`resultant_moment` into
-   `resolveBlockLoadsFromResultant`. One item deferred to Stage 4, not
-   blocking: whether the lateral lever arm should be block spacing rather
-   than rail spacing for a yaw-induced reaction (PMI prints rail spacing
-   throughout; reproduced as printed). Optional parallel work; does not
-   move Unit 4.1's critical path.
+6. Unit 4.4 (`linear-guide`): **Stages 1-4 done, including the independent
+   benchmark** (see Active work) — `iko-benchmark.ts` implements IKO's own
+   equivalent-load method as a genuine second computation, closing what was
+   this module's last own-merits gate. Stage 5 (generic UI/report schema —
+   already drafted at Stage 3 for this module, see its README — plus
+   workflow role integration and cross-module link compatibility tests) and
+   Stage 6 (release) remain, sequentially gated behind Unit 4.1 regardless.
+   Optional parallel work; does not move Unit 4.1's critical path.
 
 ---
 

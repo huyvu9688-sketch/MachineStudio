@@ -11,11 +11,18 @@
   match what `axis-load-cases` actually resolves — is now **resolved the
   same day** by re-reading all four PMI diagrams together instead of one at
   a time. See "The Open Question — RESOLVED" below.
-- Module status: Stage 1 kernel exists
-  (`lib/modules/linear-guide/0.1.0/math.ts`), extended the same day with
-  the general `resolveBlockLoadsFromResultant` form the resolution calls
-  for (34 tests). No package yet. This document does not release a
-  `ModulePackage`, register a module, or create a calculation run.
+- Module status: **Stage 3 done** (2026-08-09). A full `ModulePackage` wraps
+  the kernel in `lib/modules/linear-guide/0.1.0/` — see that directory's
+  `README.md` "Stage 3 package". Registry `1.5.0` released the `guide.*`
+  parameters this document decided. No module is registered
+  (`package.ts`, not `index.ts`), and Stage 4 has not started.
+- **Stage 2's own last step was outstanding until Stage 3.** This document
+  decided the `guide.*` parameters but nothing wrote them into
+  `lib/engine/parameters/definitions.ts`, so the registry version the New
+  Module Workflow's Stage 2 requires ("Release the required
+  parameter-registry version") had not actually been released. Stage 3 did
+  it as `1.5.0`. Two Stage 3 refinements to the table below came out of
+  that release and are recorded in "Stage 3 refinements" at the end.
 
 ## A Finding From Trying To Wire This Contract, Not Assumed In Advance
 
@@ -198,7 +205,7 @@ Reused without change from already-released definitions:
 
 | Purpose | Parameter |
 | --- | --- |
-| Installation orientation (selects horizontal vs. vertical block-load formula) | `motion.axis.orientation` |
+| Installation orientation (scope check and reporting — **not** a formula selector; see "Stage 3 refinements") | `motion.axis.orientation` |
 | Applied force at the guide reference point, per case | `motion.axis.resultant_force` |
 | Applied moment at the guide reference point, per case | `motion.axis.resultant_moment` |
 
@@ -228,3 +235,124 @@ directly.
 Stage 3 (a package) is no longer blocked on an unresolved question. What
 it still needs is ordinary module-package work: manifest, ports, input
 schema, compute, trace, checks, UI/report schemas.
+
+## Stage 3 refinements (2026-08-09) — what building the package changed here
+
+Three things this contract stated turned out to need correcting or
+sharpening once the package existed. Recorded here rather than left as a
+silent divergence between this document and the code.
+
+### 1. Orientation selects no formula
+
+This document's "Existing Parameter Mapping" table described
+`motion.axis.orientation` as selecting the horizontal vs. vertical
+block-load formula. It does not, and cannot: PMI needs two formula sets
+only because its own method re-derives gravity from mass, so the
+installation changes the arithmetic. Decision 1 above already committed
+this module to consuming a load in which gravity, friction, guide
+resistance, and external loads are *already* resolved — which makes the
+block-load distribution identical for both installations. The parameter
+stays a required input for two real reasons (rejecting the out-of-scope
+`inclined` case, and recording the installation on the report), and the
+table above is corrected. `package.test.ts` asserts the two orientations
+produce identical outputs under the same resolved load, so this is
+machine-checked rather than only argued.
+
+### 2. `guide.nominal_life` is stored in metres and displayed in km
+
+Decision 3's table gives this parameter's units as `km`, the unit both
+sources print. The released definition stores it canonically in `m` with
+`km` as its first display unit — the same canonical-SI/convenient-display
+split `screw.nominal_life_hours` already uses (canonical `s`, displayed in
+`h`). Nothing about the engineering changes; `km` was added to the unit
+registry for the display side.
+
+### 3. A new decision Stage 3 had to make: the frame mapping
+
+Decision 1 settled *that* this module consumes a resolved
+`(resultant_force, resultant_moment)` pair. It did not settle how a
+three-component `axis.v1` force and moment map onto the kernel's
+guide-frame terms — five sign and axis choices that this contract simply
+did not reach. `lib/modules/linear-guide/0.1.0/frame.ts` makes them, with
+the derivation written out per term, and `frame.test.ts` checks the whole
+chain against PMI's printed B17 by reconstructing that diagram's own
+scenario as a force at a position.
+
+One part of that mapping is an assumption that cannot be validated from the
+input: for a vertical installation, `axis.v1` leaves the `+Y` direction to
+the engineer, and this module needs that choice to be the in-plane
+transverse direction. It is reported as an assumption on every calculation
+rather than checked, because nothing in a resolved force vector reveals
+which transverse direction was picked.
+
+### Still open for Stage 4, unchanged
+
+The lateral lever arm (rail spacing vs. block spacing for a yaw-induced
+reaction) is untouched by Stage 3 — the package reproduces PMI as printed.
+Stage 3 did surface one more instance of the same pattern: PMI's *vertical*
+diagram (B19) likewise prints an equal magnitude on all four blocks and
+likewise divides by rail spacing, where the general form gives the
+equilibrium-correct signed distribution over the physically-reacting pair.
+The magnitudes agree, so the per-block equivalent load this module reports
+is identical either way — `frame.test.ts` asserts exactly that, which is
+why routing the vertical case through the general form is safe despite the
+sign difference. Worth putting to a second source alongside the lateral
+lever-arm question.
+
+## Stage 4 (2026-08-09): the lever-arm question, answered — and this
+## contract was wrong about which spacing PMI meant
+
+**Resolved. The yaw lever arm is the carriage spacing along travel.** The
+open item above is closed by reproducing PMI's own Chapter 9 worked example
+end to end (`lib/modules/linear-guide/0.1.0/pmi-chapter-9.ts`;
+`validation/linear-guide/0.1.0.md`).
+
+The answer came with a correction this contract needs to carry, because it
+invalidates the premise of the question as posed above. **PMI's `l1` is the
+carriage spacing along the direction of travel and `l2` is the transverse
+rail spacing — the reverse of what the Stage 1 spec recorded**, and the
+kernel inherited that reversal in its `railSpacingM` / `blockSpacingM`
+field names.
+
+So the suspicious observation that "PMI always divides the lateral term by
+rail spacing, even where a yaw reaction would physically act over the block
+spacing" was not PMI doing something physically impossible. PMI divides by
+`2*l1`, and `l1` is the carriage spacing — exactly the lever arm a yaw
+reaction acts over. **The source was right; this project's reading of its
+letters was wrong.** Keeping the item open rather than "correcting" PMI
+turned out to be the right call for the wrong reason.
+
+Evidence, strongest first:
+
+1. Chapter 9's lateral loads alternate sign across the *same* block pairs
+   its `/(2*l1)` radial term separates, and they sum to zero. Only pairs
+   separated along the direction of travel can balance a yawing moment.
+2. Chapter 9 divides the height-induced moments `m1*a1*l6` and `m2*a1*l5`
+   by `2*l1`. An axial force acting at a height is a pitching moment, which
+   only the fore/aft carriage pair can react.
+3. B23 does the same with its own `m*a1*l3/(2*l1)`, where `l3` is a height.
+
+### What changed in the code
+
+- The kernel's yaw term now divides by `2 * blockSpacingM`. This changes
+  computed results whenever the two spacings differ.
+- The four lateral block loads are now a **signed, zero-sum** distribution
+  rather than one shared magnitude. PMI's general diagrams print an unsigned
+  magnitude; Chapter 9 prints alternating signs. Equivalent load takes
+  `|PT|`, so this changes per-block sign reporting but not any output port.
+- The offset-based kernel functions' invented physical field names are
+  replaced with PMI's own letters (`spacingL1M`, `offsetL3M`, …), which is
+  what `math.ts`'s header always claimed they used.
+- The `guide.rail_spacing` and `guide.block_spacing` registry definitions
+  had the PMI cross-reference backwards and are corrected. Their primary
+  definitions — perpendicular-to-travel and along-travel — were always the
+  physically meaningful ones and are unchanged, so no released meaning
+  moved.
+
+### Still open after Stage 4
+
+The **independent benchmark** is not satisfied: IKO corroborates the
+formulas but has not been implemented as a second computation. That, not
+the lever arm, is now what blocks this module's release on its own merits.
+See `validation/linear-guide/0.1.0.md` "Independent Method or Tool
+Comparison".

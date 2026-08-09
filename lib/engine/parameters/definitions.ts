@@ -1,5 +1,5 @@
-// Released seed definitions for the canonical parameter registry v1.3 (Units
-// 1.3, 4.1 Stage 2, 4.2 Stage 2, and 4.3 Stage 2).
+// Released seed definitions for the canonical parameter registry v1.5 (Units
+// 1.3, 4.1 Stage 2, 4.2 Stage 2, 4.3 Stage 2, and 4.4 Stage 2).
 //
 // Scope of v1.0: the parameter groups that Phase 1A (axis application + motion
 // profile) concretely needs, plus the shared project/environment group. These
@@ -16,25 +16,26 @@
 // expose as ports — added for linear-guide (Unit 4.4), which needs the full
 // resolved force/moment vector at the guide reference point, not just the
 // axial thrust-force scalar (context/modules/linear-guide/stage-1-spec.md
-// "A Real, Already-Documented Dependency Gap").
+// "A Real, Already-Documented Dependency Gap"). v1.5 adds the full guide.*
+// group for linear-guide (context/modules/linear-guide/stage-2-contract.md).
 //
-// Deliberately NOT released here: the guide.*, coupling, support-bearing, and
-// drive-train parameter groups themselves. Their exact semantics (units,
-// qualifiers, frames) depend on each module's own Stage-2 parameter contract,
-// which does not exist yet even where a Stage-1 spec does (linear-guide).
-// Released parameter IDs are immutable (context/architecture.md;
-// context/code-standards.md "Canonical Parameters"), so those groups are
-// proposed and released per module at its Stage-2 parameter contract,
-// bumping the registry version. See ./README.md and the progress tracker.
-// The upstream motion outputs below (thrust force, peak velocity, etc.)
-// already serve as the transmission modules' shared input ports.
+// Deliberately NOT released here: the coupling, support-bearing, and
+// drive-train parameter groups. Their exact semantics (units, qualifiers,
+// frames) depend on each module's own Stage-2 parameter contract, which does
+// not exist yet for any of them. Released parameter IDs are immutable
+// (context/architecture.md; context/code-standards.md "Canonical
+// Parameters"), so those groups are proposed and released per module at its
+// Stage-2 parameter contract, bumping the registry version. See ./README.md
+// and the progress tracker. The upstream motion outputs below (thrust force,
+// peak velocity, etc.) already serve as the transmission modules' shared
+// input ports.
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.4.0";
+export const PARAMETER_REGISTRY_VERSION = "1.5.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -764,10 +765,183 @@ const ballScrew: readonly ParameterDefinition[] = [
   }),
 ];
 
-/** All released parameter definitions for registry v1.3, in authored order. */
+// --- Linear guide (Unit 4.4 Stage 2) ----------------------------------------
+// See context/modules/linear-guide/stage-2-contract.md. `linear-guide 0.1.0`
+// computes the `normal`/`peak` cases only, matching axis-load-cases' own
+// 0.1.0 scope restriction (the same reason screwCases above is two-valued).
+//
+// Deliberately not released here: a static/dynamic moment rating (PMI's
+// M0/MP/MY/MR, IKO's T0/TX/TY). `0.1.0`'s equivalent-load form
+// (PE = |PR| + |PT|, PMI's "two or more guideways" case) does not consume
+// one — the moment is already expressed as differential per-block loading.
+// A future single-rail ("mono rail") version would need it.
+
+const guideCases = ["normal", "peak"] as const;
+const lifeDistanceDisplay = ["km", "m"] as const;
+
+const linearGuide: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "guide.rail_spacing",
+    displayName: "Guide rail spacing",
+    symbol: "l_r",
+    definition:
+      "Distance between the two parallel guide rails, measured perpendicular to the direction of travel. The lever arm over which a rolling moment (about the travel axis) is reacted by the two rails. This is PMI's own l2, not its l1 — the letters are easy to get backwards, and reproducing PMI's Chapter 9 worked example is what settled which is which (lib/modules/linear-guide/0.1.0/pmi-chapter-9.ts).",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "guide.block_spacing",
+    displayName: "Guide block spacing",
+    symbol: "l_b",
+    definition:
+      "Distance between the two blocks/carriages mounted on one rail, measured along the direction of travel. The lever arm over which both a pitching moment (reacted radially) and a yawing moment (reacted laterally) are carried by the fore and aft carriage pairs. This is PMI's own l1, not its l2 — see guide.rail_spacing.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "guide.static_load_rating",
+    displayName: "Guide basic static load rating",
+    symbol: "C0",
+    definition:
+      "Basic static load rating of one guide block from the specific guide's own catalog data: the static load at which the sum of permanent deformation between raceway and rolling element reaches 0.0001 times the rolling-element diameter at the most-stressed contact point. IKO states this complies with ISO 14728-2; PMI describes the identical criterion without citing ISO by number.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "guide.dynamic_load_rating",
+    displayName: "Guide basic dynamic load rating",
+    symbol: "C",
+    definition:
+      "Basic dynamic load rating of one guide block from the specific guide's own catalog data, used by the nominal-life formula. Unlike a ball screw's rating (see screw.dynamic_load_rating_basis), a linear-guide rating has no basis ambiguity: PMI and IKO both express rolling-guide life as travel distance, so no revolutions/distance qualifier parameter is needed.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "guide.rolling_element_type",
+    displayName: "Guide rolling-element type",
+    symbol: "elem",
+    definition:
+      "Rolling-element type of the guide, which selects the life-formula exponent and distance basis: ball (e = 3, 50 km basis) or roller (e = 10/3, 100 km basis). Both PMI and IKO publish both branches; a released module version may implement only one of them.",
+    valueType: "enum",
+    enumId: "guide_rolling_element_type",
+    enumOptions: ["ball", "roller"],
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "guide.preload_grade",
+    displayName: "Guide preload grade",
+    symbol: "pre",
+    definition:
+      "Preload/clearance grade the specific candidate guide carries (PMI's FZ clearance, FC light, F0 medium, F1 heavy, F2 ultra-heavy). A catalog/selection fact the engineer supplies, not a value a module derives, and reported rather than evaluated pass/fail.",
+    valueType: "enum",
+    enumId: "guide_preload_grade",
+    enumOptions: ["clearance", "light", "medium", "heavy", "ultra_heavy"],
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "guide.load_factor",
+    displayName: "Guide load factor",
+    symbol: "fW",
+    definition:
+      "Load (speed/impact) correction factor applied to the guide life formula, PMI's and IKO's fW. Required with no built-in default: both sources publish a speed- and impact-keyed guidance range (PMI 1.0-1.2 smooth through 2.0-3.5 strong impact; IKO 1-1.2 smooth through 1.5-3 shock) rather than a single confirmed constant.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "guide.hardness_factor",
+    displayName: "Guide hardness factor",
+    symbol: "fH",
+    definition:
+      "Raceway-hardness correction factor applied to the guide life formula, PMI's fH. Defaults to 1.0, which is a statement about the guide's construction rather than a guessed physical value: PMI states its own guideways meet the reference raceway hardness, so the factor only departs from 1.0 for a softer non-catalog raceway.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(1, "ratio") },
+  }),
+  defineParameter({
+    id: "guide.temperature_factor",
+    displayName: "Guide temperature factor",
+    symbol: "fT",
+    definition:
+      "Operating-temperature correction factor applied to the guide life formula, PMI's fT. Defaults to 1.0, the value PMI's own table gives at or below the 100 degC reference condition; it degrades only above that.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(1, "ratio") },
+  }),
+  defineParameter({
+    id: "guide.static_safety_factor_minimum",
+    displayName: "Minimum required guide static safety factor",
+    symbol: "fs_min",
+    definition:
+      "Minimum acceptable static safety factor (fs = C0 / equivalent static load) the engineer requires for this application, supplied explicitly rather than assumed by the module. Both sources publish a standard-values table but they disagree on the ranges (PMI 1.0-1.3 normal / 2.0-3.0 impact for a regular industrial machine; IKO 1-3 normal / 3-5 with vibration and shock for a ball-type Linear Way), so neither is adopted as a built-in default — the same treatment screw.static_safety_factor_minimum received.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "guide.equivalent_load",
+    displayName: "Guide equivalent load",
+    symbol: "PE",
+    definition:
+      "Equivalent load on the governing (most heavily loaded) guide block for a declared load case, per PMI's two-or-more-guideways form PE = |PR| + |PT|. No separate moment term is added: in a two-rail arrangement the moment is already expressed as differential loading between blocks. Per-block detail is reported in the calculation trace, not on this port.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    qualifiers: { bound: "required" },
+    loadCases: guideCases,
+  }),
+  defineParameter({
+    id: "guide.static_safety_factor",
+    displayName: "Guide static safety factor",
+    symbol: "fs",
+    definition:
+      "Computed static safety factor of the governing guide block for a declared load case: fs = guide.static_load_rating / guide.equivalent_load. Checked against guide.static_safety_factor_minimum.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: guideCases,
+  }),
+  defineParameter({
+    id: "guide.nominal_life",
+    displayName: "Guide nominal life",
+    symbol: "L",
+    definition:
+      "Nominal (rated) life of the governing guide block for a declared load case, expressed as travel distance rather than revolutions — the basis both PMI and IKO publish for rolling guides, matching how a guide physically wears. Stored canonically in metres and displayed in km (the unit both catalogs print), the same canonical-SI/convenient-display split screw.nominal_life_hours uses.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lifeDistanceDisplay],
+    range: { min: 0, unit: "m" },
+    loadCases: guideCases,
+  }),
+];
+
+/** All released parameter definitions for registry v1.5, in authored order. */
 export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...projectAndEnvironment,
   ...axisApplication,
   ...motionProfile,
   ...ballScrew,
+  ...linearGuide,
 ];

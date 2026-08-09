@@ -67,9 +67,21 @@ describe("parameter registry compatibility", () => {
 });
 
 describe("released registry", () => {
-  it("loads every seed definition and is version 1.4.0", () => {
-    expect(PARAMETER_REGISTRY.version).toBe("1.4.0");
+  it("loads every seed definition and is version 1.5.0", () => {
+    expect(PARAMETER_REGISTRY.version).toBe("1.5.0");
     expect(listParameters().length).toBe(PARAMETER_DEFINITIONS.length);
+  });
+
+  it("still serves every historical registry version an unreleased draft package targets", () => {
+    // Every already-authored manifest pins an exact historical target and is
+    // immutable once released, so bumping the current version must not strand
+    // one. 1.4.0 in particular was only ever served implicitly, by
+    // buildParameterRegistry adding its own current version to the supported
+    // set — it became a real entry in
+    // PARAMETER_REGISTRY_SUPPORTED_VERSIONS only when 1.5.0 displaced it.
+    for (const target of ["1.0.0", "1.3.0", "1.4.0", "1.5.0"]) {
+      expect(PARAMETER_REGISTRY.supportsVersion(target)).toBe(true);
+    }
   });
 
   it("explicitly supports packages authored against registry v1.0.0", () => {
@@ -166,6 +178,59 @@ describe("released registry", () => {
     for (const id of expected) {
       expect(hasParameter(id)).toBe(true);
     }
+  });
+
+  it("maps every planned Unit 4.4 (linear-guide) port", () => {
+    // Exit-criterion coverage for the guide.* group released in registry v1.5
+    // (context/modules/linear-guide/stage-2-contract.md "Decisions").
+    const expected = [
+      "guide.rail_spacing",
+      "guide.block_spacing",
+      "guide.static_load_rating",
+      "guide.dynamic_load_rating",
+      "guide.rolling_element_type",
+      "guide.preload_grade",
+      "guide.load_factor",
+      "guide.hardness_factor",
+      "guide.temperature_factor",
+      "guide.static_safety_factor_minimum",
+      "guide.equivalent_load",
+      "guide.static_safety_factor",
+      "guide.nominal_life",
+    ];
+    for (const id of expected) {
+      expect(hasParameter(id)).toBe(true);
+    }
+  });
+
+  it("expresses guide nominal life as a travel distance, not revolutions", () => {
+    // PMI and IKO both publish rolling-guide life in km of travel, so the
+    // revolutions/distance basis ambiguity that forced screw.
+    // dynamic_load_rating_basis to exist does not arise here
+    // (context/modules/linear-guide/stage-1-spec.md item 4).
+    const life = getParameter("guide.nominal_life");
+    expect(life?.canonicalUnit).toBe("m");
+    expect(life?.displayUnits).toContain("km");
+    expect(hasParameter("guide.dynamic_load_rating_basis")).toBe(false);
+  });
+
+  it("gives the guide correction factors a sourced default but the safety minimum none", () => {
+    // fH and fT default to 1.0 because PMI's own tables state that value for
+    // its own guideways at the reference condition; fW and the static safety
+    // minimum have no single confirmed value across PMI and IKO, so the
+    // registry must not pick one (stage-2-contract.md "Decisions" item 2).
+    expect(getParameter("guide.hardness_factor")?.defaultPolicy.kind).toBe(
+      "constant",
+    );
+    expect(getParameter("guide.temperature_factor")?.defaultPolicy.kind).toBe(
+      "constant",
+    );
+    expect(getParameter("guide.load_factor")?.defaultPolicy.kind).toBe(
+      "required",
+    );
+    expect(
+      getParameter("guide.static_safety_factor_minimum")?.defaultPolicy.kind,
+    ).toBe("required");
   });
 
   it("gives the ball-screw safety-margin inputs no invented default", () => {

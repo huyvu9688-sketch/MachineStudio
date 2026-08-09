@@ -14,6 +14,29 @@
  * not necessarily corresponding, geometric quantities (see stage-1-spec.md
  * "Load distribution among blocks (`Calculation of Working Load`)").
  *
+ * WHAT PMI'S `l1` AND `l2` ACTUALLY ARE (corrected at Stage 4, 2026-08-09).
+ * The first draft of these interfaces did invent physical names anyway —
+ * `railSpacingM` for `l1` and `blockSpacingM` for `l2` — and got them
+ * backwards. Reproducing PMI's own Chapter 9 worked example
+ * (./pmi-chapter-9.ts) settled it:
+ *
+ *   - **`l1` is the carriage spacing ALONG the direction of travel.**
+ *     Chapter 9 divides the height-induced moments `m1*a1*l6` and
+ *     `m2*a1*l5` by `2*l1`, and an axial inertia force acting at a height
+ *     is a pitching moment, which only the carriage pair separated along
+ *     travel can react. B23's own `m*a1*l3/(2*l1)` does the same thing.
+ *     Chapter 9's lateral loads clinch it: they alternate sign across the
+ *     same block pairs the `/(2*l1)` radial term separates, and they sum to
+ *     zero — a yaw moment can only be balanced by lateral forces on pairs
+ *     separated along travel.
+ *   - **`l2` is the transverse spacing between the two rails.**
+ *
+ * The formulas below were always right; only the invented names were wrong,
+ * so they now carry PMI's own letters (`spacingL1M`, `offsetL3M`, ...) as
+ * this header always said they should. `resolveBlockLoadsFromResultant`,
+ * which does speak in physical terms because its caller must, had one real
+ * consequence — see its own doc comment.
+ *
  * Values become EngineeringValues only at a future module-package boundary;
  * bare numbers remain internal here, mirroring
  * lib/modules/ball-screw/0.1.0/math.ts.
@@ -77,14 +100,14 @@ function assertFinite(name: string, value: number): void {
 export interface HorizontalUniformLoadInput {
   /** Applied downward force at the load position, in N. */
   readonly forceN: number;
-  /** Rail spacing, in m. PMI's own `l1` (B17). Must be > 0. */
-  readonly railSpacingM: number;
-  /** Block spacing (along one rail), in m. PMI's own `l2` (B17). Must be > 0. */
-  readonly blockSpacingM: number;
-  /** Load offset in the rail-spacing direction from center, in m. PMI's own `l3`. */
-  readonly loadOffsetRailM: number;
-  /** Load offset in the block-spacing direction from center, in m. PMI's own `l4`. */
-  readonly loadOffsetBlockM: number;
+  /** PMI's own `l1` (B17): carriage spacing along the direction of travel, in m. Must be > 0. */
+  readonly spacingL1M: number;
+  /** PMI's own `l2` (B17): transverse spacing between the two rails, in m. Must be > 0. */
+  readonly spacingL2M: number;
+  /** PMI's own `l3` (B17): load offset from centre along the direction of travel, in m. */
+  readonly offsetL3M: number;
+  /** PMI's own `l4` (B17): load offset from centre across the rails, in m. */
+  readonly offsetL4M: number;
 }
 
 /**
@@ -93,41 +116,48 @@ export interface HorizontalUniformLoadInput {
  * source image twice this session. Radial load only — this installation
  * has no separate lateral (`T`) component in the source. Blocks 1-4 form a
  * rectangle: (+l3,-l4), (-l3,-l4), (-l3,+l4), (+l3,+l4) for blocks 1-4
- * respectively (confirmed by the printed sign pattern, not inferred).
+ * respectively (confirmed by the printed sign pattern, not inferred) — that
+ * is, blocks 1 and 4 sit at the `+l3` end along the direction of travel, and
+ * blocks 3 and 4 on the `+l4` rail.
+ *
+ * PMI's own Chapter 9 worked example numbers its carriages differently:
+ * `No.1` - `No.4` there correspond to `block3`, `block4`, `block1`, `block2`
+ * here. See ./pmi-chapter-9.ts, which derives that mapping from the printed
+ * sign patterns rather than from the illustration.
  */
 export function resolveHorizontalUniformBlockLoads(
   input: HorizontalUniformLoadInput,
 ): FourBlockLoads {
   assertFinite("forceN", input.forceN);
-  assertPositive("railSpacingM", input.railSpacingM);
-  assertPositive("blockSpacingM", input.blockSpacingM);
-  assertFinite("loadOffsetRailM", input.loadOffsetRailM);
-  assertFinite("loadOffsetBlockM", input.loadOffsetBlockM);
+  assertPositive("spacingL1M", input.spacingL1M);
+  assertPositive("spacingL2M", input.spacingL2M);
+  assertFinite("offsetL3M", input.offsetL3M);
+  assertFinite("offsetL4M", input.offsetL4M);
 
-  const { forceN: F, railSpacingM: l1, blockSpacingM: l2 } = input;
-  const l3 = input.loadOffsetRailM;
-  const l4 = input.loadOffsetBlockM;
-  const railTerm = (F * l3) / (2 * l1);
-  const blockTerm = (F * l4) / (2 * l2);
+  const { forceN: F, spacingL1M: l1, spacingL2M: l2 } = input;
+  const l3 = input.offsetL3M;
+  const l4 = input.offsetL4M;
+  const pitchTerm = (F * l3) / (2 * l1);
+  const rollTerm = (F * l4) / (2 * l2);
   const base = F / 4;
 
   return {
-    block1: { radialN: base + railTerm - blockTerm, lateralN: 0 },
-    block2: { radialN: base - railTerm - blockTerm, lateralN: 0 },
-    block3: { radialN: base - railTerm + blockTerm, lateralN: 0 },
-    block4: { radialN: base + railTerm + blockTerm, lateralN: 0 },
+    block1: { radialN: base + pitchTerm - rollTerm, lateralN: 0 },
+    block2: { radialN: base - pitchTerm - rollTerm, lateralN: 0 },
+    block3: { radialN: base - pitchTerm + rollTerm, lateralN: 0 },
+    block4: { radialN: base + pitchTerm + rollTerm, lateralN: 0 },
   };
 }
 
 export interface VerticalUniformLoadInput {
   /** Applied lateral force at the load position, in N. */
   readonly forceN: number;
-  /** Rail spacing, in m. PMI's own `l1` (B19). Must be > 0. */
-  readonly railSpacingM: number;
-  /** Load-position height/offset feeding the shared radial share, in m. PMI's own `l2` (B19). */
-  readonly loadOffsetRadialM: number;
-  /** Load-position offset feeding the shared lateral share, in m. PMI's own `l4` (B19). */
-  readonly loadOffsetLateralM: number;
+  /** PMI's own `l1` (B19): the spacing this diagram divides both shares by, in m. Must be > 0. */
+  readonly spacingL1M: number;
+  /** PMI's own `l2` (B19): load-position offset feeding the shared radial share, in m. */
+  readonly offsetL2M: number;
+  /** PMI's own `l4` (B19): load-position offset feeding the shared lateral share, in m. */
+  readonly offsetL4M: number;
 }
 
 /**
@@ -141,13 +171,13 @@ export function resolveVerticalUniformBlockLoads(
   input: VerticalUniformLoadInput,
 ): FourBlockLoads {
   assertFinite("forceN", input.forceN);
-  assertPositive("railSpacingM", input.railSpacingM);
-  assertFinite("loadOffsetRadialM", input.loadOffsetRadialM);
-  assertFinite("loadOffsetLateralM", input.loadOffsetLateralM);
+  assertPositive("spacingL1M", input.spacingL1M);
+  assertFinite("offsetL2M", input.offsetL2M);
+  assertFinite("offsetL4M", input.offsetL4M);
 
-  const { forceN: F, railSpacingM: l1 } = input;
-  const radialN = (F * input.loadOffsetRadialM) / (2 * l1);
-  const lateralN = (F * input.loadOffsetLateralM) / (2 * l1);
+  const { forceN: F, spacingL1M: l1 } = input;
+  const radialN = (F * input.offsetL2M) / (2 * l1);
+  const lateralN = (F * input.offsetL4M) / (2 * l1);
   const block: BlockLoad = { radialN, lateralN };
 
   return { block1: block, block2: block, block3: block, block4: block };
@@ -163,12 +193,12 @@ export interface HorizontalInertiaLoadInput {
   /** Signed deceleration magnitude during the "deceleration" phase, in m/s^2. Ignored for other phases. */
   readonly decelerationMps2: number;
   readonly phase: InertiaPhase;
-  /** Rail spacing, in m. PMI's own `l1` (B23). Must be > 0. */
-  readonly railSpacingM: number;
-  /** Load-height offset feeding the radial differential, in m. PMI's own `l3` (B23). */
-  readonly loadOffsetRadialM: number;
-  /** Load-height offset feeding the lateral share, in m. PMI's own `l4` (B23). */
-  readonly loadOffsetLateralM: number;
+  /** PMI's own `l1` (B23): carriage spacing along the direction of travel, in m. Must be > 0. */
+  readonly spacingL1M: number;
+  /** PMI's own `l3` (B23): load-height offset feeding the radial differential, in m. */
+  readonly offsetL3M: number;
+  /** PMI's own `l4` (B23): load offset feeding the lateral share, in m. */
+  readonly offsetL4M: number;
 }
 
 /**
@@ -188,13 +218,13 @@ export function resolveHorizontalInertiaBlockLoads(
   assertPositive("gravityMps2", input.gravityMps2);
   assertFinite("accelerationMps2", input.accelerationMps2);
   assertFinite("decelerationMps2", input.decelerationMps2);
-  assertPositive("railSpacingM", input.railSpacingM);
-  assertFinite("loadOffsetRadialM", input.loadOffsetRadialM);
-  assertFinite("loadOffsetLateralM", input.loadOffsetLateralM);
+  assertPositive("spacingL1M", input.spacingL1M);
+  assertFinite("offsetL3M", input.offsetL3M);
+  assertFinite("offsetL4M", input.offsetL4M);
 
-  const { massKg: m, gravityMps2: g, railSpacingM: l1 } = input;
-  const l3 = input.loadOffsetRadialM;
-  const l4 = input.loadOffsetLateralM;
+  const { massKg: m, gravityMps2: g, spacingL1M: l1 } = input;
+  const l3 = input.offsetL3M;
+  const l4 = input.offsetL4M;
   const mg4 = (m * g) / 4;
 
   if (input.phase === "uniform") {
@@ -224,12 +254,12 @@ export interface VerticalInertiaLoadInput {
   readonly accelerationMps2: number;
   readonly decelerationMps2: number;
   readonly phase: InertiaPhase;
-  /** Rail spacing, in m. PMI's own `l1` (B24). Must be > 0. */
-  readonly railSpacingM: number;
-  /** Load-offset feeding the shared radial share, in m. PMI's own `l3` (B24). */
-  readonly loadOffsetRadialM: number;
-  /** Load-offset feeding the shared lateral share, in m. PMI's own `l4` (B24). */
-  readonly loadOffsetLateralM: number;
+  /** PMI's own `l1` (B24): the spacing this diagram divides both shares by, in m. Must be > 0. */
+  readonly spacingL1M: number;
+  /** PMI's own `l3` (B24): load offset feeding the shared radial share, in m. */
+  readonly offsetL3M: number;
+  /** PMI's own `l4` (B24): load offset feeding the shared lateral share, in m. */
+  readonly offsetL4M: number;
 }
 
 /**
@@ -246,13 +276,13 @@ export function resolveVerticalInertiaBlockLoads(
   assertPositive("gravityMps2", input.gravityMps2);
   assertFinite("accelerationMps2", input.accelerationMps2);
   assertFinite("decelerationMps2", input.decelerationMps2);
-  assertPositive("railSpacingM", input.railSpacingM);
-  assertFinite("loadOffsetRadialM", input.loadOffsetRadialM);
-  assertFinite("loadOffsetLateralM", input.loadOffsetLateralM);
+  assertPositive("spacingL1M", input.spacingL1M);
+  assertFinite("offsetL3M", input.offsetL3M);
+  assertFinite("offsetL4M", input.offsetL4M);
 
-  const { massKg: m, gravityMps2: g, railSpacingM: l1 } = input;
-  const l3 = input.loadOffsetRadialM;
-  const l4 = input.loadOffsetLateralM;
+  const { massKg: m, gravityMps2: g, spacingL1M: l1 } = input;
+  const l3 = input.offsetL3M;
+  const l4 = input.offsetL4M;
 
   const effectiveG =
     input.phase === "uniform"
@@ -279,36 +309,53 @@ export interface ResultantBlockLoadInput {
    */
   readonly normalForceN: number;
   /**
-   * Force component parallel to the mounting plane, in N. Shared equally
-   * across the four blocks (`F/4`). **Elementary statics, not
-   * source-confirmed:** no PMI diagram in `0.1.0`'s scope shows a net
+   * Force component parallel to the mounting plane and across the rails, in
+   * N. Shared equally across the four blocks (`F/4`). **Elementary statics,
+   * not source-confirmed:** no PMI diagram in `0.1.0`'s scope shows a net
    * lateral force, so none prints this term. It is included because a net
    * lateral force must go somewhere and four identical blocks split it
    * evenly; pass zero to reproduce any PMI diagram exactly.
    */
   readonly lateralForceN: number;
   /**
-   * Moment producing lateral block loading, in N*m, divided by
-   * `2 * railSpacingM`. PMI's own vertical and inertia diagrams (B19, B23,
-   * B24) all print this as an equal magnitude on all four blocks
-   * (`P1T = P2T = P3T = P4T`), which is a sizing magnitude rather than a
-   * signed equilibrium distribution — reproduced here as printed.
+   * Rolling moment about the direction of travel, in N*m. Reacted by radial
+   * loads on the two rails, so its lever arm is `2 * railSpacingM`. Positive
+   * loads blocks 3 and 4 more and blocks 1 and 2 less.
    */
-  readonly momentLateralNm: number;
+  readonly rollMomentNm: number;
   /**
-   * Moment reacted by the block pair separated by `railSpacingM`, in N*m.
-   * Sign convention: positive raises blocks 1 and 4 and lowers 2 and 3,
-   * matching PMI's own printed B17 sign pattern.
+   * Pitching moment about the transverse axis, in N*m. Reacted by radial
+   * loads on the fore and aft carriage pairs, so its lever arm is
+   * `2 * blockSpacingM`. Positive loads blocks 1 and 4 more and blocks 2 and
+   * 3 less.
    */
-  readonly momentAcrossRailsNm: number;
+  readonly pitchMomentNm: number;
   /**
-   * Moment reacted by the block pair separated by `blockSpacingM`, in N*m.
-   * Positive raises blocks 3 and 4 and lowers 1 and 2 (B17's pattern).
+   * Yawing moment about the mounting-plane normal, in N*m. Reacted by lateral
+   * loads on the fore and aft carriage pairs — so its lever arm is
+   * `2 * blockSpacingM`, **not** the rail spacing, and the four lateral loads
+   * form a signed, zero-sum distribution rather than one shared magnitude.
+   *
+   * Both of those were wrong here until Stage 4 and are worth stating plainly:
+   *
+   * - PMI's general diagrams (B19, B23, B24) print the lateral load as a
+   *   single unsigned magnitude on all four blocks over `2*l1`, which read as
+   *   a per-block sizing figure and left it unclear which spacing `l1` was.
+   *   PMI's own Chapter 9 worked example prints the same magnitude with
+   *   *alternating signs* that sum to zero — an equilibrium distribution —
+   *   and alternating across the same block pairs its `/(2*l1)` radial term
+   *   separates. Since only pairs separated along the direction of travel can
+   *   balance a yawing moment, `l1` is the along-travel carriage spacing.
+   * - Dividing a yaw moment by the rail spacing, as this kernel first did,
+   *   therefore used the wrong lever arm whenever the two spacings differ.
+   *
+   * See ./pmi-chapter-9.ts, which reproduces every printed figure of that
+   * example, including the lateral signs.
    */
-  readonly momentAlongRailNm: number;
-  /** Distance between the two rails, in m. Must be > 0. */
+  readonly yawMomentNm: number;
+  /** Transverse distance between the two rails, in m. Must be > 0. */
   readonly railSpacingM: number;
-  /** Distance between the two blocks on one rail, in m. Must be > 0. */
+  /** Distance between the two carriages on one rail, along travel, in m. Must be > 0. */
   readonly blockSpacingM: number;
 }
 
@@ -336,47 +383,61 @@ export interface ResultantBlockLoadInput {
  *    caller has to re-derive gravity and inertia contributions that were
  *    already resolved upstream.
  *
- * **Confidence is not uniform across the two directions, and this matters:**
+ * **Block layout**, matching B17's printed sign pattern: blocks 1 and 4 sit
+ * at the `+` end along the direction of travel, blocks 3 and 4 on the `+`
+ * rail. So the pitching moment separates `{1,4}` from `{2,3}` and the rolling
+ * moment separates `{3,4}` from `{1,2}`.
  *
- * - *Radial* — fully confirmed. `math.test.ts` asserts this reproduces
- *   `resolveHorizontalUniformBlockLoads` (B17) and
- *   `resolveHorizontalInertiaBlockLoads` (B23) exactly for their own
- *   scenarios, so the subsumption claim is machine-checked, not just
- *   stated here.
- * - *Lateral* — reproduced as printed, but PMI's own diagrams print an
- *   equal lateral magnitude on all four blocks (`P1T = P2T = P3T = P4T`)
- *   with no differential sign, which is a per-block sizing magnitude
- *   rather than a signed equilibrium distribution (four equal same-signed
- *   lateral forces would not balance a yawing moment). The lever arm PMI
- *   divides by is `2*l1` (rail spacing) in every lateral formula, even
- *   where a yaw reaction would physically act over the block spacing
- *   instead. Neither is "fixed" here — reproducing the source faithfully
- *   is the right call for a kernel with no worked example to check a
- *   correction against, and this is recorded as an open item in
- *   stage-2-contract.md rather than silently reinterpreted.
+ * **Every term here is now confirmed against a published worked example.**
+ * `math.test.ts` asserts the radial distribution reproduces
+ * `resolveHorizontalUniformBlockLoads` (B17) and
+ * `resolveHorizontalInertiaBlockLoads` (B23) exactly for their own scenarios,
+ * and ./pmi-chapter-9.ts reproduces all twenty per-carriage radial loads, all
+ * twenty lateral loads (signs included), the equivalent loads, static safety
+ * factor, mean loads, and nominal lives PMI's own Chapter 9 prints.
+ *
+ * That example also corrected two things this function originally got wrong,
+ * both in the lateral direction and both described on
+ * {@link ResultantBlockLoadInput.yawMomentNm}: the yaw lever arm is the
+ * carriage spacing along travel, not the rail spacing, and the lateral loads
+ * alternate in sign so they sum to zero.
  */
 export function resolveBlockLoadsFromResultant(
   input: ResultantBlockLoadInput,
 ): FourBlockLoads {
   assertFinite("normalForceN", input.normalForceN);
   assertFinite("lateralForceN", input.lateralForceN);
-  assertFinite("momentAcrossRailsNm", input.momentAcrossRailsNm);
-  assertFinite("momentAlongRailNm", input.momentAlongRailNm);
-  assertFinite("momentLateralNm", input.momentLateralNm);
+  assertFinite("rollMomentNm", input.rollMomentNm);
+  assertFinite("pitchMomentNm", input.pitchMomentNm);
+  assertFinite("yawMomentNm", input.yawMomentNm);
   assertPositive("railSpacingM", input.railSpacingM);
   assertPositive("blockSpacingM", input.blockSpacingM);
 
   const base = input.normalForceN / 4;
-  const railTerm = input.momentAcrossRailsNm / (2 * input.railSpacingM);
-  const blockTerm = input.momentAlongRailNm / (2 * input.blockSpacingM);
-  const lateralN =
-    input.lateralForceN / 4 + input.momentLateralNm / (2 * input.railSpacingM);
+  const rollTerm = input.rollMomentNm / (2 * input.railSpacingM);
+  const pitchTerm = input.pitchMomentNm / (2 * input.blockSpacingM);
+  const lateralBase = input.lateralForceN / 4;
+  // Reacted by the fore/aft carriage pairs, so it alternates with the same
+  // pattern the pitching moment separates -- and sums to zero across the four.
+  const yawTerm = input.yawMomentNm / (2 * input.blockSpacingM);
 
   return {
-    block1: { radialN: base + railTerm - blockTerm, lateralN },
-    block2: { radialN: base - railTerm - blockTerm, lateralN },
-    block3: { radialN: base - railTerm + blockTerm, lateralN },
-    block4: { radialN: base + railTerm + blockTerm, lateralN },
+    block1: {
+      radialN: base + pitchTerm - rollTerm,
+      lateralN: lateralBase + yawTerm,
+    },
+    block2: {
+      radialN: base - pitchTerm - rollTerm,
+      lateralN: lateralBase - yawTerm,
+    },
+    block3: {
+      radialN: base - pitchTerm + rollTerm,
+      lateralN: lateralBase - yawTerm,
+    },
+    block4: {
+      radialN: base + pitchTerm + rollTerm,
+      lateralN: lateralBase + yawTerm,
+    },
   };
 }
 

@@ -13,6 +13,7 @@ const EXPECTED_UNITS = [
   "m",
   "mm",
   "cm",
+  "km",
   "in",
   "ft",
   "s",
