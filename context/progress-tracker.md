@@ -72,200 +72,83 @@ Unit 4.1 — `axis-load-cases`, the first production module.
   internal cross-check only, not registered in `lib/standards`. The
   remaining Stage 4 items are still blocked on evidence — see below.
 
-Unit 4.2 — `motion-profile`. Stage 1 spec drafted 2026-08-07 in parallel
-(roadmap explicitly allows spec/research work in parallel with a blocked
-module; see `context/modules/motion-profile/stage-1-spec.md`). Both
-candidate sources (ABB AN00115; Oriental Motor's H-18/H-23 selection-
-calculations chapter) are now page-verified — the earlier PDF-extraction
-failure was a tooling limitation. `motion-profile/0.1.0/
-oriental-motor-benchmark.ts` reproduces Oriental Motor's general
-asymmetric/non-zero-start-speed method as an independent benchmark of
-`resolveTrapezoidalMove` (`math.ts`), cross-checked in its sibling test
-file. Stage 2 (parameter contract) is **resolved 2026-08-07**:
-`context/modules/motion-profile/stage-2-contract.md`. `motion-profile` owns
-a cycle-level RMS *acceleration* output only (not RMS velocity, not RMS
-torque — that stays a Unit 4.7 output); the multi-segment/cycle outputs are
-cycle-level aggregates only, no per-segment port (the registry has no
-`table`-typed parameter support yet, and adding that is a separate
-generic-platform capability the Split Rules keep out of this module unit).
-Registry `1.2.0` adds `motion.profile.rms_acceleration`.
-`motion-profile/0.1.0/cycle.ts` (`resolveMotionCycle`) extends the kernel
-with multi-segment sequencing and the RMS aggregation (31 kernel tests
-total across `math.test.ts`, `oriental-motor-benchmark.test.ts`, and
-`cycle.test.ts`). Stage 3 (compute and trace): **draft package built
-2026-08-07**, extended the same day to wrap one move optionally followed by
-one dwell, then **extended again 2026-08-08 to a bounded sequence of up to
-5 moves**, each optionally followed by its own dwell. The multi-move
-port-cardinality question (`table`-valued parameter support vs. a fixed
-maximum) had no evidence in the repo either way — no fixture records a real
-multi-move cycle's segment count, and this is a project-specific scoping
-choice, not an engineering formula — so it was raised directly to the
-founder, who chose a fixed maximum of 5
-(`context/modules/motion-profile/stage-2-contract.md` "Decisions" item 4).
-A full `ModulePackage` (manifest, ports, input schema, compute, trace,
-checks, UI schema, report schema, draft validation record) wraps `math.ts`
-and `cycle.ts` in `lib/modules/motion-profile/0.1.0/` — see that directory's
-`README.md` "Stage 3 package". Each move has its own
-`move_{index}_distance`/`max_velocity`/`max_acceleration` port trio (only
-move 1 required) plus an optional `dwell_{index}_time`; the input schema
-rejects a gap, a partially-supplied move, or an orphaned dwell. The
-single-move package's `move_time` output port was removed — it no longer
-has an unambiguous meaning with multiple moves possible — in favor of
-per-move detail in the calculation trace only, since a declared output port
-cannot be conditionally absent. No module is registered (`package.ts`, not
-`index.ts`); release stays gated behind Unit 4.1 regardless.
+Unit 4.2 — `motion-profile`. **Stages 1-4 done** (2026-08-07 through
+2026-08-09), drafted in parallel with Unit 4.1's evidence wait per the
+roadmap's parallel-work allowance. Stage 1 spec:
+`context/modules/motion-profile/stage-1-spec.md` (ABB AN00115; Oriental
+Motor's H-18/H-28 selection-calculations chapter). Stage 2 (registry
+`1.2.0`) resolved 2026-08-07: `context/modules/motion-profile/
+stage-2-contract.md` — owns a cycle-level RMS *acceleration* output only
+(not velocity or torque); multi-segment outputs are cycle-level aggregates
+only; a bounded max of 5 moves per cycle (a founder-made scope decision, not
+evidence-backed). Stage 3: a full `ModulePackage` in `lib/modules/
+motion-profile/0.1.0/` (see that directory's `README.md` "Stage 3 package").
+Stage 4 (validation) resolved 2026-08-09: `validation/motion-profile/
+0.1.0.md` — three published reference examples from two independent
+manufacturers (ABB, Oriental Motor) across three independent scenarios (a
+stale spec citation was corrected in the process — see the module README's
+"Stage 4 evidence" section), plus the pre-existing Oriental Motor general-
+method independent benchmark; solo-validation reviewer-substitute policy.
+The cycle-level RMS acceleration output has no published example or
+independent benchmark — a documented, honest gap. No module is registered
+(`package.ts`, not `index.ts`); release stays gated behind Unit 4.1
+regardless.
 
-**Stage 4 (validation) resolved 2026-08-09.** `validation/motion-profile/
-0.1.0.md` is complete — the second module in this project with a completed
-Stage 4 record (after `ball-screw`), using the same solo-validation
-reviewer-substitute policy. Three published reference examples are now
-reproduced, closing the item that was previously open ("no published worked
-example exists for this method"): re-reading the two already-page-verified
-candidate sources found that a citation in `stage-1-spec.md` had pointed at
-the wrong ABB AN00115 example (the p. 6-7 "Exercise" solves an inverse
-problem this module doesn't implement) — the actually-reproducible example
-was on p. 2-3, and the p. 6-7 exercise's own derived numbers, fed forward,
-gave a second example — plus a third from Oriental Motor's own p. H-19
-catalog example (EAS6, previously unread; only its p. H-23 general formula
-had been used, as the independent benchmark). Three examples from two
-independent manufacturers across three independent scenarios, all in
-`math.test.ts` and `validation.ts`. Two new source revisions registered in
-`lib/standards/engineering-sources.ts`
-(`us.abb.trapezoidal_move_calculations@rev-c-en`,
-`jp.oriental_motor.linear_rotary_actuator_selection_calculations@2015-2016`).
-The cycle-level RMS acceleration output remains without a published example
-or independent benchmark — recorded as an honest gap, not silently assumed
-correct. See `lib/modules/motion-profile/0.1.0/README.md` "Stage 4 evidence
-(2026-08-09)" for the full account.
+Unit 4.3 — `ball-screw`. **Stages 1-5 done** (2026-08-08 through
+2026-08-09; Stage 5 as far as applicable pre-Unit-4.8), drafted in parallel
+with Unit 4.1's evidence wait. Stage 1 spec: `context/modules/ball-screw/
+stage-1-spec.md` — lead/speed, drive torque, equivalent dynamic load,
+nominal life, buckling, critical speed, static safety factor, sourced from
+Rockford Ball Screw, WY Ball Screw, Steinmeyer, Oriental Motor, and THK
+(via a third-party mirror — `tech.thk.com` itself is blocked in this
+environment, see Environment notes). Stage 2 (registry `1.3.0`) resolved
+2026-08-08: `context/modules/ball-screw/stage-2-contract.md` — the static
+safety factor minimum and buckling safety margin are required module
+inputs with no built-in default, since no source met this project's
+evidence bar for either. Stage 3: a full `ModulePackage` in `lib/modules/
+ball-screw/0.1.0/`. Stage 4 (validation) resolved 2026-08-09:
+`validation/ball-screw/0.1.0.md` — six reference examples from two
+independent manufacturers (Rockford, THK; two shared scenarios, not six
+independent ones), three independent-benchmark comparisons
+(`thk-benchmark.ts`), solo-validation reviewer-substitute policy. Two real
+discrepancies remain open, not resolved: a three-way buckling/critical-
+speed calibration-constant disagreement (Rockford/Steinmeyer/THK), and an
+equivalent-dynamic-load methodology disagreement (this module's Steinmeyer-
+based single formula vs. THK's own bidirectional-duty-cycle method, ~26%
+apart on THK's own scenario — see `thk-benchmark.ts`'s
+`resolveThkDirectionalEquivalentLoad`). Stage 5: cross-module link
+compatibility against `axis-load-cases` is tested and passing
+(`cross-module-links.test.ts`, the first per-module-pair link test in this
+codebase); workflow role integration stays not-applicable until Unit 4.8
+exists. No module is registered; release stays gated behind Unit 4.1
+regardless.
 
-Unit 4.3 — `ball-screw`. Stage 1 spec drafted 2026-08-08, in parallel with
-`axis-load-cases`' evidence wait (same allowance already used for Unit 4.2;
-see `context/modules/ball-screw/stage-1-spec.md`). Covers lead/speed, drive
-torque, equivalent dynamic load, nominal life, buckling, critical speed, and
-static safety factor — a draft kernel now computes all six checks (39
-tests) — `lib/modules/ball-screw/0.1.0/math.ts`, see that directory's
-`README.md`. THK's own catalog (already cited for Unit 4.1) returned HTTP
-403 on every direct-domain fetch attempted this session; two other sources
-filled the gap instead: Rockford Ball Screw's "How To Size A Ball Screw"
-(fetched directly, full worked numerical example) explicitly states its
-buckling/critical-speed formulas use the screw's **minor (root) diameter,
-not nominal diameter** — resolving the question that had been blocking
-those two checks — and independently cross-checks the drive-torque formula;
-WY Ball Screw supplied the static safety factor formula (`fs = C0 /
-Fas_max`). The kernel reproduces Rockford's own worked numbers for drive
-torque, buckling, and critical speed within whole-unit catalog rounding.
-These sources surfaced two new discrepancies: Rockford's own buckling
-safety margin (`Fs = 0.8`) disagrees with Steinmeyer's (`0.5`) for the
-identical formula, and Rockford's own catalog dynamic-load ratings are
-calibrated against `10^6` inches traveled, not `10^6` revolutions the way
-this kernel's life formula assumes — silently mixing the two would misstate
-life by a factor tied to the screw's lead.
-
-**Stage 2 (parameter contract) resolved 2026-08-08:**
-`context/modules/ball-screw/stage-2-contract.md`, registry `1.3.0`. A second
-sourcing pass for the static safety factor minimum and the buckling margin
-found a directly-read handbook source (MITcalc's ball-screw calculation
-documentation) for the former but no manufacturer/standards-body number
-that met this project's evidence bar for either — THK's own buckling PDF
-and Nook Industries' catalog both still return HTTP 403 on direct fetch;
-a University of Utah lecture PDF that might have settled the static-factor
-range hit the same `pdftoppm` page-range limitation as before, even at only
-14 pages (see Environment notes). Both are therefore released as **required
-module inputs with no built-in default**
-(`screw.static_safety_factor_minimum`, `screw.buckling_safety_margin`)
-rather than a hardcoded number — a deliberate resolution, not a deferral.
-Registry `1.3.0` also adds the full `screw.*` group (14 new parameters) and
-two new `motion.axis.*` per-case parameters
-(`case_time_fraction`, `case_linear_velocity`) that let the duty-cycle
-equivalent-load formula reuse `axis-load-cases`' own `normal`/`peak` cases
-as duty-cycle phases, resolving the last open Stage 1 item.
-
-**Stage 3 (compute and trace) draft package built 2026-08-08, same day as
-Stage 2.** A full `ModulePackage` (manifest, ports, input schema, compute,
-trace, checks, UI schema, report schema, draft validation record) wraps the
-Stage 1 kernel in `lib/modules/ball-screw/0.1.0/` — see that directory's
-`README.md` "Stage 3 package". Two package-level wiring decisions: the input
-schema rejects a `"distance"`-basis `dynamic_load_rating_basis` outright (no
-documented conversion exists), and `compute.ts` ignores the kernel's own
-baked-in `0.5` buckling margin, instead recomputing the permissible
-compressive load from the registry-supplied `buckling_safety_margin` input —
-the kernel itself (`math.ts`) is unchanged. 19 new package-level tests pass
-alongside the 39 existing kernel tests. Named `package.ts`, not `index.ts`,
-so `npm run registry:generate` still can't discover it — no module is
-registered. Production release remains sequentially gated behind Unit 4.1's
-Definition of Done regardless.
-
-**Stage 4 evidence search attempted 2026-08-08, no new reference example
-found.** Looked for a published worked example for the equivalent-dynamic-
-load/duty-cycle formula and the static safety factor formula — the two
-formulas the current three reference examples (all Rockford, one shared
-scenario) don't cover. Found that a real THK example exists (model
-WTF2040-2, `C0a = 13.6 kN`, `fs = 2.5`) via WebSearch synthesis only; the
-source document itself is still unreachable (`thk.com` blocked more broadly
-than previously known — see Environment notes), so it was not recorded as
-a verified reference example. See `context/modules/ball-screw/
-stage-1-spec.md` "Evidence Gaps and Verification Confidence" for the full
-account.
-
-**Stage 4 evidence found and verified 2026-08-09.** The WTF2040-2 example
-flagged above is now directly read (a third-party distributor mirror of
-THK's own catalog, since `thk.com` itself is still blocked) and three of its
-printed numbers reproduce cleanly against already-implemented kernel
-formulas: drive torque, nominal life, and static safety factor —
-`validation.ts` now has six reference examples across two independent
-manufacturers (three Rockford, three THK), up from three all sharing one
-Rockford scenario. The same source also surfaced two new, unresolved
-discrepancies: a third distinct buckling/critical-speed formula constant,
-and a different methodology for THK's own equivalent-dynamic-load
-calculation on a reversing duty cycle (THK's own numbers don't reproduce
-through this kernel's single-formula implementation). The buckling/critical-
-speed discrepancy is now also an implemented independent benchmark, not just
-a documented finding: `lib/modules/ball-screw/0.1.0/thk-benchmark.ts`
-implements THK's own formula separately, reproduces its three worked
-numbers exactly, and cross-checks against `math.ts`'s Rockford-based
-functions (bounded-ratio agreement, not exact — a genuine second
-computation, same treatment `axis-load-cases/atlanta-benchmark.ts` already
-established). This closes the roadmap's "independent benchmark" item
-(Definition of Done item 9) for every check in this module. See
-`lib/modules/ball-screw/0.1.0/README.md` "Stage 4 evidence (2026-08-09)" and
-`context/modules/ball-screw/stage-1-spec.md` "Evidence Gaps and Verification
-Confidence" for the full account.
-
-**Stage 4 validation record completed 2026-08-09.**
-`validation/ball-screw/0.1.0.md` is written (first module in the project
-with a completed Stage 4 record), using the documented solo-validation
-reviewer-substitute policy (`context/ai-workflow-rules.md` "Stage 4 —
-Validation") since no second engineer is available — the independent
-benchmark comparisons above serve as the review substitute, recorded as
-such rather than left blank. `validation/source-index.md` now has its first
-entries. This is Stage 4 completion, a documentation milestone — it does
-not register or release the module. The record is explicit about its one
-remaining limitation: six reference examples exceed the roadmap's "at least
-three" by count, but come from only two independent worked scenarios
-(Rockford, THK), not three.
-
-**Cross-module link compatibility closed same day.**
-`cross-module-links.test.ts` (new) — the first per-module-pair link-
-compatibility test in this codebase — confirms `axis-load-cases`' real
-output ports link correctly to this module's real input ports (including
-correctly rejecting a load-case mismatch), and confirms, rather than
-assumes, the known gap that no upstream module yet produces
-`case_time_fraction`/`case_linear_velocity`. Closes roadmap Module
-Definition of Done item 13 for `ball-screw`.
-
-**Equivalent-dynamic-load discrepancy given a real second implementation,
-same day.** `thk-benchmark.ts`'s new `resolveThkDirectionalEquivalentLoad`
-implements THK's own bidirectional-duty-cycle equivalent-load method
-separately from `math.ts`'s Steinmeyer-based formula, reproducing THK's own
-printed `225 N`; a test confirms the kernel's own formula gives a materially
-different `~283.5 N` for the identical scenario, rather than leaving the
-discrepancy as unchecked prose. **Correction while doing this:** the
-previously-recorded `~296 N` figure for that comparison was a hand-
-arithmetic addition error, now corrected to `~283.5 N` everywhere it was
-cited (this file, the module README, `validation.ts`,
-`validation/ball-screw/0.1.0.md`) after re-deriving it through the actual
-kernel function. The discrepancy's existence and rough magnitude are
-unchanged; only the precise number was wrong.
+Unit 4.4 — `linear-guide`. Stage 1 spec drafted 2026-08-09, the next module
+in the roadmap's own Phase 1B order (same parallel-work allowance already
+used for Units 4.2-4.3; see `context/modules/linear-guide/stage-1-spec.md`).
+Two independent manufacturer sources read directly: PMI's *Linear Guideway*
+catalog (via a distributor mirror, `bearing.net.au`) with a complete worked
+numerical example covering every required check end to end, and IKO's
+*Linear Way* catalog (read from IKO's own domain) — the first source in
+this project to directly cite ISO 14728-1/14728-2 for the load-rating/life
+formulas, rather than only a WebSearch-synthesized paraphrase. The two
+sources agree on life-formula shape and (distance-km, not revolution)
+basis, but disagree on the equivalent-load formula's complexity and on
+static-safety-factor standard values — both recorded, not resolved. **A
+real dependency gap found, not invented:** `axis-load-cases 0.1.0` already
+anticipated this module by name in its own Stage 1 and Stage 2 documents
+("the guide module, Unit 4.4, is not built") but exposes only the axial
+thrust-force component as a released port, not the full resolved
+force/moment vector this module needs at the guide reference point — a real
+Stage 2 registry question (new `axis-load-cases` output port vs. this
+module re-deriving the resolution itself), not resolved here. Proposed
+`0.1.0` scope: two rails, two blocks per rail (matching PMI's own worked
+example), horizontal or vertical installation, ball-type rolling elements
+only. No kernel yet — three of the four in-scope working-load formula sets
+need one more re-verification pass against the source images before
+implementation (see the spec's own "Evidence Gaps and Verification
+Confidence"; the fourth, horizontal-uniform-motion, is already
+double-checked).
 
 ---
 
@@ -327,28 +210,24 @@ variable names.
    drive train). Approved but deliberately unreleased — each ships with the
    module that needs it, at that module's Stage 2 contract. See
    `lib/engine/parameters/README.md`.
-5. Unit 4.2 (`motion-profile`): Stages 3-4 are done (see Active work
-   2026-08-09) — `validation/motion-profile/0.1.0.md` is complete (solo-
-   validation reviewer-substitute policy). What's left is the same as Unit
-   4.3: Stage 5 items that need Unit 4.8 (workflow role integration,
-   workflow integration tests — `workflowRoles` is deliberately empty) and
-   Stage 6 (release), which stays sequentially gated behind Unit 4.1
-   regardless. Cross-module link compatibility is not yet testable in
-   either direction: no other module in this codebase currently declares an
-   input port for any `motion.profile.*` output. Optional parallel work;
-   does not move Unit 4.1's critical path.
-6. Unit 4.3 (`ball-screw`): Stages 3-5 are all done for what's applicable at
-   this point (see Active work 2026-08-09) — `validation/ball-screw/
-   0.1.0.md` is complete (solo-validation reviewer-substitute policy);
-   generic UI/report schema conformance already passes
-   (`package-validation` check); cross-module link compatibility against
-   `axis-load-cases` is tested and passing. A real, documented equivalent-
-   dynamic-load methodology discrepancy (THK vs. this module's own
-   Steinmeyer-based formula) remains open, recorded rather than resolved.
-   What's left is workflow role integration and workflow integration tests
-   (blocked on Unit 4.8, not a Unit 4.3 gap) and Stage 6 (release), which
-   stays sequentially gated behind Unit 4.1 regardless. Optional parallel
-   work; does not move Unit 4.1's critical path.
+5. Unit 4.2 (`motion-profile`) and Unit 4.3 (`ball-screw`): both are done
+   through Stage 4 (`ball-screw` also through Stage 5 as far as applicable
+   pre-Unit-4.8 — see Active work). What's left for both is identical:
+   workflow role integration and workflow integration tests (blocked on
+   Unit 4.8, `workflowRoles` is deliberately empty on each), cross-module
+   link compatibility (untestable for `motion-profile` specifically — no
+   other module declares an input port for any `motion.profile.*` output
+   yet), and Stage 6 (release), sequentially gated behind Unit 4.1
+   regardless. Optional parallel work; does not move Unit 4.1's critical
+   path.
+6. Unit 4.4 (`linear-guide`): Stage 1 spec is drafted (see Active work
+   2026-08-09) — no kernel yet. Next: resolve the `axis-load-cases`
+   force/moment output-port gap the spec identified (Stage 2 entry
+   criterion 1), re-verify three of the four in-scope working-load formula
+   sets against the PMI source images a second time, then build a draft
+   kernel against the proposed horizontal/vertical, two-rail/four-block,
+   ball-type scope. Optional parallel work; does not move Unit 4.1's
+   critical path.
 
 ---
 

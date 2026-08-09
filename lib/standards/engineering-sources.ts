@@ -125,6 +125,27 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
       "https://www.orientalmotor.com/products/pdfs/2015-2016/H/Linear_&_Rotary_Actuators_Selection_Calculations.pdf",
     note: "General Catalog 2015/2016 technical-reference chapter (pp. H-18 through H-28), used by the motion-profile module (Unit 4.2). p. H-23's general asymmetric/non-zero-starting-speed trapezoidal method is reproduced as an independent benchmark (oriental-motor-benchmark.ts); p. H-19's EAS6 catalog worked example (vertical, 500 mm, 1.77 s) is used for reference-example reproduction.",
   },
+  {
+    id: asSourceDocumentId("us.pmi.linear_guideway_catalog"),
+    classification: "manufacturer_method",
+    title: "Linear Guideway",
+    authority: "PMI (Precision Motion Industries, Inc.)",
+    market: "US",
+    access: "public",
+    officialUrl: "https://www.pmi-amt.com/en/supports/catalog",
+    note: "Manufacturer selection-calculation method for the linear-guide module (Unit 4.4): working-load-per-carriage formulas for horizontal/overhung/vertical/wall-mount/tilted installations and inertial loading, equivalent load, static safety factor (with a standard-values table by machine type and load condition), basic dynamic load rating, nominal life (distance-basis, not revolution-basis), mean load under varying loads, and preload-grade selection. Includes a full worked numerical example (Chapter 9) with a real model (MSA35LA2SSFC).",
+  },
+  {
+    id: asSourceDocumentId("jp.iko.linear_way_catalog"),
+    classification: "manufacturer_method",
+    title: "Linear Way / Linear Roller Way — General Explanation",
+    authority: "IKO (Nippon Thompson Co., Ltd.)",
+    market: "JP",
+    access: "public",
+    officialUrl:
+      "https://www.ikont.com/catalogs/linear-motion-rolling-guide-series/blue/1560E_ex.pdf",
+    note: "Manufacturer selection-calculation method for the linear-guide module (Unit 4.4), explicitly stated as complying with ISO 14728-1 (basic dynamic load rating) and ISO 14728-2 (basic static load rating). A second, independent formulation from PMI's: a multi-term dynamic/static equivalent-load formula combining downward/lateral force conversion factors and per-direction moment/static-load-rating ratios (Equations 5-10), plus its own static-safety-factor value tables and general load-position-to-moment formulas (Mr/Mp/My from Fx/Fy/Fz and load position X/Y/Z) for one- and two-rail, one- or two-slide-unit arrangements.",
+  },
 ];
 
 export const engineeringMethodRevisions: readonly SourceRevision[] = [
@@ -230,5 +251,23 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     officialUrl:
       "https://www.orientalmotor.com/products/pdfs/2015-2016/H/Linear_&_Rotary_Actuators_Selection_Calculations.pdf",
     note: "Full 11-page chapter read directly 2026-08-09 (pages 1-11). p. H-19's EAS6 catalog example (vertical, 15 kg, 500 mm, 320 mm/s, 1.5 m/s^2 -> 1.77 s) is a graph-read value, not a full-precision formula result — the module's own reproduction (1.7758 s) is within catalog display-rounding of the 3-significant-figure printed inputs.",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.pmi.linear_guideway_catalog@bearing-net-au-mirror-2026-08-09",
+    ),
+    documentId: asSourceDocumentId("us.pmi.linear_guideway_catalog"),
+    edition: "Linear Guideway catalog, chapters 1-12 (printed pages B4-B40+)",
+    officialUrl:
+      "http://www.bearing.net.au/wp-content/uploads/2015/05/PMI-Profile-Rail-Catalogue.compressed.pdf",
+    note: "Found and read directly via a third-party Australian distributor mirror (bearing.net.au) on 2026-08-09; not independently attempted against pmi-amt.com's own catalog-download page this session, so no direct-domain block is claimed (unlike the confirmed tech.thk.com block elsewhere in this file) — this is simply where a readable copy was found first.",
+  },
+  {
+    id: asSourceRevisionId("jp.iko.linear_way_catalog@1560e"),
+    documentId: asSourceDocumentId("jp.iko.linear_way_catalog"),
+    edition: "Catalog 1560E (excerpt), 'General Explanation' chapter, pp. 1-10",
+    officialUrl:
+      "https://www.ikont.com/catalogs/linear-motion-rolling-guide-series/blue/1560E_ex.pdf",
+    note: "Read directly 2026-08-09 from IKO's own domain (ikont.com), no mirror needed.",
   },
 ];
