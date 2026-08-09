@@ -146,6 +146,37 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
       "https://www.ikont.com/catalogs/linear-motion-rolling-guide-series/blue/1560E_ex.pdf",
     note: "Manufacturer selection-calculation method for the linear-guide module (Unit 4.4), explicitly stated as complying with ISO 14728-1 (basic dynamic load rating) and ISO 14728-2 (basic static load rating). A second, independent formulation from PMI's: a multi-term dynamic/static equivalent-load formula combining downward/lateral force conversion factors and per-direction moment/static-load-rating ratios (Equations 5-10), plus its own static-safety-factor value tables and general load-position-to-moment formulas (Mr/Mp/My from Fx/Fy/Fz and load position X/Y/Z) for one- and two-rail, one- or two-slide-unit arrangements. Includes two full worked numerical examples (\"Examples of Load and Life Calculation\", printed pages 15-18): Example 1 (Linear Way ME 25 C2 R640 H, a two-rail/four-slide-unit arrangement) is reproduced end to end as this module's independent benchmark (lib/modules/linear-guide/0.1.0/iko-benchmark.ts); Example 2 (Linear Way MH 45 C2 R1050 H) uses a one-rail/two-slide-unit mono-rail arrangement out of this module's 0.1.0 scope and is not reproduced.",
   },
+  {
+    id: asSourceDocumentId("us.ktr.coupling_selection_operating_factors"),
+    classification: "manufacturer_method",
+    title: "Coupling Selection Based on Operating Factors",
+    authority: "KTR Systems GmbH",
+    market: "US",
+    access: "public",
+    officialUrl:
+      "https://www.ktr.com/fileadmin/ktr/media/Tools_Downloads/kataloge/coupling_selection_operating_factors.pdf",
+    note: "Manufacturer selection-calculation method for the coupling module (Unit 4.5): required/rated-torque sizing (T_N = 9550 * P[kW] / n[1/min]; T_KN >= T_N * S_B * S_t * S_R for steady load, T_Kmax >= (T_N + T_S) * S_Z * S_t * S_R for torque shocks), with full operating-factor (S_B, by driven-machine type -- a large application table), temperature-factor (S_t), starting-factor (S_Z), and direction-factor (S_R) tables, plus one full worked numerical example (a 200 kW / 1500 rpm motor driving a radial pump). Reached via the English/international ktr.com site; no separate JP-market edition was found (same treatment as us.steinmeyer.ball_screw_technology elsewhere in this file). Does not cover misalignment, torsional stiffness, moment of inertia, or speed limit -- see us.rw_america.coupling_sizing_selection and jp.nbk.coupling_catalog for those.",
+  },
+  {
+    id: asSourceDocumentId("us.rw_america.coupling_sizing_selection"),
+    classification: "manufacturer_method",
+    title: "Sizing and Selection (Safety Couplings)",
+    authority: "R+W America LLC",
+    market: "US",
+    access: "public",
+    officialUrl: "https://www.rw-america.com/",
+    note: "A second, independent manufacturer selection-calculation method for the coupling module (Unit 4.5), explicitly stated as 'According to DIN 740 part 2'. Same required-torque base formula as KTR's (T_AN = 9550 * P_Drive / n), combined with its own branded shock/load factor (S_A, by drive type), temperature factor (S_v), and start factor (S_z) tables into T_KN >= T_AN * S_A * S_v * S_z -- structurally identical shape to KTR's method, different branded factor names and numeric ranges, the same 'two sources agree on shape, differ on specifics' relationship this project's other modules already treat as normal. Also gives an inertia/acceleration-based torque formula (T_AR >= J_L/(J_A+J_L) * T_AS * S_A >= alpha * J_L) and a torsional-resonant-frequency check (f_e = 1/(2*pi) * sqrt(C_T * (J_Masch+J_Mot)/(J_Masch*J_Mot))) neither KTR's document nor PMI/IKO-style catalogs give. Includes two full worked numerical examples at different power levels and service-factor scenarios (450 kW/980 rpm elastic coupling; 800 kW/980 rpm gear coupling). Read via a Canadian distributor mirror (drivecentre.ca) branded throughout as 'RW-AMERICA.COM'; content is R+W America's own, not the distributor's.",
+  },
+  {
+    id: asSourceDocumentId("jp.nbk.coupling_catalog"),
+    classification: "manufacturer_method",
+    title: "Flexible Couplings (ORIM VEXTA / NBK)",
+    authority: "NBK (Nabeya Bi-tech Kaisha)",
+    market: "JP",
+    access: "public",
+    officialUrl: "https://www.nbk1560.com/",
+    note: "Manufacturer catalog data for the coupling module (Unit 4.5): per-model rated torque, maximum torque, allowable rotational speed, moment of inertia, torsional stiffness, and misalignment limits (parallel, angular, axial) across seven coupling series (XGT2, XGT, XHW, MST, MCS). Catalog/data-sheet values for specific couplings, not a derived formula -- the same treatment ball-screw gives Ca/C0a and linear-guide gives C/C0/T0. NBK's own selection-guide pages (nbk1560.com/en-US/resources/coupling/...) returned HTTP 403 to direct fetch in this environment; not yet confirmed whether this is a persistent host-level block (like the confirmed tech.thk.com block elsewhere in this file) or a one-session issue -- retry before assuming it is permanent. Read instead via a Japanese distributor mirror (orimvexta.co.jp) hosting the same NBK product data under a co-branded cover.",
+  },
 ];
 
 export const engineeringMethodRevisions: readonly SourceRevision[] = [
@@ -265,9 +296,40 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
   {
     id: asSourceRevisionId("jp.iko.linear_way_catalog@1560e"),
     documentId: asSourceDocumentId("jp.iko.linear_way_catalog"),
-    edition: "Catalog 1560E (excerpt), 'General Explanation' chapter, pp. 1-10",
+    edition: "Catalog 1560E (excerpt), 'General Explanation' chapter, pp. 1-18",
     officialUrl:
       "https://www.ikont.com/catalogs/linear-motion-rolling-guide-series/blue/1560E_ex.pdf",
-    note: "Read directly 2026-08-09 from IKO's own domain (ikont.com), no mirror needed.",
+    note: "Read directly 2026-08-09 from IKO's own domain (ikont.com), no mirror needed. Initially read pp. 1-10 (Stage 1); pp. 11-18 ('Calculated Load' and 'Examples of Load and Life Calculation') read later the same day to implement the linear-guide module's independent benchmark (lib/modules/linear-guide/0.1.0/iko-benchmark.ts).",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.ktr.coupling_selection_operating_factors@web-2026-08-09",
+    ),
+    documentId: asSourceDocumentId(
+      "us.ktr.coupling_selection_operating_factors",
+    ),
+    edition: "4-page PDF accessed 2026-08-09",
+    officialUrl:
+      "https://www.ktr.com/fileadmin/ktr/media/Tools_Downloads/kataloge/coupling_selection_operating_factors.pdf",
+    note: "Full 4-page PDF read directly 2026-08-09 (all pages). Covers 'Coupling types', 'Terminology of coupling selection', the S_B/S_t/S_Z/S_R factor tables, the two selection-check formulas, and the worked example.",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.rw_america.coupling_sizing_selection@web-2026-08-09",
+    ),
+    documentId: asSourceDocumentId("us.rw_america.coupling_sizing_selection"),
+    edition:
+      "'Sizing and Selection' / 'Safety Couplings' (ST series) chapter, printed pages 9-17 of a larger precision-couplings catalog",
+    officialUrl: "https://www.rw-america.com/",
+    note: "Read directly 2026-08-09 via a third-party distributor mirror (drivecentre.ca) after rw-america.com's own catalog-download page was not independently attempted this session -- no direct-domain block is claimed (unlike the confirmed tech.thk.com block elsewhere in this file), this is simply where a readable copy was found first, the same treatment given us.pmi.linear_guideway_catalog. The chapter title ('Safety Couplings') covers R+W's ST-series torque-limiting couplings specifically, but its 'Sizing and Selection' section states the general DIN 740-2 method (rated-torque and shock-torque checks, factor tables, inertia/acceleration and resonant-frequency formulas) rather than anything ST-series-specific -- applicable to this module's own scope, not just torque limiters.",
+  },
+  {
+    id: asSourceRevisionId("jp.nbk.coupling_catalog@orim-vexta-1908ov78"),
+    documentId: asSourceDocumentId("jp.nbk.coupling_catalog"),
+    edition:
+      "'ORIM VEXTA' co-branded catalog, document code 1908ov78, pp. 1-15",
+    officialUrl:
+      "https://www.orimvexta.co.jp/files/NBK/Document/1908ov78coupling.pdf",
+    note: "Read directly 2026-08-09 via a Japanese distributor mirror (orimvexta.co.jp) after NBK's own domain (nbk1560.com) returned HTTP 403 on every page attempted this session, including non-catalog pages (a selection-procedure article and a terminology glossary) -- see this source's own document-level note.",
   },
 ];
