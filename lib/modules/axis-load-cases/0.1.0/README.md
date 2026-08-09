@@ -44,6 +44,29 @@ via a `ClauseReference` anywhere; see the header comment in
 `atlanta-benchmark.ts` and `validation.ts`'s `independentBenchmark` field for
 the full caveat.
 
+## Resultant force/moment output ports (2026-08-09)
+
+`manifest.ts` adds four new output ports —
+`normal_resultant_force`/`peak_resultant_force`
+(`motion.axis.resultant_force`) and
+`normal_resultant_moment`/`peak_resultant_moment`
+(`motion.axis.resultant_moment`), registry `1.4.0` — exposing the full
+`axis.v1` force and moment vectors `math.ts`'s `resolveAxisLoadPhase` (and
+`./trace.ts`) already computed internally but this package previously kept
+trace-only. `motion.axis.thrust_force` remains the axial-only (`+X`) scalar
+drive demand; the new ports carry all three components, including the
+transverse (`Y`, `Z`) loads a downstream module needs and the axial scalar
+alone cannot express. Added because `linear-guide` (Unit 4.4) needs exactly
+this — see `context/modules/linear-guide/stage-1-spec.md` "A Real,
+Already-Documented Dependency Gap", which this module's own Stage 1 and
+Stage 2 documents anticipated by name before that module existed.
+`compute.ts` builds these from the same `cases.<case>.result` the trace
+already uses (`./values.ts`'s `makeAxisVector`), not a recomputation.
+`package.test.ts` adds a dedicated test with a nonzero center-of-mass
+offset and lateral external force/moment, confirming the new ports' `Y`/`Z`
+components against a hand-derived expectation (`thrust_force` alone cannot
+be checked this way, since it has no transverse component to verify).
+
 This directory intentionally has **no `index.ts`**. The module-registry
 generator (`scripts/generate-registry.mts`) only discovers
 `lib/modules/<id>/<version>/index.ts`, so naming the assembling file

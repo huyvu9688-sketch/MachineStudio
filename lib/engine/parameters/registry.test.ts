@@ -67,8 +67,8 @@ describe("parameter registry compatibility", () => {
 });
 
 describe("released registry", () => {
-  it("loads every seed definition and is version 1.3.0", () => {
-    expect(PARAMETER_REGISTRY.version).toBe("1.3.0");
+  it("loads every seed definition and is version 1.4.0", () => {
+    expect(PARAMETER_REGISTRY.version).toBe("1.4.0");
     expect(listParameters().length).toBe(PARAMETER_DEFINITIONS.length);
   });
 

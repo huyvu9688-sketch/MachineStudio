@@ -17,7 +17,13 @@ import {
 } from "./math";
 import { buildChecks } from "./checks";
 import { buildTrace, type TraceCaseInput } from "./trace";
-import { axisComponents, enumAt, quantityAt, vectorAt } from "./values";
+import {
+  axisComponents,
+  enumAt,
+  makeAxisVector,
+  quantityAt,
+  vectorAt,
+} from "./values";
 
 const MOVING_CASES = ["normal", "peak"] as const;
 type MovingCase = (typeof MOVING_CASES)[number];
@@ -132,6 +138,29 @@ export function compute(input: ModuleInput): ModuleComputation {
     cases.peak.result.requiredAxialDriveForceN,
     "N",
   );
+  // Full resolved force/moment vectors, not just the axial thrust scalar —
+  // added for linear-guide (Unit 4.4), which needs the complete
+  // guide-reference-point force/moment to distribute across guide blocks
+  // (context/modules/linear-guide/stage-1-spec.md "A Real,
+  // Already-Documented Dependency Gap"). The kernel already computes these;
+  // ./trace.ts already reports them in the trace, so this reuses the same
+  // values rather than recomputing them.
+  const normalResultantForceOut = makeAxisVector(
+    cases.normal.result.resultantAppliedForceN,
+    "N",
+  );
+  const peakResultantForceOut = makeAxisVector(
+    cases.peak.result.resultantAppliedForceN,
+    "N",
+  );
+  const normalResultantMomentOut = makeAxisVector(
+    cases.normal.result.resultantAppliedMomentNm,
+    "N*m",
+  );
+  const peakResultantMomentOut = makeAxisVector(
+    cases.peak.result.resultantAppliedMomentNm,
+    "N*m",
+  );
 
   return {
     outputs: {
@@ -139,6 +168,10 @@ export function compute(input: ModuleInput): ModuleComputation {
       gravitational_force: gravitationalForceOut,
       normal_thrust_force: normalThrustOut,
       peak_thrust_force: peakThrustOut,
+      normal_resultant_force: normalResultantForceOut,
+      peak_resultant_force: peakResultantForceOut,
+      normal_resultant_moment: normalResultantMomentOut,
+      peak_resultant_moment: peakResultantMomentOut,
     },
     trace: buildTrace({
       orientation,

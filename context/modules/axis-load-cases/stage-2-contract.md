@@ -134,13 +134,20 @@ have a source-backed contract:
    Rather than invent that semantics, Unit 4.1 ships a smaller module whose
    supported envelope matches its evidence, and a later `0.2.0` adds `holding`
    and `emergency_stop` when real evidence for them exists (see
-   `context/progress-tracker.md` Open decisions). This also resolves the
-   canonical-resolved-force/moment-output question: no downstream module
-   consumes a resolved moment yet (the guide module, Unit 4.4, is not built),
-   so `0.1.0` reports resolved force/moment in the calculation trace only, per
-   the Stage 1 trace contract, and defers a canonical output parameter to
-   whichever later module first needs to consume it as a machine-readable
-   port.
+   `context/progress-tracker.md` Open decisions).
+
+   **The canonical-resolved-force/moment-output question itself is now
+   RESOLVED (2026-08-09):** the guide module (Unit 4.4) now exists in draft
+   (`context/modules/linear-guide/stage-1-spec.md`) and needs exactly this.
+   Registry `1.4.0` adds `motion.axis.resultant_force` and
+   `motion.axis.resultant_moment` (both `vector_quantity`, per case) as new
+   released output ports on this still-unregistered `0.1.0` draft, built from
+   the same `resultantAppliedForceN`/`resultantAppliedMomentNm` values
+   `math.ts` and `./trace.ts` already computed — see
+   `lib/modules/axis-load-cases/0.1.0/README.md` "Resultant force/moment
+   output ports (2026-08-09)". `motion.axis.thrust_force` is unchanged: it
+   remains the axial-only scalar drive demand, now joined by a full-vector
+   sibling rather than replaced.
 2. **RESOLVED (2026-08-07):** per-case load vectors live as per-case
    parameters (`loadCases` on the parameter definition), the same pattern
    already released for `motion.axis.case_travel_direction`,

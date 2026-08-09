@@ -32,9 +32,13 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   id: "axis-load-cases",
   version: "0.1.0",
   sdkRange: { min: "1.0.0" },
-  // Draft-authored against registry 1.1.0. Keep this literal — never import
-  // the mutable current-version constant (context/ai-workflow-rules.md).
-  parameterRegistryVersion: "1.1.0",
+  // Draft-authored against registry 1.4.0 (originally 1.1.0; bumped
+  // 2026-08-09 when this still-unregistered draft gained the
+  // resultant_force/resultant_moment output ports below — see
+  // context/modules/linear-guide/stage-1-spec.md). Keep this literal —
+  // never import the mutable current-version constant
+  // (context/ai-workflow-rules.md).
+  parameterRegistryVersion: "1.4.0",
   category: "motion.axis",
   tags: ["axis", "load-case"],
   // No linear-axis@1 workflow role vocabulary exists yet (Unit 4.8 is not
@@ -157,6 +161,32 @@ export const ports: ModulePorts = {
     {
       key: "peak_thrust_force",
       parameterId: asParameterId("motion.axis.thrust_force"),
+      loadCase: "peak",
+    },
+    // Full resolved force/moment vectors (all three axis.v1 components),
+    // distinct from the axial-only thrust_force scalar above — added for
+    // linear-guide (Unit 4.4), which needs the complete guide-reference-
+    // point load to distribute across guide blocks. See
+    // context/modules/linear-guide/stage-1-spec.md "A Real,
+    // Already-Documented Dependency Gap".
+    {
+      key: "normal_resultant_force",
+      parameterId: asParameterId("motion.axis.resultant_force"),
+      loadCase: "normal",
+    },
+    {
+      key: "peak_resultant_force",
+      parameterId: asParameterId("motion.axis.resultant_force"),
+      loadCase: "peak",
+    },
+    {
+      key: "normal_resultant_moment",
+      parameterId: asParameterId("motion.axis.resultant_moment"),
+      loadCase: "normal",
+    },
+    {
+      key: "peak_resultant_moment",
+      parameterId: asParameterId("motion.axis.resultant_moment"),
       loadCase: "peak",
     },
   ],

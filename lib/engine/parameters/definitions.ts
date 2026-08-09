@@ -10,16 +10,23 @@
 // acceleration output (context/modules/motion-profile/stage-2-contract.md).
 // v1.3 adds two axis-scope per-case parameters (case_time_fraction,
 // case_linear_velocity) and the full screw.* group for ball-screw
-// (context/modules/ball-screw/stage-2-contract.md).
+// (context/modules/ball-screw/stage-2-contract.md). v1.4 adds two axis-scope
+// per-case vector outputs (resultant_force, resultant_moment) that
+// axis-load-cases' own kernel already computes internally but did not yet
+// expose as ports — added for linear-guide (Unit 4.4), which needs the full
+// resolved force/moment vector at the guide reference point, not just the
+// axial thrust-force scalar (context/modules/linear-guide/stage-1-spec.md
+// "A Real, Already-Documented Dependency Gap").
 //
-// Deliberately NOT released here: the guide, coupling, support-bearing, and
-// drive-train *result* parameters. Their exact semantics (units, qualifiers,
-// frames) depend on each module's Stage-1 engineering specification, which
-// does not exist yet. Released parameter IDs are immutable
-// (context/architecture.md; context/code-standards.md "Canonical Parameters"),
-// so those groups are proposed and released per module at its Stage-2 parameter
-// contract, bumping the registry version. See ./README.md and the progress
-// tracker. The upstream motion outputs below (thrust force, peak velocity, etc.)
+// Deliberately NOT released here: the guide.*, coupling, support-bearing, and
+// drive-train parameter groups themselves. Their exact semantics (units,
+// qualifiers, frames) depend on each module's own Stage-2 parameter contract,
+// which does not exist yet even where a Stage-1 spec does (linear-guide).
+// Released parameter IDs are immutable (context/architecture.md;
+// context/code-standards.md "Canonical Parameters"), so those groups are
+// proposed and released per module at its Stage-2 parameter contract,
+// bumping the registry version. See ./README.md and the progress tracker.
+// The upstream motion outputs below (thrust force, peak velocity, etc.)
 // already serve as the transmission modules' shared input ports.
 
 import { makeQuantity } from "../units";
@@ -27,7 +34,7 @@ import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.3.0";
+export const PARAMETER_REGISTRY_VERSION = "1.4.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -315,6 +322,30 @@ const axisApplication: readonly ParameterDefinition[] = [
     displayUnits: [...forceDisplay],
     frame: "axis",
     qualifiers: { bound: "required" },
+    loadCases: ["normal", "peak", "holding", "emergency_stop"],
+  }),
+  defineParameter({
+    id: "motion.axis.resultant_force",
+    displayName: "Resultant applied force",
+    symbol: "F_res",
+    definition:
+      "Full resolved force vector (all three axis.v1 components, not the axial scalar alone) applied to the moving assembly at the guide/carriage reference point, per load case: the sum of gravitational, friction, guide-resistance, and declared external force contributions. The friction and guide-resistance terms are purely axial (+/-X, opposing travel), so a consumer interested only in the transverse (Y, Z) load components is unaffected by them. Distinct from motion.axis.thrust_force, which reports only the signed +X (axial) drive demand as a scalar.",
+    valueType: "vector_quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    frame: "axis",
+    loadCases: ["normal", "peak", "holding", "emergency_stop"],
+  }),
+  defineParameter({
+    id: "motion.axis.resultant_moment",
+    displayName: "Resultant applied moment",
+    symbol: "M_res",
+    definition:
+      "Full resolved moment vector (all three axis.v1 components) applied to the moving assembly at the guide/carriage reference point, per load case: the sum of the gravity-induced moment (center-of-mass offset cross gravitational force) and any declared external moment. A downstream module distributes this moment to individual guide blocks; this module resolves it but does not distribute it.",
+    valueType: "vector_quantity",
+    canonicalUnit: "N*m",
+    displayUnits: ["N*m", "N*mm", "lbf*in"],
+    frame: "axis",
     loadCases: ["normal", "peak", "holding", "emergency_stop"],
   }),
 ];

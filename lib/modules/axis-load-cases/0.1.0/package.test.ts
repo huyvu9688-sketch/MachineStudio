@@ -11,10 +11,12 @@ import type { AxisHistoricalFixture } from "@/tests/fixtures/axes/fixture-types"
 import { axisLoadCasesModule } from "./package";
 import {
   asQuantity,
+  asVectorQuantity,
   orientationValue as orientation,
   travelDirectionValue as direction,
   type RawInput,
 } from "./test-helpers";
+import { makeAxisVector } from "./values";
 
 /** A minimal, valid horizontal-axis scenario exercising every required port. */
 function baselineInput(): RawInput {
@@ -111,6 +113,72 @@ describe("axis-load-cases 0.1.0 outputs", () => {
       unit: "N",
     });
     expect(computation.outputs.peak_thrust_force).toMatchObject({ unit: "N" });
+    expect(computation.outputs.normal_resultant_force).toMatchObject({
+      kind: "vector_quantity",
+      unit: "N",
+      frame: "axis",
+    });
+    expect(computation.outputs.peak_resultant_force).toMatchObject({
+      kind: "vector_quantity",
+      unit: "N",
+      frame: "axis",
+    });
+    expect(computation.outputs.normal_resultant_moment).toMatchObject({
+      kind: "vector_quantity",
+      unit: "N*m",
+      frame: "axis",
+    });
+    expect(computation.outputs.peak_resultant_moment).toMatchObject({
+      kind: "vector_quantity",
+      unit: "N*m",
+      frame: "axis",
+    });
+  });
+
+  it("resolves the full resultant force/moment vector, not just the axial scalar", () => {
+    // Added for linear-guide (Unit 4.4) — context/modules/linear-guide/
+    // stage-1-spec.md "A Real, Already-Documented Dependency Gap". A
+    // center-of-mass offset and a lateral external force/moment produce
+    // nonzero Y/Z components that motion.axis.thrust_force (the axial-only
+    // scalar) cannot express.
+    const input: RawInput = {
+      values: {
+        orientation: orientation("horizontal"),
+        incline_angle: makeQuantity(0, "rad"),
+        total_moving_mass: makeQuantity(10, "kg"),
+        gravity: makeQuantity(10, "m/s^2"),
+        center_of_mass_offset: makeAxisVector([0, 0.2, 0], "m"),
+        normal_travel_direction: direction("positive"),
+        normal_axial_acceleration: makeQuantity(0, "m/s^2"),
+        normal_guide_resistance_force: makeQuantity(0, "N"),
+        normal_external_force: makeAxisVector([0, 3, 0], "N"),
+        normal_external_moment: makeAxisVector([5, 0, 0], "N*m"),
+        peak_travel_direction: direction("positive"),
+        peak_axial_acceleration: makeQuantity(0, "m/s^2"),
+        peak_guide_resistance_force: makeQuantity(0, "N"),
+      },
+    };
+    const computation = executeModule(axisLoadCasesModule, input);
+
+    // Hand-derived: gravitationalForceN = [0, 0, -100] (10 kg * 10 m/s^2,
+    // horizontal so no axial component); gravitationalMomentNm =
+    // centerOfMass x gravitationalForceN = [0,0.2,0] x [0,0,-100] =
+    // [-20, 0, 0]; friction and guide resistance are both zero here, so
+    // resultantAppliedForceN = gravitationalForceN + externalForceN =
+    // [0, 3, -100]; resultantAppliedMomentNm = gravitationalMomentNm +
+    // externalMomentNm = [-20 + 5, 0, 0] = [-15, 0, 0].
+    const resultantForce = asVectorQuantity(
+      computation.outputs.normal_resultant_force,
+    );
+    const resultantMoment = asVectorQuantity(
+      computation.outputs.normal_resultant_moment,
+    );
+    expect(resultantForce.components[0]).toBeCloseTo(0, 9);
+    expect(resultantForce.components[1]).toBeCloseTo(3, 9);
+    expect(resultantForce.components[2]).toBeCloseTo(-100, 9);
+    expect(resultantMoment.components[0]).toBeCloseTo(-15, 9);
+    expect(resultantMoment.components[1]).toBeCloseTo(0, 9);
+    expect(resultantMoment.components[2]).toBeCloseTo(0, 9);
   });
 
   it("resolves zero thrust at rest with no friction, resistance, or incline", () => {

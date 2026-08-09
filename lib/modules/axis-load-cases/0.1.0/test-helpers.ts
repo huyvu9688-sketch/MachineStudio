@@ -7,6 +7,7 @@ import {
   type EngineeringValue,
   type EnumValue,
   type Quantity,
+  type VectorQuantity,
 } from "@/lib/engine";
 
 export function enumValue(enumId: string, value: string): EnumValue {
@@ -24,6 +25,14 @@ export const travelDirectionValue = (
 export function asQuantity(value: EngineeringValue): Quantity {
   if (value.kind !== "quantity") {
     throw new Error(`Expected a quantity output, got "${value.kind}".`);
+  }
+  return value;
+}
+
+/** Narrows an `EngineeringValue` to a `VectorQuantity`; throws otherwise (test-only). */
+export function asVectorQuantity(value: EngineeringValue): VectorQuantity {
+  if (value.kind !== "vector_quantity") {
+    throw new Error(`Expected a vector_quantity output, got "${value.kind}".`);
   }
   return value;
 }
