@@ -13,6 +13,10 @@ rolling elements only.
   Section 6), each keeping that diagram's own `l1`/`l2`/`l3`/`l4` parameter
   names rather than a shared "physical" naming, since the spec found these
   letters are locally scoped per diagram, not consistent across them.
+- `resolveBlockLoadsFromResultant` — the general form of the same
+  distribution, taking a resolved force and moment rather than a force at
+  a geometric offset. **This is the integration path** (see "Stage 2"
+  below); the four functions above are its source-faithful reference.
 - `resolveEquivalentLoad` — PMI's simpler `PE = |PR| + |PT|` form (Section
   7's "two or more guideways" case), matching this module's fixed
   four-block scope where the moment is already captured by differential
@@ -24,7 +28,7 @@ rolling elements only.
 
 ## Stage 1 kernel, not yet a package
 
-`math.test.ts` (29 tests) tests every function against internal consistency
+`math.test.ts` (34 tests) tests every function against internal consistency
 (force conservation across all four blocks, symmetry, monotonicity,
 boundary/invalid input) rather than PMI's own full worked numerical example
 (catalog Chapter 9): that example uses a bespoke two-mass, two-height
@@ -53,22 +57,41 @@ the full package" pattern `axis-load-cases`, `motion-profile`, and
 sequentially gated behind Unit 4.1's Definition of Done regardless
 (`context/implementation-map.md` Milestone 4 header).
 
-## Stage 2 (2026-08-09): a real wiring question found, not resolved by guessing
+## Stage 2 (2026-08-09): the integration path, and a question found then closed
 
 `context/modules/linear-guide/stage-2-contract.md` registers the new
 `guide.*` catalog/geometry parameters and confirms this module reuses
-`axis-load-cases`' new `motion.axis.resultant_force`/`resultant_moment`
-ports (registry `1.4.0`) as its applied-load input, per case — not a
-re-derivation from mass/gravity/acceleration. Drafting that contract
-surfaced a real problem, not assumed in advance: `resolveHorizontalInertiaBlockLoads`
-and `resolveVerticalInertiaBlockLoads` above are very likely redundant once
-`axis-load-cases` has already resolved a case's gravity+inertia+external
-combination into one snapshot, and the two "uniform" functions take a
-**force at a geometric offset**, not `axis-load-cases`' actual **(force,
-moment)** shape — related by `moment = force * offset`, but that
-substitution is unconfirmed for `resolveVerticalUniformBlockLoads`'s own
-diagram and breaks down entirely for a pure external moment with no
-accompanying force. See the Stage 2 document's "A Finding From Trying To
-Wire This Contract" and "Open Question, Not Resolved Here" for the full
-account. This is why no package exists yet: Stage 3 (`compute.ts`) cannot
-be written responsibly until that question has a source-checked answer.
+`axis-load-cases`' `motion.axis.resultant_force`/`resultant_moment` ports
+(registry `1.4.0`) as its applied-load input, per case — not a
+re-derivation from mass/gravity/acceleration.
+
+Drafting that contract surfaced a real problem: the four
+installation-specific functions above take a **force at a geometric
+offset**, while `axis-load-cases` produces a **force and a moment**. They
+are related by `moment = force * offset`, but `offset = moment / force` is
+undefined for a pure moment with no accompanying force — a case
+`axis-load-cases`' own `external_moment` input can produce. It was
+initially unclear whether the substitution generalized past the one
+diagram (B17) confirmed with highest confidence.
+
+**Re-reading all four PMI diagrams together — rather than one at a time —
+closed it.** Every load-position offset in every in-scope diagram appears
+_only_ inside a force-times-offset product (`F*l3`, `F*l4`, `m*a1*l3`,
+`m*(g+a1)*l3`), and that product is a moment; the spacings in the
+denominators are guide geometry, never load position. So the substitution
+is exact for the radial distribution everywhere, and it holds regardless
+of what B19's `l2`/`l4` mean physically, since those enter only as
+moments too.
+
+`resolveBlockLoadsFromResultant` implements the general form, and
+`math.test.ts` asserts it reproduces the B17 and B23 functions exactly
+plus resolves the pure-moment case — the subsumption is machine-checked,
+not asserted in prose. The four installation-specific functions stay as
+the source-faithful reference those tests check against; they are not the
+integration path.
+
+One part did not reduce as cleanly and is recorded rather than papered
+over: PMI prints an equal lateral magnitude on all four blocks with no
+differential sign and always divides by rail spacing, which reads as a
+per-block sizing magnitude rather than a signed equilibrium distribution.
+Reproduced as printed; flagged for Stage 4. See the Stage 2 document.

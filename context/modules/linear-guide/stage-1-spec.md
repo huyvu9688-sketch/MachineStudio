@@ -598,17 +598,21 @@ module needs (registry `1.4.0`), and all four in-scope working-load
 formula sets are re-verified twice against the source images. A Stage 1
 kernel now exists (`lib/modules/linear-guide/0.1.0/math.ts`, 29 tests).
 
-**Update (2026-08-09, cont'd — Stage 2 partially resolved, a real open
-question found):** `context/modules/linear-guide/stage-2-contract.md`
-registers the new `guide.*` parameters and confirms this module reuses
-`axis-load-cases`' resolved force/moment ports rather than re-deriving
-mass/gravity/acceleration. Drafting it found that the kernel's two
-"inertia" functions are likely redundant once `axis-load-cases` has
-already resolved a case's gravity+inertia+external combination, and that
-the two "uniform" functions take a force-at-an-offset, not
-`axis-load-cases`' actual force-and-moment shape — a real reformulation
-question left open rather than guessed at (see the Stage 2 document's "A
-Finding From Trying To Wire This Contract"). Stage 3 (a package wrapping
-this kernel) is blocked on that question, not merely not-yet-started.
+**Update (2026-08-09, cont'd — Stage 2 resolved):**
+`context/modules/linear-guide/stage-2-contract.md` registers the new
+`guide.*` parameters and confirms this module reuses `axis-load-cases`'
+resolved force/moment ports rather than re-deriving
+mass/gravity/acceleration. Drafting it found a real reformulation question
+(the kernel's functions take a force-at-an-offset, `axis-load-cases`
+produces a force-and-moment), which was then **resolved the same day by
+re-reading all four PMI diagrams together** rather than one at a time:
+every load-position offset appears only inside a force-times-offset
+product, i.e. as a moment, so the substitution is exact for the radial
+distribution everywhere — and holds regardless of what this document's own
+"Evidence Gaps" flagged as unconfirmed about the vertical diagram's
+`l2`/`l4`, since those enter only as moments too.
+`resolveBlockLoadsFromResultant` implements the general form with
+machine-checked equivalence to the source-faithful functions. Stage 3 (a
+package) is no longer blocked; it needs ordinary module-package work.
 Production release stays gated behind Unit 4.1 regardless
 (`context/implementation-map.md` Milestone 4 header).

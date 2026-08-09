@@ -4,16 +4,18 @@
 
 - Work unit: Unit 4.4, Stage 2 — parameter contract
 - Date: 2026-08-09
-- Stage 2 status: **partially resolved.** New `guide.*` registry parameters
-  and the reused `motion.axis.*` applied-load ports are decided below. One
-  real question is found and deliberately **not** resolved here — see
-  "Open Question, Not Resolved Here" — because resolving it would mean
-  guessing at physical semantics this session cannot verify with
-  confidence from the source images alone.
+- Stage 2 status: **resolved.** New `guide.*` registry parameters and the
+  reused `motion.axis.*` applied-load ports are decided below. The one real
+  question this contract's first draft left open — whether the kernel's
+  offset-based block-load functions can be reformulated in moment terms to
+  match what `axis-load-cases` actually resolves — is now **resolved the
+  same day** by re-reading all four PMI diagrams together instead of one at
+  a time. See "The Open Question — RESOLVED" below.
 - Module status: Stage 1 kernel exists
-  (`lib/modules/linear-guide/0.1.0/math.ts`), no package yet. This document
-  does not release a `ModulePackage`, register a module, or create a
-  calculation run.
+  (`lib/modules/linear-guide/0.1.0/math.ts`), extended the same day with
+  the general `resolveBlockLoadsFromResultant` form the resolution calls
+  for (34 tests). No package yet. This document does not release a
+  `ModulePackage`, register a module, or create a calculation run.
 
 ## A Finding From Trying To Wire This Contract, Not Assumed In Advance
 
@@ -55,38 +57,81 @@ reproduces the printed formula precisely when `M_rail = F*l3` and
 is zero and `moment` is not — a real case `axis-load-cases`' own
 `external_moment` input can produce on its own, with no accompanying
 force. A kernel written directly in terms of `(forceN, momentNm)` would not
-have this problem; one written in terms of `(forceN, offsetM)` does. This
-session could not confirm with the same confidence whether the same
+have this problem; one written in terms of `(forceN, offsetM)` does. When
+this section was first written, it was not confirmed whether the same
 substitution holds for `resolveVerticalUniformBlockLoads` (its own `l2`/`l4`
 variables were read from a different diagram, and stage-1-spec.md already
 flags that these letters are not confirmed to mean the same physical thing
-across PMI's different installation diagrams) — reformulating it without
-that confirmation risks introducing an error with no worked example to
-catch it against, exactly what this project's practice of re-verifying
-before implementing (`context/modules/ball-screw/stage-1-spec.md` "Evidence
-Gaps and Verification Confidence") exists to prevent.
+across PMI's different installation diagrams) — so reformulating was
+deferred rather than risk an error with no worked example to catch it
+against, per this project's practice of re-verifying before implementing
+(`context/modules/ball-screw/stage-1-spec.md` "Evidence Gaps and
+Verification Confidence").
 
-## Open Question, Not Resolved Here
+**That deferral lasted about an hour.** Re-reading all four diagrams
+together — rather than one at a time, which is what the diagram-by-diagram
+approach had been doing — resolved it immediately. See the next section.
 
-**Whether Stage 3's `compute.ts` reformulates the kernel's offset-based
-functions in moment terms directly, or derives an effective offset from
-`axis-load-cases`' moment/force ratio at the wiring layer (with a
-documented, checked failure mode for the zero-force/pure-moment case), is
-not decided here.** Doing so with confidence needs one of:
+## The Open Question — RESOLVED 2026-08-09 (same day, by re-reading)
 
-1. Re-reading the PMI source images specifically to confirm what `l2`/`l4`
-   represent in the vertical-installation diagram (B19), the way `l3`/`l4`
-   were already confirmed for the horizontal diagram (B17) — see
-   `context/modules/linear-guide/stage-1-spec.md` "Evidence Gaps and
-   Verification Confidence."
-2. A hand-derived, independently-checked proof that the `moment = force x
-   offset` substitution is valid for both diagrams' formula shapes, not
-   just B17's.
+**Resolved: Stage 3 reformulates in moment terms directly. The
+`moment = force x offset` substitution is exact for the radial
+distribution, confirmed by re-reading all four PMI diagrams together
+rather than one at a time.**
 
-Neither is done here. This is recorded as a genuine open Stage 3 item, not
-invented or guessed at — the same treatment `ball-screw`'s equivalent-load
-duty-cycle input shape received before its own resolution
-(`context/modules/ball-screw/stage-2-contract.md` "Decisions" item 3).
+The re-read found something the diagram-by-diagram reading had missed:
+**every load-position offset in every in-scope diagram appears only inside
+a force-times-offset product** — `F*l3` and `F*l4` (B17), `F*l2` and `F*l4`
+(B19), `m*a1*l3` and `m*a1*l4` (B23), `m*(g+a1)*l3` and `m*(g+a1)*l4`
+(B24). That product *is* a moment. The spacings that appear as
+denominators (`l1`, `l2`) are guide geometry, never load position. So the
+substitution is not an approximation that happens to work for B17 — it is
+exact everywhere, and the worry that it might not generalize past B17 was
+unfounded.
+
+This also resolves the question *without* needing to pin down what B19's
+`l2`/`l4` represent physically (entry criterion 1 in the original list
+above): whatever those distances mean, they enter only as `F*l2` and
+`F*l4`, i.e. as moments, so a moment-based formulation consumes them
+correctly regardless.
+
+`lib/modules/linear-guide/0.1.0/math.ts`'s new
+`resolveBlockLoadsFromResultant` implements the general form.
+`math.test.ts` asserts it reproduces `resolveHorizontalUniformBlockLoads`
+(B17) and `resolveHorizontalInertiaBlockLoads` (B23) exactly for their own
+scenarios — the subsumption claim is machine-checked, not prose — and that
+it resolves a pure moment with zero force (the case
+`offset = moment / force` could not express, and which
+`axis-load-cases`' own `external_moment` input can produce on its own),
+with the four blocks' radial loads correctly cancelling to zero net force.
+
+### One part that did NOT reduce as cleanly — recorded, not papered over
+
+The *lateral* direction is reproduced as printed but is not on the same
+footing as the radial:
+
+- PMI prints an equal lateral magnitude on all four blocks
+  (`P1T = P2T = P3T = P4T`) with no differential sign, in B19, B23, and
+  B24 alike. Four equal, same-signed lateral forces do not balance a
+  yawing moment, so this reads as a per-block **sizing magnitude**, not a
+  signed equilibrium distribution.
+- Every lateral formula divides by `2*l1` (rail spacing), even where a yaw
+  reaction would physically act over the block spacing instead.
+
+Neither is "corrected" in the kernel. Reproducing the source faithfully is
+the right call where there is no worked example to check a correction
+against — the same treatment `ball-screw`'s buckling-constant disagreement
+received. `resolveBlockLoadsFromResultant` additionally accepts a direct
+lateral force share (`F/4`), flagged in its own doc comment as elementary
+statics rather than source-confirmed, since no in-scope PMI diagram shows
+a net lateral force and so none prints that term; passing zero reproduces
+any PMI diagram exactly.
+
+**Still open for Stage 4, not Stage 3:** whether the lateral lever arm
+should be block spacing rather than rail spacing for a yaw-induced
+reaction. This does not block a package — the kernel reproduces the source
+— but it is a real question to put to a second source or a worked example
+before release.
 
 ## Decisions
 
@@ -167,9 +212,19 @@ themselves were already registered at Stage 1:
 
 ## Draft Kernel Status
 
-`lib/modules/linear-guide/0.1.0/math.ts` (29 tests, `math.test.ts`)
-implements all four PMI formula sets from Stage 1, unchanged by this
-document. Which of them a future `compute.ts` actually calls is gated on
-the "Open Question, Not Resolved Here" above — Stage 3 cannot be completed
-responsibly until that question has a source-checked answer, not a guessed
-one.
+`lib/modules/linear-guide/0.1.0/math.ts` (34 tests, `math.test.ts`)
+implements all four PMI formula sets from Stage 1, plus
+`resolveBlockLoadsFromResultant` — the general moment-based form added by
+this document's own resolution above, and the one a future `compute.ts`
+actually calls.
+
+The four installation-specific functions stay in the kernel as a tested,
+source-faithful reproduction of PMI's own method, and as the reference the
+general form's equivalence tests check against. They are not the
+integration path: `compute.ts` will link `axis-load-cases`'
+`resultant_force`/`resultant_moment` into `resolveBlockLoadsFromResultant`
+directly.
+
+Stage 3 (a package) is no longer blocked on an unresolved question. What
+it still needs is ordinary module-package work: manifest, ports, input
+schema, compute, trace, checks, UI/report schemas.

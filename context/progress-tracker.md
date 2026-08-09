@@ -35,7 +35,7 @@ same work, two labels):
 - Phase 2+ → after MVP
 
 **Health:** `npm run verify` green (format, lint 0 warnings, typecheck 0
-errors, 772 tests passed / 204 database-gated skips, build clean).
+errors, 777 tests passed / 204 database-gated skips, build clean).
 Production dependencies audit clean.
 
 ---
@@ -159,21 +159,35 @@ tests, all internal-consistency and boundary checks (PMI's own full worked
 example uses a bespoke geometry this session could not confidently map
 onto the generic formulas, so it is reserved for Stage 4, not guessed at).
 
-**Stage 2 partially resolved same day, one real question left open.**
-`context/modules/linear-guide/stage-2-contract.md` registers the new
-`guide.*` geometry/catalog parameters and confirms this module reuses
+**Stage 2 resolved same day**, including a real question it raised then
+closed. `context/modules/linear-guide/stage-2-contract.md` registers the
+new `guide.*` geometry/catalog parameters and confirms this module reuses
 `axis-load-cases`' resolved `resultant_force`/`resultant_moment` rather
-than re-deriving mass/gravity/acceleration. Drafting it found that the
-kernel's two "inertia" functions are very likely redundant once
-`axis-load-cases` has already resolved a case's gravity+inertia+external
-combination into one snapshot, and that the two "uniform" functions take a
-force-at-a-geometric-offset, not `axis-load-cases`' actual force-and-moment
-shape (`moment = force * offset` only substitutes cleanly when confirmed
-per diagram, and breaks down entirely for a pure external moment with no
-accompanying force). Not guessed at — recorded as an open Stage 3 question
-(see the contract's "A Finding From Trying To Wire This Contract"). No
-package, manifest, or compute.ts yet; Stage 3 is blocked on that question,
-not merely unstarted.
+than re-deriving mass/gravity/acceleration. Drafting it found the kernel's
+functions take a force-at-a-geometric-offset while `axis-load-cases`
+produces a force-and-moment — related by `moment = force * offset`, but
+`offset = moment / force` is undefined for a pure moment with no
+accompanying force (a case `external_moment` can produce on its own), and
+it was unclear whether the substitution generalized past the one diagram
+confirmed with highest confidence.
+
+**Re-reading all four PMI diagrams together — rather than one at a time —
+closed it.** Every load-position offset in every in-scope diagram appears
+only inside a force-times-offset product, i.e. as a moment; the spacings
+in the denominators are guide geometry, never load position. So the
+substitution is exact for the radial distribution everywhere, and holds
+regardless of what the vertical diagram's own `l2`/`l4` mean physically
+(the item the Stage 1 spec had flagged as unconfirmed), since those enter
+only as moments too. `resolveBlockLoadsFromResultant` (new) implements the
+general form; `math.test.ts` asserts it reproduces the B17 and B23
+functions exactly and resolves the pure-moment case, so the subsumption is
+machine-checked rather than asserted (34 tests). One part did not reduce
+as cleanly and is recorded, not papered over: PMI prints an equal lateral
+magnitude on all four blocks with no differential sign and always divides
+by rail spacing, which reads as a per-block sizing magnitude rather than a
+signed equilibrium distribution — reproduced as printed, flagged for Stage
+4. No package/manifest/compute.ts yet, but Stage 3 is no longer blocked on
+an open question; it needs ordinary module-package work.
 
 ---
 
@@ -245,17 +259,17 @@ variable names.
    yet), and Stage 6 (release), sequentially gated behind Unit 4.1
    regardless. Optional parallel work; does not move Unit 4.1's critical
    path.
-6. Unit 4.4 (`linear-guide`): Stage 1 spec/kernel and a partial Stage 2
-   contract are done (see Active work 2026-08-09). What's left before
-   Stage 3 (a package) can start: resolve whether `compute.ts` reformulates
-   the kernel's offset-based block-load functions in moment terms, or
-   derives an effective offset from `axis-load-cases`' moment/force ratio
-   at the wiring layer — needs re-reading the PMI vertical-installation
-   diagram (B19) to confirm what its own `l2`/`l4` represent, the same
-   confidence level the horizontal diagram (B17) already has. See
-   `context/modules/linear-guide/stage-2-contract.md` "Open Question, Not
-   Resolved Here." Optional parallel work; does not move Unit 4.1's
-   critical path.
+6. Unit 4.4 (`linear-guide`): Stages 1-2 done, kernel done including the
+   general `resolveBlockLoadsFromResultant` integration form (see Active
+   work 2026-08-09). Next is Stage 3 — ordinary module-package work
+   (manifest, ports, input schema, compute, trace, checks, UI/report
+   schemas) wrapping the kernel and linking `axis-load-cases`'
+   `resultant_force`/`resultant_moment` into
+   `resolveBlockLoadsFromResultant`. One item deferred to Stage 4, not
+   blocking: whether the lateral lever arm should be block spacing rather
+   than rail spacing for a yaw-induced reaction (PMI prints rail spacing
+   throughout; reproduced as printed). Optional parallel work; does not
+   move Unit 4.1's critical path.
 
 ---
 

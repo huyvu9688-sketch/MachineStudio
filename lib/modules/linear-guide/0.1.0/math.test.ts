@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   LinearGuideInputError,
+  resolveBlockLoadsFromResultant,
   resolveEquivalentLoad,
   resolveHorizontalInertiaBlockLoads,
   resolveHorizontalUniformBlockLoads,
@@ -263,6 +264,146 @@ describe("resolveVerticalInertiaBlockLoads", () => {
         ...base,
         railSpacingM: -0.1,
         phase: "uniform",
+      }),
+    ).toThrow(LinearGuideInputError);
+  });
+});
+
+// These are the tests that make the "moment = force * offset substitution is
+// exact" claim machine-checked rather than asserted in prose. See
+// resolveBlockLoadsFromResultant's own doc comment and
+// context/modules/linear-guide/stage-2-contract.md.
+describe("resolveBlockLoadsFromResultant subsumes the offset-based forms", () => {
+  it("reproduces resolveHorizontalUniformBlockLoads (B17) exactly", () => {
+    const F = 1000;
+    const l1 = 0.6;
+    const l2 = 0.4;
+    const l3 = 0.1;
+    const l4 = 0.05;
+
+    const offsetBased = resolveHorizontalUniformBlockLoads({
+      forceN: F,
+      railSpacingM: l1,
+      blockSpacingM: l2,
+      loadOffsetRailM: l3,
+      loadOffsetBlockM: l4,
+    });
+    const momentBased = resolveBlockLoadsFromResultant({
+      normalForceN: F,
+      lateralForceN: 0,
+      momentLateralNm: 0,
+      // The whole point: the offsets enter only as F*offset, i.e. a moment.
+      momentAcrossRailsNm: F * l3,
+      momentAlongRailNm: F * l4,
+      railSpacingM: l1,
+      blockSpacingM: l2,
+    });
+
+    expect(momentBased).toEqual(offsetBased);
+  });
+
+  it("reproduces resolveHorizontalInertiaBlockLoads (B23) radial loads exactly", () => {
+    const m = 200;
+    const g = 9.80665;
+    const a1 = 4;
+    const l1 = 0.5;
+    const l3 = 0.3;
+
+    const offsetBased = resolveHorizontalInertiaBlockLoads({
+      massKg: m,
+      gravityMps2: g,
+      accelerationMps2: a1,
+      decelerationMps2: 2,
+      phase: "acceleration",
+      railSpacingM: l1,
+      loadOffsetRadialM: l3,
+      loadOffsetLateralM: 0,
+    });
+    // B23's own printed sign pattern lowers blocks 1 and 4 during
+    // acceleration, the opposite of B17's, so the equivalent moment is
+    // negative in this kernel's stated sign convention -- a sign choice,
+    // not a discrepancy between the two sources.
+    const momentBased = resolveBlockLoadsFromResultant({
+      normalForceN: m * g,
+      lateralForceN: 0,
+      momentLateralNm: 0,
+      momentAcrossRailsNm: -(m * a1 * l3),
+      momentAlongRailNm: 0,
+      railSpacingM: l1,
+      blockSpacingM: 0.4,
+    });
+
+    expect(momentBased.block1.radialN).toBeCloseTo(
+      offsetBased.block1.radialN,
+      9,
+    );
+    expect(momentBased.block2.radialN).toBeCloseTo(
+      offsetBased.block2.radialN,
+      9,
+    );
+    expect(momentBased.block3.radialN).toBeCloseTo(
+      offsetBased.block3.radialN,
+      9,
+    );
+    expect(momentBased.block4.radialN).toBeCloseTo(
+      offsetBased.block4.radialN,
+      9,
+    );
+  });
+
+  it("resolves a pure moment with zero force -- the case the offset form cannot express", () => {
+    // offset = moment / force is undefined here; axis-load-cases' own
+    // external_moment input can produce exactly this (a moment with no
+    // accompanying resultant force).
+    const result = resolveBlockLoadsFromResultant({
+      normalForceN: 0,
+      lateralForceN: 0,
+      momentLateralNm: 0,
+      momentAcrossRailsNm: 120,
+      momentAlongRailNm: 0,
+      railSpacingM: 0.5,
+      blockSpacingM: 0.4,
+    });
+    expect(Number.isFinite(result.block1.radialN)).toBe(true);
+    expect(result.block1.radialN).toBeCloseTo(120 / (2 * 0.5), 9);
+    expect(result.block2.radialN).toBeCloseTo(-120 / (2 * 0.5), 9);
+    // A pure moment produces no net force: the four blocks must cancel.
+    const sum =
+      result.block1.radialN +
+      result.block2.radialN +
+      result.block3.radialN +
+      result.block4.radialN;
+    expect(sum).toBeCloseTo(0, 9);
+  });
+
+  it("conserves the normal force across all four blocks", () => {
+    const result = resolveBlockLoadsFromResultant({
+      normalForceN: 800,
+      lateralForceN: 0,
+      momentLateralNm: 0,
+      momentAcrossRailsNm: 60,
+      momentAlongRailNm: 25,
+      railSpacingM: 0.5,
+      blockSpacingM: 0.4,
+    });
+    const sum =
+      result.block1.radialN +
+      result.block2.radialN +
+      result.block3.radialN +
+      result.block4.radialN;
+    expect(sum).toBeCloseTo(800, 9);
+  });
+
+  it("rejects non-positive spacings", () => {
+    expect(() =>
+      resolveBlockLoadsFromResultant({
+        normalForceN: 800,
+        lateralForceN: 0,
+        momentLateralNm: 0,
+        momentAcrossRailsNm: 0,
+        momentAlongRailNm: 0,
+        railSpacingM: 0,
+        blockSpacingM: 0.4,
       }),
     ).toThrow(LinearGuideInputError);
   });

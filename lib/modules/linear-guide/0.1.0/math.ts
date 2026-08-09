@@ -18,25 +18,21 @@
  * bare numbers remain internal here, mirroring
  * lib/modules/ball-screw/0.1.0/math.ts.
  *
- * IMPORTANT (found while drafting Stage 2, 2026-08-09 — see
- * context/modules/linear-guide/stage-2-contract.md "A Finding From Trying
- * To Wire This Contract"): `resolveHorizontalInertiaBlockLoads` and
- * `resolveVerticalInertiaBlockLoads` re-derive gravity's and inertia's
- * separate contributions from raw mass/acceleration, matching PMI's own
- * self-contained worked example. This project's `axis-load-cases` module
- * already resolves gravity, friction, guide resistance, and external
- * force/moment into one `resultant_force`/`resultant_moment` snapshot per
- * load case — feeding that into these two functions would mean
- * re-deriving the same physics a second time from inputs this module
- * would have to duplicate from `axis-load-cases`' own surface. They are
- * very likely NOT part of this module's actual compute path once a
- * package exists; kept here as a tested, source-faithful reproduction of
- * PMI's own method, not as a hint that they're the intended integration
- * point. `resolveHorizontalUniformBlockLoads` and
- * `resolveVerticalUniformBlockLoads` are the ones that matter for real
- * integration, and even those take a force at a geometric offset rather
- * than `axis-load-cases`' actual (force, moment) shape — see the Stage 2
- * document for the unresolved reformulation question this raises.
+ * IMPORTANT — which function a package should actually call (settled
+ * 2026-08-09, see context/modules/linear-guide/stage-2-contract.md):
+ * **`resolveBlockLoadsFromResultant` is the integration path**, not the
+ * four installation-specific functions. Those four reproduce PMI's own
+ * self-contained worked method, which re-derives gravity's and inertia's
+ * separate contributions from raw mass/acceleration and locates the load
+ * by a geometric offset. This project's `axis-load-cases` module already
+ * resolves gravity, friction, guide resistance, and external force/moment
+ * into one `(resultant_force, resultant_moment)` snapshot per load case,
+ * so calling the offset-based functions from a package would mean
+ * re-deriving physics that was already resolved upstream, from inputs
+ * this module would have to duplicate from `axis-load-cases`' own
+ * surface. The four are kept as a tested, source-faithful reference —
+ * and as what the general form's own equivalence tests check against —
+ * not as a hint that they are the intended entry point.
  */
 
 export type RollingElementType = "ball";
@@ -270,6 +266,118 @@ export function resolveVerticalInertiaBlockLoads(
   const block: BlockLoad = { radialN, lateralN };
 
   return { block1: block, block2: block, block3: block, block4: block };
+}
+
+// --- General resultant form (the integration path) --------------------------
+
+export interface ResultantBlockLoadInput {
+  /**
+   * Force component normal to the mounting plane, in N — the only force
+   * component that produces a direct per-block share. A force acting along
+   * the rail axis produces no block share (it is reacted by the drive), which
+   * is why PMI's own vertical diagram (B19) has no `F/4` term at all.
+   */
+  readonly normalForceN: number;
+  /**
+   * Force component parallel to the mounting plane, in N. Shared equally
+   * across the four blocks (`F/4`). **Elementary statics, not
+   * source-confirmed:** no PMI diagram in `0.1.0`'s scope shows a net
+   * lateral force, so none prints this term. It is included because a net
+   * lateral force must go somewhere and four identical blocks split it
+   * evenly; pass zero to reproduce any PMI diagram exactly.
+   */
+  readonly lateralForceN: number;
+  /**
+   * Moment producing lateral block loading, in N*m, divided by
+   * `2 * railSpacingM`. PMI's own vertical and inertia diagrams (B19, B23,
+   * B24) all print this as an equal magnitude on all four blocks
+   * (`P1T = P2T = P3T = P4T`), which is a sizing magnitude rather than a
+   * signed equilibrium distribution — reproduced here as printed.
+   */
+  readonly momentLateralNm: number;
+  /**
+   * Moment reacted by the block pair separated by `railSpacingM`, in N*m.
+   * Sign convention: positive raises blocks 1 and 4 and lowers 2 and 3,
+   * matching PMI's own printed B17 sign pattern.
+   */
+  readonly momentAcrossRailsNm: number;
+  /**
+   * Moment reacted by the block pair separated by `blockSpacingM`, in N*m.
+   * Positive raises blocks 3 and 4 and lowers 1 and 2 (B17's pattern).
+   */
+  readonly momentAlongRailNm: number;
+  /** Distance between the two rails, in m. Must be > 0. */
+  readonly railSpacingM: number;
+  /** Distance between the two blocks on one rail, in m. Must be > 0. */
+  readonly blockSpacingM: number;
+}
+
+/**
+ * General four-block load distribution in terms of a resolved force and
+ * moment, rather than a force at a geometric offset.
+ *
+ * **Why this exists (resolved 2026-08-09, see
+ * context/modules/linear-guide/stage-2-contract.md "Open Question"):**
+ * re-reading all four of PMI's own installation diagrams (printed pages
+ * B17, B19, B23, B24) together showed that every load-position offset
+ * appears *only* inside a force-times-offset product — `F*l3`, `F*l4`,
+ * `m*a1*l3`, `m*(g+a1)*l3` — and that product is a moment. The spacings
+ * (`l1`, `l2`) appear only as denominators, and those are guide geometry,
+ * not load position. So substituting `moment = force * offset` is exact
+ * for the *radial* distribution, not an approximation.
+ *
+ * Two things this fixes over the offset-based form:
+ *
+ * 1. **A pure moment with no accompanying force is well defined here.**
+ *    `offset = moment / force` is undefined when the force is zero, a case
+ *    `axis-load-cases`' own `external_moment` input can produce on its own.
+ * 2. **It matches what `axis-load-cases` actually resolves** — one
+ *    `(resultant_force, resultant_moment)` snapshot per load case — so no
+ *    caller has to re-derive gravity and inertia contributions that were
+ *    already resolved upstream.
+ *
+ * **Confidence is not uniform across the two directions, and this matters:**
+ *
+ * - *Radial* — fully confirmed. `math.test.ts` asserts this reproduces
+ *   `resolveHorizontalUniformBlockLoads` (B17) and
+ *   `resolveHorizontalInertiaBlockLoads` (B23) exactly for their own
+ *   scenarios, so the subsumption claim is machine-checked, not just
+ *   stated here.
+ * - *Lateral* — reproduced as printed, but PMI's own diagrams print an
+ *   equal lateral magnitude on all four blocks (`P1T = P2T = P3T = P4T`)
+ *   with no differential sign, which is a per-block sizing magnitude
+ *   rather than a signed equilibrium distribution (four equal same-signed
+ *   lateral forces would not balance a yawing moment). The lever arm PMI
+ *   divides by is `2*l1` (rail spacing) in every lateral formula, even
+ *   where a yaw reaction would physically act over the block spacing
+ *   instead. Neither is "fixed" here — reproducing the source faithfully
+ *   is the right call for a kernel with no worked example to check a
+ *   correction against, and this is recorded as an open item in
+ *   stage-2-contract.md rather than silently reinterpreted.
+ */
+export function resolveBlockLoadsFromResultant(
+  input: ResultantBlockLoadInput,
+): FourBlockLoads {
+  assertFinite("normalForceN", input.normalForceN);
+  assertFinite("lateralForceN", input.lateralForceN);
+  assertFinite("momentAcrossRailsNm", input.momentAcrossRailsNm);
+  assertFinite("momentAlongRailNm", input.momentAlongRailNm);
+  assertFinite("momentLateralNm", input.momentLateralNm);
+  assertPositive("railSpacingM", input.railSpacingM);
+  assertPositive("blockSpacingM", input.blockSpacingM);
+
+  const base = input.normalForceN / 4;
+  const railTerm = input.momentAcrossRailsNm / (2 * input.railSpacingM);
+  const blockTerm = input.momentAlongRailNm / (2 * input.blockSpacingM);
+  const lateralN =
+    input.lateralForceN / 4 + input.momentLateralNm / (2 * input.railSpacingM);
+
+  return {
+    block1: { radialN: base + railTerm - blockTerm, lateralN },
+    block2: { radialN: base - railTerm - blockTerm, lateralN },
+    block3: { radialN: base - railTerm + blockTerm, lateralN },
+    block4: { radialN: base + railTerm + blockTerm, lateralN },
+  };
 }
 
 // --- Equivalent load, static safety, and life (PMI Sections 4, 7) ----------
