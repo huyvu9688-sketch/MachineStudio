@@ -35,7 +35,7 @@ same work, two labels):
 - Phase 2+ → after MVP
 
 **Health:** `npm run verify` green (format, lint 0 warnings, typecheck 0
-errors, 742 tests passed / 204 database-gated skips, build clean).
+errors, 772 tests passed / 204 database-gated skips, build clean).
 Production dependencies audit clean.
 
 ---
@@ -134,21 +134,32 @@ this project to directly cite ISO 14728-1/14728-2 for the load-rating/life
 formulas, rather than only a WebSearch-synthesized paraphrase. The two
 sources agree on life-formula shape and (distance-km, not revolution)
 basis, but disagree on the equivalent-load formula's complexity and on
-static-safety-factor standard values — both recorded, not resolved. **A
-real dependency gap found, not invented:** `axis-load-cases 0.1.0` already
-anticipated this module by name in its own Stage 1 and Stage 2 documents
-("the guide module, Unit 4.4, is not built") but exposes only the axial
-thrust-force component as a released port, not the full resolved
-force/moment vector this module needs at the guide reference point — a real
-Stage 2 registry question (new `axis-load-cases` output port vs. this
-module re-deriving the resolution itself), not resolved here. Proposed
-`0.1.0` scope: two rails, two blocks per rail (matching PMI's own worked
-example), horizontal or vertical installation, ball-type rolling elements
-only. No kernel yet — three of the four in-scope working-load formula sets
-need one more re-verification pass against the source images before
-implementation (see the spec's own "Evidence Gaps and Verification
-Confidence"; the fourth, horizontal-uniform-motion, is already
-double-checked).
+static-safety-factor standard values — both recorded, not resolved.
+
+**Both Stage 2 entry blockers resolved same day.** The real dependency gap
+this spec found — `axis-load-cases 0.1.0` already anticipated this module
+by name in its own Stage 1/2 documents ("the guide module, Unit 4.4, is not
+built") but exposed only the axial thrust-force scalar, not the full
+resolved force/moment vector this module needs — is now closed: registry
+`1.4.0` adds `motion.axis.resultant_force`/`resultant_moment` (both
+per-case `vector_quantity`) to `axis-load-cases 0.1.0`'s still-unregistered
+draft, built from values its kernel already computed internally
+(`lib/modules/axis-load-cases/0.1.0/README.md` "Resultant force/moment
+output ports"). A second re-verification pass against the PMI source
+images also caught and corrected a real transcription error in this
+document's own first draft (the inertia-phase formulas had used one shared
+acceleration rate instead of the source's own distinct `a1`/`a3`).
+
+**A Stage 1 kernel now exists**, ahead of a full Stage 2 parameter
+contract: `lib/modules/linear-guide/0.1.0/math.ts` implements block-load
+distribution for all four in-scope installation/motion combinations
+(horizontal/vertical × uniform/inertia), equivalent load, static safety
+factor, nominal life (ball-type, distance-basis), service life in hours,
+and mean load under a varying duty cycle — 29 tests, all internal-
+consistency and boundary checks (PMI's own full worked example uses a
+bespoke geometry this session could not confidently map onto the generic
+formulas, so it is reserved for Stage 4, not guessed at). No package,
+manifest, or Stage 2 parameter contract yet.
 
 ---
 
@@ -220,14 +231,14 @@ variable names.
    yet), and Stage 6 (release), sequentially gated behind Unit 4.1
    regardless. Optional parallel work; does not move Unit 4.1's critical
    path.
-6. Unit 4.4 (`linear-guide`): Stage 1 spec is drafted (see Active work
-   2026-08-09) — no kernel yet. Next: resolve the `axis-load-cases`
-   force/moment output-port gap the spec identified (Stage 2 entry
-   criterion 1), re-verify three of the four in-scope working-load formula
-   sets against the PMI source images a second time, then build a draft
-   kernel against the proposed horizontal/vertical, two-rail/four-block,
-   ball-type scope. Optional parallel work; does not move Unit 4.1's
-   critical path.
+6. Unit 4.4 (`linear-guide`): Stage 1 spec and kernel done (see Active work
+   2026-08-09); the `axis-load-cases` port gap is resolved. Next: a Stage 2
+   parameter contract (the `guide.*` group — geometry, catalog ratings,
+   preload grade, rolling-element type; see the spec's "Existing Parameter
+   Review"), then a Stage 3 package (manifest, ports, compute, trace,
+   checks) wrapping the existing kernel, linking to `axis-load-cases`'
+   `resultant_force`/`resultant_moment` ports. Optional parallel work; does
+   not move Unit 4.1's critical path.
 
 ---
 

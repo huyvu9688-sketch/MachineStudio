@@ -46,7 +46,7 @@ It will **not**:
   resolved `motion.axis.thrust_force` rather than re-deriving gravity and
   friction (`context/modules/ball-screw/stage-1-spec.md` "Purpose").
 
-## A Real, Already-Documented Dependency Gap
+## A Real, Already-Documented Dependency Gap — RESOLVED 2026-08-09
 
 `axis-load-cases 0.1.0`'s own Stage 1 spec already anticipated this module
 by name. Its coordinate-convention item 6 states: "The center-of-mass
@@ -56,25 +56,38 @@ added in the same frame. **The module reports the resulting moment but does
 not distribute it to guide blocks.**" (`context/modules/axis-load-cases/
 stage-1-spec.md` "Proposed Coordinate and Sign Convention" item 6, emphasis
 added.) Its Stage 2 contract's "Deferred Decisions and Release Gates" item 1
-is even more direct: "no downstream module consumes a resolved moment yet
+was even more direct: "no downstream module consumes a resolved moment yet
 (**the guide module, Unit 4.4, is not built**), so `0.1.0` reports resolved
 force/moment in the calculation trace only... and defers a canonical output
 parameter to whichever later module first needs to consume it as a
 machine-readable port" (`context/modules/axis-load-cases/
 stage-2-contract.md`, emphasis added).
 
-That module is now this one. `axis-load-cases 0.1.0`'s kernel
-(`lib/modules/axis-load-cases/0.1.0/math.ts`) already computes
-`resultantAppliedForceN` and `resultantAppliedMomentNm` (full 3-component
-`axis.v1` vectors: gravity plus external force/moment, per case) internally
-and reports them in the calculation trace, but **exposes neither as a
-released output port** — only the axial (`+X`) component reaches a port,
-as `motion.axis.thrust_force`. This module needs the full vector (all three
-components of both force and moment, not just the axial scalar) at the
-guide reference point, per load case. This is a genuine, real Stage 2
-registry gap — not invented here, already flagged by a different module's
-own spec two units ago — and is recorded in "Existing Parameter Review"
-below rather than resolved.
+That module is now this one, and the gap is now closed. `axis-load-cases
+0.1.0`'s kernel (`lib/modules/axis-load-cases/0.1.0/math.ts`) already
+computed `resultantAppliedForceN` and `resultantAppliedMomentNm` (full
+3-component `axis.v1` vectors, per case) internally and reported them in
+the calculation trace, but exposed neither as a released output port — only
+the axial (`+X`) component reached a port, as `motion.axis.thrust_force`.
+Registry `1.4.0` (2026-08-09) adds `motion.axis.resultant_force` and
+`motion.axis.resultant_moment` (both `vector_quantity`, per case) as new
+output ports on `axis-load-cases 0.1.0`'s still-unregistered draft, built
+from the same already-computed kernel values — see
+`lib/modules/axis-load-cases/0.1.0/README.md` "Resultant force/moment
+output ports (2026-08-09)" and `context/modules/axis-load-cases/
+stage-2-contract.md` "Deferred Decisions and Release Gates" item 1. This
+module can now link to those two ports directly, the same way `ball-screw`
+already links to `motion.axis.thrust_force`, instead of re-deriving the
+resolution itself (option 2 in the original "Existing Parameter Review"
+below is no longer needed).
+
+Note precisely what `resultant_force` includes: gravity, friction,
+guide-resistance, **and** external force — not gravity and external force
+alone. The friction and guide-resistance terms are purely axial (`+/-X`,
+opposing travel; `axis-load-cases 0.1.0`'s own `resistanceForce` helper
+never produces a `Y`/`Z` component), so this module's own use of the
+transverse (`Y`, `Z`) load components is unaffected either way — but a
+future kernel must not assume the `X` component is axial thrust alone.
 
 ## Candidate Sources
 
@@ -259,18 +272,22 @@ Vertical, uniform motion or at rest (F lateral, offset l4 from center):
   P1 = P2 = P3 = P4 = F*l2 / (2*l1)
   P1T = P2T = P3T = P4T = F*l4 / (2*l1)
 
-Horizontal, subjected to inertia (mass m, acceleration a1 during
-acceleration/deceleration, mg the static/gravity share):
+Horizontal, subjected to inertia (mass m, acceleration rate a1, distinct
+deceleration rate a3 — matching PMI's own worked example's own a1/a3
+naming, item 8 below; mg the static/gravity share):
   During acceleration: P1 = P4 = mg/4 - m*a1*l3/(2*l1);  P2 = P3 = mg/4 + m*a1*l3/(2*l1)
-  During deceleration: P1 = P4 = mg/4 + m*a1*l3/(2*l1);  P2 = P3 = mg/4 - m*a1*l3/(2*l1)
-  Plus a lateral component P1T=P2T=P3T=P4T = m*a1*l4/(2*l1) (sign per block)
+                        P1T=P2T=P3T=P4T = m*a1*l4/(2*l1)  (equal on all four, no differential sign)
+  During deceleration: P1 = P4 = mg/4 + m*a3*l3/(2*l1);  P2 = P3 = mg/4 - m*a3*l3/(2*l1)
+                        P1T=P2T=P3T=P4T = m*a3*l4/(2*l1)
   In uniform motion: P1 = P2 = P3 = P4 = mg/4
 
-Vertical, subjected to inertia:
+Vertical, subjected to inertia (same a1/a3 distinction):
   During acceleration: P1=P2=P3=P4 = m*(g+a1)*l3/(2*l1)
-  During deceleration: P1=P2=P3=P4 = m*(g-a1)*l3/(2*l1)
+                        P1T=P2T=P3T=P4T = m*(g+a1)*l4/(2*l1)
+  During deceleration: P1=P2=P3=P4 = m*(g-a3)*l3/(2*l1)
+                        P1T=P2T=P3T=P4T = m*(g-a3)*l4/(2*l1)
   In uniform motion:   P1=P2=P3=P4 = m*g*l3/(2*l1)
-  Plus a lateral component keyed to l4/l6 (mounting-specific offsets)
+                        P1T=P2T=P3T=P4T = m*g*l4/(2*l1)
 ```
 
 Overhung-horizontal, wall-mount, and laterally/longitudinally-tilted
@@ -421,37 +438,22 @@ Envelope (Proposed)" below.
 
 ## Existing Parameter Review
 
-**The central gap, already flagged above:** this module needs a resolved
-force and moment vector (all three `axis.v1` components each, per load
-case) at the guide reference point. `axis-load-cases 0.1.0` computes this
-internally (`resultantAppliedForceN`, `resultantAppliedMomentNm` in
-`lib/modules/axis-load-cases/0.1.0/math.ts`) but exposes only the axial
-scalar (`motion.axis.thrust_force`) as a released output port. A Stage 2
-registry proposal for this module needs one of:
+**The central gap, already flagged above, is now RESOLVED (2026-08-09)** —
+see "A Real, Already-Documented Dependency Gap." `axis-load-cases 0.1.0`
+now exposes `motion.axis.resultant_force` and `motion.axis.resultant_moment`
+(registry `1.4.0`) as released output ports, built from the same
+`resultantAppliedForceN`/`resultantAppliedMomentNm` values its kernel
+already computed. This module's own Stage 2 registry proposal links to
+those two ports directly rather than re-deriving the resolution.
 
-1. A new released output port on a future `axis-load-cases` version
-   (e.g. `motion.axis.resultant_force` / `resultant_moment`, both
-   `vector_quantity`, per case) — the path the two `axis-load-cases`
-   documents already anticipated by name, and consistent with `ball-screw`'s
-   own precedent of reusing an upstream module's resolved output rather
-   than re-deriving it.
-2. This module re-deriving the resolved force/moment itself from the same
-   raw inputs `axis-load-cases` already consumes (mass, center-of-mass
-   offset, orientation, external force/moment) — duplicating logic across
-   two modules, which `context/architecture.md`'s "Module Consistency
-   Mechanisms" and this project's general "prefer explicit duplication over
-   premature abstraction" standard (`context/code-standards.md` "General")
-   do not clearly favor over option 1 for a genuinely shared computation.
-
-Not decided here — a real Stage 2 question, not invented.
-
-Already released and reusable without change once the gap above is
-resolved:
+Already released and reusable without change:
 
 | Purpose | Parameter |
 | --- | --- |
 | Installation orientation | `motion.axis.orientation` |
-| Reference for a resolved axial force (contrast, not reuse) | `motion.axis.thrust_force` |
+| Resolved applied force at the guide reference point, per case | `motion.axis.resultant_force` |
+| Resolved applied moment at the guide reference point, per case | `motion.axis.resultant_moment` |
+| Reference for a resolved axial-only force (contrast, not reuse) | `motion.axis.thrust_force` |
 
 Everything else this module needs is new — no `guide.*` parameter namespace
 exists yet (`grep` of `lib/engine/parameters/definitions.ts` confirms zero
@@ -526,11 +528,17 @@ Verification Confidence"):
   per-block working-load formulas (item 6), since a 16-term multi-sign
   formula set is exactly the kind of content a first-pass read can get
   subtly wrong (the same concern that already caught a wrong buckling
-  formula for `ball-screw`). The horizontal-uniform-motion formula set
-  (item 6) was re-verified twice and is now high confidence; the
-  inertia-adjusted, overhung, wall-mount, and tilted formula sets were read
-  once and should get the same re-verification pass before a kernel
-  implements them.
+  formula for `ball-screw`). **All four in-scope formula sets (horizontal-
+  uniform, horizontal-inertia, vertical-uniform, vertical-inertia) are now
+  re-verified twice** — the second read of the two inertia-adjusted sets
+  caught a real transcription error in this document's own first draft: the
+  acceleration and deceleration phases use *distinct* rates (`a1`, `a3`,
+  matching PMI's own worked-example naming), not one shared `a1` as first
+  written, and the lateral (`l4`) inertia component is equal across all
+  four blocks with no differential sign, not "sign per block" as first
+  (vaguely) written. Both are corrected in item 6 above. The overhung,
+  wall-mount, and tilted formula sets remain read once only and are out of
+  `0.1.0` scope, so no re-verification was needed for them this session.
 - **Directly read this session, IKO:** the ISO 14728-1/14728-2 citation,
   life-formula shape, load-factor table, and general moment-from-load-
   position formulas (items 1, 3, 4, 6) — read once, not re-verified a
@@ -561,12 +569,10 @@ Verification Confidence"):
 Stage 2 must resolve, with real sources where a manufacturer-specific
 convention is involved (not invented here):
 
-1. **The force/moment output-port gap** ("Existing Parameter Review"
-   above) — whether `axis-load-cases` gains a new released vector output
-   port, or this module re-derives the resolved force/moment itself. This
-   is the single largest open item; nothing else in this document depends
-   on which path is chosen, but a package cannot be built without an
-   answer.
+1. ~~The force/moment output-port gap~~ — **RESOLVED 2026-08-09**: registry
+   `1.4.0` adds `motion.axis.resultant_force`/`resultant_moment` to
+   `axis-load-cases 0.1.0` (see "A Real, Already-Documented Dependency
+   Gap" above). This module's own registry proposal links to those ports.
 2. New `guide.*` registry parameters per "Existing Parameter Review" above,
    through the normal registry-proposal checklist.
 3. Which static-safety-factor standard-value table (PMI's or IKO's, or
@@ -577,23 +583,21 @@ convention is involved (not invented here):
    discrepancy is not resolved here, and `0.1.0`'s proposed scope already
    picks PMI's form (matching its own fully-worked example) as a
    documented, deliberate choice, not a forced one.
-5. Re-verify the inertia-adjusted, overhung, wall-mount, and tilted
-   formula sets (item 6) directly against the source images a second time
-   before any of them enters a kernel, per "Evidence Gaps and Verification
-   Confidence" above — `0.1.0`'s proposed scope (horizontal/vertical,
-   uniform and inertia-adjusted) only needs the already-twice-verified
-   horizontal-uniform set plus one more re-read of the remaining three
-   in-scope formula sets (horizontal-inertia, vertical-uniform,
-   vertical-inertia).
+5. ~~Re-verify the inertia-adjusted formula sets~~ — **RESOLVED
+   2026-08-09**: all four in-scope formula sets are now re-verified twice,
+   catching and correcting a real `a1`/`a3` transcription error (see
+   "Evidence Gaps and Verification Confidence" above). Nothing further
+   blocks a kernel on this item.
 
 ## Status
 
-Stage 1 (engineering specification) is a draft as of this document. No
-kernel, package, or registry change exists yet for this module. The next
-step is either building a draft kernel against the horizontal/vertical,
-four-block, ball-type scope above (the same "build a kernel ahead of full
-Stage 2 resolution where the formulas are source-independent enough"
-pattern `ball-screw` and `motion-profile` both used), or resolving Stage 2
-entry criterion 1 first, since it affects every downstream port. Production
-release stays gated behind Unit 4.1 regardless
-(`context/implementation-map.md` Milestone 4 header).
+Stage 1 (engineering specification) is done as a draft. **Update
+(2026-08-09):** Stage 2 entry criteria 1 and 5 are both resolved the same
+day — `axis-load-cases` now exposes the resultant force/moment ports this
+module needs (registry `1.4.0`), and all four in-scope working-load
+formula sets are re-verified twice against the source images. No kernel or
+package exists yet for this module itself; that is the natural next step,
+against the horizontal/vertical, four-block, ball-type scope above (the
+same "build a kernel ahead of full Stage 2 resolution" pattern `ball-screw`
+and `motion-profile` both used). Production release stays gated behind
+Unit 4.1 regardless (`context/implementation-map.md` Milestone 4 header).
