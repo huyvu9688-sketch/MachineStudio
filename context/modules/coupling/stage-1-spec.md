@@ -374,30 +374,34 @@ page/section; it must not repeat the formula in UI/report code.
 Stage 2 must resolve, with real sources where a manufacturer-specific
 convention is involved (not invented here):
 
-1. New `coupling.*` registry parameters per "Existing Parameter Review"
-   above, through the normal registry-proposal checklist.
-2. Which rotational-speed port this module consumes — `screw.
-   mean_rotational_speed` as-is (documenting the mean-vs-peak approximation
-   this introduces), or a new port this module's own contract proposes.
-3. Whether `screw.drive_torque` is the right — or only — upstream torque
-   source for `0.1.0`, given a coupling could in principle sit on either
-   side of a future gearbox (Unit 4.7) rather than only adjacent to the
-   ball screw's own drive shaft.
-4. Which shock-torque check form (KTR's summed-and-scaled form, or R+W's
-   disengagement-multiplier form) `0.1.0` adopts, or whether both are
-   exposed — item 2's open question above.
-5. Whether the correction factors (operating/shock, temperature, starting,
-   direction) are exposed as one consolidated required input or as KTR's/
-   R+W's own separate multi-factor structure — the disagreement in exact
-   category boundaries and values (item 2's table) means neither source's
-   table can be adopted wholesale without a decision either way.
-6. Whether misalignment and bore compatibility are checks (pass/fail) or
-   informational-only reports, matching the "Checks (Proposed)" section's
-   current proposal but not yet a settled decision.
+1. ~~New `coupling.*` registry parameters~~ — **RESOLVED 2026-08-09**:
+   registry `1.6.0` releases the full group. See
+   `context/modules/coupling/stage-2-contract.md`.
+2. ~~Which rotational-speed port this module consumes~~ — **RESOLVED**:
+   neither `screw.mean_rotational_speed` nor a new `screw.*` port — this
+   module derives its own per-case speed from `motion.axis.
+   case_linear_velocity`, `screw.lead`, and `screw.gear_ratio`
+   (`stage-2-contract.md` "Decisions" item 1).
+3. ~~Whether `screw.drive_torque` is the right upstream torque source~~ —
+   **RESOLVED (yes, for `0.1.0`)**: `stage-2-contract.md` "Decisions" item 2.
+4. ~~Which shock-torque check form `0.1.0` adopts~~ — **RESOLVED (KTR's
+   summed-and-scaled form)**: `stage-2-contract.md` "Decisions" item 3.
+5. ~~Whether correction factors are one consolidated input or the sources'
+   own multi-factor structure~~ — **RESOLVED (one consolidated
+   `coupling.service_factor` input)**: `stage-2-contract.md` "Decisions"
+   item 5.
+6. ~~Whether misalignment and bore compatibility are checks or
+   informational-only~~ — **RESOLVED (checks)**: `stage-2-contract.md`
+   "Decisions" item 6.
 
 ## Status
 
-Stage 1 (engineering specification) is done as a draft. A kernel has not
-been started. Production release for Unit 4.5 remains sequentially gated
-behind Unit 4.1's Definition of Done regardless of how far this document or
-a future package gets (`context/implementation-map.md` Milestone 4 header).
+Stage 1 (engineering specification) is done as a draft.
+
+**Update (2026-08-09, Stage 2 resolved):**
+`context/modules/coupling/stage-2-contract.md` resolves all six Stage 2
+entry criteria and registers the `coupling.*` parameters — registry `1.6.0`.
+A kernel has not been started; Stage 3 (compute and trace) is next.
+Production release for Unit 4.5 remains sequentially gated behind Unit
+4.1's Definition of Done regardless of how far this document or a future
+package gets (`context/implementation-map.md` Milestone 4 header).

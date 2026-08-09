@@ -1,5 +1,5 @@
-// Released seed definitions for the canonical parameter registry v1.5 (Units
-// 1.3, 4.1 Stage 2, 4.2 Stage 2, 4.3 Stage 2, and 4.4 Stage 2).
+// Released seed definitions for the canonical parameter registry v1.6 (Units
+// 1.3, 4.1 Stage 2, 4.2 Stage 2, 4.3 Stage 2, 4.4 Stage 2, and 4.5 Stage 2).
 //
 // Scope of v1.0: the parameter groups that Phase 1A (axis application + motion
 // profile) concretely needs, plus the shared project/environment group. These
@@ -18,24 +18,25 @@
 // axial thrust-force scalar (context/modules/linear-guide/stage-1-spec.md
 // "A Real, Already-Documented Dependency Gap"). v1.5 adds the full guide.*
 // group for linear-guide (context/modules/linear-guide/stage-2-contract.md).
+// v1.6 adds the full coupling.* group for the coupling module
+// (context/modules/coupling/stage-2-contract.md).
 //
-// Deliberately NOT released here: the coupling, support-bearing, and
-// drive-train parameter groups. Their exact semantics (units, qualifiers,
-// frames) depend on each module's own Stage-2 parameter contract, which does
-// not exist yet for any of them. Released parameter IDs are immutable
-// (context/architecture.md; context/code-standards.md "Canonical
-// Parameters"), so those groups are proposed and released per module at its
-// Stage-2 parameter contract, bumping the registry version. See ./README.md
-// and the progress tracker. The upstream motion outputs below (thrust force,
-// peak velocity, etc.) already serve as the transmission modules' shared
-// input ports.
+// Deliberately NOT released here: the support-bearing and drive-train
+// parameter groups. Their exact semantics (units, qualifiers, frames) depend
+// on each module's own Stage-2 parameter contract, which does not exist yet
+// for either. Released parameter IDs are immutable (context/architecture.md;
+// context/code-standards.md "Canonical Parameters"), so those groups are
+// proposed and released per module at its Stage-2 parameter contract,
+// bumping the registry version. See ./README.md and the progress tracker.
+// The upstream motion outputs below (thrust force, peak velocity, etc.)
+// already serve as the transmission modules' shared input ports.
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.5.0";
+export const PARAMETER_REGISTRY_VERSION = "1.6.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -937,11 +938,282 @@ const linearGuide: readonly ParameterDefinition[] = [
   }),
 ];
 
-/** All released parameter definitions for registry v1.5, in authored order. */
+// --- Coupling (Unit 4.5 Stage 2) --------------------------------------------
+// See context/modules/coupling/stage-2-contract.md. `coupling 0.1.0`
+// computes the `normal`/`peak` cases only, matching axis-load-cases' and
+// ball-screw's own 0.1.0 scope restriction (the same reason screwCases and
+// guideCases above are two-valued): `normal` is checked as the steady-torque
+// case (KTR's T_N / R+W's T_AN), `peak` as the shock-torque case (KTR's
+// T_S / R+W's T_AS) — a documented adaptation, since axis-load-cases' own
+// "peak" case means a peak *operating* condition, not a motor's electrical
+// starting-torque transient the source catalogs actually mean by that term
+// (stage-1-spec.md "Checks (Proposed)").
+//
+// Deliberately not released here: a torsional-resonance/inertia group
+// (R+W's own f_e formula, stage-1-spec.md item 3) — this project has no
+// released motor-rotor or reflected-load inertia parameter yet (Unit 4.7
+// territory), so there is nothing for it to consume. KTR's and R+W's own
+// disagreeing, multi-page application-type factor tables (operating/shock,
+// temperature, starting, direction) are also not reproduced as registry
+// enums or lookup tables — coupling.service_factor below is one consolidated
+// required input instead, the same "required input, both sources' ranges
+// recorded as reference text, neither table adopted wholesale" treatment
+// guide.static_safety_factor_minimum already received.
+
+const couplingCases = ["normal", "peak"] as const;
+const torqueDisplay = ["N*m", "N*mm", "lbf*in"] as const;
+const torsionalStiffnessDisplay = ["N*m/rad"] as const;
+const inertiaDisplay = ["kg*m^2", "kg*cm^2", "g*cm^2"] as const;
+
+const coupling: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "coupling.rated_torque",
+    displayName: "Coupling rated torque",
+    symbol: "T_KN",
+    definition:
+      "Torque the candidate coupling can transmit continuously over its full permissible speed range, from its own catalog data. Checked against the steady-state (normal-case) required torque, scaled by coupling.service_factor.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.max_torque",
+    displayName: "Coupling maximum torque",
+    symbol: "T_Kmax",
+    definition:
+      "Maximum (shock/momentary) torque the candidate coupling can withstand over its operating life, from its own catalog data. Checked against the peak-case required torque, scaled by coupling.service_factor.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.allowable_speed",
+    displayName: "Coupling allowable rotational speed",
+    symbol: "n_max",
+    definition:
+      "Maximum rotational speed the candidate coupling's own catalog data permits.",
+    valueType: "quantity",
+    canonicalUnit: "rad/s",
+    displayUnits: [...angularVelocityDisplay],
+    range: { min: 0, unit: "rad/s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.torsional_stiffness",
+    displayName: "Coupling torsional stiffness",
+    symbol: "C_T",
+    definition:
+      "Torsional stiffness of the candidate coupling, from its own catalog data. Reported, not evaluated pass/fail in 0.1.0 — R+W's own resonant-frequency check (stage-1-spec.md item 3) that would consume this needs a motor/load inertia input this project does not release yet.",
+    valueType: "quantity",
+    canonicalUnit: "N*m/rad",
+    displayUnits: [...torsionalStiffnessDisplay],
+    range: { min: 0, unit: "N*m/rad" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.moment_of_inertia",
+    displayName: "Coupling moment of inertia",
+    symbol: "J_C",
+    definition:
+      "Mass moment of inertia of the candidate coupling about its rotational axis, from its own catalog data. Reported, not evaluated pass/fail in 0.1.0 — a future drive-train module (Unit 4.7) may consume this for an inertia-ratio check.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.driving_bore_min",
+    displayName: "Coupling driving-side minimum bore",
+    symbol: "d1_min",
+    definition:
+      "Smallest driving-side (motor-side) shaft diameter the candidate coupling's own catalog bore range accepts.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.driving_bore_max",
+    displayName: "Coupling driving-side maximum bore",
+    symbol: "d1_max",
+    definition:
+      "Largest driving-side (motor-side) shaft diameter the candidate coupling's own catalog bore range accepts.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.driven_bore_min",
+    displayName: "Coupling driven-side minimum bore",
+    symbol: "d2_min",
+    definition:
+      "Smallest driven-side (load-side) shaft diameter the candidate coupling's own catalog bore range accepts.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.driven_bore_max",
+    displayName: "Coupling driven-side maximum bore",
+    symbol: "d2_max",
+    definition:
+      "Largest driven-side (load-side) shaft diameter the candidate coupling's own catalog bore range accepts.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.allowable_parallel_misalignment",
+    displayName: "Coupling allowable parallel misalignment",
+    symbol: "dK_par_allow",
+    definition:
+      "Maximum parallel (radial offset) shaft misalignment the candidate coupling's own catalog data permits.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.allowable_angular_misalignment",
+    displayName: "Coupling allowable angular misalignment",
+    symbol: "dK_ang_allow",
+    definition:
+      "Maximum angular shaft misalignment the candidate coupling's own catalog data permits.",
+    valueType: "quantity",
+    canonicalUnit: "rad",
+    displayUnits: ["deg", "rad"],
+    range: { min: 0, unit: "deg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.allowable_axial_misalignment",
+    displayName: "Coupling allowable axial misalignment",
+    symbol: "dK_ax_allow",
+    definition:
+      "Maximum axial (end-play) shaft misalignment the candidate coupling's own catalog data permits.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.actual_parallel_misalignment",
+    displayName: "Actual parallel misalignment",
+    symbol: "dK_par",
+    definition:
+      "Parallel (radial offset) shaft misalignment of the actual installation, engineer-supplied. Checked against coupling.allowable_parallel_misalignment.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.actual_angular_misalignment",
+    displayName: "Actual angular misalignment",
+    symbol: "dK_ang",
+    definition:
+      "Angular shaft misalignment of the actual installation, engineer-supplied. Checked against coupling.allowable_angular_misalignment.",
+    valueType: "quantity",
+    canonicalUnit: "rad",
+    displayUnits: ["deg", "rad"],
+    range: { min: 0, unit: "deg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.actual_axial_misalignment",
+    displayName: "Actual axial misalignment",
+    symbol: "dK_ax",
+    definition:
+      "Axial (end-play) shaft misalignment of the actual installation, engineer-supplied. Checked against coupling.allowable_axial_misalignment.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.driving_shaft_diameter",
+    displayName: "Driving shaft diameter",
+    symbol: "d1",
+    definition:
+      "Actual diameter of the driving-side (motor-side) shaft, engineer-supplied. Checked against coupling.driving_bore_min/coupling.driving_bore_max.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.driven_shaft_diameter",
+    displayName: "Driven shaft diameter",
+    symbol: "d2",
+    definition:
+      "Actual diameter of the driven-side (load-side) shaft, engineer-supplied. Checked against coupling.driven_bore_min/coupling.driven_bore_max.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.service_factor",
+    displayName: "Coupling service factor",
+    symbol: "S",
+    definition:
+      "Consolidated correction factor scaling the required torque before it is checked against coupling.rated_torque/coupling.max_torque. KTR and R+W each publish their own operating/shock, temperature, starting, and direction factor tables (context/modules/coupling/stage-1-spec.md item 2) that disagree in category boundaries and numeric ranges; neither table is adopted wholesale, so this is one required input the engineer sets from their own project/company policy or the source tables directly, the same treatment guide.static_safety_factor_minimum received. Applied identically to both the normal (steady) and peak (shock) load cases — a documented simplification, since both sources actually use a different named factor for each check.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "coupling.torque_safety_factor",
+    displayName: "Coupling torque safety factor",
+    symbol: "fs_T",
+    definition:
+      "Computed torque safety margin for a declared load case: the coupling's own rated torque (normal case) or maximum torque (peak case) divided by the required torque (screw.drive_torque for that case) times coupling.service_factor.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: couplingCases,
+  }),
+  defineParameter({
+    id: "coupling.speed_safety_factor",
+    displayName: "Coupling speed safety factor",
+    symbol: "fs_n",
+    definition:
+      "Computed speed margin for a declared load case: coupling.allowable_speed divided by the operating rotational speed for that case, derived from motion.axis.case_linear_velocity via screw.lead and screw.gear_ratio (stage-2-contract.md 'Decisions').",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: couplingCases,
+  }),
+];
+
+/** All released parameter definitions for registry v1.6, in authored order. */
 export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...projectAndEnvironment,
   ...axisApplication,
   ...motionProfile,
   ...ballScrew,
   ...linearGuide,
+  ...coupling,
 ];

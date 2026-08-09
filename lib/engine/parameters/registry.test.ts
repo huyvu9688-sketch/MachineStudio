@@ -67,8 +67,8 @@ describe("parameter registry compatibility", () => {
 });
 
 describe("released registry", () => {
-  it("loads every seed definition and is version 1.5.0", () => {
-    expect(PARAMETER_REGISTRY.version).toBe("1.5.0");
+  it("loads every seed definition and is version 1.6.0", () => {
+    expect(PARAMETER_REGISTRY.version).toBe("1.6.0");
     expect(listParameters().length).toBe(PARAMETER_DEFINITIONS.length);
   });
 
@@ -79,7 +79,9 @@ describe("released registry", () => {
     // buildParameterRegistry adding its own current version to the supported
     // set — it became a real entry in
     // PARAMETER_REGISTRY_SUPPORTED_VERSIONS only when 1.5.0 displaced it.
-    for (const target of ["1.0.0", "1.3.0", "1.4.0", "1.5.0"]) {
+    // 1.5.0 received the same explicit-entry treatment now that 1.6.0 has
+    // displaced it in turn.
+    for (const target of ["1.0.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0"]) {
       expect(PARAMETER_REGISTRY.supportsVersion(target)).toBe(true);
     }
   });

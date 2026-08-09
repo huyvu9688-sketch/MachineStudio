@@ -45,6 +45,7 @@ export const Dimensions = {
   pressure: dimension({ mass: 1, length: -1, time: -2 }),
   inertia: dimension({ mass: 1, length: 2 }),
   frequency: dimension({ time: -1 }),
+  torsionalStiffness: dimension({ mass: 1, length: 2, time: -2, angle: -1 }),
 } as const;
 
 // Reference constants (exact where defined by standard).
@@ -140,6 +141,10 @@ const UNIT_LIST: readonly UnitDefinition[] = [
   def("kg*m^2", Dimensions.inertia, 1, { siCoherent: true }),
   def("kg*cm^2", Dimensions.inertia, 1e-4),
   def("g*cm^2", Dimensions.inertia, 1e-7),
+  // Torsional stiffness (torque per unit angle). Added for the coupling
+  // module (Unit 4.5): both KTR's and R+W's own coupling-selection sources
+  // give this as N*m/rad (context/modules/coupling/stage-1-spec.md item 3).
+  def("N*m/rad", Dimensions.torsionalStiffness, 1, { siCoherent: true }),
   // Temperature (K is multiplicative/absolute; degC and degF are affine)
   def("K", Dimensions.temperature, 1, { siCoherent: true }),
   def("degC", Dimensions.temperature, 1, { offset: 273.15, affine: true }),

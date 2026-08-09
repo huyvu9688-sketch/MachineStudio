@@ -69,10 +69,10 @@ specification, which does not exist yet; releasing immutable IDs before the
 semantics are pinned would be inventing behavior. They are **approved pending
 proposals**, released per module at its Stage-2 parameter contract (see
 context/ai-workflow-rules.md "New Module Workflow"). The upstream motion outputs
-above already serve as those modules' shared input ports. Two of the five have
-since been released on exactly that schedule — `screw.*` in v1.3 and `guide.*`
-in v1.5, each at its own module's Stage-2 contract; coupling, support-bearing,
-and drive-train remain pending.
+above already serve as those modules' shared input ports. Three of the five have
+since been released on exactly that schedule — `screw.*` in v1.3, `guide.*`
+in v1.5, and `coupling.*` in v1.6, each at its own module's Stage-2 contract;
+support-bearing and drive-train remain pending.
 
 The `curve`, `load_spectrum`, `table`, `material_ref`, and `component_ref` value
 families are likewise modeled as parameters only when a module first needs them.
@@ -127,7 +127,20 @@ canonically in metres and displayed in `km` (a unit this release adds to the
 unit registry), the same canonical-SI/convenient-display split
 `screw.nominal_life_hours` already uses.
 
-## Parameter proposal checklist
+Registry v1.6 adds the `coupling.*` group for `coupling`
+(`context/modules/coupling/stage-2-contract.md`): rated/maximum torque,
+allowable speed, torsional stiffness and moment of inertia (both catalog
+values, reported not evaluated — no released motor/load inertia parameter
+exists yet for a resonant-frequency check to consume), driving/driven bore
+ranges, allowable and actual misalignment (parallel, angular, axial), actual
+shaft diameters, a required consolidated `service_factor` (KTR's and R+W's
+own operating/temperature/starting/direction factor tables disagree, the
+same "required input, neither table adopted" treatment
+`guide.static_safety_factor_minimum` already received), and two per-case
+outputs (torque safety factor, speed safety factor). Adds `N*m/rad`
+(torsional stiffness) to the unit registry — the first new dimension
+(`Dimensions.torsionalStiffness`) added since v1.0's initial set, not just a
+new unit on an existing one.
 
 Follow this before adding a parameter (mirrors context/code-standards.md
 "Canonical Parameters"). Every item must be satisfied.

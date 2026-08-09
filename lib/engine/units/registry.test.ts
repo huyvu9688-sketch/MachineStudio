@@ -51,6 +51,7 @@ const EXPECTED_UNITS = [
   "kg*m^2",
   "kg*cm^2",
   "g*cm^2",
+  "N*m/rad",
   "K",
   "degC",
   "degF",

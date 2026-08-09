@@ -36,7 +36,7 @@ same work, two labels):
 
 **Health:** `npm run verify` green (format, lint 0 warnings, typecheck 0
 errors, 917 tests passed / 204 database-gated skips, build clean).
-Production dependencies audit clean. Parameter registry at `1.5.0`.
+Production dependencies audit clean. Parameter registry at `1.6.0`.
 
 ---
 
@@ -205,9 +205,9 @@ solo-validation reviewer-substitute policy is now invokable — this module's
 own Stage 4 gate is clear; release still waits on Unit 4.1's Definition of
 Done, which gates every Milestone 4 module regardless.
 
-Unit 4.5 — `coupling`. **Stage 1 drafted 2026-08-09**, next in the roadmap's
-Phase 1B order now that `linear-guide` is done through Stage 4. Stage 1
-spec: `context/modules/coupling/stage-1-spec.md` — two independent
+Unit 4.5 — `coupling`. **Stages 1-2 done 2026-08-09**, next in the
+roadmap's Phase 1B order now that `linear-guide` is done through Stage 4.
+Stage 1 spec: `context/modules/coupling/stage-1-spec.md` — two independent
 manufacturer methods (KTR, R+W America, both read via their US-market
 sites — a documented asymmetry, since this project's other modules each
 paired a US and a JP methodology source and no JP methodology source was
@@ -215,11 +215,19 @@ found this session) agree on a required-torque-times-correction-factors
 shape and disagree on the exact factor tables; a third source (NBK, JP)
 supplies catalog data (torsional stiffness, inertia, misalignment limits,
 speed limit) but no methodology, since `nbk1560.com`'s own selection-guide
-pages returned HTTP 403 all session. No kernel yet. Real open design
-questions flagged for Stage 2: which rotational-speed port to consume
-(`screw.mean_rotational_speed` is a duty-cycle mean, not the peak/nameplate
-speed KTR's and R+W's own formulas expect), and which of the two sources'
-shock-torque check form to adopt.
+pages returned HTTP 403 all session. Stage 2
+(`context/modules/coupling/stage-2-contract.md`, registry `1.6.0`)
+resolves all six open design questions: this module derives its own
+per-case rotational speed from `motion.axis.case_linear_velocity` +
+`screw.lead` + `screw.gear_ratio` rather than using `screw.
+mean_rotational_speed`'s duty-cycle mean; KTR's shock-torque form is
+adopted over R+W's (R+W's own is scoped to safety/torque-limiting
+couplings specifically); and the disagreeing correction-factor tables
+collapse into one required `coupling.service_factor` input, the same
+"required input, neither table adopted" treatment
+`guide.static_safety_factor_minimum` received. Adds a new unit dimension
+(`N*m/rad`, torsional stiffness) to the unit registry. No kernel yet —
+Stage 3 is next.
 
 ---
 
@@ -299,12 +307,11 @@ variable names.
    workflow role integration and cross-module link compatibility tests) and
    Stage 6 (release) remain, sequentially gated behind Unit 4.1 regardless.
    Optional parallel work; does not move Unit 4.1's critical path.
-7. Unit 4.5 (`coupling`): **Stage 1 drafted** (see Active work). Stage 2
-   needs a real decision, not evidence-gathering: which rotational-speed
-   port to consume, which of KTR's/R+W's shock-torque forms to adopt, and
-   whether to keep pursuing a JP-market selection-methodology source (only
-   catalog data was found this session). Optional parallel work; does not
-   move Unit 4.1's critical path.
+7. Unit 4.5 (`coupling`): **Stages 1-2 done** (see Active work), registry
+   `1.6.0` released. Stage 3 (compute and trace — a kernel and a
+   `ModulePackage`, the same shape `ball-screw`'s and `linear-guide`'s own
+   Stage 3 drafts took) is next. Optional parallel work; does not move Unit
+   4.1's critical path.
 
 ---
 
