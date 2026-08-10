@@ -179,6 +179,16 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     note: "A second, independent manufacturer selection-calculation method for the coupling module (Unit 4.5), explicitly stated as 'According to DIN 740 part 2'. Same required-torque base formula as KTR's (T_AN = 9550 * P_Drive / n), combined with its own branded shock/load factor (S_A, by drive type), temperature factor (S_v), and start factor (S_z) tables into T_KN >= T_AN * S_A * S_v * S_z -- structurally identical shape to KTR's method, different branded factor names and numeric ranges, the same 'two sources agree on shape, differ on specifics' relationship this project's other modules already treat as normal. Also gives an inertia/acceleration-based torque formula (T_AR >= J_L/(J_A+J_L) * T_AS * S_A >= alpha * J_L) and a torsional-resonant-frequency check (f_e = 1/(2*pi) * sqrt(C_T * (J_Masch+J_Mot)/(J_Masch*J_Mot))) neither KTR's document nor PMI/IKO-style catalogs give. Includes two full worked numerical examples at different power levels and service-factor scenarios (450 kW/980 rpm elastic coupling; 800 kW/980 rpm gear coupling). Read via a Canadian distributor mirror (drivecentre.ca) branded throughout as 'RW-AMERICA.COM'; content is R+W America's own, not the distributor's.",
   },
   {
+    id: asSourceDocumentId("jp.nsk.rolling_bearings_catalog"),
+    classification: "manufacturer_method",
+    title: "NSK Rolling Bearings (CAT. No. E1102a)",
+    authority: "NSK Ltd.",
+    market: "JP",
+    access: "public",
+    officialUrl: "https://www.bearing.co.il/wp-content/uploads/2024/11/E1102.pdf",
+    note: "General rolling-bearing catalog with a 'Selection of Bearing Size' technical chapter, including a worked-examples section (5.7) this project's own support-bearing module reuses as its own independent evidence -- see the module's own validation record for how.",
+  },
+  {
     id: asSourceDocumentId("jp.ntn.rolling_bearings_handbook"),
     classification: "manufacturer_method",
     title: "NTN Rolling Bearings Handbook",
@@ -378,6 +388,13 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     documentId: asSourceDocumentId("jp.ntn.rolling_bearings_handbook"),
     edition: "CAT. No. 9012-@/E",
     officialUrl: "https://www.ntnglobal.com/en/products/catalog/pdf/9012E.pdf",
-    note: "Read directly 2026-08-09 from NTN's own domain (ntnglobal.com); cross-checked against an identical copy on ntnamericas.com the same session. Chapters 6 (Load Rating and Life), 7 (Bearing Load), 9 (Bearing Internal Clearance and Preload), 10 (Allowable Speed), and 15 (Shaft and Housing Design) read in full (printed pages 27-38, 45-53, 67-69). Both copies fetched are identically truncated after printed page 82/83 ('Reference material') and do not include the 'Bearing Life Calculation Examples' section the handbook's own table of contents lists at printed page 84 -- not yet resolved whether this is a persistent block or a one-off; retry with a different mirror before assuming it is permanent.",
+    note: "Read directly 2026-08-09 from NTN's own domain (ntnglobal.com); cross-checked against an identical copy on ntnamericas.com the same session. Chapters 6 (Load Rating and Life), 7 (Bearing Load), 9 (Bearing Internal Clearance and Preload), 10 (Allowable Speed), and 15 (Shaft and Housing Design) read in full (printed pages 27-38, 45-53, 67-69). Both copies fetched are identically truncated after printed page 82/83 ('Reference material') and do not include the 'Bearing Life Calculation Examples' section the handbook's own table of contents lists at printed page 84 -- not yet resolved whether this is a persistent block or a one-off; retry with a different mirror before assuming it is permanent. **Update 2026-08-10: retried against a third edition (ntn-snr.com's own mirror, the NTN Group's European entity) -- identically truncated at the same point (printed page 83 is a blank name/address/phone card, page 84 does not exist in this copy either). Three independent NTN Group editions now agree: this is very likely a persistent omission from every edition of this handbook printing, not a one-off fetch failure. See jp.nsk.rolling_bearings_catalog for the worked-example evidence this gap pushed the search toward instead.",
+  },
+  {
+    id: asSourceRevisionId("jp.nsk.rolling_bearings_catalog@e1102a-2005"),
+    documentId: asSourceDocumentId("jp.nsk.rolling_bearings_catalog"),
+    edition: "CAT. No. E1102a, 2005 E-6 printing",
+    officialUrl: "https://www.bearing.co.il/wp-content/uploads/2024/11/E1102.pdf",
+    note: "Downloaded directly 2026-08-10 (bearing.co.il, a third-party distributor mirror; NSK's own site was not the source found this session) after this file exceeded the WebFetch tool's 10 MB fetch limit at NSK's own domain and this mirror both -- worked around by downloading with curl into the session scratchpad and reading page ranges locally, since the file itself (6.3 MB) is under the PDF-reading tool's own per-request page-count constraints once downloaded (context/progress-tracker.md 'Environment notes'). Section 5.7 'Examples of Bearing Calculations' (printed pages A34-A36) read in full: six worked examples. Examples 1 and 3 (single-row deep-groove ball bearing 6208, pure radial then combined radial+axial load) reproduce this project's own support-bearing module formulas exactly -- see the module's own validation record and nsk-reference-examples.ts/nsk-fh-benchmark.ts for how. Sections 5.1-5.4 (printed pages A24-A31, bearing life, load rating, equivalent load) and 5.5-5.6 (printed pages A32-A33, static load ratings, permissible axial load for cylindrical roller bearings) also read, establishing NSK's own closed-form speed-factor/fatigue-life-factor formulas (Table 5.2) independently of the two worked examples.",
   },
 ];

@@ -35,7 +35,7 @@ same work, two labels):
 - Phase 2+ → after MVP
 
 **Health:** `npm run verify` green (format, lint 0 warnings, typecheck 0
-errors, 1023 tests passed / 204 database-gated skips, build clean).
+errors, 1052 tests passed / 204 database-gated skips, build clean).
 Production dependencies audit clean. Parameter registry at `1.7.0`.
 
 ---
@@ -271,6 +271,26 @@ the solo-validation reviewer-substitute policy; `reviewer`/`reviewDate` in
 module's own Stage 4 gate is now clear; release still waits on Unit 4.1's
 Definition of Done, which gates every Milestone 4 module regardless.
 
+**Stage 5's cross-module link compatibility item done 2026-08-10.**
+`lib/modules/coupling/0.1.0/cross-module-links.test.ts` (6 tests, the same
+real-evaluator pattern `ball-screw`'s and `linear-guide`'s own files use)
+confirms `ball-screw`'s per-case `screw.drive_torque` output links to
+coupling's own per-case drive-torque input — the only upstream link
+coupling has today — and confirms three things stay refused: a load-case
+mismatch, `ball-screw`'s `mean_rotational_speed` output feeding the
+linear-velocity sink (Stage 2 explicitly rejected that duty-cycle mean as
+coupling's speed source), and any `coupling.*` catalog input from either
+`ball-screw` or `axis-load-cases`. `motion.axis.case_linear_velocity` — the
+port coupling actually derives speed from — still has no producing module
+anywhere in the registry; confirmed here rather than assumed, the same
+documented gap `ball-screw`'s own cross-module-links.test.ts already
+records against its own consuming port. Generic UI/report schema already
+pass conformance (`package.test.ts`'s `package-validation` check). What
+remains for this module: workflow role integration (not applicable —
+`workflowRoles` stays empty until Unit 4.8's `linear-axis@1` workflow
+exists, the same treatment `ball-screw` and `linear-guide` already get) and
+Stage 6 (release), sequentially gated behind Unit 4.1 regardless.
+
 Unit 4.6 — `support-bearing`. **Stages 1-3 done 2026-08-09 through
 2026-08-10**, next in the roadmap's Phase 1B order now that `coupling`'s
 own Stage 4 evidence is as complete as it can get without new sources.
@@ -287,13 +307,14 @@ safety-factor formula of its own; NTN's own Rolling Bearings Handbook
 ISO-281-based methodology THK's catalog lacks — basic rating life,
 dynamic/static equivalent load, preload, allowable speed, shaft/housing
 interface — mapping almost one-to-one onto the roadmap's own required
-checks for this unit. **Two real evidence gaps, not closed:** no full
-published worked numerical example was found (NTN's own handbook lists
-one in its table of contents at printed page 84, but both copies fetched
-this session are identically truncated right before it — a genuine,
-documented gap, not a skipped step), and no independent-benchmark
-candidate exists yet (NSK's own short bulletins corroborate NTN's formula
-shape exactly, which is agreement, not a second implementation). Stage 2
+checks for this unit. **Two real evidence gaps, recorded 2026-08-09 and
+both closed 2026-08-10** (see "Stage 4" below): no full published worked
+numerical example was found that session (NTN's own handbook lists one in
+its table of contents at printed page 84, but both copies fetched that
+session are identically truncated right before it — a genuine, documented
+gap, not a skipped step), and no independent-benchmark candidate existed
+yet (NSK's own short bulletins corroborated NTN's formula shape exactly,
+which is agreement, not a second implementation). Stage 2
 (`context/modules/support-bearing/stage-2-contract.md`, registry `1.7.0`)
 resolves all six open questions: `0.1.0` models one support bearing per
 calculation run via a new `bearing.location` (`fixed`/`supported`) enum,
@@ -325,9 +346,56 @@ optional at the manifest level and required together only when
 `superRefine` rule — the same "generic port shape can't express this, so
 an author-provided schema rule does" pattern `coupling 0.1.0`'s own
 bore-range check already established. `math.test.ts` (18 tests) and
-`package.test.ts` (21 tests) both pass; no published worked example is
-reproduced (the same evidence gap Stage 1 already recorded — see
-`validation.ts`'s own header note).
+`package.test.ts` (21 tests) both pass.
+
+**Stage 4 (both evidence gaps) closed 2026-08-10.** Retrying the NTN
+handbook against a third, independent Group edition (`ntn-snr.com`) found
+it truncated at the identical point (blank page 83, no page 84) as the two
+editions read 2026-08-09 — three independent editions now agree, evidence
+this is a persistent omission from the handbook's own printing, not a
+one-off fetch failure. The retry redirected the search to a different
+manufacturer: NSK Ltd.'s own "Rolling Bearings" catalog (CAT. No. E1102a)
+has the worked-examples section NTN's is missing (Section 5.7, printed
+pages A34-A36). Examples 1 and 3 (single-row deep-groove ball bearing 6208,
+pure radial load then the same bearing with an added axial load) map
+exactly onto this module's own `bearing.location` split (`supported` /
+`fixed`). `lib/modules/support-bearing/0.1.0/nsk-reference-examples.ts`/
+`.test.ts` run both through `executeModule` — the sealed-package compute
+path — and confirm the computed dynamic equivalent load matches NSK's own
+exact printed figures and the computed basic rating life matches NSK's own
+stated approximate service life within a documented 2% chart-reading
+tolerance. `nsk-fh-benchmark.ts`/`.test.ts` close the independent-benchmark
+gap: NSK's own distinct `fn`/`fh` fatigue-life-factor packaging is
+reproduced as a genuinely separate computation, then proved algebraically
+identical to this module's own `resolveNominalLife`/`resolveLifeHours` and
+asserted to agree to floating-point precision — the same "proved identity"
+treatment `linear-guide`'s own PMI/IKO benchmark received.
+`validation.ts` records the full Stage 4 evidence and invokes the
+solo-validation reviewer-substitute policy; `reviewer`/`reviewDate` stay
+`TODO` pending Stage 6, the same treatment every other Milestone 4
+module's own `validation.ts` gives that pair. This module's own Stage 4
+gate is now clear; release still waits on Unit 4.1's Definition of Done,
+which gates every Milestone 4 module regardless.
+
+**Stage 5's cross-module link compatibility item done 2026-08-10.**
+`lib/modules/support-bearing/0.1.0/cross-module-links.test.ts` (6 tests,
+the same real-evaluator pattern every other module's own file uses)
+confirms `axis-load-cases`' per-case `motion.axis.thrust_force` output
+links to this module's own per-case thrust-force input — direct evidence
+for the roadmap's own Unit 4.6 gate wording ("integrates with the
+ball-screw module without a custom link mapping"): `ball-screw` itself
+produces no output this module can consume (only `screw.*` results), so
+the real upstream producer is `axis-load-cases`, the same source
+`ball-screw`'s own thrust force already comes from — asserted directly
+rather than assumed. Also confirms three things stay refused: a load-case
+mismatch, `motion.axis.case_linear_velocity` (this module's own speed
+input) having no producer anywhere — the same documented gap `ball-screw`'s
+and `coupling`'s own files already record — and any `bearing.*` catalog
+input accepting an upstream output. Generic UI/report schema already pass
+conformance. What remains for this module: workflow role integration (not
+applicable until Unit 4.8 exists, the same treatment every other Milestone
+4 module gets) and Stage 6 (release), sequentially gated behind Unit 4.1
+regardless.
 
 ---
 
@@ -399,33 +467,37 @@ variable names.
    yet), and Stage 6 (release), sequentially gated behind Unit 4.1
    regardless. Optional parallel work; does not move Unit 4.1's critical
    path.
-6. Unit 4.4 (`linear-guide`): **Stages 1-4 done, including the independent
-   benchmark** (see Active work) — `iko-benchmark.ts` implements IKO's own
-   equivalent-load method as a genuine second computation, closing what was
-   this module's last own-merits gate. Stage 5 (generic UI/report schema —
-   already drafted at Stage 3 for this module, see its README — plus
-   workflow role integration and cross-module link compatibility tests) and
-   Stage 6 (release) remain, sequentially gated behind Unit 4.1 regardless.
+6. Unit 4.4 (`linear-guide`): **Stages 1-5 done** (see Active work) —
+   Stage 4 including the independent benchmark (`iko-benchmark.ts`
+   implements IKO's own equivalent-load method as a genuine second
+   computation), Stage 5's generic UI/report schema (drafted at Stage 3,
+   already passing conformance via `package.test.ts`) and cross-module link
+   compatibility tests against `axis-load-cases`
+   (`cross-module-links.test.ts`, already present). Workflow role
+   integration stays not-applicable until Unit 4.8 exists. What remains:
+   Stage 6 (release), sequentially gated behind Unit 4.1 regardless.
    Optional parallel work; does not move Unit 4.1's critical path.
-7. Unit 4.5 (`coupling`): **Stages 1-4 done, including the independent
-   benchmark** (see Active work), registry `1.6.0` released, full draft
-   package in `lib/modules/coupling/0.1.0/`,
-   `validation/coupling/0.1.0.md` complete. `ktr-din740-benchmark.ts`
-   implements a second KTR document's own detailed shock-torque method as a
-   genuine second computation, closing what was this module's last
-   own-merits gate. What remains: Stage 5 (generic UI/report schema —
-   already drafted at Stage 3, see its README — plus workflow role
-   integration and cross-module link compatibility tests) and Stage 6
-   (release), sequentially gated behind Unit 4.1 regardless. Optional
-   parallel work; does not move Unit 4.1's critical path.
-8. Unit 4.6 (`support-bearing`): **Stages 1-3 done** (see Active work),
-   registry `1.7.0` released, full draft package in
-   `lib/modules/support-bearing/0.1.0/`. Stage 4 (validation) is next —
-   the remaining gap is the same one Stage 1 already recorded: a full
-   published worked numerical example (NTN's own handbook lists one that
-   both mirrors fetched this session are missing) and an independent-
-   benchmark candidate. Optional parallel work; does not move Unit 4.1's
-   critical path.
+7. Unit 4.5 (`coupling`): **Stages 1-5 done** (see Active work) — Stage 4
+   including the independent benchmark, Stage 5's generic UI/report schema
+   (drafted at Stage 3) and cross-module link compatibility tests against
+   `ball-screw` (`cross-module-links.test.ts`, done 2026-08-10). Registry
+   `1.6.0` released, full package in `lib/modules/coupling/0.1.0/`,
+   `validation/coupling/0.1.0.md` complete. Workflow role integration stays
+   not-applicable until Unit 4.8 exists. What remains: Stage 6 (release),
+   sequentially gated behind Unit 4.1 regardless. Optional parallel work;
+   does not move Unit 4.1's critical path.
+8. Unit 4.6 (`support-bearing`): **Stages 1-5 done** (see Active work) —
+   Stage 4 including the independent benchmark (NSK's own "Rolling
+   Bearings" catalog supplied both the missing worked example and a proved
+   algebraic-identity benchmark, closing the two gaps Stage 1 recorded),
+   Stage 5's generic UI/report schema (drafted at Stage 3, already passing
+   conformance) and cross-module link compatibility tests against
+   `axis-load-cases`/`ball-screw` (`cross-module-links.test.ts`, done
+   2026-08-10). Registry `1.7.0` released, full package in
+   `lib/modules/support-bearing/0.1.0/`. Workflow role integration stays
+   not-applicable until Unit 4.8 exists. What remains: Stage 6 (release),
+   sequentially gated behind Unit 4.1 regardless. Optional parallel work;
+   does not move Unit 4.1's critical path.
 
 ---
 

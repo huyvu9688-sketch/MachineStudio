@@ -1,4 +1,4 @@
-# Support Bearing 0.1.0 — Draft Package (Stage 3)
+# Support Bearing 0.1.0 — Draft Package (Stages 3-5)
 
 `math.ts` is a pure SI-number kernel for the sixth production engineering
 module (Unit 4.6), covering the `0.1.0` proposed scope from
@@ -38,7 +38,7 @@ A full `ModulePackage` wraps the kernel:
 | `compute.ts`             | Pure compute over the two supported load cases, branching on `bearing.location`.                                                     |
 | `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                                   |
 | `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                                       |
-| `validation.ts`          | Draft validation record — **Stage 4 has not started**, and it says so.                                                               |
+| `validation.ts`          | Validation record — Stage 4 evidence (reference examples, independent benchmark) is complete; reviewer/reviewDate stay `TODO` pending Stage 6. |
 | `package.ts`             | Sealed package. Named `package.ts`, not `index.ts`, so `npm run registry:generate` cannot discover it.                               |
 
 No registry version is released by this package — `bearing.*` was already
@@ -103,14 +103,75 @@ restating here:
 input and elementary property checks (the static-equivalent-load `max()`
 form taking either branch, a zero axial load producing the pure-radial
 dynamic equivalent load, etc.) rather than a published worked numerical
-example: **no full published worked example was found this session** —
-NTN's own handbook table of contents lists a "Bearing Life Calculation
-Examples" section at printed page 84, but both copies fetched this
-session (`ntnglobal.com` and `ntnamericas.com`) are identically truncated
-right before it. A real, documented evidence gap, not a skipped step —
-see `context/modules/support-bearing/stage-1-spec.md` "Evidence Gaps" and
-`validation.ts`'s own header note.
+example — reserved for Stage 4 (below), not guessed here.
+
+## Stage 4 (2026-08-10): NSK's own worked examples, found after NTN's stayed missing
+
+The evidence gap `math.test.ts`'s own header comment and `stage-1-spec.md`
+"Evidence Gaps" recorded — no full published worked numerical example —
+stayed open through 2026-08-09: NTN's own handbook table of contents lists
+a "Bearing Life Calculation Examples" section at printed page 84, but the
+copies fetched that session (`ntnglobal.com`, `ntnamericas.com`) are
+identically truncated right before it. **A third, independent NTN Group
+edition (`ntn-snr.com`) was retried 2026-08-10 and is truncated at exactly
+the same point** — page 83 is a blank name/address/phone card, page 84
+does not exist in this copy either. Three independently-fetched editions
+now agree, which is much stronger evidence this is a persistent omission
+from the handbook's own printing than a one-off fetch failure — see
+`lib/standards/engineering-sources.ts`'s own note on
+`jp.ntn.rolling_bearings_handbook@cat-9012e`.
+
+That retry redirected the search toward a different manufacturer instead of
+a fourth NTN mirror. **NSK Ltd.'s own "Rolling Bearings" catalog (CAT. No.
+E1102a) has exactly the section NTN's is missing**: Section 5.7 "Examples
+of Bearing Calculations" (printed pages A34-A36), six full worked examples.
+Examples 1 and 3 both use single-row deep-groove ball bearing 6208 —
+Example 1 under a pure radial load, Example 3 the same bearing with an
+added axial load — the exact scope split this module's own
+`bearing.location` (`supported` vs. `fixed`) already models.
+
+- `nsk-reference-examples.ts` / `.test.ts` run both examples through
+  `executeModule(supportBearingModule, ...)` — the real, sealed-package
+  compute path, not just the kernel formulas below — and confirm the
+  computed dynamic equivalent load matches NSK's own exact printed figures
+  (`P = 2500 N`, `P = 3070 N`) and the computed basic rating life matches
+  NSK's own stated approximate service life (`~29,000 h`, `~15,800 h`)
+  within a documented 2% chart-reading tolerance.
+- `nsk-fh-benchmark.ts` / `.test.ts` close the independent-benchmark gap
+  the same header comment recorded ("no independent-benchmark candidate
+  exists yet"). NSK packages the identical ISO-281-catalogue physics
+  `math.ts` already implements into a different form — a speed factor `fn`
+  and a fatigue life factor `fh = fn*C/P`, read off a chart or computed as
+  `Lh = 500*fh^3` for ball bearings — reproduced here as a genuinely
+  separate computation, then proved (not just observed) to be algebraically
+  identical to `resolveNominalLife`/`resolveLifeHours`'s own `(C/P)^3 *
+  10^6/(60n)` form. The two are asserted to agree to floating-point
+  precision, the same "proved identity" treatment
+  `lib/modules/linear-guide/0.1.0/iko-benchmark.ts` gives PMI's and IKO's
+  own equivalent-load forms.
+
+With both evidence items met, the solo-validation reviewer-substitute
+policy (`context/ai-workflow-rules.md` "Stage 4 — Validation") is now
+invokable for this module — see `validation.ts` for the full record.
+
+## Stage 5 (2026-08-10): cross-module link compatibility
+
+`cross-module-links.test.ts` (6 tests) confirms, against the real engine
+link-compatibility evaluator and each module's real `manifest.ts` ports,
+that `axis-load-cases`' per-case `motion.axis.thrust_force` output links to
+this module's own per-case thrust-force input — direct evidence for the
+roadmap's own Unit 4.6 gate wording ("integrates with the ball-screw module
+without a custom link mapping"): `ball-screw` itself produces no output
+this module can consume (only `screw.*` results), so the real upstream
+producer is `axis-load-cases`, the same source `ball-screw`'s own thrust
+force already comes from. Also confirms a load-case mismatch stays
+refused, `motion.axis.case_linear_velocity` (this module's own speed
+input) has no producer anywhere yet — the same documented gap
+`ball-screw`'s and `coupling`'s own files already record — and no
+`bearing.*` catalog input accepts an upstream output. Generic UI and
+report schema (`ui.ts`/`report.ts`, drafted at Stage 3) were already
+passing conformance through `package.test.ts`. Workflow role integration
+stays not applicable pending Unit 4.8.
 
 Production release stays sequentially gated behind Unit 4.1's Definition of
-Done regardless (`context/implementation-map.md` Milestone 4 header), and
-this module additionally has not started Stage 4.
+Done regardless (`context/implementation-map.md` Milestone 4 header).

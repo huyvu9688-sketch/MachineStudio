@@ -318,33 +318,47 @@ page/section; it must not repeat the formula in UI/report code.
   environment, confirmed again this session) and NTN's own Rolling
   Bearings Handbook chapters 6, 7, 9, 10, and 15 (printed pages 27-38,
   45-53, 67-69), both read directly page-image by page-image.
-- **Not found this session: a full published worked numerical example**
-  for a support-bearing (or general angular-contact/deep-groove ball
-  bearing) life and static-safety-factor calculation. NTN's own handbook
+- **Both gaps closed 2026-08-10.** A full published worked numerical
+  example was not found in the 2026-08-09 session: NTN's own handbook
   table of contents lists a dedicated "Bearing Life Calculation Examples"
   section at printed page 84, immediately after the chapters read — but
-  both copies fetched this session (`ntnglobal.com` and `ntnamericas.com`,
+  both copies fetched that session (`ntnglobal.com` and `ntnamericas.com`,
   the same catalog No. 9012-@/E) are identically truncated after
   "Reference material" (printed page 82/blank 83) and do not contain it.
   THK's own "Examples of Selecting a Ball Screw" chapter (already read and
   reproduced by `ball-screw 0.1.0`'s own `thk-benchmark.ts`) selects a
   screw shaft, nut, and motor but **does not select or size a support
-  unit** — confirmed by re-reading that chapter's full text this session
+  unit** — confirmed by re-reading that chapter's full text that session
   (`jp.thk.example_ball_screw_selection@bondy-mirror-2026-08-09`, printed
-  pages A-740 through A-754). This is a real, unresolved gap: not a Stage
-  4 item prematurely skipped, but a Stage 1 "identify reference examples"
-  item not yet satisfied. Closing it needs either a different NTN
-  mirror/edition that includes the missing pages, or a different source
-  entirely (Timken's, SKF's, or NSK's own worked example, none confirmed
-  accessible this session — see "Candidate Sources" above).
-- **Not found this session: an independent-benchmark candidate.** NSK's
-  two short bulletins corroborate NTN's own formula shape exactly (no
-  numeric disagreement to record, unlike `ball-screw`'s Rockford/THK
-  buckling-constant disagreement or `linear-guide`'s PMI/IKO equivalent-
-  load disagreement) — real corroboration, but not yet a second,
-  independently-implemented numerical computation of the kind
-  `thk-benchmark.ts` or `iko-benchmark.ts` provide, since no full worked
-  example exists yet to reproduce independently.
+  pages A-740 through A-754). A third NTN Group edition (`ntn-snr.com`)
+  was retried 2026-08-10 and is truncated at the identical point (page 83
+  is a blank name/address/phone card; page 84 does not exist in this copy
+  either) — three independent editions now agree, evidence this is a
+  persistent omission from the handbook's own printing, not a one-off
+  fetch failure. The search then turned to a different manufacturer: NSK
+  Ltd.'s own "Rolling Bearings" catalog (CAT. No. E1102a) has the section
+  NTN's is missing — Section 5.7 "Examples of Bearing Calculations"
+  (printed pages A34-A36). Examples 1 and 3 both use single-row deep-groove
+  ball bearing 6208 (pure radial load, then the same bearing with an added
+  axial load) — reproduced through `executeModule` in
+  `lib/modules/support-bearing/0.1.0/nsk-reference-examples.ts`/`.test.ts`.
+  See `lib/standards/engineering-sources.ts`
+  `"jp.nsk.rolling_bearings_catalog@e1102a-2005"`.
+- **Independent-benchmark candidate found 2026-08-10, same source.** NSK's
+  own worked examples use a formula packaging distinct from NTN's own
+  direct `L10 = (C/P)^p` form — a speed factor `fn` and fatigue life
+  factor `fh = fn*C/P`, with life read from `Lh = 500*fh^3` (ball bearings)
+  — reproduced as a genuinely separate computation in
+  `lib/modules/support-bearing/0.1.0/nsk-fh-benchmark.ts`/`.test.ts`, then
+  proved algebraically identical to this module's own `resolveNominalLife`/
+  `resolveLifeHours` (`(C/P)^3 * 10^6/(60n)`) and asserted to agree to
+  floating-point precision — the same "proved identity, not a curve fit"
+  treatment `linear-guide`'s own PMI/IKO benchmark comparison received.
+  NSK's own two short "Technical Insight" bulletins (`TI Bearing Life.pdf`,
+  `P_TI-0102_EN.pdf`), read in the 2026-08-09 session, had already
+  corroborated the same formula shape with no numeric disagreement, but
+  without a full worked example to reproduce independently — this closes
+  that gap with NSK's own full catalog instead.
 - **Not resolved: how `C0` (NTN's "basic static load rating") relates to
   THK's own "static permissible load" figure** for the fixed-side support
   unit's own angular contact bearing — THK's own catalog table (A15-318)
@@ -417,10 +431,13 @@ convention is involved (not invented here):
 
 ## Status
 
-Stage 1 (engineering specification) is done as a draft, with two evidence
-gaps recorded above (a full worked numerical example, and an independent-
-benchmark candidate) rather than closed. Stage 2 (parameter contract) is
-next, per the six entry criteria above. Production release for Unit 4.6
-remains sequentially gated behind Unit 4.1's Definition of Done regardless
-of how far this document or a future package gets
-(`context/implementation-map.md` Milestone 4 header).
+Stage 1 (engineering specification) is done. Stages 2 and 3 followed
+(`stage-2-contract.md`; `lib/modules/support-bearing/0.1.0/`, registry
+`1.7.0`). The two evidence gaps this document originally recorded above (a
+full worked numerical example, and an independent-benchmark candidate) are
+both closed as of 2026-08-10 by NSK Ltd.'s own "Rolling Bearings" catalog
+— see "Evidence Gaps and Verification Confidence" above and
+`lib/modules/support-bearing/0.1.0/validation.ts` for the full Stage 4
+record. Production release for Unit 4.6 remains sequentially gated behind
+Unit 4.1's Definition of Done regardless of how far this document or a
+future package gets (`context/implementation-map.md` Milestone 4 header).

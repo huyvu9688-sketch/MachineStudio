@@ -1,4 +1,4 @@
-# Coupling 0.1.0 — Draft Package (Stage 3)
+# Coupling 0.1.0 — Draft Package (Stages 3-5)
 
 `math.ts` is a pure SI-number kernel for the fifth production engineering
 module (Unit 4.5), covering the `0.1.0` proposed scope from
@@ -154,6 +154,35 @@ and `validation/coupling/0.1.0.md` for the full record.
 4 completeness gate (see `validation/coupling/0.1.0.md` "Reviewer" for the
 now-available solo-validation independent-benchmark substitute). See
 `validation.ts` for the full record.
+
+## Stage 5 (2026-08-10): cross-module link compatibility
+
+`./cross-module-links.test.ts` (6 tests) confirms, against the real engine
+link-compatibility evaluator and each module's real `manifest.ts` ports —
+not hand-typed parameter-id strings — that `ball-screw`'s per-case
+`screw.drive_torque` output links to coupling's own per-case drive-torque
+input, the only upstream link coupling has today. It also confirms three
+things the graph must keep refusing: a load-case mismatch on that link;
+`ball-screw`'s `mean_rotational_speed` output feeding the linear-velocity
+sink (Stage 2 explicitly rejected that duty-cycle mean as coupling's speed
+source — see "Stage 2" below); and any `coupling.*` catalog input accepting
+an output from either `ball-screw` or `axis-load-cases` (none exists to
+accept). `motion.axis.case_linear_velocity` — the port coupling actually
+derives speed from — still has no producing module anywhere in the
+registry; this is the same documented gap `ball-screw`'s own
+`cross-module-links.test.ts` already records against its own consuming
+port, confirmed here rather than assumed.
+
+Generic UI and report schema (`ui.ts`/`report.ts`, drafted at Stage 3) were
+already passing conformance validation through `package.test.ts`'s
+`runModuleConformance` `package-validation` check — nothing new was needed
+there. Workflow role integration stays not applicable: no
+`linear-axis@1` workflow vocabulary exists yet (`manifest.ts`'s
+`workflowRoles` stays empty pending Unit 4.8), the same treatment
+`ball-screw` and `linear-guide` already get.
+
+What remains for this module is Stage 6 (release), sequentially gated
+behind Unit 4.1's Definition of Done regardless.
 
 ## Stage 1 kernel, before the package existed
 
