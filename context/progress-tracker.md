@@ -9,7 +9,7 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-10 (Unit 4.7 Stage 4 closed -- THK reference examples)
+Last updated: 2026-08-10 (Unit 4.8 built -- linear-axis@1 workflow definition)
 
 ---
 
@@ -122,9 +122,12 @@ apart on THK's own scenario — see `thk-benchmark.ts`'s
 `resolveThkDirectionalEquivalentLoad`). Stage 5: cross-module link
 compatibility against `axis-load-cases` is tested and passing
 (`cross-module-links.test.ts`, the first per-module-pair link test in this
-codebase); workflow role integration stays not-applicable until Unit 4.8
-exists. No module is registered; release stays gated behind Unit 4.1
-regardless.
+codebase); workflow role integration is done (2026-08-10) —
+`manifest.workflowRoles` now declares `"linear-axis.screw"`, matching
+`linear-axis@1`'s own role of that ID (Unit 4.8,
+`lib/workflows/linear-axis/1.0.0/definition.ts`), asserted in this module's
+own `cross-module-links.test.ts`. No module is registered; release stays
+gated behind Unit 4.1 regardless.
 
 Unit 4.4 — `linear-guide`. **Stages 1-3 done 2026-08-09**, drafted under the
 same parallel-work allowance as Units 4.2-4.3. Stage 1 spec:
@@ -289,10 +292,12 @@ anywhere in the registry; confirmed here rather than assumed, the same
 documented gap `ball-screw`'s own cross-module-links.test.ts already
 records against its own consuming port. Generic UI/report schema already
 pass conformance (`package.test.ts`'s `package-validation` check). What
-remains for this module: workflow role integration (not applicable —
-`workflowRoles` stays empty until Unit 4.8's `linear-axis@1` workflow
-exists, the same treatment `ball-screw` and `linear-guide` already get) and
-Stage 6 (release), sequentially gated behind Unit 4.1 regardless.
+remains for this module: workflow role integration is done (2026-08-10) —
+`manifest.workflowRoles` now declares `"linear-axis.coupling"`
+(`linear-axis@1`'s own role of that ID has cardinality 0-1, an open
+product decision — see "Open decisions" below), asserted in this module's
+own `cross-module-links.test.ts` — and Stage 6 (release), sequentially
+gated behind Unit 4.1 regardless.
 
 Unit 4.6 — `support-bearing`. **Stages 1-3 done 2026-08-09 through
 2026-08-10**, next in the roadmap's Phase 1B order now that `coupling`'s
@@ -395,10 +400,13 @@ mismatch, `motion.axis.case_linear_velocity` (this module's own speed
 input) having no producer anywhere — the same documented gap `ball-screw`'s
 and `coupling`'s own files already record — and any `bearing.*` catalog
 input accepting an upstream output. Generic UI/report schema already pass
-conformance. What remains for this module: workflow role integration (not
-applicable until Unit 4.8 exists, the same treatment every other Milestone
-4 module gets) and Stage 6 (release), sequentially gated behind Unit 4.1
-regardless.
+conformance. What remains for this module: workflow role integration is
+done (2026-08-10) — `manifest.workflowRoles` now declares
+`"linear-axis.bearing"` (`linear-axis@1`'s own role of that ID has
+cardinality 1-2, since a fixed+supported arrangement needs two instances
+of this module), asserted in this module's own
+`cross-module-links.test.ts` — and Stage 6 (release), sequentially gated
+behind Unit 4.1 regardless.
 
 Unit 4.7 — `drive-train` (servo motor, gearbox, drive/amplifier, holding
 brake, regenerative resistor). **Stage 1 drafted 2026-08-10**, next in the
@@ -557,11 +565,52 @@ full account). `axis-load-cases` has no output this module consumes;
 registry, the same documented gap `ball-screw`'s, `coupling`'s, and
 `support-bearing`'s own files already record. Generic UI/report schema
 conformance was already passing (`package.test.ts`'s `package-validation`
-check). What remains for this module: the two more Stage 4 reference
-examples (still blocked on a servo-specific source -- see above), workflow
-role integration (not applicable until Unit 4.8 exists, the same treatment
-every other Milestone 4 module gets), and Stage 6 (release), sequentially
+check). What remains for this module: workflow role integration is done
+(2026-08-10) — `manifest.workflowRoles` now declares `"linear-axis.drive"`,
+matching `linear-axis@1`'s own role of that ID, asserted in this module's
+own `cross-module-links.test.ts` — and Stage 6 (release), sequentially
 gated behind Unit 4.1 regardless.
+
+Unit 4.8 — `linear-axis@1` workflow definition. **Built 2026-08-10**, next
+in the roadmap's own order now that every Milestone 4 module
+(`axis-load-cases` through `drive-train`) is drafted through Stage 5 —
+started per explicit user direction to move off Unit 4.1's evidence-only
+blocker onto genuinely buildable work, rather than re-attempting an
+evidence search two prior sessions already exhausted. `lib/workflows/`
+did not exist before this session; `lib/workflows/workflow-sdk/` is the
+new, reusable `WorkflowDefinition` contract (roles, link-proposal rules,
+completion rules, workflow-level checks, candidate comparison, status) —
+see `context/adr/0007-workflow-definition-contract.md` for the full design
+reasoning. `lib/workflows/linear-axis/1.0.0/definition.ts` is the concrete
+`linear-axis@1` definition: seven roles (one per Milestone 4 module,
+`support-bearing`'s allowing 1-2 instances for a fixed+supported
+arrangement, `coupling`'s allowing 0-1 pending the open cardinality
+decision below), nine link-proposal rules covering every confirmed
+output-to-input parameter match among the seven modules, three
+`shared_value_topology` checks guarding the parameters with no producing
+module at all (`motion.axis.orientation`, `screw.lead`,
+`screw.gear_ratio`), a `conditional_acknowledgment` completion rule for the
+vertical-holding design response (`context/implementation-map.md` Unit 4.8
+"Cross-Module Checks" — no parameter anywhere represents a required
+holding torque to check numerically, so this reuses the existing
+`Assumption` shape instead), and four candidate-comparison criteria ranked
+lexicographically, not by weighted score. Of the implementation map's five
+example cross-module checks, two are genuine documented gaps (motion speed
+vs. screw critical/manufacturer speed; bore/shaft interface compatibility
+between `coupling` and `support-bearing`) rather than invented numeric
+checks with no sourced basis — see the workflow's own
+`lib/workflows/linear-axis/1.0.0/README.md` for the full five-item
+disposition table. All seven modules' `manifest.workflowRoles` are now
+populated (previously empty on every one), closing the "workflow role
+integration" Stage-5 item every module's own entry above used to list as
+blocked on this unit; each module's own test file asserts its role matches
+a real `linear-axis@1` role. No `lib/application`, Prisma, or UI wiring
+exists yet — `lib/workflows` stays as pure and DB-free as `lib/modules`,
+matching every other Milestone 4 module's own pre-application-layer state.
+This unit does not change Unit 4.1's gate: none of the seven modules are
+registered (`package.ts`, not `index.ts`, on every one), so Stage 6
+(release) for all of them, and any future workflow-instance persistence,
+stays sequentially gated behind Unit 4.1's Definition of Done regardless.
 
 ---
 
@@ -625,10 +674,15 @@ variable names.
    `lib/engine/parameters/README.md`.
 5. Unit 4.2 (`motion-profile`) and Unit 4.3 (`ball-screw`): both are done
    through Stage 4 (`ball-screw` also through Stage 5 as far as applicable
-   pre-Unit-4.8 — see Active work). What's left for both is identical:
-   workflow role integration and workflow integration tests (blocked on
-   Unit 4.8, `workflowRoles` is deliberately empty on each), and Stage 6
-   (release), sequentially gated behind Unit 4.1 regardless. `motion-
+   pre-Unit-4.8 — see Active work). Workflow role integration is now done
+   for both (2026-08-10): `motion-profile` declares `"linear-axis.motion"`,
+   `ball-screw` declares `"linear-axis.screw"` (Unit 4.8,
+   `lib/workflows/linear-axis/1.0.0/definition.ts`), each asserted in its
+   own test file. Workflow integration tests exist at the workflow-
+   definition level (`lib/workflows/linear-axis/1.0.0/integration.test.ts`)
+   rather than per module, since neither module is registered yet. What's
+   left for both: Stage 6 (release), sequentially gated behind Unit 4.1
+   regardless. `motion-
    profile`'s own cross-module link compatibility item is now testable and
    done: `drive-train 0.1.0` declares input ports for its `peak_
    acceleration`/`peak_deceleration`/`rms_acceleration` outputs (see Unit
@@ -645,16 +699,20 @@ variable names.
    already passing conformance via `package.test.ts`) and cross-module link
    compatibility tests against `axis-load-cases`
    (`cross-module-links.test.ts`, already present). Workflow role
-   integration stays not-applicable until Unit 4.8 exists. What remains:
-   Stage 6 (release), sequentially gated behind Unit 4.1 regardless.
-   Optional parallel work; does not move Unit 4.1's critical path.
+   integration is done (2026-08-10): declares `"linear-axis.guide"` (Unit
+   4.8), asserted in `cross-module-links.test.ts`. What remains: Stage 6
+   (release), sequentially gated behind Unit 4.1 regardless. Optional
+   parallel work; does not move Unit 4.1's critical path.
 7. Unit 4.5 (`coupling`): **Stages 1-5 done** (see Active work) — Stage 4
    including the independent benchmark, Stage 5's generic UI/report schema
    (drafted at Stage 3) and cross-module link compatibility tests against
    `ball-screw` (`cross-module-links.test.ts`, done 2026-08-10). Registry
    `1.6.0` released, full package in `lib/modules/coupling/0.1.0/`,
-   `validation/coupling/0.1.0.md` complete. Workflow role integration stays
-   not-applicable until Unit 4.8 exists. What remains: Stage 6 (release),
+   `validation/coupling/0.1.0.md` complete. Workflow role integration is
+   done (2026-08-10): declares `"linear-axis.coupling"` (Unit 4.8;
+   `linear-axis@1`'s own role of that ID has cardinality 0-1, an open
+   product decision — see "Open decisions"), asserted in
+   `cross-module-links.test.ts`. What remains: Stage 6 (release),
    sequentially gated behind Unit 4.1 regardless. Optional parallel work;
    does not move Unit 4.1's critical path.
 8. Unit 4.6 (`support-bearing`): **Stages 1-5 done** (see Active work) —
@@ -665,10 +723,12 @@ variable names.
    conformance) and cross-module link compatibility tests against
    `axis-load-cases`/`ball-screw` (`cross-module-links.test.ts`, done
    2026-08-10). Registry `1.7.0` released, full package in
-   `lib/modules/support-bearing/0.1.0/`. Workflow role integration stays
-   not-applicable until Unit 4.8 exists. What remains: Stage 6 (release),
-   sequentially gated behind Unit 4.1 regardless. Optional parallel work;
-   does not move Unit 4.1's critical path.
+   `lib/modules/support-bearing/0.1.0/`. Workflow role integration is done
+   (2026-08-10): declares `"linear-axis.bearing"` (Unit 4.8; cardinality
+   1-2 there, since a fixed+supported arrangement needs two instances),
+   asserted in `cross-module-links.test.ts`. What remains: Stage 6
+   (release), sequentially gated behind Unit 4.1 regardless. Optional
+   parallel work; does not move Unit 4.1's critical path.
 9. Unit 4.7 (`drive-train`): **Stages 1-5 done** (see Active work) --
    registry `1.8.0` released, full `drive.*` group; full `ModulePackage` in
    `lib/modules/drive-train/0.1.0/` with three reference examples (Omron's
@@ -682,11 +742,24 @@ variable names.
    output), and generic UI/report schema conformance was already passing.
    Drive/amplifier current sizing stays out of scope until the unit
    registry gains an electrical-current dimension -- a separate
-   generic-engine unit, not bundled into this module. What remains: workflow
-   role integration (not applicable until Unit 4.8 exists, the same
-   treatment every other Milestone 4 module gets) and Stage 6 (release),
-   sequentially gated behind Unit 4.1 regardless. Optional parallel work;
-   does not move Unit 4.1's critical path.
+   generic-engine unit, not bundled into this module. Workflow role
+   integration is done (2026-08-10): declares `"linear-axis.drive"` (Unit
+   4.8), asserted in `cross-module-links.test.ts`. What remains: Stage 6
+   (release), sequentially gated behind Unit 4.1 regardless. Optional
+   parallel work; does not move Unit 4.1's critical path.
+10. Unit 4.8 (`linear-axis@1` workflow): **built 2026-08-10** — full
+    `WorkflowDefinition` contract (`lib/workflows/workflow-sdk/`) and the
+    concrete `linear-axis@1` definition, tested against all seven real
+    modules' own ports (`lib/workflows/linear-axis/1.0.0/`), see Active
+    work and `context/adr/0007-workflow-definition-contract.md`. What
+    remains: `lib/application` wiring to actually create/advance a
+    `WorkflowInstance` and persist confirmed links/acknowledgments (no
+    Prisma schema change needed — `WorkflowInstance`/`ModuleInstance`
+    already exist from Milestone 2), a generic UI surface for it, and
+    resolving the `coupling` role's 0-1 cardinality as a real product
+    decision (see "Open decisions"). Sequentially gated behind Unit 4.1
+    regardless, the same as every module above; optional parallel work in
+    the meantime.
 
 ---
 
@@ -713,6 +786,11 @@ past calls.
   reference material — internal reference only until cleared.
 - Live-verification of official Japanese and US source editions (blocked by
   the TLS interception note below).
+- Whether a direct-drive linear axis (no separate coupling component) is a
+  real scenario this product must support. `linear-axis@1`'s own
+  `linear-axis.coupling` role is modeled as optional (cardinality 0-1,
+  `lib/workflows/linear-axis/1.0.0/definition.ts`) pending this decision —
+  see `context/adr/0007-workflow-definition-contract.md` "Consequences".
 
 ---
 

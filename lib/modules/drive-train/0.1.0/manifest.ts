@@ -36,9 +36,9 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   parameterRegistryVersion: "1.8.0",
   category: "drive",
   tags: ["drive-train", "servo-motor", "gearbox"],
-  // No linear-axis@1 workflow role vocabulary exists yet (Unit 4.8 is not
-  // started); leave empty rather than invent one.
-  workflowRoles: [],
+  // linear-axis@1's "linear-axis.drive" role (Unit 4.8,
+  // lib/workflows/linear-axis/1.0.0/definition.ts).
+  workflowRoles: ["linear-axis.drive"],
   validityEnvelopeSummary:
     "One candidate servo motor at a time, consuming the normal and peak load cases already resolved by axis-load-cases/ball-screw (holding and emergency_stop are not supported); RMS torque, peak (maximum momentary) torque, inertia ratio, and rotational speed are evaluated checks, each with a required engineer-supplied margin/limit and no built-in default (multi-way sourced disagreement on all three); regenerative energy is an evaluated check under a stated '100% efficient absorption' simplifying assumption, only when a drive's own absorption capacity is supplied; gearbox ratio reuses screw.gear_ratio directly and gearbox efficiency is a new, required-when-a-gearbox-is-declared input distinct from the ball screw's own internal efficiency; drive.reflected_load_inertia is a required engineer-supplied input, since no released upstream parameter derives it; holding-brake rated torque and gearbox backlash/life are reported catalog values, not evaluated; drive/amplifier current and voltage compatibility are out of scope entirely (no electrical-current dimension in the unit registry yet); the RMS-torque formula relies on a closed-cycle assumption (motion.profile.rms_acceleration is sufficient only when total system inertia and per-case load torque both stay constant across a cycle that returns to its starting velocity) recorded on every calculation, not yet verified against a synthetic per-phase torque profile.",
   sourceRevisionIds: [

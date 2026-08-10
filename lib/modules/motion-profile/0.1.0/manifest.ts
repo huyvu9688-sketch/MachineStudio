@@ -42,9 +42,9 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   parameterRegistryVersion: "1.2.0",
   category: "motion.profile",
   tags: ["motion", "profile", "kinematics"],
-  // No linear-axis@1 workflow role vocabulary exists yet (Unit 4.8 is not
-  // started); leave empty rather than invent one.
-  workflowRoles: [],
+  // linear-axis@1's "linear-axis.motion" role (Unit 4.8,
+  // lib/workflows/linear-axis/1.0.0/definition.ts).
+  workflowRoles: ["linear-axis.motion"],
   validityEnvelopeSummary:
     "One to five single-axis positioning moves (move 1 required, moves 2-5 optional but must be supplied contiguously), each optionally followed by its own dwell, as the whole motion cycle; symmetric trapezoidal or triangular acceleration/deceleration profile only (asymmetric and jerk-limited S-curve profiles are out of scope); every supplied move_distance > 0, max_velocity > 0, max_acceleration > 0, every supplied dwell_time >= 0; no structural compliance, resonance/bandwidth limiting, or encoder/servo loop dynamics.",
   // Elementary constant-acceleration kinematics and time-weighted RMS

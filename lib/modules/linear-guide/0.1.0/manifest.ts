@@ -40,9 +40,9 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   parameterRegistryVersion: "1.5.0",
   category: "guide",
   tags: ["linear-guide", "guideway", "rolling-guide"],
-  // No linear-axis@1 workflow role vocabulary exists yet (Unit 4.8 is not
-  // started); leave empty rather than invent one.
-  workflowRoles: [],
+  // linear-axis@1's "linear-axis.guide" role (Unit 4.8,
+  // lib/workflows/linear-axis/1.0.0/definition.ts).
+  workflowRoles: ["linear-axis.guide"],
   validityEnvelopeSummary:
     "One profile-rail linear guide on one linear axis in a fixed two-rail, two-blocks-per-rail arrangement (four load-bearing points), consuming the normal and peak resolved force/moment load cases already produced by axis-load-cases (holding and emergency_stop are not supported); horizontal or vertical installation only (overhung, wall-mount, and tilted installations are out of scope, and an inclined axis is rejected rather than approximated by either); ball-type rolling elements only (the e=3, 50 km life branch — a roller-type guide is rejected rather than silently given the ball exponent); equivalent load uses PMI's two-or-more-guideways form PE = |PR| + |PT|, so no moment rating is consumed and no separate moment term is added; the life load factor and the minimum static safety factor are required inputs with no built-in default (PMI and IKO publish differing guidance ranges for both); nominal life is reported per load case from that case's own equivalent load, not from a duty-cycle mean load; no preload-dependent stiffness modeling beyond recording the preload grade, no lubrication-regime, seal-wear, or rail-deflection modeling.",
   sourceRevisionIds: [

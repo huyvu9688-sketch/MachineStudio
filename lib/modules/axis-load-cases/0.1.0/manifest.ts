@@ -41,9 +41,9 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   parameterRegistryVersion: "1.4.0",
   category: "motion.axis",
   tags: ["axis", "load-case"],
-  // No linear-axis@1 workflow role vocabulary exists yet (Unit 4.8 is not
-  // started); leave empty rather than invent one.
-  workflowRoles: [],
+  // linear-axis@1's "linear-axis.axis" role (Unit 4.8,
+  // lib/workflows/linear-axis/1.0.0/definition.ts).
+  workflowRoles: ["linear-axis.axis"],
   validityEnvelopeSummary:
     "One rigid moving assembly on a straight axis; horizontal, vertical, or inclined 0-90 degrees; normal and peak load cases only (holding and emergency_stop are not supported by this version); scalar Coulomb friction in [0, 1]; explicit external process force/moment and center-of-mass offset per case; no structural compliance, backlash, guide-block load distribution, collision impact, regenerative braking, or brake sizing.",
   sourceRevisionIds: [

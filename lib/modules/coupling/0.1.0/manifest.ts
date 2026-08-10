@@ -34,9 +34,11 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   parameterRegistryVersion: "1.6.0",
   category: "coupling",
   tags: ["coupling", "transmission"],
-  // No linear-axis@1 workflow role vocabulary exists yet (Unit 4.8 is not
-  // started); leave empty rather than invent one.
-  workflowRoles: [],
+  // linear-axis@1's "linear-axis.coupling" role (Unit 4.8,
+  // lib/workflows/linear-axis/1.0.0/definition.ts). Cardinality 0-1 there —
+  // an open product decision, not yet resolved (context/progress-tracker.md
+  // "Open decisions").
+  workflowRoles: ["linear-axis.coupling"],
   validityEnvelopeSummary:
     "One coupling connecting a ball screw's own drive shaft to its upstream driving shaft, consuming the normal (steady) and peak (shock) load cases already resolved by ball-screw (holding and emergency_stop are not supported); torque capacity checked with one consolidated, required, no-default service factor (KTR's and R+W's own factor tables disagree); operating rotational speed derived from motion.axis.case_linear_velocity via screw.lead and screw.gear_ratio, not a released screw.* speed port; misalignment and bore compatibility are simple bound checks against catalog data; torsional stiffness and moment of inertia are reported, not evaluated — no resonant-frequency or torsional-vibration check (no released motor/load inertia parameter exists yet).",
   sourceRevisionIds: [

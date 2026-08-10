@@ -4,6 +4,7 @@ import {
   makeQuantity,
   runModuleConformance,
 } from "@/lib/engine";
+import { linearAxisDefinition } from "@/lib/workflows/linear-axis/1.0.0/definition";
 import { motionProfileModule } from "./package";
 import { asQuantity, type RawInput } from "./test-helpers";
 
@@ -264,5 +265,17 @@ describe("motion-profile 0.1.0 cycle (bounded move sequence)", () => {
     input.values.move_2_max_acceleration = makeQuantity(2, "m/s^2");
     const computation = executeModule(motionProfileModule, input);
     expect(asQuantity(computation.outputs.peak_velocity).value).toBe(5);
+  });
+});
+
+describe("linear-axis@1 workflow role (Unit 4.8)", () => {
+  it("declares a workflowRoles entry matching a real linear-axis@1 role", () => {
+    const roleIds = new Set(linearAxisDefinition.roles.map((r) => r.id));
+    expect(motionProfileModule.manifest.workflowRoles.length).toBeGreaterThan(
+      0,
+    );
+    for (const roleId of motionProfileModule.manifest.workflowRoles) {
+      expect(roleIds.has(roleId)).toBe(true);
+    }
   });
 });

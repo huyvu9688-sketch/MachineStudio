@@ -75,3 +75,4 @@ and Sources"). When circumstances change:
 | [ADR-0004](0004-canonical-si-storage-with-display-units.md) | Canonical SI storage with flexible engineering display units | Accepted |
 | [ADR-0005](0005-manufacturer-specs-lightweight-assignment.md) | Manufacturer specifications plus lightweight component assignment | Accepted |
 | [ADR-0006](0006-immutable-manufacturer-part-revisions.md) | Immutable manufacturer part revisions | Accepted |
+| [ADR-0007](0007-workflow-definition-contract.md) | Workflow definition contract (`WorkflowDefinition` SDK boundary) | Accepted |

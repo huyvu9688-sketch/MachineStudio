@@ -31,9 +31,9 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   parameterRegistryVersion: "1.3.0",
   category: "screw",
   tags: ["ball-screw", "transmission", "screw"],
-  // No linear-axis@1 workflow role vocabulary exists yet (Unit 4.8 is not
-  // started); leave empty rather than invent one.
-  workflowRoles: [],
+  // linear-axis@1's "linear-axis.screw" role (Unit 4.8,
+  // lib/workflows/linear-axis/1.0.0/definition.ts).
+  workflowRoles: ["linear-axis.screw"],
   validityEnvelopeSummary:
     "One straight ball-screw shaft on one linear axis, consuming the normal and peak axial load cases already resolved by axis-load-cases (holding and emergency_stop are not supported); rotating-screw / translating-nut arrangement only; one of four end-support arrangements (fixed-fixed, fixed-supported, supported-supported, fixed-free); buckling and critical-speed formulas use the screw's minor (root) diameter; the dynamic load rating must be on a revolutions basis (a distance-basis rating is rejected rather than silently misapplied); the static safety factor minimum and the buckling safety margin are required inputs with no built-in default (published guidance disagrees on both); no preload-dependent stiffness modeling beyond the internal-friction/efficiency terms, no thermal derating, no structural compliance, backlash, or lubrication-regime modeling.",
   sourceRevisionIds: [

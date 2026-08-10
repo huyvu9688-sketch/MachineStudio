@@ -87,7 +87,36 @@ combining their compute logic. A workflow declares:
 - Workflow-level checks
 - Candidate system comparison rules
 
-The first workflow is `linear-axis@1`.
+The first workflow is `linear-axis@1` (Unit 4.8,
+`lib/workflows/linear-axis/1.0.0/`; contract in
+`lib/workflows/workflow-sdk/`; see ADR-0007).
+
+A workflow definition exports one `WorkflowDefinition` object, mirroring the
+module package's own single-object contract:
+
+```ts
+interface WorkflowDefinition {
+  manifest: WorkflowManifest;               // stable ID, version, title, description
+  roles: readonly WorkflowModuleRole[];     // id, label, allowed module IDs, cardinality
+  sequence: readonly (readonly string[])[]; // ordered dependency levels of role IDs
+  linkRules: readonly WorkflowLinkProposalRule[];
+  completionRules: readonly CompletionRule[];
+  checkRules: readonly WorkflowCheckRule[];
+  comparisonCriteria: readonly CandidateComparisonCriterion[];
+}
+```
+
+A role names the module IDs allowed to fill it, never a looser category
+match. A link-proposal rule names only a canonical parameter ID and a
+`fromRole`/`toRole` pair — never a module's own port key — and is resolved
+against the real present role instances' ports through the same link-
+compatibility evaluator the parameter graph itself uses (Unit 1.8,
+`evaluateLinkCompatibility`), so a workflow can never encode hardcoded
+field-to-field wiring. `lib/workflows` may depend on `lib/engine` and
+`lib/modules`; the reverse is forbidden, the same asymmetry `lib/modules`
+already holds toward `lib/engine`. It stays as pure and I/O-free as
+`lib/modules` — no `lib/db`, `lib/application`, or `lib/catalog` import —
+until an application-layer unit wires a `WorkflowInstance` through it.
 
 ### `lib/application/`
 

@@ -27,7 +27,11 @@ import {
   type ModuleInputPort,
   type ModuleOutputPort,
 } from "@/lib/engine";
-import { ports as linearGuidePorts } from "./manifest";
+import { linearAxisDefinition } from "@/lib/workflows/linear-axis/1.0.0/definition";
+import {
+  manifest as linearGuideManifest,
+  ports as linearGuidePorts,
+} from "./manifest";
 import { ports as axisLoadCasesPorts } from "../../axis-load-cases/0.1.0/manifest";
 
 const SCOPE = asScopeId("test-scope");
@@ -172,5 +176,15 @@ describe("axis-load-cases 0.1.0 -> linear-guide 0.1.0 link compatibility", () =>
         (port) => port.parameterId === "motion.axis.orientation",
       ),
     ).toBe(true);
+  });
+});
+
+describe("linear-axis@1 workflow role (Unit 4.8)", () => {
+  it("declares a workflowRoles entry matching a real linear-axis@1 role", () => {
+    const roleIds = new Set(linearAxisDefinition.roles.map((r) => r.id));
+    expect(linearGuideManifest.workflowRoles.length).toBeGreaterThan(0);
+    for (const roleId of linearGuideManifest.workflowRoles) {
+      expect(roleIds.has(roleId)).toBe(true);
+    }
   });
 });

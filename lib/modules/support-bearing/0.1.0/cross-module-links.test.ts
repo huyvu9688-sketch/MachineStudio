@@ -29,7 +29,8 @@ import {
   type ModuleInputPort,
   type ModuleOutputPort,
 } from "@/lib/engine";
-import { ports as supportBearingPorts } from "./manifest";
+import { linearAxisDefinition } from "@/lib/workflows/linear-axis/1.0.0/definition";
+import { manifest as supportBearingManifest, ports as supportBearingPorts } from "./manifest";
 import { ports as axisLoadCasesPorts } from "../../axis-load-cases/0.1.0/manifest";
 import { ports as ballScrewPorts } from "../../ball-screw/0.1.0/manifest";
 
@@ -170,6 +171,16 @@ describe("axis-load-cases 0.1.0 -> support-bearing 0.1.0 link compatibility", ()
         (source) => evaluateLinkCompatibility(source, sink).compatible,
       );
       expect(anyCompatible).toBe(false);
+    }
+  });
+});
+
+describe("linear-axis@1 workflow role (Unit 4.8)", () => {
+  it("declares a workflowRoles entry matching a real linear-axis@1 role", () => {
+    const roleIds = new Set(linearAxisDefinition.roles.map((r) => r.id));
+    expect(supportBearingManifest.workflowRoles.length).toBeGreaterThan(0);
+    for (const roleId of supportBearingManifest.workflowRoles) {
+      expect(roleIds.has(roleId)).toBe(true);
     }
   });
 });

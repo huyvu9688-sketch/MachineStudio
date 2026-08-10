@@ -38,9 +38,10 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   parameterRegistryVersion: "1.7.0",
   category: "bearing",
   tags: ["support-bearing", "bearing", "transmission"],
-  // No linear-axis@1 workflow role vocabulary exists yet (Unit 4.8 is not
-  // started); leave empty rather than invent one.
-  workflowRoles: [],
+  // linear-axis@1's "linear-axis.bearing" role (Unit 4.8,
+  // lib/workflows/linear-axis/1.0.0/definition.ts). Cardinality 1-2 there —
+  // a fixed+supported arrangement needs two instances of this same role.
+  workflowRoles: ["linear-axis.bearing"],
   validityEnvelopeSummary:
     "One ball-screw shaft support bearing at a time (fixed-side angular contact, or supported/floating-side deep-groove — bearing.location selects which), consuming the normal (steady) and peak load cases already resolved by axis-load-cases (holding and emergency_stop are not supported); two-point shaft support only; ball bearings only; axial load (fixed side only) reuses motion.axis.thrust_force directly; radial load is a new required engineer-supplied input (no upstream parameter cleanly supplies it); dynamic/static equivalent-load factors (X/Y/X0/Y0) are engineer-supplied catalog lookups; the static safety factor minimum is a required input with no built-in default; preload, bore diameter, and outside diameter are reported catalog values, not evaluated; no torsional-resonance check, no 3-point statically-indeterminate load derivation, no fit-tolerance-class verification; NTN's own speed correction factors (fL/fC) are not implemented — the catalog allowable speed is used uncorrected.",
   sourceRevisionIds: [
