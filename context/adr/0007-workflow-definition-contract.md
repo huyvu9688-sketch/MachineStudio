@@ -152,6 +152,13 @@ stays as pure and DB-free as `lib/modules` — no I/O, no import from `lib/db`,
 `lib/application`, `lib/catalog`, `app`, or `components`. Wiring a
 `WorkflowInstance` through the application layer, persisting proposals/
 confirmations/acknowledgments, and any UI are explicitly future work.
+**Update (Unit 4.9, 2026-08-10):** the application-layer wiring is now
+built — `lib/application/workflows/` (`startWorkflowInstance`,
+`loadWorkflowInstanceView`) and `lib/db/repositories/workflow-repository.ts`
+— proven against a new `example-workflow@1.0.0` registry entry rather than
+`linear-axis@1` itself, since none of its own seven modules are registered
+yet. `lib/workflows` itself is unchanged: still pure and DB-free. Only the
+UI surface remains future work.
 
 ## Consequences
 

@@ -11,6 +11,7 @@ describe.skipIf(!liveDatabaseAvailable)(
   () => {
     let addModuleInstance: typeof import("./add-module-instance").addModuleInstance;
     let projects: typeof import("../../db/repositories/project-repository");
+    let workflows: typeof import("../../db/repositories/workflow-repository");
     let client: typeof import("../../db/client");
     const createdUserIds: string[] = [];
 
@@ -53,6 +54,7 @@ describe.skipIf(!liveDatabaseAvailable)(
     beforeAll(async () => {
       ({ addModuleInstance } = await import("./add-module-instance"));
       projects = await import("../../db/repositories/project-repository");
+      workflows = await import("../../db/repositories/workflow-repository");
       client = await import("../../db/client");
     });
 
@@ -169,6 +171,93 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("invalid_input");
+    });
+
+    it("attaches a module instance to a workflow instance the caller owns", async () => {
+      const { ownerId, configurationId, assemblyId } = await fixture();
+      const workflowInstance = await workflows.createWorkflowInstance({
+        configurationId,
+        workflowId: "linear-axis",
+        workflowVersion: "1.0.0",
+      });
+
+      const result = await addModuleInstance(
+        {
+          assemblyId,
+          configurationId,
+          modulePackageId: "example-scaffold",
+          moduleVersion: "0.1.0",
+          label: "Thrust check",
+          workflowInstanceId: workflowInstance.id,
+        },
+        ownerId,
+      );
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.moduleInstance.workflowInstanceId).toBe(
+        workflowInstance.id,
+      );
+    });
+
+    it("rejects a workflow instance the caller does not own", async () => {
+      const { configurationId, assemblyId } = await fixture();
+      const strangerId = await newUser();
+      const workflowInstance = await workflows.createWorkflowInstance({
+        configurationId,
+        workflowId: "linear-axis",
+        workflowVersion: "1.0.0",
+      });
+
+      const result = await addModuleInstance(
+        {
+          assemblyId,
+          configurationId,
+          modulePackageId: "example-scaffold",
+          moduleVersion: "0.1.0",
+          label: "Should fail",
+          workflowInstanceId: workflowInstance.id,
+        },
+        strangerId,
+      );
+
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("unauthorized");
+    });
+
+    it("rejects a workflow instance from a different configuration", async () => {
+      const { ownerId, configurationId, assemblyId } = await fixture();
+      const otherProject = await projects.createProject({
+        ownerId,
+        name: "Other project",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const otherConfig = await projects.createConfiguration({
+        projectId: otherProject.id,
+        name: "other cfg",
+      });
+      const workflowInstance = await workflows.createWorkflowInstance({
+        configurationId: otherConfig.id,
+        workflowId: "linear-axis",
+        workflowVersion: "1.0.0",
+      });
+
+      const result = await addModuleInstance(
+        {
+          assemblyId,
+          configurationId,
+          modulePackageId: "example-scaffold",
+          moduleVersion: "0.1.0",
+          label: "Should fail",
+          workflowInstanceId: workflowInstance.id,
+        },
+        ownerId,
+      );
+
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("unauthorized");
     });
   },
 );

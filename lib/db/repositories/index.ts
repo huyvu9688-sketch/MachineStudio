@@ -11,7 +11,6 @@ export {
   createProject,
   createConfiguration,
   createAssembly,
-  createWorkflowInstance,
   createModuleInstance,
   listProjectsByOwner,
   loadProjectTree,
@@ -26,6 +25,16 @@ export {
   loadConfigurationTree,
 } from "./project-repository";
 export type { ProjectRepositoryErrorCode } from "./project-repository";
+
+// Workflow instances (Unit 4.9).
+export {
+  WorkflowRepositoryError,
+  createWorkflowInstance,
+  loadWorkflowInstanceForOwner,
+  listModuleInstancesForWorkflowInstance,
+  updateWorkflowInstanceStatus,
+} from "./workflow-repository";
+export type { WorkflowRepositoryErrorCode } from "./workflow-repository";
 
 // Requirements and parameter graph (Unit 2.2).
 export * from "./requirements-types";

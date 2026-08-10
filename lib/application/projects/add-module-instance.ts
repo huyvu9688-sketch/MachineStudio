@@ -6,10 +6,12 @@ import { getModulePackage } from "@/lib/modules";
 import {
   createModuleInstance,
   loadAssemblyForOwner,
+  loadWorkflowInstanceForOwner,
   type AssemblyId,
   type MachineConfigurationId,
   type ModuleInstanceRecord,
   type UserId,
+  type WorkflowInstanceId,
 } from "@/lib/db";
 
 /** Machine-readable classification of an {@link addModuleInstance} failure. */
@@ -29,6 +31,14 @@ export interface AddModuleInstanceInput {
   readonly modulePackageId: string;
   readonly moduleVersion: string;
   readonly label: string;
+  /**
+   * Attaches the new module instance to an existing `WorkflowInstance`
+   * (Unit 4.9) — how a module instance actually comes to fill a guided
+   * workflow's role, rather than a workflow-specific create path duplicating
+   * this one. Optional: a module instance may exist outside any workflow
+   * (the Expert Flow).
+   */
+  readonly workflowInstanceId?: WorkflowInstanceId;
 }
 
 /** Result of {@link addModuleInstance}. */
@@ -83,6 +93,32 @@ export async function addModuleInstance(
     };
   }
 
+  if (input.workflowInstanceId !== undefined) {
+    const workflowInstance = await loadWorkflowInstanceForOwner(
+      input.workflowInstanceId,
+      ownerId,
+    );
+    if (workflowInstance === null) {
+      return {
+        ok: false,
+        error: {
+          code: "unauthorized",
+          message: "Workflow instance not found or not owned by this user.",
+        },
+      };
+    }
+    if (workflowInstance.configurationId !== input.configurationId) {
+      return {
+        ok: false,
+        error: {
+          code: "unauthorized",
+          message:
+            "Workflow instance does not belong to the given configuration.",
+        },
+      };
+    }
+  }
+
   const pkg = getModulePackage(input.modulePackageId, input.moduleVersion);
   if (pkg === undefined) {
     return {
@@ -103,6 +139,9 @@ export async function addModuleInstance(
     modulePackageId: pkg.manifest.id,
     moduleVersion: pkg.manifest.version,
     label: labelResult.data,
+    ...(input.workflowInstanceId !== undefined
+      ? { workflowInstanceId: input.workflowInstanceId }
+      : {}),
   });
   return { ok: true, moduleInstance };
 }

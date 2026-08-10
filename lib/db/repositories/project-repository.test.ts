@@ -18,6 +18,7 @@ describe.skipIf(!liveDatabaseAvailable)(
   "project-repository (live database)",
   () => {
     let repo: typeof import("./project-repository");
+    let workflowRepo: typeof import("./workflow-repository");
     let client: typeof import("../client");
     const createdUserIds: string[] = [];
 
@@ -31,6 +32,7 @@ describe.skipIf(!liveDatabaseAvailable)(
 
     beforeAll(async () => {
       repo = await import("./project-repository");
+      workflowRepo = await import("./workflow-repository");
       client = await import("../client");
     });
 
@@ -55,7 +57,7 @@ describe.skipIf(!liveDatabaseAvailable)(
         projectId: project.id,
         name: "Baseline configuration",
       });
-      const workflow = await repo.createWorkflowInstance({
+      const workflow = await workflowRepo.createWorkflowInstance({
         configurationId: config.id,
         workflowId: "linear-axis",
         workflowVersion: "1.0.0",
@@ -210,7 +212,7 @@ describe.skipIf(!liveDatabaseAvailable)(
         configurationId: config.id,
         name: "root",
       });
-      const workflow = await repo.createWorkflowInstance({
+      const workflow = await workflowRepo.createWorkflowInstance({
         configurationId: config.id,
         workflowId: "linear-axis",
         workflowVersion: "1.0.0",
@@ -309,7 +311,7 @@ describe.skipIf(!liveDatabaseAvailable)(
         configurationId: config.id,
         name: "root",
       });
-      const workflow = await repo.createWorkflowInstance({
+      const workflow = await workflowRepo.createWorkflowInstance({
         configurationId: config.id,
         workflowId: "linear-axis",
         workflowVersion: "1.0.0",

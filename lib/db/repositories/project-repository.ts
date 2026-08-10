@@ -27,7 +27,6 @@ import type {
   CreateConfigurationInput,
   CreateModuleInstanceInput,
   CreateProjectInput,
-  CreateWorkflowInstanceInput,
   MachineConfigurationId,
   MachineConfigurationRecord,
   MachineProjectId,
@@ -69,13 +68,6 @@ export class ProjectRepositoryError extends Error {
 
 const nonEmpty = z.string().trim().min(1);
 
-const workflowStatusSchema: z.ZodType<WorkflowInstanceStatus> = z.enum([
-  "draft",
-  "active",
-  "completed",
-  "abandoned",
-]);
-
 const createProjectSchema = z.object({
   ownerId: nonEmpty,
   name: nonEmpty,
@@ -89,12 +81,6 @@ const createAssemblySchema = z.object({
   configurationId: nonEmpty,
   parentId: nonEmpty.optional(),
   name: nonEmpty,
-});
-const createWorkflowInstanceSchema = z.object({
-  configurationId: nonEmpty,
-  workflowId: nonEmpty,
-  workflowVersion: nonEmpty,
-  status: workflowStatusSchema.optional(),
 });
 const createModuleInstanceSchema = z.object({
   assemblyId: nonEmpty,
@@ -303,22 +289,6 @@ export async function createAssembly(
     },
   });
   return toAssemblyRecord(row);
-}
-
-/** Creates a `WorkflowInstance` under a configuration. */
-export async function createWorkflowInstance(
-  input: CreateWorkflowInstanceInput,
-): Promise<WorkflowInstanceRecord> {
-  const data = parse(createWorkflowInstanceSchema, input);
-  const row = await prisma.workflowInstance.create({
-    data: {
-      configurationId: data.configurationId,
-      workflowId: data.workflowId,
-      workflowVersion: data.workflowVersion,
-      ...(data.status ? { status: data.status } : {}),
-    },
-  });
-  return toWorkflowInstanceRecord(row);
 }
 
 /** Creates a `ModuleInstance` in an assembly, pinning its package id+version. */

@@ -9,7 +9,7 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-10 (coupling role direct-drive decision resolved)
+Last updated: 2026-08-10 (Unit 4.9 built -- WorkflowInstance application wiring)
 
 ---
 
@@ -34,11 +34,15 @@ same work, two labels):
 - Phase 1D → Milestone 5
 - Phase 2+ → after MVP
 
-**Health:** lint 0 warnings, typecheck 0 errors, 1153 tests passed / 204
-database-gated skips, build clean. `format:check` currently flags 3
-pre-existing files unrelated to this session's own changes (`app/
-layout.tsx`, `lib/modules/support-bearing/0.1.0/cross-module-links.test.ts`,
-`lib/modules/support-bearing/0.1.0/README.md`) — not yet reformatted.
+**Health:** lint 0 warnings, typecheck 0 errors, 1225 tests passed / 220
+database-gated skips without a configured database; all 1445 pass with one
+(`DATABASE_URL` set against a local Postgres — see
+`context/archive/history.md` or the local dev setup notes for how), build
+clean. `format:check` currently flags 4 pre-existing files unrelated to this
+session's own changes (`app/layout.tsx`,
+`lib/modules/support-bearing/0.1.0/cross-module-links.test.ts`,
+`lib/modules/support-bearing/0.1.0/README.md`,
+`lib/workflows/linear-axis/1.0.0/README.md`) — not yet reformatted.
 Production dependencies audit clean. Parameter registry at `1.8.0`.
 
 ---
@@ -604,13 +608,59 @@ disposition table. All seven modules' `manifest.workflowRoles` are now
 populated (previously empty on every one), closing the "workflow role
 integration" Stage-5 item every module's own entry above used to list as
 blocked on this unit; each module's own test file asserts its role matches
-a real `linear-axis@1` role. No `lib/application`, Prisma, or UI wiring
-exists yet — `lib/workflows` stays as pure and DB-free as `lib/modules`,
-matching every other Milestone 4 module's own pre-application-layer state.
-This unit does not change Unit 4.1's gate: none of the seven modules are
-registered (`package.ts`, not `index.ts`, on every one), so Stage 6
-(release) for all of them, and any future workflow-instance persistence,
-stays sequentially gated behind Unit 4.1's Definition of Done regardless.
+a real `linear-axis@1` role. `lib/workflows` itself stays as pure and
+DB-free as `lib/modules`, matching every other Milestone 4 module's own
+pre-application-layer state. This unit does not change Unit 4.1's gate:
+none of the seven modules are registered (`package.ts`, not `index.ts`, on
+every one), so Stage 6 (release) for all of them stays sequentially gated
+behind Unit 4.1's Definition of Done regardless.
+
+Unit 4.9 — `WorkflowInstance` application-layer wiring. **Built
+2026-08-10**, an explicit scope exception ahead of Unit 4.1's release gate
+(per founder direction) — the same kind of call that authorized Unit 4.8.
+`lib/db/repositories/workflow-repository.ts` is new, split out of
+`project-repository.ts` the way `run-repository.ts` already is:
+`createWorkflowInstance` (now composable inside a transaction via a
+`client` param it previously lacked, and was previously dead code above
+`lib/db`), `loadWorkflowInstanceForOwner`, `listModuleInstancesForWorkflowInstance`,
+`updateWorkflowInstanceStatus`. `addModuleInstance`
+(`lib/application/projects/`) gained an optional `workflowInstanceId` --
+how a module instance actually attaches to a workflow instance, reusing the
+existing use case rather than duplicating it. Two new application services
+in `lib/application/workflows/`: `startWorkflowInstance` (creates a
+`WorkflowInstance` row from a workflow definition actually registered in
+`lib/workflows`, mirroring `addModuleInstance`'s own registration rigor)
+and `loadWorkflowInstanceView` -- the real payoff: assembles a workflow
+instance's full state (present role instances mapped from real
+`ModuleInstance` rows, resolved link proposals, confirmed links,
+`evaluateCompletion`, `evaluateWorkflowStatus`, and `evaluateWorkflowChecks`
+over a freshly built workflow-scoped graph) from real persisted data -- the
+first thing to actually call `lib/workflows/workflow-sdk`'s pure functions
+against a database. It also keeps the persisted `WorkflowInstance.status`
+column in sync with the live-derived value (never overwriting an explicit
+`"abandoned"`), since `machine-navigator.tsx` already renders that column
+read-only.
+
+Since none of `linear-axis@1`'s own seven modules are registered yet, this
+unit's DB-integration tests use a new second workflow-registry entry,
+`lib/workflows/example-workflow/1.0.0/` (`example-workflow@1.0.0`), pairing
+the two already-registered example modules (`example-scaffold`,
+`example-relay`) into a two-role workflow -- the same reason those two
+modules exist themselves: proving a generic contract works against a real
+database before a production consumer needs it. A separate test proves the
+real `linear-axis@1` definition itself resolves and evaluates correctly
+with zero attached instances (registration-independent), and another
+proves a registered-but-role-mismatched module instance is excluded and
+reported, not silently dropped. Attaching or running any of
+`linear-axis@1`'s own seven real modules through this wiring is still
+blocked until Unit 4.1 unblocks their registration -- this unit only
+proves the generic capability itself. What remains: a generic UI surface
+(no route/Server Action wiring yet -- stays at the `lib/application`
+boundary, matching every other use case before its own UI unit).
+Confirming a proposed workflow link needs no new code -- a
+`WorkflowLinkProposal` maps directly onto the existing `confirmParameterLink`
+use case's `CreateParameterLinkInput` shape, exercised directly in this
+unit's own tests.
 
 ---
 
@@ -751,16 +801,24 @@ variable names.
     `WorkflowDefinition` contract (`lib/workflows/workflow-sdk/`) and the
     concrete `linear-axis@1` definition, tested against all seven real
     modules' own ports (`lib/workflows/linear-axis/1.0.0/`), see Active
-    work and `context/adr/0007-workflow-definition-contract.md`. What
-    remains: `lib/application` wiring to actually create/advance a
-    `WorkflowInstance` and persist confirmed links/acknowledgments (no
-    Prisma schema change needed — `WorkflowInstance`/`ModuleInstance`
-    already exist from Milestone 2) and a generic UI surface for it. The
+    work and `context/adr/0007-workflow-definition-contract.md`. The
     `coupling` role's 0-1 cardinality is resolved (2026-08-10): the founder
     confirmed direct-drive axes are a real configuration, so it stays
     optional — see `context/adr/0007-workflow-definition-contract.md`
-    "Consequences". Sequentially gated behind Unit 4.1 regardless, the same
-    as every module above; optional parallel work in the meantime.
+    "Consequences". `lib/application` wiring (`startWorkflowInstance`,
+    `loadWorkflowInstanceView`) is now built — see Unit 4.9. What remains: a
+    generic UI surface. Sequentially gated behind Unit 4.1 regardless, the
+    same as every module above; optional parallel work in the meantime.
+11. Unit 4.9 (`WorkflowInstance` application wiring): **built 2026-08-10**
+    — see Active work for the full account.
+    `lib/db/repositories/workflow-repository.ts` and
+    `lib/application/workflows/` (`startWorkflowInstance`,
+    `loadWorkflowInstanceView`) exist and are tested end to end against a
+    real database, proven generically via a new `example-workflow@1.0.0`
+    registry entry (`lib/workflows/example-workflow/1.0.0/`) rather than
+    against any of `linear-axis@1`'s own seven gated modules. What remains:
+    a generic UI surface (no route/Server Action exists yet). Optional
+    parallel work; does not move Unit 4.1's critical path.
 
 ---
 

@@ -155,3 +155,17 @@ export {
   type RequirementView,
   type RequirementVerificationStatus,
 } from "./requirements";
+
+export {
+  startWorkflowInstance,
+  type StartWorkflowInstanceInput,
+  type StartWorkflowInstanceResult,
+  type StartWorkflowInstanceError,
+  type StartWorkflowInstanceErrorCode,
+  loadWorkflowInstanceView,
+  type WorkflowInstanceView,
+  type ExcludedModuleInstanceView,
+  type LoadWorkflowInstanceViewResult,
+  type LoadWorkflowInstanceViewError,
+  type LoadWorkflowInstanceViewErrorCode,
+} from "./workflows";
