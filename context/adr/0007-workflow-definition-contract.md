@@ -124,9 +124,11 @@ Missing Requirements": "Do not invent product behavior."
 so its role allows 1-2 instances — the fixed/supported distinction stays in
 each instance's own `bearing.location` input, not duplicated into the role
 shape. `coupling`'s role allows 0-1 instances: whether a direct-drive axis
-(no separate coupling) is a real scenario is an open product decision, not
-yet resolved by the founder, recorded here and in
-`context/progress-tracker.md` "Open decisions" rather than guessed.
+(no separate coupling) is a real scenario was an open product decision,
+recorded here and in `context/progress-tracker.md` "Open decisions" rather
+than guessed. **Resolved 2026-08-10:** the founder confirmed direct-drive
+axes are a real configuration, so the role stays optional as designed — no
+cardinality change.
 
 **Candidate comparison is lexicographic, never weighted.**
 `compareCandidateSystems` (`workflow-sdk/comparison.ts`) ranks candidates by
@@ -168,11 +170,11 @@ confirmations/acknowledgments, and any UI are explicitly future work.
   `linear-axis@1`, not silently absent behavior — they are recorded in
   `lib/workflows/linear-axis/1.0.0/README.md`'s own disposition table so a
   future session does not need to re-derive this reasoning from scratch.
-- The `coupling` role's 0-1 cardinality is a live open product decision
-  (`context/progress-tracker.md` "Open decisions"); resolving it may later
-  change a `WorkflowModuleRole.cardinality` value, which is an additive,
-  non-breaking change to this workflow's own `1.0.0` definition, not a
-  contract change.
+- The `coupling` role's 0-1 cardinality is now a settled product decision
+  (resolved 2026-08-10, direct-drive axes are real, cardinality unchanged).
+  A future scenario that instead needs a *required* coupling role in some
+  other workflow would still be an additive, non-breaking
+  `WorkflowModuleRole.cardinality` change, not a contract change.
 - `linear-axis@1`'s own comparison-criteria ordering (screw static safety
   factor, screw nominal life, guide nominal life, drive inertia ratio) is a
   starting point, not a validated priority — the founder may reorder it

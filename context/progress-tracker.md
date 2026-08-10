@@ -9,7 +9,7 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-10 (Unit 4.8 built -- linear-axis@1 workflow definition)
+Last updated: 2026-08-10 (coupling role direct-drive decision resolved)
 
 ---
 
@@ -755,11 +755,12 @@ variable names.
     remains: `lib/application` wiring to actually create/advance a
     `WorkflowInstance` and persist confirmed links/acknowledgments (no
     Prisma schema change needed — `WorkflowInstance`/`ModuleInstance`
-    already exist from Milestone 2), a generic UI surface for it, and
-    resolving the `coupling` role's 0-1 cardinality as a real product
-    decision (see "Open decisions"). Sequentially gated behind Unit 4.1
-    regardless, the same as every module above; optional parallel work in
-    the meantime.
+    already exist from Milestone 2) and a generic UI surface for it. The
+    `coupling` role's 0-1 cardinality is resolved (2026-08-10): the founder
+    confirmed direct-drive axes are a real configuration, so it stays
+    optional — see `context/adr/0007-workflow-definition-contract.md`
+    "Consequences". Sequentially gated behind Unit 4.1 regardless, the same
+    as every module above; optional parallel work in the meantime.
 
 ---
 
@@ -786,11 +787,6 @@ past calls.
   reference material — internal reference only until cleared.
 - Live-verification of official Japanese and US source editions (blocked by
   the TLS interception note below).
-- Whether a direct-drive linear axis (no separate coupling component) is a
-  real scenario this product must support. `linear-axis@1`'s own
-  `linear-axis.coupling` role is modeled as optional (cardinality 0-1,
-  `lib/workflows/linear-axis/1.0.0/definition.ts`) pending this decision —
-  see `context/adr/0007-workflow-definition-contract.md` "Consequences".
 
 ---
 

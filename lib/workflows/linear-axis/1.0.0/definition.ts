@@ -88,11 +88,10 @@ export const linearAxisDefinition: WorkflowDefinition = {
       id: "linear-axis.coupling",
       label: "Coupling",
       moduleIds: ["coupling"],
-      // Open product decision, not yet resolved by the founder: a
-      // direct-drive axis (no separate coupling component) is plausible, so
-      // this role is optional rather than required — see
-      // context/adr/0007-workflow-definition-contract.md "Consequences" and
-      // context/progress-tracker.md "Open decisions".
+      // Optional by design: the founder confirmed (2026-08-10) that
+      // direct-drive axes (motor coupled straight to the screw, no separate
+      // coupling component) are a real configuration — see
+      // context/adr/0007-workflow-definition-contract.md "Consequences".
       cardinality: { min: 0, max: 1 },
     },
     {
