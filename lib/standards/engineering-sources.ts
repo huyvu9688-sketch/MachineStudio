@@ -185,7 +185,8 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     authority: "NSK Ltd.",
     market: "JP",
     access: "public",
-    officialUrl: "https://www.bearing.co.il/wp-content/uploads/2024/11/E1102.pdf",
+    officialUrl:
+      "https://www.bearing.co.il/wp-content/uploads/2024/11/E1102.pdf",
     note: "General rolling-bearing catalog with a 'Selection of Bearing Size' technical chapter, including a worked-examples section (5.7) this project's own support-bearing module reuses as its own independent evidence -- see the module's own validation record for how.",
   },
   {
@@ -207,6 +208,64 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     access: "public",
     officialUrl: "https://www.nbk1560.com/",
     note: "Manufacturer catalog data for the coupling module (Unit 4.5): per-model rated torque, maximum torque, allowable rotational speed, moment of inertia, torsional stiffness, and misalignment limits (parallel, angular, axial) across seven coupling series (XGT2, XGT, XHW, MST, MCS). Catalog/data-sheet values for specific couplings, not a derived formula -- the same treatment ball-screw gives Ca/C0a and linear-guide gives C/C0/T0. NBK's own selection-guide pages (nbk1560.com/en-US/resources/coupling/...) returned HTTP 403 to direct fetch in this environment; not yet confirmed whether this is a persistent host-level block (like the confirmed tech.thk.com block elsewhere in this file) or a one-session issue -- retry before assuming it is permanent. Read instead via a Japanese distributor mirror (orimvexta.co.jp) hosting the same NBK product data under a co-branded cover.",
+  },
+  {
+    id: asSourceDocumentId("jp.omron.servo_motor_selection_guide"),
+    classification: "manufacturer_method",
+    title: "Technical Guide for Servo Motor Selection",
+    authority: "Omron Corporation",
+    market: "JP",
+    access: "public",
+    officialUrl:
+      "https://www.ia.omron.com/data_pdf/guide/14/servo_selection_tg_e_1_1_3-13(further_info).pdf",
+    note: "Manufacturer selection methodology for the drive-train module (Unit 4.7): inertia formulas (including ball-screw and gear-ratio-reflected forms), load-torque formulas, an acceleration/deceleration torque formula, a maximum-momentary/effective (RMS) torque formula, and a six-item check table (load inertia, effective torque, maximum momentary torque, maximum rotation speed, regenerative energy, encoder resolution). Explicitly declines to give a regenerative-energy formula ('please see the user manual of each product'). Includes one complete worked numerical example (OMNUC U-series motor R88M-U20030 on a direct-connected ball-screw axis), reproduced and hand-verified in context/modules/drive-train/stage-1-spec.md.",
+  },
+  {
+    id: asSourceDocumentId("us.hmk.servo_motor_amplifier_sizing_guide"),
+    classification: "engineering_handbook",
+    title: "The HMK Guide to Sizing of Servo Motors and Amplifier",
+    authority: "HMK (author C. Krajewski)",
+    market: "US",
+    access: "public",
+    officialUrl:
+      "https://www.hmkdirect.com/downloads/knowledge_base/drive_sizing_v2.pdf",
+    note: "A UK-based motion-control training/systems-integration company's own training manual, not a single product manufacturer's branded method -- the same 'reached via the US/English site, tagged US as the pragmatic non-JP default' treatment context/modules/coupling/stage-1-spec.md already gives Steinmeyer/KTR/R+W. Gives load-torque, friction-torque, acceleration-torque, and RMS-torque formulas for the drive-train module (Unit 4.7), structurally identical to Omron's own; RMS/peak-current sizing for the amplifier via the motor's own torque constant; a qualitative gearbox comparison table (backlash, transmission error, torsional rigidity, efficiency, inertia, typical mechanical life by family -- planetary/worm/helical); and a dedicated holding-brake section with two worked numerical examples showing the brake's effect on RMS torque specifically, not a standalone brake-torque check.",
+  },
+  {
+    id: asSourceDocumentId("us.voss.comprehensible_guide_servo_motor_sizing"),
+    classification: "engineering_handbook",
+    title: "A Comprehensible Guide to Servo Motor Sizing",
+    authority: "Wilfried Voss / Copperhill Technologies Corporation",
+    market: "US",
+    access: "public",
+    officialUrl:
+      "https://cnctar.hobbycnc.hu/VarsanyiPeter/CNC%20vezerles%20-%20szervoval/Guide_to_Servo_Motor_Sizing.pdf",
+    note: "An independently authored technical book (ISBN 978-0-9765116-1-8, Copyright 2007), not a single manufacturer's own branded method -- the author built motor-sizing software and credits engineers from Baldor, GE Fanuc, Siemens, AC Tech/Lenze, Parker Hannifin, and Oriental Motor U.S.A. in its own acknowledgments. Gives the same RMS-torque formula shape as Omron's and HMK's own, generalized with an explicit holding-torque/holding-time term, for the drive-train module (Unit 4.7); a dedicated holding-brake section (3.5.2) with two full worked numerical examples; and cites Bosch Rexroth's own inertia-mismatch guidance as a third distinct numeric convention alongside its own general '<= 6:1' rule. Its own partial RMS-torque worked example was hand-verified in context/modules/drive-train/stage-1-spec.md.",
+  },
+  {
+    id: asSourceDocumentId("jp.oriental_motor.motor_sizing_basics_rms_torque"),
+    classification: "manufacturer_method",
+    title:
+      "Motor Sizing Basics Part 3: How to Calculate Speed, Acceleration Torque, and RMS Torque",
+    authority: "Oriental Motor Co., Ltd.",
+    market: "JP",
+    access: "public",
+    officialUrl:
+      "https://blog.orientalmotor.com/motor-sizing-basics-part-3-acceleration-torque-and-rms-torque",
+    note: "A different document/URL from the already-registered jp.oriental_motor.motor_sizing_calculations source. Confirms the same RMS-torque formula shape as Omron's, HMK's, and Voss's own (a fourth independent confirmation) for the drive-train module (Unit 4.7); gives a fourth distinct inertia-ratio convention tiered by control technology (stepper 10:1, closed-loop stepper 30:1, auto-tuned servo 50:1, manual-tuned servo 100:1); and an 'effective load safety factor' concept (Trms/rated torque >= 1.5-2) distinct from Omron's own flat 0.8 margin. Explicitly states it does not cover regenerative energy or holding-brake torque. Read via WebFetch's own text summarization this session, not direct page images -- lower confidence than a directly read source; re-fetch and read directly before a released module cites it for a formula not already confirmed elsewhere.",
+  },
+  {
+    id: asSourceDocumentId(
+      "us.celera_motion.shunt_resistor_regenerative_braking",
+    ),
+    classification: "manufacturer_method",
+    title: "Sizing a Shunt Resistor for Regenerative Braking",
+    authority: "Celera Motion (a Novanta company)",
+    market: "US",
+    access: "public",
+    officialUrl:
+      "https://novanta.com/robotics-automation/technical-paper/sizing-a-shunt-resistor-for-regenerative-braking/",
+    note: "Manufacturer resistor-sizing methodology for the drive-train module's own regenerative-energy check (Unit 4.7): R ~= 1.1*V_max/i_shunt, average/peak power dissipation from total mechanical energy and deceleration cycle frequency, on top of an implicit kinetic-energy term and an explicit 'assume 100% of deceleration energy goes to the shunt resistor' simplifying assumption -- no drive-electronics efficiency or DC-bus capacitor-absorption term, no worked numerical example. Read via WebFetch's own text summarization this session, not direct page images -- lower confidence than a directly read source; re-fetch and read directly before a released module cites it.",
   },
 ];
 
@@ -394,7 +453,63 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     id: asSourceRevisionId("jp.nsk.rolling_bearings_catalog@e1102a-2005"),
     documentId: asSourceDocumentId("jp.nsk.rolling_bearings_catalog"),
     edition: "CAT. No. E1102a, 2005 E-6 printing",
-    officialUrl: "https://www.bearing.co.il/wp-content/uploads/2024/11/E1102.pdf",
+    officialUrl:
+      "https://www.bearing.co.il/wp-content/uploads/2024/11/E1102.pdf",
     note: "Downloaded directly 2026-08-10 (bearing.co.il, a third-party distributor mirror; NSK's own site was not the source found this session) after this file exceeded the WebFetch tool's 10 MB fetch limit at NSK's own domain and this mirror both -- worked around by downloading with curl into the session scratchpad and reading page ranges locally, since the file itself (6.3 MB) is under the PDF-reading tool's own per-request page-count constraints once downloaded (context/progress-tracker.md 'Environment notes'). Section 5.7 'Examples of Bearing Calculations' (printed pages A34-A36) read in full: six worked examples. Examples 1 and 3 (single-row deep-groove ball bearing 6208, pure radial then combined radial+axial load) reproduce this project's own support-bearing module formulas exactly -- see the module's own validation record and nsk-reference-examples.ts/nsk-fh-benchmark.ts for how. Sections 5.1-5.4 (printed pages A24-A31, bearing life, load rating, equivalent load) and 5.5-5.6 (printed pages A32-A33, static load ratings, permissible axial load for cylindrical roller bearings) also read, establishing NSK's own closed-form speed-factor/fatigue-life-factor formulas (Table 5.2) independently of the two worked examples.",
+  },
+  {
+    id: asSourceRevisionId("jp.omron.servo_motor_selection_guide@csm-tg-e-3-1"),
+    documentId: asSourceDocumentId("jp.omron.servo_motor_selection_guide"),
+    edition: "CSM_Servo Selection_TG_E_3_1",
+    officialUrl:
+      "https://www.ia.omron.com/data_pdf/guide/14/servo_selection_tg_e_1_1_3-13(further_info).pdf",
+    note: "Read directly 2026-08-10 from reference/source-material/Servo Selection.pdf (already present in this repository before this session), all 13 pages, page-image by page-image. A live-hosted mirror at this revision's own officialUrl appears to be the same guide family (identical worked example, model R88M-U20030) under a different internal revision label ('1_1' versus this cached copy's own '3_1') -- direct fetch of that URL returned HTTP 403 this session; not yet reconciled which revision is current. The R88M-U20030 worked example was hand-verified against its own printed inputs (J_B, J_L, and the final Trms = 0.0828 N*m figure independently recomputed and matched to printed precision).",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.hmk.servo_motor_amplifier_sizing_guide@edition-2-0802",
+    ),
+    documentId: asSourceDocumentId("us.hmk.servo_motor_amplifier_sizing_guide"),
+    edition: "Edition 2 - 08/02",
+    officialUrl:
+      "https://www.hmkdirect.com/downloads/knowledge_base/drive_sizing_v2.pdf",
+    note: "Read directly 2026-08-10, all 23 pages, page-image by page-image. The amplifier RMS/peak-current worked illustration (torque constant 1.28 Nm/Amp, '3 Nm needs 3.84 Amps') does not arithmetically reconcile with its own stated Nm/Amp unit (3/1.28 = 2.34 A, not 3.84 A; the printed arithmetic instead multiplies) -- recorded as an apparent unit-label inconsistency in this document itself, not corrected here.",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.voss.comprehensible_guide_servo_motor_sizing@2007",
+    ),
+    documentId: asSourceDocumentId(
+      "us.voss.comprehensible_guide_servo_motor_sizing",
+    ),
+    edition: "Copyright 2007, ISBN 978-0-9765116-1-8",
+    officialUrl:
+      "https://cnctar.hobbycnc.hu/VarsanyiPeter/CNC%20vezerles%20-%20szervoval/Guide_to_Servo_Motor_Sizing.pdf",
+    note: "Read directly 2026-08-10 (title page, table of contents, RMS-torque section 3.3.3 printed pp. 47-53, inertia-matching section 3.4.2.1 printed pp. 58-60, and holding-brake section 3.5.2 through thrust-forces 3.5.4 printed pp. 74-84 -- roughly 30 pages total across four ranges), page-image by page-image. The book's own partial RMS-torque worked example (T_RMS = sqrt((2*0.259^2)/5) = 0.164 in-lb) was hand-verified this session and matched.",
+  },
+  {
+    id: asSourceRevisionId(
+      "jp.oriental_motor.motor_sizing_basics_rms_torque@web-2026-08-10",
+    ),
+    documentId: asSourceDocumentId(
+      "jp.oriental_motor.motor_sizing_basics_rms_torque",
+    ),
+    edition:
+      "web page, originally posted 2020-02-27, updated 2022-04-27, accessed 2026-08-10",
+    officialUrl:
+      "https://blog.orientalmotor.com/motor-sizing-basics-part-3-acceleration-torque-and-rms-torque",
+    note: "Read via WebFetch's own text summarization 2026-08-10, not direct page images -- lower confidence than a directly read source. Access-dated intake; capture a fixed edition/archive and re-read directly before a released module cites it for a formula not already confirmed elsewhere.",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.celera_motion.shunt_resistor_regenerative_braking@web-2026-08-10",
+    ),
+    documentId: asSourceDocumentId(
+      "us.celera_motion.shunt_resistor_regenerative_braking",
+    ),
+    edition: "published 2020-05-05, accessed 2026-08-10",
+    officialUrl:
+      "https://novanta.com/robotics-automation/technical-paper/sizing-a-shunt-resistor-for-regenerative-braking/",
+    note: "Read via WebFetch's own text summarization 2026-08-10, not direct page images -- lower confidence than a directly read source. Access-dated intake; capture a fixed edition/archive and re-read directly before a released module cites it.",
   },
 ];

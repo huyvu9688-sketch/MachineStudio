@@ -5,7 +5,7 @@ import { PARAMETER_REGISTRY, PARAMETER_REGISTRY_HASH } from "./registered";
 // Pinned content fixture: any change to a released parameter changes this hash.
 // If this fails after an intentional, reviewed registry change, update the value
 // AND bump PARAMETER_REGISTRY_VERSION.
-const EXPECTED_REGISTRY_HASH = "3232adf9fc954b57";
+const EXPECTED_REGISTRY_HASH = "6098fc17e9527a6d";
 
 describe("contentHash", () => {
   it("is deterministic for the same input", () => {

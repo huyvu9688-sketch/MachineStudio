@@ -1,6 +1,6 @@
-// Released seed definitions for the canonical parameter registry v1.7 (Units
-// 1.3, 4.1 Stage 2, 4.2 Stage 2, 4.3 Stage 2, 4.4 Stage 2, 4.5 Stage 2, and
-// 4.6 Stage 2).
+// Released seed definitions for the canonical parameter registry v1.8 (Units
+// 1.3, 4.1 Stage 2, 4.2 Stage 2, 4.3 Stage 2, 4.4 Stage 2, 4.5 Stage 2,
+// 4.6 Stage 2, and 4.7 Stage 2).
 //
 // Scope of v1.0: the parameter groups that Phase 1A (axis application + motion
 // profile) concretely needs, plus the shared project/environment group. These
@@ -22,24 +22,18 @@
 // v1.6 adds the full coupling.* group for the coupling module
 // (context/modules/coupling/stage-2-contract.md). v1.7 adds the full
 // bearing.* group for the support-bearing module
-// (context/modules/support-bearing/stage-2-contract.md).
-//
-// Deliberately NOT released here: the drive-train parameter group. Its exact
-// semantics (units, qualifiers, frames) depend on its own Stage-2 parameter
-// contract, which does not exist yet. Released parameter IDs are immutable
-// (context/architecture.md; context/code-standards.md "Canonical
-// Parameters"), so it is proposed and released at its own module's Stage-2
-// parameter contract, bumping the registry version. See ./README.md and the
-// progress tracker. The upstream motion outputs below (thrust force, peak
-// velocity, etc.) already serve as the transmission modules' shared input
-// ports.
+// (context/modules/support-bearing/stage-2-contract.md). v1.8 adds the full
+// drive.* group for the servo drive-train module
+// (context/modules/drive-train/stage-2-contract.md), the last of the five
+// result groups context/implementation-map.md Unit 1.3 named as initial
+// groups -- all five are now released.
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.7.0";
+export const PARAMETER_REGISTRY_VERSION = "1.8.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -1462,7 +1456,253 @@ const supportBearing: readonly ParameterDefinition[] = [
   }),
 ];
 
-/** All released parameter definitions for registry v1.7, in authored order. */
+// --- Servo drive-train (Unit 4.7 Stage 2) -----------------------------------
+// See context/modules/drive-train/stage-2-contract.md. `drive-train 0.1.0`
+// sizes one candidate servo motor (plus, optionally, a gearbox already
+// modeled via screw.gear_ratio, a drive's own regenerative-energy absorption
+// capacity, and a holding brake's own rated torque, both reported/checked
+// only when supplied) against the axis's own required torque, speed, and
+// duty cycle. Reuses screw.gear_ratio directly rather than adding a
+// duplicate drive.gear_ratio (stage-2-contract.md "Decisions" item 2), and
+// consumes motion.profile.rms_acceleration under a closed-cycle argument
+// stated and reserved for Stage 4 verification (item 4). The RMS-torque
+// margin, peak-torque margin, and maximum inertia ratio are required inputs
+// with no built-in default -- stage-1-spec.md found a three-way and a
+// five-way sourced disagreement respectively, sharper than any prior
+// module's own factor-table mismatch.
+//
+// drive.gearbox_efficiency is deliberately distinct from screw.mechanical_
+// efficiency: the latter is the ball screw's own internal efficiency,
+// already applied inside screw.drive_torque; the former is a gearbox's own
+// transmission efficiency, which ball-screw 0.1.0's own released kernel
+// does not model (a real gap stage-1-spec.md found by reading the kernel,
+// not invented) -- this module applies it as its own additional derating on
+// top of screw.drive_torque rather than editing the released ball-screw
+// kernel (stage-2-contract.md "Decisions" item 5).
+
+const driveCases = ["normal", "peak"] as const;
+
+const driveTrain: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "drive.motor_rated_torque",
+    displayName: "Motor rated (continuous) torque",
+    symbol: "T_M",
+    definition:
+      "Torque the candidate servo motor can sustain continuously, from its own catalog data. Checked against drive.effective_torque, scaled by drive.rms_torque_margin.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "drive.motor_peak_torque",
+    displayName: "Motor peak (maximum momentary) torque",
+    symbol: "T_Mmax",
+    definition:
+      "Peak (maximum momentary) torque the candidate servo motor can deliver, from its own catalog data. Checked against drive.momentary_torque, scaled by drive.peak_torque_margin.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "drive.motor_rated_speed",
+    displayName: "Motor rated rotational speed",
+    symbol: "N_rated",
+    definition:
+      "Rated rotational speed of the candidate servo motor, from its own catalog data. Checked against drive.operating_speed.",
+    valueType: "quantity",
+    canonicalUnit: "rad/s",
+    displayUnits: [...angularVelocityDisplay],
+    range: { min: 0, unit: "rad/s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "drive.motor_rotor_inertia",
+    displayName: "Motor rotor moment of inertia",
+    symbol: "J_M",
+    definition:
+      "Rotor moment of inertia of the candidate servo motor, from its own catalog data. Used by drive.total_system_inertia and drive.inertia_ratio.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "drive.gearbox_efficiency",
+    displayName: "Gearbox transmission efficiency",
+    symbol: "eta_g",
+    definition:
+      "Transmission efficiency of the gearbox declared via screw.gear_ratio (source: typically 0.6-0.98 depending on gearbox family -- stage-1-spec.md item 7). Distinct from screw.mechanical_efficiency, the ball screw's own internal efficiency, already applied inside screw.drive_torque. Optional at the registry level; the package's own input schema requires it whenever screw.gear_ratio != 1, and treats it as exactly 1 (no additional derating) only when screw.gear_ratio = 1 -- a structural fact stated in code, not a registry default (stage-2-contract.md 'Decisions' item 5).",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio", "percent"],
+    range: { min: 0, max: 1, unit: "ratio" },
+    defaultPolicy: { kind: "optional" },
+  }),
+  defineParameter({
+    id: "drive.regen_absorption_capacity",
+    displayName: "Drive regenerative energy absorption capacity",
+    symbol: "E_abs",
+    definition:
+      "Regenerative energy absorption capacity of the candidate drive (built-in capacitance plus any regenerative resistor), from its own catalog data. Optional -- when absent, the regenerative-energy check reports not_applicable rather than failing or guessing a capacity (stage-2-contract.md 'Decisions' item 6).",
+    valueType: "quantity",
+    canonicalUnit: "J",
+    displayUnits: ["J"],
+    range: { min: 0, unit: "J" },
+    defaultPolicy: { kind: "optional" },
+  }),
+  defineParameter({
+    id: "drive.brake_rated_torque",
+    displayName: "Holding brake rated static torque",
+    symbol: "T_brake",
+    definition:
+      "Rated static holding torque of the candidate holding brake, from its own catalog data. Reported only in 0.1.0, not evaluated -- no source read this session gives a standalone catalog-comparison formula for a holding brake; every source that treats one at all folds its effect into drive.effective_torque's own duty-cycle formula instead (stage-1-spec.md item 9).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    defaultPolicy: { kind: "optional" },
+  }),
+  defineParameter({
+    id: "drive.rms_torque_margin",
+    displayName: "RMS torque safety margin",
+    symbol: "k_rms",
+    definition:
+      "Allowed fraction of drive.motor_rated_torque the computed drive.effective_torque may reach, engineer-supplied with no built-in default. Sources disagree: Omron's own worked example uses a flat 0.8; Oriental Motor's own blog recommends an 'effective load safety factor' of 1.5-2 applied the opposite way (Trms/T_M >= 1.5, equivalent to an allowed fraction of 0.5-0.667); HMK and Voss state no margin for this specific check (stage-1-spec.md item 3). Kept separate from drive.peak_torque_margin -- see stage-2-contract.md 'Decisions' item 3 for why.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio", "percent"],
+    range: { min: 0, max: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "drive.peak_torque_margin",
+    displayName: "Peak torque safety margin",
+    symbol: "k_peak",
+    definition:
+      "Allowed fraction of drive.motor_peak_torque the computed drive.momentary_torque may reach, engineer-supplied with no built-in default -- the same sourced disagreement drive.rms_torque_margin has (stage-1-spec.md item 4). Kept separate from drive.rms_torque_margin -- see stage-2-contract.md 'Decisions' item 3.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio", "percent"],
+    range: { min: 0, max: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "drive.inertia_ratio_maximum",
+    displayName: "Maximum allowable load-to-rotor inertia ratio",
+    symbol: "R_Jmax",
+    definition:
+      "Maximum acceptable drive.inertia_ratio, engineer-supplied with no built-in default. stage-1-spec.md item 5 found five sourced, disagreeing conventions spanning 2:1 to 100:1 depending on control technology, tuning method, and positioning objective -- sharper than any prior module's own factor disagreement in this project, and Omron's own worked-example figure is itself a per-motor-series catalog value, not a universal constant.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "drive.reflected_load_inertia",
+    displayName: "Load inertia reflected to the motor shaft",
+    symbol: "J_L",
+    definition:
+      "Load-side moment of inertia (ball screw, coupling, and payload combined), already reflected to the motor shaft through any gearbox ratio (reflected inertia divides by the gear ratio squared -- stage-1-spec.md item 2). Engineer-supplied, required, no default: this project has no released ball-screw-inertia or payload-inertia-conversion parameter to derive it from internally -- a real gap found while wiring Stage 3, not carried over from stage-2-contract.md's own original (output) framing -- so it receives the same 'no upstream signal exists, so the engineer supplies it directly' treatment bearing.actual_radial_load already received. Used by drive.total_system_inertia and drive.inertia_ratio.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "drive.total_system_inertia",
+    displayName: "Total system inertia",
+    symbol: "J_total",
+    definition:
+      "drive.motor_rotor_inertia + drive.reflected_load_inertia. Used by drive.acceleration_torque and drive.inertia_ratio.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "drive.inertia_ratio",
+    displayName: "Load-to-rotor inertia ratio",
+    symbol: "R_J",
+    definition:
+      "drive.reflected_load_inertia / drive.motor_rotor_inertia. Checked against drive.inertia_ratio_maximum.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+  }),
+  defineParameter({
+    id: "drive.operating_speed",
+    displayName: "Motor-shaft operating speed",
+    symbol: "N_op",
+    definition:
+      "Motor-shaft rotational speed for a declared load case, derived from motion.axis.case_linear_velocity, screw.lead, and screw.gear_ratio -- the same derivation coupling 0.1.0 already resolved for its own driving-shaft speed. Checked against drive.motor_rated_speed.",
+    valueType: "quantity",
+    canonicalUnit: "rad/s",
+    displayUnits: [...angularVelocityDisplay],
+    range: { min: 0, unit: "rad/s" },
+    loadCases: driveCases,
+  }),
+  defineParameter({
+    id: "drive.acceleration_torque",
+    displayName: "Acceleration/deceleration torque",
+    symbol: "T_A",
+    definition:
+      "Torque to accelerate/decelerate drive.total_system_inertia at the larger-magnitude of motion.profile.peak_acceleration/motion.profile.peak_deceleration, per Omron's, HMK's, and Voss's own agreed T = J*alpha formula (stage-1-spec.md item 2). Not load-case-scoped: neither motion.profile's own acceleration outputs nor drive.total_system_inertia vary by load case in this project's model, unlike drive.momentary_torque and drive.effective_torque, which combine this shared figure with a per-case screw.drive_torque.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "drive.momentary_torque",
+    displayName: "Maximum momentary torque",
+    symbol: "T_1",
+    definition:
+      "Highest single-phase motor-shaft torque for a declared load case: drive.acceleration_torque plus the gearbox-derated screw.drive_torque (screw.drive_torque / drive.gearbox_efficiency when a gearbox is declared -- stage-2-contract.md 'Decisions' item 5), following Omron's own T1 = T_A + T_L. Checked against drive.motor_peak_torque * drive.peak_torque_margin.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required", aggregation: "peak" },
+    loadCases: driveCases,
+  }),
+  defineParameter({
+    id: "drive.effective_torque",
+    displayName: "Effective (RMS) torque",
+    symbol: "T_rms",
+    definition:
+      "RMS torque over one motion cycle for a declared load case, from motion.profile.rms_acceleration (the inertial component) and the gearbox-derated screw.drive_torque (the constant load-torque component), under the closed-cycle argument recorded in stage-2-contract.md 'Decisions' item 4: Trms^2 = (J_total/k)^2*a_rms^2 + T_load^2, valid when total system inertia and per-case load torque both stay constant across a cycle that returns to its starting velocity. Checked against drive.motor_rated_torque * drive.rms_torque_margin.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required", aggregation: "rms" },
+    loadCases: driveCases,
+  }),
+  defineParameter({
+    id: "drive.regen_energy_released",
+    displayName: "Regenerative energy released",
+    symbol: "E_regen",
+    definition:
+      "Kinetic energy released during the case's own deceleration phase(s): E = J_total*(omega_1^2 - omega_2^2)/2, assuming (per Celera Motion's own stated simplifying assumption, stage-1-spec.md item 10) 100% of this energy reaches the drive's own absorption path -- no drive-electronics efficiency loss or DC-bus capacitor-absorption credit is modeled. Checked against drive.regen_absorption_capacity when supplied; reports not_applicable otherwise (stage-2-contract.md 'Decisions' item 6).",
+    valueType: "quantity",
+    canonicalUnit: "J",
+    displayUnits: ["J"],
+    range: { min: 0, unit: "J" },
+    qualifiers: { bound: "required" },
+    loadCases: driveCases,
+  }),
+];
+
+/** All released parameter definitions for registry v1.8, in authored order. */
 export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...projectAndEnvironment,
   ...axisApplication,
@@ -1471,4 +1711,5 @@ export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...linearGuide,
   ...coupling,
   ...supportBearing,
+  ...driveTrain,
 ];

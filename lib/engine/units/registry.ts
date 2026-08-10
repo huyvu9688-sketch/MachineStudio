@@ -111,6 +111,14 @@ const UNIT_LIST: readonly UnitDefinition[] = [
   def("N*mm", Dimensions.torque, 1e-3),
   def("lbf*in", Dimensions.torque, LBF_TO_N * IN_TO_M),
   def("lbf*ft", Dimensions.torque, LBF_TO_N * FT_TO_M),
+  // Energy. Added for the drive-train module (Unit 4.7): a deliberate reuse
+  // of the torque dimension, not a new one -- this registry's own torque
+  // dimension carries no angle exponent (arithmetic.ts), so energy and
+  // torque share the identical SI base-unit exponents (1 J = 1 N*m).
+  // `N*m` keeps sole ownership of the `siCoherent` flag for this dimension
+  // (context/modules/drive-train/stage-2-contract.md "Released Additive
+  // Contract").
+  def("J", Dimensions.torque, 1),
   // Linear speed
   def("m/s", Dimensions.speed, 1, { siCoherent: true }),
   def("mm/s", Dimensions.speed, 1e-3),

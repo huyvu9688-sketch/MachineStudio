@@ -71,8 +71,8 @@ proposals**, released per module at its Stage-2 parameter contract (see
 context/ai-workflow-rules.md "New Module Workflow"). The upstream motion outputs
 above already serve as those modules' shared input ports. Three of the five have
 since been released on exactly that schedule — `screw.*` in v1.3, `guide.*`
-in v1.5, and `coupling.*` in v1.6, each at its own module's Stage-2 contract;
-support-bearing and drive-train remain pending.
+in v1.5, `coupling.*` in v1.6, `bearing.*` in v1.7, and `drive.*` in v1.8,
+each at its own module's Stage-2 contract. All five are now released.
 
 The `curve`, `load_spectrum`, `table`, `material_ref`, and `component_ref` value
 families are likewise modeled as parameters only when a module first needs them.
@@ -141,6 +141,37 @@ outputs (torque safety factor, speed safety factor). Adds `N*m/rad`
 (torsional stiffness) to the unit registry — the first new dimension
 (`Dimensions.torsionalStiffness`) added since v1.0's initial set, not just a
 new unit on an existing one.
+
+Registry v1.7 adds the `bearing.*` group for `support-bearing`
+(`context/modules/support-bearing/stage-2-contract.md`): a `location` enum
+selecting which of two physically different support-bearing positions a run
+represents, catalog dynamic/static load ratings and equivalent-load factors,
+a required `static_safety_factor_minimum` with no built-in default, an
+engineer-supplied `actual_radial_load` (no released upstream parameter
+represents it), and reuses `motion.axis.thrust_force` directly for axial
+load — satisfying the roadmap's own Unit 4.6 gate ("integrates with the
+ball-screw module without a custom link mapping") without a new `screw.*`
+output.
+
+Registry v1.8 adds the `drive.*` group for `drive-train`
+(`context/modules/drive-train/stage-2-contract.md`), the last of the five
+result groups this file's own v1.1 section named as initial groups —
+motor/gearbox/drive/brake catalog inputs, three required margin/limit
+inputs with no built-in default (RMS-torque margin, peak-torque margin,
+maximum inertia ratio — a five-way sourced disagreement on the last one,
+sharper than any prior module's own factor mismatch), and per-case
+computed torque/speed/regenerative-energy outputs. Reuses `screw.gear_ratio`
+directly rather than adding a duplicate; adds a new `gearbox_efficiency`
+input distinct from the already-released `screw.mechanical_efficiency`,
+since `ball-screw 0.1.0`'s own released kernel does not model a gearbox's
+own transmission loss (a real gap found by reading the kernel, not a
+defect — the derating is `drive-train`'s own, layered on top of
+`screw.drive_torque`, since `ball-screw`'s released version cannot be
+edited in place). Adds `J` (joule) to the unit registry as a new unit on
+the _existing_ torque dimension, not a new dimension — this registry's own
+torque dimension carries no angle exponent, so energy and torque share
+identical SI base-unit exponents; `N*m` keeps sole ownership of the
+`siCoherent` flag.
 
 Follow this before adding a parameter (mirrors context/code-standards.md
 "Canonical Parameters"). Every item must be satisfied.

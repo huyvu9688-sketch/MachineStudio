@@ -9,7 +9,7 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-10
+Last updated: 2026-08-10 (Unit 4.7 Stage 5 cross-module link tests done)
 
 ---
 
@@ -34,9 +34,12 @@ same work, two labels):
 - Phase 1D → Milestone 5
 - Phase 2+ → after MVP
 
-**Health:** `npm run verify` green (format, lint 0 warnings, typecheck 0
-errors, 1052 tests passed / 204 database-gated skips, build clean).
-Production dependencies audit clean. Parameter registry at `1.7.0`.
+**Health:** lint 0 warnings, typecheck 0 errors, 1144 tests passed / 204
+database-gated skips, build clean. `format:check` currently flags 3
+pre-existing files unrelated to this session's own changes (`app/
+layout.tsx`, `lib/modules/support-bearing/0.1.0/cross-module-links.test.ts`,
+`lib/modules/support-bearing/0.1.0/README.md`) — not yet reformatted.
+Production dependencies audit clean. Parameter registry at `1.8.0`.
 
 ---
 
@@ -397,6 +400,160 @@ applicable until Unit 4.8 exists, the same treatment every other Milestone
 4 module gets) and Stage 6 (release), sequentially gated behind Unit 4.1
 regardless.
 
+Unit 4.7 — `drive-train` (servo motor, gearbox, drive/amplifier, holding
+brake, regenerative resistor). **Stage 1 drafted 2026-08-10**, next in the
+roadmap's own order now that every Phase 1B module (`ball-screw`,
+`linear-guide`, `coupling`, `support-bearing`) is done through Stage 5 —
+this begins Phase 1C, under the same parallel-specification allowance
+already used for Units 4.2-4.6. Stage 1 spec:
+`context/modules/drive-train/stage-1-spec.md` — five sources read (Omron's
+own *Technical Guide for Servo Motor Selection*, already cached in
+`reference/source-material/Servo Selection.pdf`, with a full worked
+numerical example hand-verified this session; HMK's and Voss's own servo-
+sizing guides, read in full; Oriental Motor's and Celera Motion's own pages,
+read via `WebFetch` summarization only — lower confidence, flagged). Four
+sources agree on the RMS-torque formula shape; five sources give five
+different numeric conventions for the maximum load/rotor inertia ratio (2:1
+to 100:1 depending on control technology and positioning objective) —
+sharper than any prior module's own factor disagreement, a strong candidate
+for a required-input-no-default treatment at Stage 2. Two real cross-cutting
+findings, neither invented, both recorded rather than worked around:
+`ball-screw 0.1.0`'s own released kernel (`lib/modules/ball-screw/0.1.0/
+math.ts` `resolveDriveTorque`) applies no efficiency loss to its own gear-
+ratio reduction, so `screw.drive_torque` implicitly assumes a 100%-efficient
+gearbox whenever `screw.gear_ratio != 1` — not a defect in `ball-screw`'s
+own Stage 1/2 scope, but a real gap this module inherits; and drive/
+amplifier current sizing (a required check per
+`context/implementation-map.md` Unit 4.7) is blocked entirely on a missing
+unit-registry base dimension (`lib/engine/units/dimension.ts` has no
+electrical-current dimension) — a generic-engine prerequisite, not a
+Stage 2 module decision, the same category of gap
+`lib/engine/parameters/README.md`'s own v1.2 note already recorded for
+table-valued parameters. A third finding is this document's own derivation,
+not sourced: whether `motion.profile.rms_acceleration` (registered
+specifically for this module's own future use) is actually sufficient to
+compute RMS torque without a missing signed-mean-acceleration port —
+argued yes, for any complete repeating duty cycle, but not yet verified
+against a kernel. Blocked (Kollmorgen's and Yaskawa's own sizing guides,
+both HTTP 403 this session) and open items are in the spec's own "Evidence
+Gaps" section.
+
+**Stage 2 (parameter contract) resolved same day.**
+`context/modules/drive-train/stage-2-contract.md` -- registry `1.8.0`
+releases the full `drive.*` group (motor/gearbox/drive/brake catalog
+inputs, three required-no-default margin/limit inputs, and per-case
+computed torque/speed/regenerative-energy outputs). All six Stage 1 entry
+criteria resolved: reuses `screw.gear_ratio` directly rather than adding a
+duplicate; keeps the RMS-torque and peak-torque margins as two separate
+required inputs rather than consolidating them (no source ties the two
+together); adopts the closed-cycle RMS-acceleration argument as `0.1.0`'s
+working assumption, recorded on every trace, with a Stage 4 action item to
+verify it against a real kernel; resolves the gearbox-efficiency gap by
+having `drive-train` apply its own derating on top of `screw.drive_torque`
+via a new `drive.gearbox_efficiency` input, rather than editing
+`ball-screw`'s own released kernel; and keeps regenerative energy in scope
+for `0.1.0`, with its "100% efficient" simplifying assumption recorded
+explicitly rather than silently applied. Also fixed the same class of bug
+`linear-guide` found at `1.4.0`/`1.5.0`: `1.7.0` (the version
+`support-bearing 0.1.0`'s own manifest pins) was only ever served
+implicitly as "the current version" and had to be added to
+`PARAMETER_REGISTRY_SUPPORTED_VERSIONS` explicitly before `1.8.0` could
+become current, or `support-bearing`'s manifest would have been stranded --
+caught and fixed before it happened this time, with the existing regression
+test extended to cover it. Adds `J` (joule) to the unit registry as a new
+unit on the *existing* torque dimension (not a new dimension -- this
+registry's torque dimension carries no angle exponent, so energy and
+torque share identical SI base-unit exponents), a deliberate reuse recorded
+in the contract's own "Released Additive Contract". Wiring the kernel then
+found two real mistakes in that same contract -- `drive.reflected_load_
+inertia` had no upstream source and had to become a required
+engineer-supplied input rather than a computed output, and `drive.
+acceleration_torque` does not actually vary by load case in this project's
+data model -- both fixed directly in the registry the same day
+(`stage-2-contract.md` "Stage 3 corrections") so the pinned registry-hash
+fixture and regression test both reflect it.
+
+**Stage 3 (compute and trace) built same day.** A full `ModulePackage` in
+`lib/modules/drive-train/0.1.0/` (manifest, ports, input schema, math
+kernel, trace, checks, generic UI/report schema, draft validation -- see
+that directory's `README.md`). `math.test.ts` (29 tests) and
+`package.test.ts` pass, plus a real reference-example test
+(`omron-reference-example.ts`/`.test.ts`) reproducing Omron Corporation's
+own complete worked numerical example (R88M-U20030 on a direct-connected
+ball-screw axis) through the actual compute path: acceleration torque and
+maximum momentary torque match Omron's own printed figures within
+0.001 N*m, and effective (RMS) torque matches within 0.0003 N*m (~0.25%)
+using an RMS-acceleration value derived from Omron's own printed
+duty-cycle segments -- the first real numeric confirmation that Stage 2's
+own closed-cycle RMS-acceleration derivation actually holds, not just a
+plausible argument. Every applicable check passes; the regenerative-energy
+check reports `not_applicable`, matching Omron's own explicit note that its
+example omits that calculation. No module is registered (`package.ts`, not
+`index.ts`).
+
+Stage 4 is **partial, not complete**: only one of the roadmap's own
+required three reference examples exists -- `validation.ts` records this
+gap honestly rather than claiming Stage 4 done. **Independent benchmark
+closed 2026-08-10:** `closed-cycle-benchmark.ts`/`.test.ts` cross-check
+`resolveEffectiveTorque`'s closed-form Trms against a structurally
+different direct per-phase RMS-torque computation across four repeating-
+cycle shapes and four `(J_total, T_load)` pairs (exact match, an algebraic
+identity), plus a counter-example proving the repeating-cycle precondition
+is load-bearing, not vacuous.
+
+**Second/third reference example investigated 2026-08-10, ruled out for
+now, not abandoned.** Re-read Voss's book beyond the RMS-torque section
+(Section 3.4 "Motor Selection" through 3.4.2.3) and found it never
+selects or checks against a real catalog motor -- the earlier "strongest
+remaining candidate" note undersold this gap. Also re-read HMK's own
+23-page PDF in full and found **no** holding-brake section and **no**
+worked numerical example anywhere in it -- correcting a real
+misattribution in `context/modules/drive-train/stage-1-spec.md` item 2,
+which had duplicated Voss's own two holding-brake worked examples onto
+HMK (item 9 already attributed them to Voss correctly; the two entries
+contradicted each other). Oriental Motor's own blog post stops in the
+same place Voss's does. Kollmorgen's and Yaskawa's own guides remain
+blocked (HTTP 403, retried this session, and via a Wayback Machine attempt
+this environment's `WebFetch` cannot reach). A sixth source was found and
+read this session -- Oriental Motor's own official *Technical Reference*
+(distinct from its blog post), which does have real catalog-tied worked
+examples (motor `5RK40GN-AWMU` + gearhead `5GN9KA`, among others) -- but
+every one sizes an AC induction or stepper motor, not a servo: chasing
+`5RK40GN-AWMU`'s own spec sheet found its starting torque (36 oz-in) is
+*lower* than its rated torque (38 oz-in), the opposite of a servo's
+"peak 2-6x rated" convention this module's own checks assume. Using it
+would conflate two physically distinct torque-margin conventions across
+motor classes, not just fill in missing numbers -- ruled out for that
+reason, not for missing data. Omron's guide remains the only source read
+to date that ties required torque to a real catalog *servo* motor's
+rating with a pass/fail check -- see `stage-1-spec.md` "Evidence Gaps and
+Verification Confidence" for the full account. A new, servo-specific
+source is needed; re-reading the six sources already on file will not
+produce one.
+
+**Stage 5's cross-module link compatibility item done 2026-08-10.**
+`lib/modules/drive-train/0.1.0/cross-module-links.test.ts` (11 tests, the
+same real-evaluator pattern every other Milestone 4 module's own file uses)
+confirms `ball-screw`'s per-case `screw.drive_torque` output links to this
+module's own per-case drive-torque input (the same link `coupling`'s own
+file already consumes), and confirms `motion-profile`'s own
+`peak_acceleration`/`peak_deceleration`/`rms_acceleration` outputs link
+directly to this module's own identically-named, identically-unscoped
+inputs -- the first real downstream consumer of any `motion.profile.*`
+output in this codebase, reversing the documented gap `ball-screw`'s own
+`cross-module-links.test.ts` records (true for `ball-screw` specifically,
+not for `drive-train`; see this module's own `README.md` "Stage 5" for the
+full account). `axis-load-cases` has no output this module consumes;
+`motion.axis.case_linear_velocity` still has no producer anywhere in the
+registry, the same documented gap `ball-screw`'s, `coupling`'s, and
+`support-bearing`'s own files already record. Generic UI/report schema
+conformance was already passing (`package.test.ts`'s `package-validation`
+check). What remains for this module: the two more Stage 4 reference
+examples (still blocked on a servo-specific source -- see above), workflow
+role integration (not applicable until Unit 4.8 exists, the same treatment
+every other Milestone 4 module gets), and Stage 6 (release), sequentially
+gated behind Unit 4.1 regardless.
+
 ---
 
 ## Blocked — needs evidence, not code
@@ -461,12 +618,17 @@ variable names.
    through Stage 4 (`ball-screw` also through Stage 5 as far as applicable
    pre-Unit-4.8 — see Active work). What's left for both is identical:
    workflow role integration and workflow integration tests (blocked on
-   Unit 4.8, `workflowRoles` is deliberately empty on each), cross-module
-   link compatibility (untestable for `motion-profile` specifically — no
-   other module declares an input port for any `motion.profile.*` output
-   yet), and Stage 6 (release), sequentially gated behind Unit 4.1
-   regardless. Optional parallel work; does not move Unit 4.1's critical
-   path.
+   Unit 4.8, `workflowRoles` is deliberately empty on each), and Stage 6
+   (release), sequentially gated behind Unit 4.1 regardless. `motion-
+   profile`'s own cross-module link compatibility item is now testable and
+   done: `drive-train 0.1.0` declares input ports for its `peak_
+   acceleration`/`peak_deceleration`/`rms_acceleration` outputs (see Unit
+   4.7 in Active work) — a claim this note made until 2026-08-10 that no
+   module ever would has already turned out false, so `motion-profile` gets
+   no separate `cross-module-links.test.ts` of its own; the link is tested
+   from the consuming side, the same convention every other module pair in
+   this codebase follows. Optional parallel work; does not move Unit 4.1's
+   critical path.
 6. Unit 4.4 (`linear-guide`): **Stages 1-5 done** (see Active work) —
    Stage 4 including the independent benchmark (`iko-benchmark.ts`
    implements IKO's own equivalent-load method as a genuine second
@@ -498,6 +660,24 @@ variable names.
    not-applicable until Unit 4.8 exists. What remains: Stage 6 (release),
    sequentially gated behind Unit 4.1 regardless. Optional parallel work;
    does not move Unit 4.1's critical path.
+9. Unit 4.7 (`drive-train`): **Stages 1-3 and 5 done, Stage 4 partial** (see
+   Active work) -- registry `1.8.0` released, full `drive.*` group; full
+   `ModulePackage` in `lib/modules/drive-train/0.1.0/` with one reference
+   example (Omron's own R88M-U20030 worked example) reproduced through the
+   real compute path, and the independent benchmark now met
+   (`closed-cycle-benchmark.ts`, done 2026-08-10). What remains for Stage 4:
+   two more reference examples -- investigated 2026-08-10 and ruled out
+   for now: none of Voss's, HMK's, or Oriental Motor's own examples tie to
+   a real catalog motor (see Active work and the module's own `README.md`
+   "Stage 4"); a new source is needed. Stage 5's cross-module link
+   compatibility tests against `ball-screw`/`axis-load-cases`/
+   `motion-profile` are done (`cross-module-links.test.ts`, done
+   2026-08-10 -- the first module to link against a `motion-profile`
+   output), and generic UI/report schema conformance was already passing.
+   Drive/amplifier current sizing stays out of scope until the unit
+   registry gains an electrical-current dimension -- a separate
+   generic-engine unit, not bundled into this module. Optional parallel
+   work; does not move Unit 4.1's critical path.
 
 ---
 
