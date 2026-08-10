@@ -1,4 +1,4 @@
-# Drive Train 0.1.0 — Draft Package (Stages 3-4, partial)
+# Drive Train 0.1.0 — Draft Package (Stages 3-5 done)
 
 `math.ts` is a pure SI-number kernel for the seventh production engineering
 module (Unit 4.7), covering the `0.1.0` proposed scope from
@@ -37,15 +37,15 @@ gearRatio/lead)^2*a_rms^2 + T_L^2`
 
 A full `ModulePackage` wraps the kernel:
 
-| File                     | Role                                                                                                                                     |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `manifest.ts`            | Identity, validity envelope, source revisions, and ports.                                                                                |
-| `input-schema.ts`        | Requires `gearbox_efficiency` whenever `gear_ratio != 1`.                                                                                |
-| `compute.ts`             | Pure compute over the two supported load cases.                                                                                          |
-| `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                                       |
-| `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                                           |
-| `validation.ts`          | Validation record — Stage 4 evidence is partial: one reference example (independent benchmark met). `reviewer`/`reviewDate` stay `TODO`. |
-| `package.ts`             | Sealed package. Named `package.ts`, not `index.ts`, so `npm run registry:generate` cannot discover it.                                   |
+| File                     | Role                                                                                                                                                            |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `manifest.ts`            | Identity, validity envelope, source revisions, and ports.                                                                                                       |
+| `input-schema.ts`        | Requires `gearbox_efficiency` whenever `gear_ratio != 1`.                                                                                                       |
+| `compute.ts`             | Pure compute over the two supported load cases.                                                                                                                 |
+| `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                                                              |
+| `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                                                                  |
+| `validation.ts`          | Validation record — Stage 4 evidence is complete: three reference examples plus the independent benchmark. `reviewer`/`reviewDate` stay `TODO` pending Stage 6. |
+| `package.ts`             | Sealed package. Named `package.ts`, not `index.ts`, so `npm run registry:generate` cannot discover it.                                                          |
 
 No registry version is released by this package — `drive.*` was already
 released at Stage 2 (`context/modules/drive-train/stage-2-contract.md`,
@@ -155,47 +155,99 @@ project's own derivation depends on (`stage-1-spec.md` "The
 RMS-Acceleration Dependency Question") is actually load-bearing, not just
 plausible.
 
-**What Stage 4 still needs**, per the roadmap's own Module Definition of
-Done (at least three reference examples):
+**Two more reference examples found and closed 2026-08-10.** Voss's, HMK's,
+Oriental Motor's, Kollmorgen's, and Yaskawa's own guides were all
+investigated and ruled out first (none ties required torque to a real
+catalog _servo_ motor — see the ruled-out account preserved below). The
+source that actually closed this gap was already on file for a different
+reason: `jp.thk.example_ball_screw_selection` — the same THK Ball Screw
+General Catalog document `axis-load-cases 0.1.0` and `ball-screw 0.1.0`
+already cite for this document's own mechanical (screw/life) sections.
+Re-reading its "Studying the Driving Motor" subsection (which those two
+modules' own scope never needed) found both of THK's own worked examples
+explicitly name "AC servo motor" throughout and decompose required torque
+into the identical two-term shape (friction/load-only torque plus a
+separate inertial acceleration torque) this module's own `math.ts` kernel
+already uses.
 
-- Two more reference examples. **Investigated 2026-08-10, ruled out:**
-  Voss's own partial `T_RMS = 0.164 in-lb` disk example was previously
-  recorded here as "the strongest remaining candidate," but reading the
-  book's own following pages (Section 3.4 "Motor Selection" through
-  3.4.2.3) directly shows it never selects or checks against a real
-  catalog motor — the example stops at computing required torque, and the
-  section that would complete it stays qualitative (torque/speed-curve
-  figures, no worked numbers). Voss's own holding-brake examples (3.5.2)
-  are stated by the book itself to be "admittedly fabricated" and
-  explicitly exclude motor inertia. HMK's own 23-page PDF, read in full,
-  has no worked numerical example at all beyond the Siemens 1FK6
-  torque-curve figure `stage-1-spec.md` item 8 already cites — and no
-  holding-brake section exists in it either, despite this document's own
-  prior text (now corrected) attributing one to it. Oriental Motor's own
-  blog post stops in the identical place Voss's does: "tentatively select
-  a motor" without ever naming one or stating its rotor inertia. Kollmorgen's
-  and Yaskawa's own guides remain blocked (HTTP 403, retried this session,
-  including a Wayback Machine attempt this environment cannot reach).
-  A sixth source, Oriental Motor's own official _Technical Reference_
-  (distinct from its blog post, `orientalmotor.com/products/pdfs/F_TecRef/
+- **Horizontal example** ("High-speed Transfer Equipment," the same scenario
+  `ball-screw 0.1.0`'s own `thk-benchmark.ts` already reproduces
+  mechanically): a full reference example. `thk-reference-examples.ts`/
+  `.test.ts` reproduce THK's own printed maximum momentary torque
+  (`Tk = 4730 N*mm`) within 0.05 N*m (~0.3%) and effective (RMS) torque
+  (`Trms = 1305 N*mm`) within 0.005 N*m (~0.06%) through `executeModule` —
+  both residuals traced precisely to THK's own printed 3-significant-figure
+  angular-acceleration rounding (1050 rad/s^2 printed vs. 1047.2 rad/s^2
+  exact), not slack introduced to pass the test. THK's own "motor inertia
+  > = reflected load inertia / 10" rule also reproduces exactly as a passing
+  > `inertia-ratio` check.
+- **Vertical example** ("Vertical Conveyance System"): a _partial_ reference
+  example, reproducing THK's own maximum momentary torque
+  (`Tk1 = 1100 N*mm`, the governing upward direction) and inertia-ratio rule,
+  but **deliberately not** its effective (RMS) torque. This example's own
+  duty cycle has asymmetric per-direction load torque (900 N*mm upward vs.
+  830 N*mm downward, from gravity) and a nonzero holding torque during the
+  stationary phase (658 N*mm) — both violate this module's own closed-cycle
+  assumption's precondition ("total system inertia and the per-case load
+  torque both stay constant across a cycle"). Feeding this module's own real
+  required inputs through the actual closed-form kernel gives an effective
+  torque about 21% above THK's own printed figure — a real, quantified
+  deviation (recorded in `validation.ts` "deviations"), not a rounding
+  residual, and the first real counter-example to the closed-cycle
+  assumption this project has found. This module also cannot express THK's
+  own lower, gravity-assisted downward momentary torque (`Tk2 = 630 N*mm`)
+  at all, since `resolveAccelerationTorque` always adds rather than
+  subtracts — a deliberate, documented conservative choice, not a defect.
+
+Neither THK example names a specific catalog motor SKU (unlike Omron's own
+`R88M-U20030`) — both fixtures supply a plausible motor with headroom above
+THK's own stated minimum, disclosed as such in the fixture's own module doc
+comment rather than presented as a THK-selected part. A new source revision,
+`jp.thk.example_ball_screw_selection@technico-mirror-2026-08-10`
+(`lib/standards/engineering-sources.ts`), records exactly what was read and
+where the direct `tech.thk.com` URL (blocked, HTTP 403) was substituted for
+a third-party mirror already used elsewhere in this project.
+
+**Stage 4 is now complete**: three reference examples plus the independent
+benchmark. The solo-validation reviewer-substitute policy
+(`context/ai-workflow-rules.md` "Stage 4 — Validation") is now invoked —
+`reviewer`/`reviewDate` stay `TODO` in `validation.ts` pending Stage 6, the
+same treatment every other Milestone 4 module's own `validation.ts` gives
+that pair.
+
+<details>
+<summary>Ruled-out sources (investigated 2026-08-10, before THK was found)</summary>
+
+Voss's own partial `T_RMS = 0.164 in-lb` disk example was previously
+recorded here as "the strongest remaining candidate," but reading the
+book's own following pages (Section 3.4 "Motor Selection" through
+3.4.2.3) directly shows it never selects or checks against a real
+catalog motor — the example stops at computing required torque, and the
+section that would complete it stays qualitative (torque/speed-curve
+figures, no worked numbers). Voss's own holding-brake examples (3.5.2)
+are stated by the book itself to be "admittedly fabricated" and
+explicitly exclude motor inertia. HMK's own 23-page PDF, read in full,
+has no worked numerical example at all beyond the Siemens 1FK6
+torque-curve figure `stage-1-spec.md` item 8 already cites — and no
+holding-brake section exists in it either, despite this document's own
+prior text (now corrected) attributing one to it. Oriental Motor's own
+blog post stops in the identical place Voss's does: "tentatively select
+a motor" without ever naming one or stating its rotor inertia. Kollmorgen's
+and Yaskawa's own guides remain blocked (HTTP 403, retried this session,
+including a Wayback Machine attempt this environment cannot reach).
+A sixth source, Oriental Motor's own official _Technical Reference_
+(distinct from its blog post, `orientalmotor.com/products/pdfs/F_TecRef/
 TecMtrSiz.pdf`), does have real catalog-tied worked examples (motor
-  `5RK40GN-AWMU` + gearhead `5GN9KA`, among others) — but every one sizes
-  an AC induction or stepper motor, not a servo: chasing `5RK40GN-AWMU`'s
-  own spec sheet found its starting torque (36 oz-in) is _lower_ than its
-  rated torque (38 oz-in), the opposite of a servo's "peak 2-6x rated"
-  convention this module's own `peak_torque_margin` assumes (Omron's own
-  example: peak 1.91 N*m vs. rated 0.637 N*m). Using it would conflate two
-  physically distinct torque-margin conventions across motor classes, not
-  just fill in missing numbers. **Omron's own guide is the only source read
-  to date with a complete, catalog-tied, servo-specific worked example** —
-  see `context/modules/drive-train/stage-1-spec.md` "Evidence Gaps and
-  Verification Confidence" for the full account. A new, servo-specific
-  source is required; none of the six already read can supply it without
-  inventing catalog data this project's own standards forbid.
+`5RK40GN-AWMU` + gearhead `5GN9KA`, among others) — but every one sizes
+an AC induction or stepper motor, not a servo: chasing `5RK40GN-AWMU`'s
+own spec sheet found its starting torque (36 oz-in) is _lower_ than its
+rated torque (38 oz-in), the opposite of a servo's "peak 2-6x rated"
+convention this module's own `peak_torque_margin` assumes (Omron's own
+example: peak 1.91 N*m vs. rated 0.637 N*m). Using it would conflate two
+physically distinct torque-margin conventions across motor classes, not
+just fill in missing numbers.
 
-Until this is met, the solo-validation reviewer-substitute policy
-(`context/ai-workflow-rules.md` "Stage 4 — Validation") is not yet
-invokable for this module.
+</details>
 
 ## Stage 5 (2026-08-10): cross-module link compatibility done; generic UI/report schema already passing
 
@@ -221,7 +273,8 @@ conformance was already passing (`package.test.ts`'s `package-validation`
 check, unchanged by this work). Workflow role integration stays not
 applicable pending Unit 4.8.
 
-Production release stays sequentially gated behind Unit 4.1's Definition of
-Done regardless (`context/implementation-map.md` Milestone 4 header), and
-behind this module's own still-partial Stage 4 (two more reference examples
-needed — see "Stage 4" above).
+This module's own Stage 4 gate is now clear (see "Stage 4" above). What
+remains: workflow role integration (not applicable until Unit 4.8 exists,
+the same treatment every other Milestone 4 module gets) and Stage 6
+(release), sequentially gated behind Unit 4.1's Definition of Done regardless
+(`context/implementation-map.md` Milestone 4 header).

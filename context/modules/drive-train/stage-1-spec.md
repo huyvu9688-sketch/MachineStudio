@@ -501,6 +501,26 @@ claims elsewhere. If a future duty-cycle shape breaks the "returns to its
 starting velocity" premise (unlikely for a repeating cycle by definition,
 but worth stating explicitly), this identity would need re-deriving.
 
+**Verified 2026-08-10, both as a property and against a real counter-case.**
+`lib/modules/drive-train/0.1.0/closed-cycle-benchmark.ts` confirms the
+identity holds to floating-point precision across synthetic repeating
+cycles (and diverges on a non-repeating one, proving the "returns to its
+starting velocity" precondition is load-bearing). Separately, THK Co.,
+Ltd.'s own "Vertical Conveyance System" worked example (see "Evidence Gaps
+and Verification Confidence" below) is a real, sourced case where the
+*other* precondition this derivation states — `T_load` constant across the
+whole cycle — genuinely fails: its own load torque differs between the
+upward (900 N*mm) and downward (830 N*mm) halves of the duty cycle, and its
+stationary phase carries a nonzero holding torque (658 N*mm) rather than
+`T_load` or zero. Feeding that example's own real inputs through the actual
+closed-form kernel overstates the true effective torque by roughly 21% —
+confirming this derivation's own stated precondition is not just a
+technicality: a vertical/asymmetric-holding duty cycle is a real case where
+it does not hold, not a hypothetical one. `0.1.0` does not attempt to model
+this; it is a documented scope limit (`lib/modules/drive-train/0.1.0/
+validation.ts` "deviations"), a candidate for a future version once a
+per-phase (rather than per-case) load-torque input exists.
+
 ## Validity Envelope (Proposed)
 
 - **One motor, on one axis, per declared load case** (`normal`/`peak`,
@@ -698,21 +718,42 @@ page/section; it must not repeat the formula in UI/report code.
   own "Existing Parameter Review" already applies to `screw.mechanical_
   efficiency` versus a future gearbox-efficiency parameter. Not a data gap
   this time; a genuine methodology mismatch.
-- **Omron's own guide remains the only source read to date giving a
-  complete, catalog-tied, servo-specific worked example** — the roadmap's
-  own "at least three reference examples" Module Definition of Done item
-  is not resolvable from currently-accessible sources without either
-  inventing catalog data or conflating two different motor classes' own
-  torque-margin conventions, both of which this project's own standards
-  forbid (`context/code-standards.md`). A new, servo-specific source is
-  required, not further re-reading of the six already read.
+- **Resolved (2026-08-10, a later session still): a seventh source closed
+  the reference-example gap, and it was already on file for a different
+  reason.** `jp.thk.example_ball_screw_selection` — the THK Ball Screw
+  General Catalog document `axis-load-cases 0.1.0` and `ball-screw 0.1.0`
+  already cite for its own mechanical (screw/life) sections — has its own
+  "Studying the Driving Motor" subsection immediately following each of its
+  two worked examples, which those two modules' own scope never needed to
+  read. Both examples explicitly name "AC servo motor" throughout (not the
+  induction/stepper convention item above ruled out) and decompose required
+  torque into the identical two-term shape (friction/load-only torque plus
+  a separate inertial acceleration torque, summed for the maximum momentary
+  torque) this module's own `math.ts` kernel already uses. Read directly
+  2026-08-10 via a technico.com mirror (`tech.thk.com` itself returns
+  HTTP 403, see `context/progress-tracker.md` "Environment notes") after
+  `WebFetch` failed to extract readable text from the same mirror directly;
+  the binary it cached was instead read locally with `pdftotext -layout`.
+  See `lib/modules/drive-train/0.1.0/thk-reference-examples.ts` for the two
+  fixtures and `lib/standards/engineering-sources.ts`'s
+  `jp.thk.example_ball_screw_selection@technico-mirror-2026-08-10` for the
+  full citation. Neither THK example names a specific catalog motor SKU
+  (unlike Omron's own `R88M-U20030`) — both fixtures supply a plausible
+  motor with headroom above THK's own stated minimum, disclosed as such
+  rather than presented as a THK-selected part. The vertical example's own
+  effective-torque figure is a genuine, quantified ~21% deviation from this
+  module's own closed-cycle assumption, not reproduced — see "The RMS-
+  Acceleration Dependency Question" above, now updated with a real
+  counter-case.
 - **Not resolved:** the RMS-torque safety margin, peak-torque safety margin,
   and maximum inertia ratio (items 3, 4, 5) — three genuine, sourced,
   multi-way disagreements, not a research gap.
-- **Not resolved:** whether the closed-cycle RMS-acceleration argument
-  ("The RMS-Acceleration Dependency Question" above) actually holds once a
-  real kernel exists to test it against — this document's own derivation,
-  not sourced.
+- **Resolved (2026-08-10):** whether the closed-cycle RMS-acceleration
+  argument ("The RMS-Acceleration Dependency Question" above) actually
+  holds once a real kernel exists to test it against — confirmed as a
+  property (`closed-cycle-benchmark.ts`) and against THK's own real vertical
+  worked example, which is a genuine counter-case (~21% deviation) where the
+  argument's own stated precondition fails, not a hypothetical one.
 - **Not resolved:** how gearbox transmission efficiency (as opposed to the
   ball screw's own internal efficiency, already modeled) should be applied,
   given the gap found in `ball-screw 0.1.0`'s own released kernel (see "A

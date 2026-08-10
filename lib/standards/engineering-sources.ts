@@ -305,6 +305,16 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
   },
   {
     id: asSourceRevisionId(
+      "jp.thk.example_ball_screw_selection@technico-mirror-2026-08-10",
+    ),
+    documentId: asSourceDocumentId("jp.thk.example_ball_screw_selection"),
+    edition:
+      "THK Ball Screw General Catalog, 'Examples of Selecting a Ball Screw' chapter, 'Studying the Driving Motor' sections (physical PDF pages 455 of 488 horizontal, 466 of 488 vertical, in this specific mirror file — the printed 'B15-' page labels are not reliably extracted by this environment's PDF-text tooling on this file, so the physical page count of this exact mirror is cited instead of a derived label)",
+    officialUrl: "https://technico.com/pdf/Blog/15%20Ball%20Screw.pdf",
+    note: "tech.thk.com (this document's own officialUrl) returns HTTP 403 in this environment; content instead read 2026-08-10 from this third-party distributor's mirror (488 pages, confirmed via pdfinfo; text extracted locally with pdftotext -layout after WebFetch cached the binary) of the same THK catalog the bondy-mirror revision above already cites for these two examples' own mechanical (screw/life) sections. This revision covers the 'Studying the Driving Motor' subsection each example continues into, which axis-load-cases 0.1.0's and ball-screw 0.1.0's own scope never needed: required maximum momentary torque and effective (RMS) torque (via Trms = sqrt(sum(T_i^2*t_i)/sum(t_i)), the general shape drive-train 0.1.0's own math.ts also uses), and a minimum motor-inertia rule (motor inertia >= reflected load inertia / 10). Used by drive-train 0.1.0 (lib/modules/drive-train/0.1.0/thk-reference-examples.ts) as its second and third published reference examples. Neither example names a specific catalog motor SKU — both stop at stating the required minimum rating, unlike Omron's own example — and the vertical example's own effective-torque figure (743 N*mm) is not reproduced through drive-train's own compute path (a genuine ~21% deviation, not a rounding residual — see that fixture's own module doc comment for why).",
+  },
+  {
+    id: asSourceRevisionId(
       "jp.oriental_motor.linear_actuator_moment@web-2026-07-31",
     ),
     documentId: asSourceDocumentId("jp.oriental_motor.linear_actuator_moment"),

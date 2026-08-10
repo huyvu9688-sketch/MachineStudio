@@ -53,6 +53,9 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
     asSourceRevisionId(
       "us.celera_motion.shunt_resistor_regenerative_braking@web-2026-08-10",
     ),
+    asSourceRevisionId(
+      "jp.thk.example_ball_screw_selection@technico-mirror-2026-08-10",
+    ),
   ],
 };
 
