@@ -1,4 +1,4 @@
-// Manifest and ports for the axis-load-cases module (Unit 4.1, Stage 3 draft).
+// Manifest and ports for the axis-load-cases module (Unit 4.1).
 //
 // v0.1.0 scope: the `normal` and `peak` load cases only. `holding` and
 // `emergency_stop` are deferred to a future version — neither ID39 nor ID42
@@ -8,11 +8,10 @@
 // and Release Gates" item 1 (resolved 2026-08-07), and
 // context/progress-tracker.md "Open decisions".
 //
-// This package is intentionally NOT registered: this directory has no
-// `index.ts`, so `npm run registry:generate` cannot discover it (see
-// ./README.md). Registration requires the Stage 1 validation gate
-// (release-grade ID39/ID42 evidence, published reference examples, an
-// independent benchmark) — see context/progress-tracker.md "Blocked".
+// This package is not yet registered in `lib/modules/registry.generated.ts`
+// — pinning the final source-immutability hash and generating the registry
+// entry is the next release step, not this one (see ./index.ts and
+// docs/superpowers/plans/2026-08-11-unit-4.1-release.md).
 
 import {
   asParameterId,
@@ -47,7 +46,7 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   validityEnvelopeSummary:
     "One rigid moving assembly on a straight axis; horizontal, vertical, or inclined 0-90 degrees; normal and peak load cases only (holding and emergency_stop are not supported by this version); scalar Coulomb friction in [0, 1]; explicit external process force/moment and center-of-mass offset per case; no structural compliance, backlash, guide-block load distribution, collision impact, regenerative braking, or brake sizing.",
   sourceRevisionIds: [
-    asSourceRevisionId("us.nist.sp811@web-2026-07-31"),
+    asSourceRevisionId("us.nist.sp811@2008-2nd-printing"),
     asSourceRevisionId("jp.thk.ball_screw_general_catalog@515-1e"),
   ],
 };

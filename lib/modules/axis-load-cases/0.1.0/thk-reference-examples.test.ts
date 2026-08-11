@@ -29,7 +29,7 @@
 
 import { describe, expect, it } from "vitest";
 import { executeModule, makeQuantity } from "@/lib/engine";
-import { axisLoadCasesModule } from "./package";
+import { axisLoadCasesModule } from "./index";
 import {
   asQuantity,
   orientationValue,

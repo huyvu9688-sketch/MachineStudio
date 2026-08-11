@@ -24,7 +24,7 @@ import { makeAxisVector } from "./values";
 
 const NIST_GRAVITY = [
   {
-    sourceRevisionId: asSourceRevisionId("us.nist.sp811@web-2026-07-31"),
+    sourceRevisionId: asSourceRevisionId("us.nist.sp811@2008-2nd-printing"),
     clause: "Appendix B.8",
     label: "standard acceleration of free fall g_n = 9.80665 m/s^2",
   },

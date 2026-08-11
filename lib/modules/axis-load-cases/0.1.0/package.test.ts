@@ -11,11 +11,12 @@ import {
   type EngineeringValue,
   type TraceStep,
 } from "@/lib/engine";
+import { asSourceRevisionId } from "@/lib/standards";
 import { axisHorizontalBasicFixture } from "@/tests/fixtures/axes/axis-horizontal-basic/fixture";
 import { axisVerticalFixture } from "@/tests/fixtures/axes/axis-vertical/fixture";
 import type { AxisHistoricalFixture } from "@/tests/fixtures/axes/fixture-types";
 import { linearAxisDefinition } from "@/lib/workflows/linear-axis/1.0.0/definition";
-import { axisLoadCasesModule } from "./package";
+import { axisLoadCasesModule } from "./index";
 import {
   asQuantity,
   asVectorQuantity,
@@ -589,5 +590,61 @@ describe("axis-load-cases 0.1.0 monotonicity (Task 4)", () => {
     });
     expect(thrusts[1]).toBeGreaterThan(thrusts[0]);
     expect(thrusts[2]).toBeGreaterThan(thrusts[1]);
+  });
+});
+
+describe("axis-load-cases 0.1.0 validation record completeness (Task 5)", () => {
+  it("records the finalized solo-review reviewer and review date", () => {
+    expect(axisLoadCasesModule.validation.reviewer).toBe(
+      "Solo validation — Atlanta independent-benchmark substitute",
+    );
+    expect(axisLoadCasesModule.validation.reviewDate).toBe("2026-08-11");
+  });
+
+  it("cites the fixed NIST, THK, and Atlanta source revisions", () => {
+    expect(axisLoadCasesModule.validation.sourceRevisionIds).toEqual(
+      expect.arrayContaining([
+        asSourceRevisionId("us.nist.sp811@2008-2nd-printing"),
+        asSourceRevisionId("jp.thk.ball_screw_general_catalog@515-1e"),
+        asSourceRevisionId("jp.thk.example_ball_screw_selection@515-1e"),
+        asSourceRevisionId(
+          "us.atlanta_drive_systems.rack_pinion_calculations@sha256-2bc6e48c2dce79dd",
+        ),
+      ]),
+    );
+  });
+
+  it("rejects provisional/draft release language in supported-use limits and deviations", () => {
+    // Focused fragments that would only appear in leftover Stage 3 draft
+    // wording; not an exhaustive banned-word list.
+    const PROHIBITED_FRAGMENTS = [
+      "draft package",
+      "not registered",
+      "third fixture is still missing",
+      "reviewer is pending",
+    ];
+    const strings = [
+      ...axisLoadCasesModule.validation.supportedUseLimits,
+      ...axisLoadCasesModule.validation.deviations,
+    ];
+    expect(strings.length).toBeGreaterThan(0);
+    for (const text of strings) {
+      const lower = text.toLowerCase();
+      for (const fragment of PROHIBITED_FRAGMENTS) {
+        expect(lower).not.toContain(fragment);
+      }
+    }
+  });
+
+  it("does not treat the legitimate release-candidate phrase as provisional wording", () => {
+    // ID39/ID42 are accepted release-candidate regression evidence — that
+    // phrase must survive, not be scrubbed alongside genuine draft language.
+    const strings = [
+      ...axisLoadCasesModule.validation.supportedUseLimits,
+      ...axisLoadCasesModule.validation.deviations,
+    ];
+    expect(
+      strings.some((text) => text.toLowerCase().includes("release-candidate")),
+    ).toBe(true);
   });
 });
