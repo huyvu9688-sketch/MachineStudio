@@ -1,6 +1,6 @@
 // Shared test-only helpers for the axis-load-cases module test files. Not
 // part of the module package itself (never imported by manifest/compute/
-// trace/checks/ui/report/validation or package.ts).
+// trace/checks/ui/report/validation or index.ts).
 
 import {
   SERIALIZATION_FORMAT_VERSION,
