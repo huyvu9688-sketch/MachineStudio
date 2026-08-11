@@ -31,15 +31,15 @@ margin.
 
 A full `ModulePackage` wraps the kernel:
 
-| File                     | Role                                                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `manifest.ts`            | Identity, validity envelope, source revisions, and ports.                                                                            |
-| `input-schema.ts`        | Requires `dynamic_load_factor_y`, `static_load_factor_y`, and per-case `thrust_force` together when `bearing.location` is `"fixed"`. |
-| `compute.ts`             | Pure compute over the two supported load cases, branching on `bearing.location`.                                                     |
-| `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                                   |
-| `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                                       |
+| File                     | Role                                                                                                                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `manifest.ts`            | Identity, validity envelope, source revisions, and ports.                                                                                      |
+| `input-schema.ts`        | Requires `dynamic_load_factor_y`, `static_load_factor_y`, and per-case `thrust_force` together when `bearing.location` is `"fixed"`.           |
+| `compute.ts`             | Pure compute over the two supported load cases, branching on `bearing.location`.                                                               |
+| `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                                             |
+| `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                                                 |
 | `validation.ts`          | Validation record — Stage 4 evidence (reference examples, independent benchmark) is complete; reviewer/reviewDate stay `TODO` pending Stage 6. |
-| `package.ts`             | Sealed package. Named `package.ts`, not `index.ts`, so `npm run registry:generate` cannot discover it.                               |
+| `package.ts`             | Sealed package. Named `package.ts`, not `index.ts`, so `npm run registry:generate` cannot discover it.                                         |
 
 No registry version is released by this package — `bearing.*` was already
 released at Stage 2 (`context/modules/support-bearing/stage-2-contract.md`,
@@ -145,7 +145,7 @@ added axial load — the exact scope split this module's own
   `Lh = 500*fh^3` for ball bearings — reproduced here as a genuinely
   separate computation, then proved (not just observed) to be algebraically
   identical to `resolveNominalLife`/`resolveLifeHours`'s own `(C/P)^3 *
-  10^6/(60n)` form. The two are asserted to agree to floating-point
+10^6/(60n)` form. The two are asserted to agree to floating-point
   precision, the same "proved identity" treatment
   `lib/modules/linear-guide/0.1.0/iko-benchmark.ts` gives PMI's and IKO's
   own equivalent-load forms.
@@ -173,5 +173,7 @@ report schema (`ui.ts`/`report.ts`, drafted at Stage 3) were already
 passing conformance through `package.test.ts`. Workflow role integration
 stays not applicable pending Unit 4.8.
 
-Production release stays sequentially gated behind Unit 4.1's Definition of
-Done regardless (`context/implementation-map.md` Milestone 4 header).
+Production release no longer waits on Unit 4.1's Definition of Done —
+`axis-load-cases@0.1.0` released 2026-08-11
+(`validation/axis-load-cases/0.1.0.md`). This module's own Stage 6
+(release) simply has not started.

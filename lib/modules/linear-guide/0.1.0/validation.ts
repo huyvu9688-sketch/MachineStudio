@@ -27,9 +27,10 @@
 // `reviewer` and `reviewDate` stay "TODO" for the same reason ball-screw's do:
 // they feed a future *sealed* record at Stage 6 (release), which has not
 // started, and that is a different thing from validation/linear-guide/
-// 0.1.0.md's own completion. Release for this module is sequentially gated
-// behind Unit 4.1's Definition of Done regardless
-// (context/implementation-map.md Milestone 4 header).
+// 0.1.0.md's own completion. Release for this module no longer waits on
+// Unit 4.1's Definition of Done -- axis-load-cases@0.1.0 released 2026-08-11
+// (validation/axis-load-cases/0.1.0.md) -- it simply has not started its own
+// Stage 6 yet.
 
 import type { ValidationRecord } from "@/lib/engine";
 import { asSourceRevisionId } from "@/lib/standards";

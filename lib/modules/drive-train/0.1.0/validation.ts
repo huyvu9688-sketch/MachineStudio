@@ -69,7 +69,7 @@ export const validation: ValidationRecord = {
   reviewer: "TODO",
   reviewDate: "TODO",
   supportedUseLimits: [
-    "Draft Stage 3 package: not registered, not released. Stage 5 (cross-module link compatibility, generic UI/report schema conformance) is done; Stage 6 (release) still waits on Unit 4.1's Definition of Done, which gates every Milestone 4 module regardless.",
+    "Draft Stage 3 package: not registered, not released. Stage 5 (cross-module link compatibility, generic UI/report schema conformance) is done; Stage 6 (release) no longer waits on Unit 4.1's Definition of Done, which released as axis-load-cases@0.1.0 on 2026-08-11 (validation/axis-load-cases/0.1.0.md) -- this module's own Stage 6 has simply not started yet.",
     "Supports only the normal and peak load cases; holding and emergency_stop are not implemented.",
     "One candidate servo motor per calculation run; does not search a catalog or rank candidates.",
     "drive.reflected_load_inertia is a required engineer-supplied input -- no released upstream parameter derives it (context/modules/drive-train/stage-2-contract.md 'Stage 3 corrections').",

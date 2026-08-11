@@ -276,5 +276,6 @@ applicable pending Unit 4.8.
 This module's own Stage 4 gate is now clear (see "Stage 4" above). What
 remains: workflow role integration (not applicable until Unit 4.8 exists,
 the same treatment every other Milestone 4 module gets) and Stage 6
-(release), sequentially gated behind Unit 4.1's Definition of Done regardless
-(`context/implementation-map.md` Milestone 4 header).
+(release) itself — no longer gated behind Unit 4.1's Definition of Done,
+which released 2026-08-11 (`validation/axis-load-cases/0.1.0.md`), but not
+yet started for this module.

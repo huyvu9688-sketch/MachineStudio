@@ -3,23 +3,32 @@
 ## Status
 
 - Work unit: Unit 4.1, Stage 2 parameter contract
-- Date: 2026-07-31; scope-resolution update 2026-08-07
+- Date: 2026-07-31; scope-resolution update 2026-08-07; release update
+  2026-08-11
 - Coordinate convention: `axis.v1`, defined in
   `context/modules/axis-load-cases/stage-1-spec.md`
-- Released registry change: parameter registry `1.1.0`
+- Released registry change: parameter registry `1.1.0` (plus the additive
+  `1.4.0` resultant-force/moment ports — see "Deferred Decisions and
+  Release Gates" item 1)
 - Stage 2 status: **resolved for a `normal`/`peak`-only `0.1.0` scope** (see
   "Deferred Decisions and Release Gates" below). `holding` and
   `emergency_stop` support is deferred to a future version.
-- Module status: a draft `ModulePackage` exists as of 2026-08-07
-  (`lib/modules/axis-load-cases/0.1.0/package.ts` — see that directory's
-  `README.md`), but it is not registered, has no calculation run, no
-  completed validation record, and no release. Stage 4 (validation) is
-  partly done: `thk-reference-examples.test.ts` reproduces the three
-  published THK worked examples from `stage-1-spec.md` within ±1 N, and
-  `validation.ts` records them as real `referenceExamples` — satisfying that
-  item independent of the still-blocked ID39/ID42 release-grade evidence and
-  independent-benchmark items in `stage-1-spec.md` "Validation Gate and
-  Evidence Intake".
+- **Module status (2026-08-11): released and registered.**
+  `axis-load-cases@0.1.0` (`lib/modules/axis-load-cases/0.1.0/index.ts`,
+  renamed from the earlier draft `package.ts`) is registered in
+  `lib/modules/registry.generated.ts`, has a completed validation record
+  (`validation/axis-load-cases/0.1.0.md`), and its conformance suite's
+  `import-boundary`/`source-immutability` checks both pass as real checks,
+  not skipped. Stage 4 (validation) is complete: the three published THK
+  worked examples (`thk-reference-examples.test.ts`), the Atlanta
+  independent benchmark, and the accepted ID39/ID42
+  `0.1.0-release-candidate` historical regressions are all recorded in
+  `validation.ts` and the validation record. `duty_cycle`
+  (`motion.axis.duty_cycle`) and `ambient_temperature`
+  (`env.ambient_temperature`) are now implemented as optional, trace-only
+  usage/environment context inputs — recorded in the calculation trace when
+  supplied, but proven by test never to change a `normal`/`peak` force or
+  moment output (see "Deferred Decisions and Release Gates" item 6 below).
 
 This record freezes only the parts of the contract supported by the recovered
 historical evidence and the published method intake. It does not convert a
@@ -96,25 +105,45 @@ records:
 - `jp.oriental_motor.linear_actuator_moment@web-2026-07-31` - independent
   centre-of-gravity/moment method intake.
 
-These are module-method evidence, not new US or Japan market-profile baselines.
-The two `@web-2026-07-31` records are access-dated intake only, not immutable
-reproduction evidence: before a released module cites them, capture a fixed
-edition, archived copy, or content hash. All four are deliberately absent from
-`validation/source-index.md` until a released module cites them in a completed
-validation record.
+These are module-method evidence, not new US or Japan market-profile
+baselines. The two `@web-2026-07-31` records were access-dated intake only,
+not immutable reproduction evidence.
 
-## Draft Kernel and Regression Boundary
+**Update (2026-08-11), released disposition:** the two THK records above
+(axial-load method, worked examples) are cited by the released
+`axis-load-cases@0.1.0` under their `515-1E` revisions and now appear in
+`validation/source-index.md`, unchanged from above. The access-dated NIST
+intake record was superseded, not cited as-is: the release replaced it with
+a fixed, immutable publication, `us.nist.sp811@2008-2nd-printing` (NIST SP
+811, 2008 Edition, second printing, Appendix B.8), which is what the
+released module and `validation/source-index.md` actually cite — the
+`@web-2026-07-31` record above remains for historical reference only. The
+Oriental Motor moment-method intake was not used in the final release: the
+independent benchmark that shipped instead is Atlanta Drive Systems'
+rack-and-pinion method
+(`us.atlanta_drive_systems.rack_pinion_calculations@sha256-2bc6e48c2dce79dd`,
+also now in `validation/source-index.md`). The Oriental Motor record
+therefore stays access-dated intake only, still absent from
+`validation/source-index.md`, available for a future module version that
+actually needs a moment-load method.
 
-`lib/modules/axis-load-cases/0.1.0/math.ts` is a pure SI-number kernel used by
-tests only. It resolves the frozen `axis.v1` gravity vector, centre-of-mass
-gravity moment, direction-opposed Coulomb friction, documented running
-resistance, external loads, and the signed axial drive demand.
+## Kernel and Regression Boundary
 
-It has no `index.ts`, so the registry generator cannot discover or register it.
-The ID39 horizontal and ID42 vertical fixture tests reproduce the reported
-source-phase force magnitudes while asserting that their product load-case
-mapping is unclassified. This is a regression aid, not a claim of completed
-Stage 3, validation, or release.
+`lib/modules/axis-load-cases/0.1.0/math.ts` is the pure SI-number kernel
+`compute.ts` calls from the real, released module path. It resolves the
+frozen `axis.v1` gravity vector, centre-of-mass gravity moment,
+direction-opposed Coulomb friction, documented running resistance, external
+loads, and the signed axial drive demand.
+
+**Update (2026-08-11):** this directory now has an `index.ts` (renamed from
+the earlier draft `package.ts`), so the registry generator discovers and
+registers it as `axis-load-cases@0.1.0`. The ID39 horizontal and ID42
+vertical fixture tests reproduce the reported source-phase force
+magnitudes through the real compute path (`executeModule`, not just the
+bare kernel) while asserting that their product load-case mapping stays
+`unclassified`. This is accepted `0.1.0-release-candidate` regression
+evidence for Unit 4.1's release — see "Validation Gate and Evidence Intake"
+in `stage-1-spec.md` and `validation/axis-load-cases/0.1.0.md`.
 
 ## Deferred Decisions and Release Gates
 
@@ -216,27 +245,48 @@ have a source-backed contract:
    ranking and server-side link confirmation without any call-site change. Not
    a module release; no module exercises this path yet. See
    `context/progress-tracker.md` Current Goal for verification detail.
+6. **RESOLVED (2026-08-11):** `motion.axis.duty_cycle` and
+   `env.ambient_temperature` — both already-released canonical parameters,
+   previously reused-but-unwired (see "Existing Parameter Mapping" above) —
+   are implemented as optional, trace-only usage/environment context input
+   ports. Neither ever enters a `normal`/`peak` force or moment equation:
+   duty cycle does not alter a per-case force, and ambient temperature has
+   no universal derating formula this module owns. When supplied, both are
+   recorded in the calculation trace's `usage-context` step; when absent,
+   the trace states that no usage/ambient context was supplied.
+   `package.test.ts`'s "usage and environment context" tests assert every
+   `normal`/`peak` force and moment output is byte-for-byte identical with
+   and without these two inputs. No registry-version change was required —
+   both parameters were already released. See
+   `docs/superpowers/specs/2026-08-11-unit-4.1-release-design.md` "Module
+   Contract Completion".
 
-All five deferred items above are now resolved for the `0.1.0` scope (items
-1-3 resolved 2026-08-07 by narrowing to `normal`/`peak`; items 4 and 5 closed
-2026-08-01/05). The final `0.1.0` port map is: the existing registry `1.1.0`
-parameters listed under "Existing Parameter Mapping" above, plus
-`motion.axis.external_force` / `external_moment` restricted to their already-
-released `normal`/`peak` cases. No new registry version is required to start
-Stage 3. `holding` and `emergency_stop` support is out of scope for `0.1.0`
-and requires a separate future proposal once real evidence exists.
+Items 1-6 above are now resolved for the `0.1.0` scope (items 1-3 resolved
+2026-08-07 by narrowing to `normal`/`peak`; items 4 and 5 closed
+2026-08-01/05; item 6 resolved 2026-08-11). The final `0.1.0` port map is:
+the existing registry `1.1.0` parameters listed under "Existing Parameter
+Mapping" above, plus `motion.axis.external_force` / `external_moment`
+restricted to their already-released `normal`/`peak` cases, plus the
+additive `1.4.0` `motion.axis.resultant_force`/`resultant_moment` output
+ports (item 1 above). `holding` and `emergency_stop` support is out of
+scope for `0.1.0` and requires a separate future proposal once real
+evidence exists.
 
-**Stage 3 (compute and trace) is done as a draft, 2026-08-07:** a full
-`ModulePackage` — manifest, ports, input schema (enforcing the mass-route
-rule), compute, calculation trace, checks, UI schema, report schema, and a
-draft validation record — wraps the existing kernel in
-`lib/modules/axis-load-cases/0.1.0/` (assembled in `package.ts`, not
-`index.ts` — see that directory's `README.md`). The module conformance
-suite, mass-route and boundary/invalid-input tests, and a full-module
-regression against ID39/ID42 all pass (`package.test.ts`). The module still
-cannot progress to a *released* Stage 3 package (i.e. renaming `package.ts`
-to `index.ts` and registering it), or to Stage 4 or Stage 6, until the Stage
-1 validation gate is met: release-grade ID39/ID42 records, a third
-long-stroke fixture, published worked examples, an independent benchmark,
-reviewer or documented substitute, source-index rows, conformance, and full
-verification.
+**Stage 3 (compute and trace) was done as a draft, 2026-08-07, and released
+2026-08-11 as `axis-load-cases@0.1.0`:** a full `ModulePackage` — manifest,
+ports, input schema (enforcing the mass-route rule), compute, calculation
+trace, checks, UI schema, report schema, and a completed validation record
+— wraps the kernel in `lib/modules/axis-load-cases/0.1.0/` (assembled in
+`index.ts`, renamed from the earlier draft `package.ts` at release — see
+that directory's `README.md`). The module conformance suite, mass-route and
+boundary/invalid-input tests, and a full-module regression against
+ID39/ID42 all pass (`package.test.ts`). The module is registered in
+`lib/modules/registry.generated.ts`, and the Stage 1 validation gate is
+met: ID39/ID42 accepted as `0.1.0-release-candidate` regression evidence
+(not release-grade — see `stage-1-spec.md` "Validation Gate and Evidence
+Intake"), the third long-stroke fixture explicitly decoupled from this
+release and deferred to the broader Unit 0.1 / Phase 1B validation
+program, three published worked examples, an independent benchmark
+(Atlanta Drive Systems, serving as the solo-validation reviewer
+substitute), source-index rows, conformance, and full project verification
+all complete. See `validation/axis-load-cases/0.1.0.md`.

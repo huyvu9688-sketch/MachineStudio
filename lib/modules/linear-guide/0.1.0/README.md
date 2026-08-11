@@ -202,8 +202,10 @@ same reason PMI's own mono-rail variant is.
 
 With this closed, the solo-validation reviewer-substitute policy is now
 invokable for this module (`validation/linear-guide/0.1.0.md` "Reviewer") —
-this module's own Stage 4 gate is clear. Release still waits on Unit 4.1's
-Definition of Done, which gates every Milestone 4 module regardless.
+this module's own Stage 4 gate is clear. Release no longer waits on Unit
+4.1's Definition of Done, which released as `axis-load-cases@0.1.0` on
+2026-08-11 (`validation/axis-load-cases/0.1.0.md`); this module's own
+Stage 6 has simply not started yet.
 
 ### The B19 gap the subsumption tests left open, now closed
 
@@ -242,9 +244,10 @@ this kernel from the start (written after the correction).
 
 The kernel was built ahead of the package, the same pattern
 `axis-load-cases`, `motion-profile`, and `ball-screw` all used at their own
-Stage 1/2. Production release stays sequentially gated behind Unit 4.1's
-Definition of Done regardless (`context/implementation-map.md` Milestone 4
-header), and this module additionally has not started Stage 4.
+Stage 1/2. Production release no longer waits on Unit 4.1's Definition of
+Done, which released as `axis-load-cases@0.1.0` on 2026-08-11
+(`validation/axis-load-cases/0.1.0.md`); this module's own Stage 6 has not
+started, and this module additionally has not started Stage 4.
 
 ## Stage 2 (2026-08-09): the integration path, and a question found then closed
 

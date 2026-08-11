@@ -132,7 +132,13 @@ Modules and surfaces:
 
 Gate:
 
-- Historical horizontal and vertical motion cases reproduce known values
+- Historical horizontal and vertical motion cases reproduce known values —
+  **met.** `axis-load-cases@0.1.0` released 2026-08-11 against ID39
+  (horizontal) and ID42 (vertical) at `0.1.0-release-candidate` status
+  (`validation/axis-load-cases/0.1.0.md`); `motion-profile` is drafted
+  through Stage 4 (`validation/motion-profile/0.1.0.md`) but not yet
+  released. Unit 4.1's own Module Definition of Done items are complete;
+  see `context/implementation-map.md` Unit 4.1 "Gate".
 - Upstream load and timing changes propagate stale state correctly
 
 ## Phase 1B — Mechanical Transmission

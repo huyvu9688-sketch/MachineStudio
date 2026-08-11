@@ -95,9 +95,9 @@ This directory intentionally has **no `index.ts`**. The module-registry
 generator (`scripts/generate-registry.mts`) only discovers
 `lib/modules/<id>/<version>/index.ts`, so naming the assembling file
 `package.ts` instead keeps this draft out of the user-facing module
-registry. Registration remains gated behind Unit 4.1's Definition of Done
-regardless of how far this package gets
-(`context/implementation-map.md` Milestone 4 header).
+registry. Unit 4.1 (`axis-load-cases@0.1.0`) released 2026-08-11
+(`validation/axis-load-cases/0.1.0.md`) and no longer gates this
+registration; this module's own Stage 6 simply has not started.
 
 ## Stage 4 evidence (2026-08-09): three reference examples, two manufacturers
 
@@ -149,5 +149,8 @@ recorded as an honest gap in `validation.ts`'s `supportedUseLimits`, not
 silently assumed correct.
 
 Stage 4 completion is a documentation milestone, not a release: production
-release remains sequentially gated behind Unit 4.1's Definition of Done
-regardless (`context/implementation-map.md` Milestone 4 header).
+release no longer waits on Unit 4.1's Definition of Done —
+`axis-load-cases@0.1.0` released 2026-08-11
+(`validation/axis-load-cases/0.1.0.md`). This module's own Stage 6
+(release) simply has not started (see "Next up" item 1,
+`context/progress-tracker.md`).

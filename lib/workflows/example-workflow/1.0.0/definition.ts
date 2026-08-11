@@ -4,8 +4,10 @@
 // lib/application workflow-instance wiring can be integration-tested end to
 // end against a real database and a real, registered workflow definition
 // without needing any of linear-axis@1's seven real modules registered —
-// registering those stays deliberately gated behind Unit 4.1's Definition of
-// Done (context/progress-tracker.md). Mirrors exactly why example-relay and
+// none of the seven is registered yet: Unit 4.1 (axis-load-cases@0.1.0)
+// released 2026-08-11 (validation/axis-load-cases/0.1.0.md), but the other
+// six modules have not reached their own Stage 6 (context/progress-
+// tracker.md). Mirrors exactly why example-relay and
 // example-scaffold themselves exist (their own manifest.ts file headers):
 // proving a generic contract works against a real database before a
 // production consumer of it is available.

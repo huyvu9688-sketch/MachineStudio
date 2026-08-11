@@ -6,8 +6,7 @@
 - Proposed module ID: `axis-load-cases`
 - Proposed first released version: `0.1.0`
 - Status: **Stage 1 complete.** The follow-on Stage 2 record is
-  `context/modules/axis-load-cases/stage-2-contract.md`; the module is still not
-  registered or released.
+  `context/modules/axis-load-cases/stage-2-contract.md`.
 - Date: 2026-07-31
 - **Update (2026-08-07):** Stage 2 is now resolved for a `normal`/`peak`-only
   `0.1.0` scope. `holding` and `emergency_stop` — including the
@@ -15,6 +14,16 @@
   deferred to a future module version pending real evidence; see
   `context/modules/axis-load-cases/stage-2-contract.md` and
   `context/progress-tracker.md` Open decisions.
+- **Update (2026-08-11): `axis-load-cases@0.1.0` is released and
+  registered** — Unit 4.1 is complete. The founder accepted ID39 and ID42
+  as `0.1.0-release-candidate` historical horizontal/vertical regression
+  evidence and explicitly decoupled the third long-stroke/high-speed
+  fixture from Unit 4.1's own release gate (it remains required/desirable
+  for the broader Unit 0.1 / Phase 1B validation program — see "Validation
+  Gate and Evidence Intake" below). See
+  `docs/superpowers/specs/2026-08-11-unit-4.1-release-design.md` for the
+  decision record and `validation/axis-load-cases/0.1.0.md` for the
+  completed validation record.
 
 This document turns the Unit 4.1 brief in `implementation-map.md` into a
 source-backed implementation contract. It deliberately does not claim that the
@@ -251,12 +260,38 @@ serve as an axial-thrust benchmark without a real evaluation.
 
 ## Validation Gate and Evidence Intake
 
-Unit 4.1 cannot move to Stage 4 or release until all of the following exist:
+**RESOLVED (2026-08-11):** Unit 4.1 released on the basis below rather than
+on the original bullet list exactly as first written. The founder accepted
+ID39 and ID42 as the required historical horizontal/vertical regression
+evidence at `0.1.0-release-candidate` status, not the release-grade
+evidence originally specified, and explicitly decoupled the third
+long-stroke/high-speed fixture from this release — no synthetic or
+fabricated evidence was substituted for either gap. See
+`docs/superpowers/specs/2026-08-11-unit-4.1-release-design.md` "Decision"
+and "Evidence Disposition" for the full reasoning, and
+`validation/axis-load-cases/0.1.0.md` for the completed validation record.
+The original intake requirements are preserved below as history, with each
+item's actual disposition noted inline.
+
+Unit 4.1 could not move to Stage 4 or release until all of the following
+existed:
 
 - the draft ID39 horizontal and ID42 vertical fixtures are promoted to
   release-grade evidence with an original document revision, confirmed final
   components/corrections, and a clear holding/brake record for the vertical
   axis;
+  **RESOLVED DIFFERENTLY (2026-08-11):** ID39 and ID42 were promoted to
+  `0.1.0-release-candidate` status instead — accepted as Unit 4.1's
+  historical regression-gate evidence while their provenance gaps stay
+  open and visible, not silently cleared. Neither packet's original
+  document revision nor a confirmed as-built installation record exists,
+  and neither contains a holding/brake case. Both fixtures' source motion
+  phases remain explicitly `unclassified` against the
+  `normal`/`peak`/`holding`/`emergency_stop` vocabulary. See
+  `validation/axis-load-cases/0.1.0.md` "Tolerances and Deviations" for the
+  itemized provenance gaps, including ID42's `75 N` vs. `45 N`
+  acceleration-force discrepancy and its Keyence/HIWIN motor-manufacturer
+  attribution conflict.
 - the third long-stroke/high-speed fixture required by Unit 0.1, so the three
   fixtures cover the complete linear-axis MVP. **Still missing (checked
   2026-08-07):** every one of the 26 previously-unreviewed images in
@@ -270,7 +305,13 @@ Unit 4.1 cannot move to Stage 4 or release until all of the following exist:
   item and the "release-grade... confirmed final
   installation/corrections... holding/brake record" item above remain open.
   A genuine third packet, if it exists, is not among the files currently in
-  `reference/source-material/`;
+  `reference/source-material/`.
+  **DECOUPLED FROM UNIT 4.1 (2026-08-11):** this item is no longer a Unit
+  4.1 release blocker. It remains required/desirable evidence for the
+  broader Unit 0.1 and Phase 1B linear-axis validation program, and will be
+  added only when a real third project exists — never fabricated or
+  replaced by a synthetic fixture. See `context/progress-tracker.md`
+  "Active work" (Unit 0.1) and "Open decisions".
 - **done (2026-08-07):** three published-reference tests with stated
   tolerances — see "Candidate Sources and Published Examples" above and
   `thk-reference-examples.test.ts`.
@@ -294,13 +335,24 @@ Unit 4.1 cannot move to Stage 4 or release until all of the following exist:
   are motor torques/inertia margins, not a raw axial force, so it would need
   more adaptation to serve the same purpose;
 - a completed `validation/axis-load-cases/0.1.0.md`, reviewer or documented
-  solo-review substitute, and corresponding `validation/source-index.md` rows;
+  solo-review substitute, and corresponding `validation/source-index.md` rows.
+  **DONE (2026-08-11):** `validation/axis-load-cases/0.1.0.md` is complete;
+  the Atlanta independent-benchmark comparison serves as the
+  solo-validation reviewer substitute (`context/ai-workflow-rules.md`
+  "Stage 4 — Validation"); the released source revisions are recorded in
+  `validation/source-index.md`.
 - vector-input authoring planned as a generic capability, or a documented,
   source-safe workflow that supplies those inputs without a custom UI
   (multi-case-result labeling, the other half of this gate item, is
   **closed** — see above); and
 - module conformance, source-immutability hash, registry registration, and full
   project verification.
+  **DONE (2026-08-11):** module conformance (`import-boundary`,
+  `source-immutability`) both pass as real checks, not skipped; the module
+  is registered as `axis-load-cases@0.1.0` in
+  `lib/modules/registry.generated.ts`; full project verification (lint,
+  typecheck, tests, build, registry generation) passed as part of the
+  release task.
 
 The currently available `Book1.xlsx` identifies only an exploratory horizontal
 case (`400 kg` moving mass, `500 mm` stroke, horizontal orientation). It does
@@ -313,11 +365,17 @@ screenshots have now been transcribed into
 `tests/fixtures/axes/axis-horizontal-basic/fixture.ts` and
 `tests/fixtures/axes/axis-vertical/fixture.ts`, with source hashes, original
 and normalized values, reported outputs, selected-part claims, and unknowns.
-They are valid draft regression inputs, not release evidence: the original PDF
-revisions, confirmed final installations/corrections, and independent vendor
-results remain unavailable. In particular, ID42 has a documented 75 N versus
-45 N acceleration-force discrepancy and a conflicting motor-manufacturer
-attribution; the fixture records both rather than silently choosing a claim.
+They were valid draft regression inputs, not release evidence, through
+2026-08-07: the original PDF revisions, confirmed final
+installations/corrections, and independent vendor results remain
+unavailable. In particular, ID42 has a documented 75 N versus 45 N
+acceleration-force discrepancy and a conflicting motor-manufacturer
+attribution; the fixture records both rather than silently choosing a
+claim. **Update (2026-08-11):** the founder accepted both fixtures, with
+these provenance gaps unresolved and explicitly recorded rather than
+cleared, as `0.1.0-release-candidate` evidence for Unit 4.1's release — see
+"Validation Gate and Evidence Intake" above and
+`validation/axis-load-cases/0.1.0.md`.
 
 ## Stage 2 Entry Criteria
 

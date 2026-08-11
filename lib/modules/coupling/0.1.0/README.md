@@ -181,8 +181,10 @@ there. Workflow role integration stays not applicable: no
 `workflowRoles` stays empty pending Unit 4.8), the same treatment
 `ball-screw` and `linear-guide` already get.
 
-What remains for this module is Stage 6 (release), sequentially gated
-behind Unit 4.1's Definition of Done regardless.
+What remains for this module is Stage 6 (release) itself — no longer
+gated behind Unit 4.1's Definition of Done, which released as
+`axis-load-cases@0.1.0` on 2026-08-11
+(`validation/axis-load-cases/0.1.0.md`).
 
 ## Stage 1 kernel, before the package existed
 
@@ -198,7 +200,8 @@ Stage 3's own workflow step explicitly includes "Add reference... tests"
 example run through this module's own integration path) is closed by
 `./rw-reference-examples.ts` — see "Stage 4" above.
 
-Production release stays sequentially gated behind Unit 4.1's Definition of
-Done regardless (`context/implementation-map.md` Milestone 4 header). This
-module's own Stage 4 is otherwise complete; only reviewer/reviewDate (Stage
-6 fields) remain.
+Production release no longer waits on Unit 4.1's Definition of Done —
+`axis-load-cases@0.1.0` released 2026-08-11
+(`validation/axis-load-cases/0.1.0.md`). This module's own Stage 4 is
+otherwise complete; only reviewer/reviewDate (Stage 6 fields) remain,
+since this module's own Stage 6 has not started.

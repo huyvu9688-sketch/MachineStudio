@@ -203,5 +203,7 @@ not-applicable until Unit 4.8 (`linear-axis@1`) exists; `manifest.ts`
 vocabulary this module unit doesn't own.
 
 Stage 4 completion is a documentation milestone, not a release: production
-release remains sequentially gated behind Unit 4.1's Definition of Done
-regardless (`context/implementation-map.md` Milestone 4 header).
+release no longer waits on Unit 4.1's Definition of Done —
+`axis-load-cases@0.1.0` released 2026-08-11
+(`validation/axis-load-cases/0.1.0.md`). This module's own Stage 6
+(release) simply has not started.

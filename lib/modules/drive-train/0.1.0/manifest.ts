@@ -12,8 +12,10 @@
 //
 // This package is intentionally NOT registered: this directory has no
 // `index.ts`, so `npm run registry:generate` cannot discover it (see
-// ./README.md). Registration remains gated behind Unit 4.1's Definition of
-// Done regardless (context/implementation-map.md Milestone 4 header).
+// ./README.md). Unit 4.1 (axis-load-cases@0.1.0) released 2026-08-11
+// (validation/axis-load-cases/0.1.0.md) and no longer gates this module's
+// registration; this module's own Stage 6 (release) simply has not
+// started.
 
 import {
   asParameterId,

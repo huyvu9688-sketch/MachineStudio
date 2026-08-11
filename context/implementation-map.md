@@ -99,6 +99,16 @@ Collect representative source cases before formulas are implemented.
   buckling-sensitive behavior
 - Every planned MVP module has at least one case that exercises it
 
+**Status: partially met, still open.** Two of three cases exist
+(`tests/fixtures/axes/axis-horizontal-basic/` — ID39, horizontal;
+`tests/fixtures/axes/axis-vertical/` — ID42, vertical), and both were
+accepted as `0.1.0-release-candidate` evidence for Unit 4.1's release
+(2026-08-11 — see that unit's own "Gate" below). The third
+long-stroke/high-speed, critical-speed-or-buckling-sensitive case does not
+yet exist; it was explicitly decoupled from Unit 4.1's release and remains
+this unit's own open exit criterion, needed when a real project exists —
+never fabricated or replaced by a synthetic fixture.
+
 ## Unit 0.2 — Initialize repository
 
 ### Dependencies
@@ -882,6 +892,26 @@ report.
 ### Gate
 
 Horizontal and vertical historical cases validate.
+
+**Met — Unit 4.1 complete, `axis-load-cases@0.1.0` released 2026-08-11.**
+ID39 (horizontal) and ID42 (vertical) historical cases validate at
+`0.1.0-release-candidate` status (provenance limitations recorded, not
+cleared — see `context/modules/axis-load-cases/stage-1-spec.md`
+"Validation Gate and Evidence Intake"). Evidence:
+
+- Validation record: `validation/axis-load-cases/0.1.0.md`
+- Historical fixtures: `tests/fixtures/axes/axis-horizontal-basic/`
+  (ID39), `tests/fixtures/axes/axis-vertical/` (ID42)
+- Module tests: `lib/modules/axis-load-cases/0.1.0/package.test.ts`,
+  `axis-load-cases.test.ts`, `thk-reference-examples.test.ts`,
+  `atlanta-benchmark.test.ts`
+- Registry entry: `axis-load-cases@0.1.0` in
+  `lib/modules/registry.generated.ts`
+
+The third long-stroke/high-speed historical case (Unit 0.1's own broader
+exit criterion below) is not part of this gate — it was explicitly
+decoupled from Unit 4.1's release and remains open for the Unit 0.1 /
+Phase 1B validation program.
 
 ## Unit 4.2 — Motion profile module
 

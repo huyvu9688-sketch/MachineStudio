@@ -22,7 +22,7 @@ optional module IDs" — not a category match):
 | `linear-axis.motion`   | `motion-profile`  | 1                                                                                                                                                                                                                                                         |
 | `linear-axis.screw`    | `ball-screw`      | 1                                                                                                                                                                                                                                                         |
 | `linear-axis.guide`    | `linear-guide`    | 1 (the module's own scope already covers a full two-rail/four-block arrangement in one run)                                                                                                                                                               |
-| `linear-axis.coupling` | `coupling`        | 0-1 — deliberately optional: the founder confirmed (2026-08-10) direct-drive axes (no separate coupling component) are a real configuration.                                                                        |
+| `linear-axis.coupling` | `coupling`        | 0-1 — deliberately optional: the founder confirmed (2026-08-10) direct-drive axes (no separate coupling component) are a real configuration.                                                                                                              |
 | `linear-axis.bearing`  | `support-bearing` | 1-2 — `support-bearing 0.1.0` models one bearing (fixed or supported) per run, so a fixed+supported arrangement needs two instances of this role. The fixed/supported distinction lives in each instance's own `bearing.location` input, not in the role. |
 | `linear-axis.drive`    | `drive-train`     | 1                                                                                                                                                                                                                                                         |
 
@@ -103,8 +103,11 @@ checks/completion/status, and compare candidates. There is no release gate
 for workflows yet — this is the _first_ one, so none has been defined — and
 no `lib/application` wiring, Prisma changes, or UI exist yet; those are
 explicitly out of scope for this pass (see the ADR's "Consequences").
-Registering the seven modules themselves stays gated behind Unit 4.1's
-Definition of Done regardless (`context/implementation-map.md` Milestone 4
-header) — this workflow definition does not change that gate, since none
-of the seven modules are registered through `lib/modules`'s own registry
-(`package.ts`, not `index.ts`, on every one of them).
+Unit 4.1 (`axis-load-cases@0.1.0`) released 2026-08-11
+(`validation/axis-load-cases/0.1.0.md`) and is now registered through
+`lib/modules`'s own registry (`index.ts`, not `package.ts`) — this
+workflow's `linear-axis.axis` role can resolve a real module. The other
+six roles' modules (`motion-profile`, `ball-screw`, `linear-guide`,
+`coupling`, `support-bearing`, `drive-train`) remain unregistered
+(`package.ts`, not `index.ts`, on every one) pending their own Stage 6;
+this workflow definition does not change that.
