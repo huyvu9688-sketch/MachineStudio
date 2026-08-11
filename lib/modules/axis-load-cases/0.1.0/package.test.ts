@@ -16,6 +16,7 @@ import { axisHorizontalBasicFixture } from "@/tests/fixtures/axes/axis-horizonta
 import { axisVerticalFixture } from "@/tests/fixtures/axes/axis-vertical/fixture";
 import type { AxisHistoricalFixture } from "@/tests/fixtures/axes/fixture-types";
 import { linearAxisDefinition } from "@/lib/workflows/linear-axis/1.0.0/definition";
+import { readModuleSources } from "../../test-support";
 import { axisLoadCasesModule } from "./index";
 import {
   asQuantity,
@@ -46,19 +47,39 @@ function baselineInput(): RawInput {
   };
 }
 
+// Pinned by `npm run module:source-hash -- axis-load-cases 0.1.0` — see
+// lib/engine/module-sdk/conformance.ts's "source-immutability" check. Update
+// this value in the same commit as a deliberate change to this directory's
+// .ts files; an unreviewed change leaves it stale and the check below fails.
+const EXPECTED_SOURCE_HASH = "3e501318cf36af8a";
+
 describe("axis-load-cases 0.1.0 module conformance", () => {
   const report = runModuleConformance(axisLoadCasesModule, {
     sampleInputs: [baselineInput()],
+    sources: readModuleSources(import.meta.dirname),
+    expectedSourceHash: EXPECTED_SOURCE_HASH,
   });
 
   for (const check of report.checks) {
     it(`${check.id} (${check.status})`, () => {
-      expect(check.status, check.detail).not.toBe("fail");
+      expect(check.status, check.detail).toBe("pass");
     });
   }
 
   it("passes overall conformance", () => {
     expect(report.ok, JSON.stringify(report.checks, null, 2)).toBe(true);
+  });
+
+  it("runs the import-boundary check and it passes (not skipped)", () => {
+    const check = report.checks.find((c) => c.id === "import-boundary");
+    expect(check).toBeDefined();
+    expect(check?.status, check?.detail).toBe("pass");
+  });
+
+  it("runs the source-immutability check and it passes (not skipped)", () => {
+    const check = report.checks.find((c) => c.id === "source-immutability");
+    expect(check).toBeDefined();
+    expect(check?.status, check?.detail).toBe("pass");
   });
 });
 
@@ -288,7 +309,10 @@ describe("axis-load-cases 0.1.0 usage and environment context (Task 3)", () => {
     contextual.values.ambient_temperature = makeQuantity(313.15, "K");
 
     const baselineComputation = executeModule(axisLoadCasesModule, baseline);
-    const contextualComputation = executeModule(axisLoadCasesModule, contextual);
+    const contextualComputation = executeModule(
+      axisLoadCasesModule,
+      contextual,
+    );
 
     const step = findTraceStep(contextualComputation.trace, "usage-context");
     expect(step.inputs).toEqual([

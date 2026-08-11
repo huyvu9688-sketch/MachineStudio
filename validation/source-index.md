@@ -64,10 +64,15 @@ new source edition is adopted), update its rows here in the same change.
 record (`validation/ball-screw/0.1.0.md`, 2026-08-09); `motion-profile` 0.1.0
 is the second (`validation/motion-profile/0.1.0.md`, 2026-08-09); `linear-
 guide` 0.1.0 is the third (`validation/linear-guide/0.1.0.md`, 2026-08-09);
-`coupling` 0.1.0 is the fourth (`validation/coupling/0.1.0.md`, 2026-08-10) —
-note this is Stage 4 completion, not production release, which stays
-sequentially gated behind Unit 4.1 (`axis-load-cases`, not yet released)
-regardless (`context/progress-tracker.md` "Active work").
+`coupling` 0.1.0 is the fourth (`validation/coupling/0.1.0.md`, 2026-08-10).
+`axis-load-cases` 0.1.0 (`validation/axis-load-cases/0.1.0.md`, 2026-08-11)
+is the fifth Stage 4 completion and the project's first module to also clear
+Stage 6 (Release): it is sealed, registered in
+`lib/modules/registry.generated.ts`, and resolves through
+`getModulePackage("axis-load-cases", "0.1.0")`. `ball-screw`, `motion-
+profile`, `linear-guide`, and `coupling` remain Stage-4-complete but not yet
+registered — their own release steps have not run (`context/progress-
+tracker.md` "Active work").
 
 | Source Revision ID | Title | Classification | Edition | Used by module(s) | Validation record | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -84,3 +89,7 @@ regardless (`context/progress-tracker.md` "Active work").
 | `us.rw_america.coupling_sizing_selection@web-2026-08-09` | Sizing and Selection (Safety Couplings) | `manufacturer_method` | "Sizing and Selection"/"Safety Couplings" chapter, pp. 9-17 | `coupling@0.1.0` | `validation/coupling/0.1.0.md` | Corroborating required-torque and steady-torque check shape; both of its own worked examples (`ST2/10`, `ST4/10`) reproduced through this module's real compute path (`rw-reference-examples.ts`). |
 | `us.ktr.coupling_selection_din740_part2@web-2026-08-10` | Coupling Selection According to DIN 740 Part II | `manufacturer_method` | 4-page PDF (catalog printed pages 10-13) accessed 2026-08-10 | `coupling@0.1.0` | `validation/coupling/0.1.0.md` | The module's independent benchmark: `lib/modules/coupling/0.1.0/ktr-din740-benchmark.ts` implements this document's own more detailed shock-torque method (`T_Kmax >= T_S*S_Z*S_t + T_N*S_t`, `T_S = T_AS*M_A*S_A`) as a genuine second computation, reproducing its own worked example (p. 13, 160 kW/1485 rpm motor, screw compressor, ROTEX Size 90 coupling) end to end. Disagrees with `us.ktr.coupling_selection_operating_factors`'s own general shock-torque formula shape — a real, recorded disagreement between two documents from the same manufacturer, not resolved. |
 | `jp.nbk.coupling_catalog@orim-vexta-1908ov78` | Flexible Couplings (ORIM VEXTA / NBK) | `manufacturer_method` | "ORIM VEXTA" co-branded catalog, doc. 1908ov78, pp. 1-15 | `coupling@0.1.0` | `validation/coupling/0.1.0.md` | Catalog data only (rated/max torque, allowable speed, moment of inertia, torsional stiffness, misalignment limits); no selection methodology, not exercised by a check. |
+| `us.nist.sp811@2008-2nd-printing` | NIST Special Publication 811 -- Guide for the Use of the International System of Units (SI) | `engineering_handbook` | 2008 Edition, second printing (November 2008) | `axis-load-cases@0.1.0` | `validation/axis-load-cases/0.1.0.md` | Fixed publication (supersedes the access-dated `us.nist.sp811@web-2026-07-31` intake record for this module); Appendix B.8, `g_n = 9.80665 m/s^2`. |
+| `jp.thk.ball_screw_general_catalog@515-1e` | THK Ball Screw General Catalog | `manufacturer_method` | 515-1E | `axis-load-cases@0.1.0` | `validation/axis-load-cases/0.1.0.md` | Coulomb friction and guide-resistance axial-load method, pp. A15-46 onward. |
+| `jp.thk.example_ball_screw_selection@515-1e` | THK Example Ball Screw Selection | `manufacturer_method` | 515-1E | `axis-load-cases@0.1.0` | `validation/axis-load-cases/0.1.0.md` | Three reference examples: pp. B15-72 and B15-86 from "Example Ball Screw Selection"; p. B2-22 from the distinct "Example of Calculating the Nominal Life" chapter of the same 515-1E catalog edition, cited under this revision ID because no separate `SourceDocument` is registered for that chapter (see the validation record's "Sources and Methods Used" note). |
+| `us.atlanta_drive_systems.rack_pinion_calculations@sha256-2bc6e48c2dce79dd` | Rack and Pinion Drive Calculations and Selection | `manufacturer_method` | Local reference PDF, content-addressed revision (SHA-256 `2bc6e48c2dce79dd0c252eae97cfcaa8f35fbc73c65ef5e73ace9638c42321b6`) | `axis-load-cases@0.1.0` | `validation/axis-load-cases/0.1.0.md` | Licensed, metadata-only, local content-addressed evidence: the independent rack-and-pinion benchmark (pp. C-54/C-55). Redistribution status unresolved; not redistributed, quoted, or linked from any customer-facing trace or report — only the `SourceRevisionId` is cited. |
