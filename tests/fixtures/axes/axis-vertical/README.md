@@ -19,13 +19,18 @@ upward actuator-force magnitudes; their final load-case names remain
 unclassified until the module contract fixes signed direction and phase-to-case
 mapping.
 
-This is draft historical evidence rather than a release-grade vendor-sizing
-result. The original document revision, confirmed installed components, later
-corrections, brake/holding conditions, and an independent vendor run are not
-available. The fixture also retains two documented inconsistencies: the p. 1
-diagram's 75 N acceleration force conflicts with p. 4's explicit 45 N
-calculation, and the source's Keyence motor attribution conflicts with the
-progress tracker's HIWIN attribution.
+This fixture is accepted as `release_candidate` evidence for the Unit 4.1
+vertical-axis historical regression gate
+(`docs/superpowers/specs/2026-08-11-unit-4.1-release-design.md`, "Evidence
+Disposition"). Acceptance is not release-grade vendor-sizing validation: the
+original document revision and a confirmed as-built installation record are
+still unavailable, and that gap remains unresolved and recorded here rather
+than hidden. Confirmed installed components, later corrections, brake/holding
+conditions, and an independent vendor run are also not available. The fixture
+also retains two documented inconsistencies: the p. 1 diagram's 75 N
+acceleration force conflicts with p. 4's explicit 45 N calculation, and the
+source's Keyence motor attribution conflicts with the progress tracker's
+HIWIN attribution.
 
 ## Additional source pages reviewed (2026-08-07)
 

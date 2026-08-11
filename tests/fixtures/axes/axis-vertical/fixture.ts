@@ -12,9 +12,9 @@ const newtonMetres = (value: number): FixtureQuantity => ({
  */
 export const axisVerticalFixture = {
   id: "axis-vertical",
-  revision: "0.1.0-draft",
+  revision: "0.1.0-release-candidate",
   classification: "sanitized_historical_project",
-  evidenceStatus: "draft",
+  evidenceStatus: "release_candidate",
   sanitization: {
     sourceCaseId: "ID42",
     removedIdentifiers: [

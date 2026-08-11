@@ -17,9 +17,14 @@ the source hashes. The reported axial values are unsigned magnitudes, so a
 future module must not silently map them to `normal`, `peak`, `holding`, or
 `emergency_stop` until that contract is released.
 
-This is draft historical evidence, not a release-grade vendor-sizing result:
-the original document revision, confirmed installed parts, later corrections,
-and a complete signed load-case convention are unavailable.
+This fixture is accepted as `release_candidate` evidence for the Unit 4.1
+horizontal-axis historical regression gate
+(`docs/superpowers/specs/2026-08-11-unit-4.1-release-design.md`, "Evidence
+Disposition"). Acceptance is not release-grade vendor-sizing validation: the
+original document revision and a confirmed as-built installation record are
+still unavailable, and that gap remains unresolved and recorded here rather
+than hidden. Confirmed installed parts, later corrections, and a complete
+signed load-case convention are also unavailable.
 
 ## Additional source pages reviewed (2026-08-07)
 

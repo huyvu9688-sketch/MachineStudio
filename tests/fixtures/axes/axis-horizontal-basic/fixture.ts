@@ -9,9 +9,9 @@ const newtons = (value: number): FixtureQuantity => ({ value, unit: "N" });
  */
 export const axisHorizontalBasicFixture = {
   id: "axis-horizontal-basic",
-  revision: "0.1.0-draft",
+  revision: "0.1.0-release-candidate",
   classification: "sanitized_historical_project",
-  evidenceStatus: "draft",
+  evidenceStatus: "release_candidate",
   sanitization: {
     sourceCaseId: "ID39",
     removedIdentifiers: [
