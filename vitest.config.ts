@@ -36,6 +36,7 @@ export default defineConfig({
       "**/node_modules/**",
       "**/.next/**",
       "**/.claude/**",
+      "**/.worktrees/**",
       "**/e2e/**",
     ],
     coverage: {
