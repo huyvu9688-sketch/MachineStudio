@@ -77,3 +77,4 @@ and Sources"). When circumstances change:
 | [ADR-0006](0006-immutable-manufacturer-part-revisions.md) | Immutable manufacturer part revisions | Accepted |
 | [ADR-0007](0007-workflow-definition-contract.md) | Workflow definition contract (`WorkflowDefinition` SDK boundary) | Accepted |
 | [ADR-0008](0008-bom-generated-not-stored.md) | BOM is a generated view, not a stored `BomItem` table | Accepted |
+| [ADR-0009](0009-deployment-target-vercel-neon.md) | Deployment target is Vercel with managed PostgreSQL (Neon) | Accepted |

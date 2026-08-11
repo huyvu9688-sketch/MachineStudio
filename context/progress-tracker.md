@@ -9,7 +9,7 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-11 (Unit 5.3 built -- machine calculation package)
+Last updated: 2026-08-11 (Unit 5.5 started -- deployment decision ADR-0009)
 
 ---
 
@@ -49,7 +49,8 @@ pre-existing files repo-wide on this machine (CRLF line endings from a
 Windows checkout vs. Prettier's default `endOfLine: "lf"` — see Environment
 notes), not the small fixed set an earlier session's own note named; every
 file touched by this or a prior session is formatted and not among them.
-Production dependencies audit clean. Parameter registry at `1.8.0`
+`npm audit` clean (0 vulnerabilities across the full tree, prod and dev --
+see Unit 5.5 below for the 2026-08-11 fix). Parameter registry at `1.8.0`
 (unchanged -- Unit 5.3 needed no new parameters or registry version).
 
 ---
@@ -937,7 +938,44 @@ scope exception as Units 5.1-5.3; Unit 4.1's own release gate (still blocked
 on evidence, see below) is unchanged by any of it -- no Milestone 4 module
 can actually appear in a real machine package until it registers, the same
 dependency Unit 5.1's own BOM and Unit 5.2's own module/assembly reports
-already have on a registered module.
+already have on a registered module. Unit 5.4 itself needs real reproduced
+scenarios through registered modules, so it is blocked behind Unit 4.1 the
+same way, not just optional -- Unit 5.5 is the only Milestone 5 work
+actually startable right now (started below).
+
+Unit 5.5 -- `Production readiness` (Milestone 5, Phase 1D). **Started
+2026-08-11**, per founder direction after confirming Unit 5.4 and the
+`axis-load-cases` evidence gate are both blocked on evidence this session
+cannot manufacture, leaving Unit 5.5 as the only remaining buildable
+Milestone 5 work.
+
+**Deployment decision ADR (the unit's first deliverable) done 2026-08-11.**
+`context/adr/0009-deployment-target-vercel-neon.md` settles the
+long-standing open decision: deploy to Vercel, use Neon as the managed
+PostgreSQL provider for every non-local environment. Local dev and CI are
+unchanged (`docker-compose.yml` + `@prisma/adapter-pg` stays the default);
+`lib/db/client.ts`'s existing host-based adapter switch (added 2026-07-31
+for an unrelated corporate-network reason -- see Environment notes) already
+routes a `*.neon.tech` `DATABASE_URL` to `@prisma/adapter-neon`
+automatically, so acting on this decision needs new environment
+configuration at actual provisioning time, not new code. Removed from
+"Open decisions" below.
+
+**Dependency audit done 2026-08-11.** `npm audit` (full tree, not just
+`--omit=dev`) found 3 real high-severity transitive advisories: `nanoid
+<3.3.17` (unbounded loop when a custom generator size is 0, pulled in via
+`@tailwindcss/postcss` -> `postcss`), `js-yaml 4.0.0-4.3.0`, and
+`brace-expansion` (two separate DoS advisories) -- none reachable from this
+app's own runtime code (build-tooling transitive deps only), but real
+advisories regardless. `npm audit fix` resolved all three with lockfile-
+only patch/minor bumps (`package.json` itself untouched, no `--force`, no
+major-version jump); `npm audit` now reports 0 vulnerabilities. Verified
+clean after: lint, typecheck, build, and the full non-DB test suite
+(1297/1297 passing, matching the pre-existing baseline) all still pass.
+Remaining Unit 5.5 deliverables, not yet started: managed database backups,
+error monitoring, structured application logs, security review, data
+export and account deletion path, basic performance benchmark, recovery
+procedure.
 
 ---
 
@@ -1102,14 +1140,25 @@ variable names.
     `linear-axis@1`'s own seven gated modules; UI layer via component
     tests). This unit is done. Nothing left to do here; does not move Unit
     4.1's critical path either way.
-12. Unit 5.1 (BOM model and generator): **built 2026-08-11** — see Active
-    work for the full account. No stored `BomItem` table (ADR-0008);
-    `loadBomView`, `buildBomCsv`, the `/workspace/bom` Route Handler,
-    `BomWorkspace`, and the navigator's `?panel=bom` deep link all exist and
-    are tested. This unit is done. What's next in Milestone 5: Unit 5.2
-    (HTML print reports), Unit 5.3 (machine calculation package), Units 5.4
-    and 5.5 — all optional parallel work under the same founder-authorized
-    scope exception, none of it moving Unit 4.1's own critical path.
+12. Units 5.1-5.3 (BOM model and generator; module/assembly report
+    renderer; machine calculation package): **all built 2026-08-11** — see
+    Active work for the full account. No stored `BomItem` table (ADR-0008);
+    `loadBomView`/`buildBomCsv`/`/workspace/bom`; `loadModuleReportView`/
+    `loadAssemblyReportView`/`/workspace/report`; `loadMachineReportView`
+    and its `?configuration=` report mode all exist and are tested. All
+    three units are done. Unit 5.4 (end-to-end MVP validation) is blocked
+    behind Unit 4.1 the same way every registered-module dependency is —
+    see above. Unit 5.5 (production readiness) is in progress (see below).
+13. Unit 5.5 (production readiness): **started 2026-08-11** — the
+    Deployment decision ADR (`context/adr/0009-deployment-target-vercel-
+    neon.md`: Vercel + Neon managed Postgres) and the dependency audit
+    (`npm audit fix`, 3 transitive high-severity advisories resolved, 0
+    remaining) are both done. Remaining deliverables, not yet started:
+    managed database backups, error monitoring, structured application
+    logs, security review, data export and account deletion path, basic
+    performance benchmark, recovery procedure. Optional parallel work;
+    does not move Unit 4.1's critical path, but is the only Milestone 5
+    work currently startable without new evidence.
 
 ---
 
@@ -1120,7 +1169,6 @@ have been removed; `context/archive/history.md` has the reasoning behind
 past calls.
 
 - Final product name. MachineStudio is a working name.
-- Deployment target: Vercel plus managed PostgreSQL, or a single VPS.
 - Initial manufacturer data sources for screws, guides, couplings, motors,
   and drives.
 - Which three historical axis projects can be sanitized for validation.
