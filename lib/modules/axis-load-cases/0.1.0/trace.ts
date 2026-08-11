@@ -63,6 +63,11 @@ export interface TraceInput {
   readonly normalLoadN: number;
   readonly centerOfMassOffset: VectorQuantity | undefined;
   readonly gravitationalForce: Quantity;
+  // Trace-only usage/environment context (./manifest.ts "duty_cycle",
+  // "ambient_temperature"): rendered in the `usage-context` step below when
+  // supplied, but never fed into a load-case force/moment calculation.
+  readonly dutyCycle: Quantity | undefined;
+  readonly ambientTemperature: Quantity | undefined;
   readonly cases: Readonly<Record<"normal" | "peak", TraceCaseInput>>;
 }
 
@@ -371,6 +376,41 @@ export function buildTrace(input: TraceInput): CalculationTrace {
       id: "validity-and-assumptions",
       title: "Validity and assumptions",
       children: [
+        {
+          node: "step",
+          id: "usage-context",
+          title: "Usage and environment context",
+          methodId: "axis_load_cases.context_given",
+          inputs: [
+            ...(input.dutyCycle
+              ? [
+                  {
+                    label: "Duty cycle",
+                    value: input.dutyCycle,
+                    ref: "motion.axis.duty_cycle",
+                  },
+                ]
+              : []),
+            ...(input.ambientTemperature
+              ? [
+                  {
+                    label: "Ambient temperature",
+                    value: input.ambientTemperature,
+                    ref: "env.ambient_temperature",
+                  },
+                ]
+              : []),
+          ],
+          outputs: [],
+          notes: [
+            input.dutyCycle
+              ? "Duty cycle is recorded as usage context only; it does not alter a per-case force."
+              : "No duty-cycle context supplied; no per-case force default is inferred.",
+            input.ambientTemperature
+              ? "Ambient temperature is recorded as usage context only; no universal derating is applied."
+              : "No ambient-temperature context supplied; no universal derating is inferred.",
+          ],
+        },
         {
           node: "step",
           id: "validity-notes",

@@ -65,6 +65,14 @@ export function compute(input: ModuleInput): ModuleComputation {
   const centerOfMassOffset = vectorAt(values, "center_of_mass_offset");
   const centerOfMass = axisComponents(centerOfMassOffset);
 
+  // Trace-only usage/environment context (./manifest.ts "duty_cycle",
+  // "ambient_temperature"): read for the trace's `usage-context` step only.
+  // Never use either value in a load-case force/moment equation below — that
+  // would violate the Stage 2 contract's trace-only invariant for these two
+  // ports.
+  const dutyCycle = quantityAt(values, "duty_cycle");
+  const ambientTemperature = quantityAt(values, "ambient_temperature");
+
   // The Coulomb-friction normal load is the gravity component perpendicular
   // to the axis of travel (context/modules/axis-load-cases/stage-1-spec.md
   // candidate method; matches the historical-fixture regression tests in
@@ -186,6 +194,8 @@ export function compute(input: ModuleInput): ModuleComputation {
       normalLoadN,
       centerOfMassOffset,
       gravitationalForce: gravitationalForceOut,
+      dutyCycle,
+      ambientTemperature,
       cases,
     }),
     checks: buildChecks({

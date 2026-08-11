@@ -3,7 +3,10 @@ import {
   executeModule,
   makeQuantity,
   runModuleConformance,
+  traceStepIds,
+  walkTrace,
   type EngineeringValue,
+  type TraceStep,
 } from "@/lib/engine";
 import { axisHorizontalBasicFixture } from "@/tests/fixtures/axes/axis-horizontal-basic/fixture";
 import { axisVerticalFixture } from "@/tests/fixtures/axes/axis-vertical/fixture";
@@ -223,6 +226,102 @@ describe("axis-load-cases 0.1.0 outputs", () => {
     expect(
       asQuantity(computation.outputs.normal_thrust_force).value,
     ).toBeCloseTo(30 * 9.80665, 6);
+  });
+});
+
+/** Finds a step by ID anywhere in a trace, or throws (test-only helper). */
+function findTraceStep(
+  trace: ReturnType<typeof executeModule>["trace"],
+  stepId: string,
+): TraceStep {
+  let found: TraceStep | undefined;
+  walkTrace(trace, {
+    step: (step) => {
+      if (step.id === stepId) found = step;
+    },
+  });
+  if (found === undefined) {
+    throw new Error(`Trace is missing step "${stepId}".`);
+  }
+  return found;
+}
+
+describe("axis-load-cases 0.1.0 usage and environment context (Task 3)", () => {
+  it("declares optional trace-only duty_cycle and ambient_temperature ports", () => {
+    const dutyCyclePort = axisLoadCasesModule.ports.inputs.find(
+      (port) => port.key === "duty_cycle",
+    );
+    const ambientTemperaturePort = axisLoadCasesModule.ports.inputs.find(
+      (port) => port.key === "ambient_temperature",
+    );
+    expect(dutyCyclePort).toMatchObject({
+      key: "duty_cycle",
+      parameterId: "motion.axis.duty_cycle",
+      required: false,
+    });
+    expect(ambientTemperaturePort).toMatchObject({
+      key: "ambient_temperature",
+      parameterId: "env.ambient_temperature",
+      required: false,
+    });
+  });
+
+  it("records explicit no-context notes when neither optional value is supplied", () => {
+    const computation = executeModule(axisLoadCasesModule, baselineInput());
+    expect(traceStepIds(computation.trace)).toContain("usage-context");
+    const step = findTraceStep(computation.trace, "usage-context");
+    expect(step.inputs).toEqual([]);
+    expect(step.notes).toEqual([
+      "No duty-cycle context supplied; no per-case force default is inferred.",
+      "No ambient-temperature context supplied; no universal derating is inferred.",
+    ]);
+  });
+
+  it("records both context inputs when supplied, and leaves every normal/peak force and moment output unchanged", () => {
+    const baseline = baselineInput();
+    const contextual = baselineInput();
+    contextual.values.duty_cycle = makeQuantity(0.6, "ratio");
+    contextual.values.ambient_temperature = makeQuantity(313.15, "K");
+
+    const baselineComputation = executeModule(axisLoadCasesModule, baseline);
+    const contextualComputation = executeModule(axisLoadCasesModule, contextual);
+
+    const step = findTraceStep(contextualComputation.trace, "usage-context");
+    expect(step.inputs).toEqual([
+      {
+        label: "Duty cycle",
+        value: makeQuantity(0.6, "ratio"),
+        ref: "motion.axis.duty_cycle",
+      },
+      {
+        label: "Ambient temperature",
+        value: makeQuantity(313.15, "K"),
+        ref: "env.ambient_temperature",
+      },
+    ]);
+    expect(step.notes).toEqual([
+      "Duty cycle is recorded as usage context only; it does not alter a per-case force.",
+      "Ambient temperature is recorded as usage context only; no universal derating is applied.",
+    ]);
+
+    // The whole point of this task: these context-only inputs must never
+    // change a computed force or moment (context/modules/axis-load-cases/
+    // stage-2-contract.md). Every normal/peak force and moment output port
+    // (./manifest.ts `ports.outputs`) must be byte-for-byte identical
+    // between the baseline and contextual runs.
+    const forceAndMomentKeys = [
+      "normal_thrust_force",
+      "peak_thrust_force",
+      "normal_resultant_force",
+      "peak_resultant_force",
+      "normal_resultant_moment",
+      "peak_resultant_moment",
+    ] as const;
+    for (const key of forceAndMomentKeys) {
+      expect(contextualComputation.outputs[key]).toEqual(
+        baselineComputation.outputs[key],
+      );
+    }
   });
 });
 

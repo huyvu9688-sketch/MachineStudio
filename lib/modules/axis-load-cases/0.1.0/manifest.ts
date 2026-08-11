@@ -142,6 +142,19 @@ export const ports: ModulePorts = {
       // an absent value (lib/engine/module-sdk/execute.ts resolveModuleInput).
       required: false,
     },
+    // Trace-only usage/environment context (Unit 4.1 Stage 2 contract):
+    // recorded in the trace's `usage-context` step (./trace.ts) when
+    // supplied, but never consumed by a load-case equation in ./compute.ts.
+    {
+      key: "duty_cycle",
+      parameterId: asParameterId("motion.axis.duty_cycle"),
+      required: false,
+    },
+    {
+      key: "ambient_temperature",
+      parameterId: asParameterId("env.ambient_temperature"),
+      required: false,
+    },
     ...MOVING_CASES.flatMap(perCasePorts),
   ],
   outputs: [

@@ -25,7 +25,12 @@ export const uiSchema: ModuleUiSchema = {
     {
       id: "environment",
       title: "Friction and environment",
-      fields: [{ portKey: "friction_coefficient" }, { portKey: "gravity" }],
+      fields: [
+        { portKey: "friction_coefficient" },
+        { portKey: "gravity" },
+        { portKey: "duty_cycle" },
+        { portKey: "ambient_temperature" },
+      ],
     },
     {
       id: "normal-case",
