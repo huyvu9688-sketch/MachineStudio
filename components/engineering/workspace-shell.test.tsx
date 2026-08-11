@@ -6,12 +6,14 @@ import { WorkspaceShell } from "./workspace-shell";
 import { summarizeModuleStatuses } from "./module-status-summary";
 import type { MarketProfileOption } from "./create-project-dialog";
 import type { ModulePackageOption } from "./add-module-instance-dialog";
+import type { WorkflowDefinitionOption } from "./start-workflow-instance-dialog";
 import type { MachineProjectRecord, ProjectTree } from "@/lib/db";
 import type {
   BaselineWorkspaceView,
   ModuleResultView,
   ModuleWorkspaceView,
   RequirementsView,
+  WorkflowInstanceView,
 } from "@/lib/application";
 
 vi.mock("next/navigation", () => ({
@@ -38,6 +40,7 @@ vi.mock("@/app/(workspace)/workspace/actions", () => ({
   createDesignAssumptionAction: vi.fn(),
   createLoadCaseAction: vi.fn(),
   createBaselineAction: vi.fn(),
+  startWorkflowInstanceAction: vi.fn(),
 }));
 
 const MARKET_PROFILES: MarketProfileOption[] = [
@@ -48,6 +51,13 @@ const MODULE_PACKAGES: ModulePackageOption[] = [
     modulePackageId: "example-scaffold",
     moduleVersion: "0.1.0",
     category: "example",
+  },
+];
+const WORKFLOW_DEFINITIONS: WorkflowDefinitionOption[] = [
+  {
+    workflowId: "linear-axis",
+    workflowVersion: "1.0.0",
+    title: "Linear Axis",
   },
 ];
 
@@ -107,6 +117,7 @@ describe("WorkspaceShell", () => {
         status="empty"
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
+        workflowDefinitions={WORKFLOW_DEFINITIONS}
       />,
     );
 
@@ -126,9 +137,12 @@ describe("WorkspaceShell", () => {
         selectedProject={projectTree}
         selectedConfigurationId="c1"
         selectedModuleInstanceId={null}
+        selectedWorkflowInstanceId={null}
         moduleWorkspace={null}
         moduleResult={null}
         componentAssignment={null}
+        bom={null}
+        workflowInstance={null}
         requirements={null}
         baselines={null}
         summary={summarizeModuleStatuses(
@@ -136,6 +150,7 @@ describe("WorkspaceShell", () => {
         )}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
+        workflowDefinitions={WORKFLOW_DEFINITIONS}
       />,
     );
 
@@ -220,9 +235,12 @@ describe("WorkspaceShell", () => {
         selectedProject={projectTree}
         selectedConfigurationId="c1"
         selectedModuleInstanceId="m1"
+        selectedWorkflowInstanceId={null}
         moduleWorkspace={moduleWorkspace}
         moduleResult={moduleResult}
         componentAssignment={null}
+        bom={null}
+        workflowInstance={null}
         requirements={null}
         baselines={null}
         summary={summarizeModuleStatuses(
@@ -230,6 +248,7 @@ describe("WorkspaceShell", () => {
         )}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
+        workflowDefinitions={WORKFLOW_DEFINITIONS}
       />,
     );
 
@@ -261,9 +280,12 @@ describe("WorkspaceShell", () => {
         selectedProject={projectTree}
         selectedConfigurationId="c1"
         selectedModuleInstanceId={null}
+        selectedWorkflowInstanceId={null}
         moduleWorkspace={null}
         moduleResult={null}
         componentAssignment={null}
+        bom={null}
+        workflowInstance={null}
         requirements={requirements}
         baselines={null}
         summary={summarizeModuleStatuses(
@@ -271,6 +293,7 @@ describe("WorkspaceShell", () => {
         )}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
+        workflowDefinitions={WORKFLOW_DEFINITIONS}
       />,
     );
 
@@ -301,9 +324,12 @@ describe("WorkspaceShell", () => {
         selectedProject={projectTree}
         selectedConfigurationId="c1"
         selectedModuleInstanceId={null}
+        selectedWorkflowInstanceId={null}
         moduleWorkspace={null}
         moduleResult={null}
         componentAssignment={null}
+        bom={null}
+        workflowInstance={null}
         requirements={null}
         baselines={baselines}
         summary={summarizeModuleStatuses(
@@ -311,11 +337,73 @@ describe("WorkspaceShell", () => {
         )}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
+        workflowDefinitions={WORKFLOW_DEFINITIONS}
       />,
     );
 
     expect(
       screen.getByRole("heading", { name: "Baselines & comparison" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Select an item in the navigator"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the workflow instance workspace in the canvas when ?workflow= resolves", () => {
+    const workflowInstance: WorkflowInstanceView = {
+      workflowInstance: {
+        id: "wf1" as WorkflowInstanceView["workflowInstance"]["id"],
+        configurationId:
+          "c1" as WorkflowInstanceView["workflowInstance"]["configurationId"],
+        workflowId: "linear-axis",
+        workflowVersion: "1.0.0",
+        status: "draft",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      definition: {
+        id: "linear-axis",
+        version: "1.0.0",
+        title: "Linear Axis",
+        description: "Guides a linear-axis machine build.",
+      },
+      roles: [],
+      roleInstances: [],
+      instanceLabels: {},
+      linkProposals: [],
+      confirmedLinkKeys: [],
+      completion: { satisfied: false, results: [] },
+      status: "draft",
+      checks: [],
+      excludedModuleInstances: [],
+    };
+
+    render(
+      <WorkspaceShell
+        status="loaded"
+        projects={projects}
+        selectedProject={projectTree}
+        selectedConfigurationId="c1"
+        selectedModuleInstanceId={null}
+        selectedWorkflowInstanceId="wf1"
+        moduleWorkspace={null}
+        moduleResult={null}
+        componentAssignment={null}
+        bom={null}
+        workflowInstance={workflowInstance}
+        requirements={null}
+        baselines={null}
+        summary={summarizeModuleStatuses(
+          projectTree.configurations[0].assemblies,
+        )}
+        marketProfiles={MARKET_PROFILES}
+        modulePackages={MODULE_PACKAGES}
+        workflowDefinitions={WORKFLOW_DEFINITIONS}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Linear Axis" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("Select an item in the navigator"),
@@ -331,9 +419,12 @@ describe("WorkspaceShell", () => {
         selectedProject={projectTree}
         selectedConfigurationId="c1"
         selectedModuleInstanceId={null}
+        selectedWorkflowInstanceId={null}
         moduleWorkspace={null}
         moduleResult={null}
         componentAssignment={null}
+        bom={null}
+        workflowInstance={null}
         requirements={null}
         baselines={null}
         summary={summarizeModuleStatuses(
@@ -341,6 +432,7 @@ describe("WorkspaceShell", () => {
         )}
         marketProfiles={MARKET_PROFILES}
         modulePackages={MODULE_PACKAGES}
+        workflowDefinitions={WORKFLOW_DEFINITIONS}
       />,
     );
 

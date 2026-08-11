@@ -19,32 +19,37 @@
 //     (`listRunsForModuleInstance`/`loadCalculationRun`, Unit 2.3).
 //   - lib/modules — loads the pinned package for its output ports (labels
 //     only; never calls `compute`).
-//   - lib/engine — the released parameter registry (output labels),
-//     `engineeringValuesEqual` (previous-run comparison), and `walkTrace`
-//     (collecting every cited source across trace steps).
-//   - lib/standards — resolves each cited `ClauseReference` to a
-//     document/edition for display. A reference that fails to resolve
-//     (e.g. an old immutable run citing a source ID this build no longer
-//     registers) is skipped rather than failing the whole view — the same
-//     "degrade, don't crash on stored data" posture
-//     `previewRemoveParameterLinkImpact` already established.
+//   - lib/engine — the released parameter registry (output labels) and
+//     `engineeringValuesEqual` (previous-run comparison).
+//   - `./run-view-helpers` — port-value description and source-reference
+//     resolution, shared verbatim with `loadModuleReportView` (Unit 5.2):
+//     both describe the identical stored `ModuleComputation` shape. A
+//     reference that fails to resolve (e.g. an old immutable run citing a
+//     source ID this build no longer registers) is skipped rather than
+//     failing the whole view — the same "degrade, don't crash on stored
+//     data" posture `previewRemoveParameterLinkImpact` already established.
 
 import "server-only";
 import {
   engineeringValuesEqual,
   getParameter,
-  walkTrace,
   type CalculationTrace,
   type CheckResult,
   type CheckStatus,
   type EngineeringValue,
   type LoadCaseCategory,
-  type ModuleComputation,
   type ValidityResult,
   type Warning,
 } from "@/lib/engine";
 import { getModulePackage } from "@/lib/modules";
-import { SOURCE_REGISTRY, type ClauseReference } from "@/lib/standards";
+import {
+  collectClauseReferences,
+  describePortValues,
+  resolveSourceReferences,
+  type PortShape,
+  type PortValueView,
+  type SourceReferenceView,
+} from "./run-view-helpers";
 import {
   loadCalculationRun,
   loadModuleInstanceForOwner,
@@ -58,23 +63,9 @@ import {
 } from "@/lib/db";
 
 /** One output value, described for display — no engine imports needed downstream. */
-export interface RunOutputView {
-  readonly portKey: string;
-  readonly parameterId: string;
-  readonly label: string;
-  readonly value: EngineeringValue;
-  /** The port's declared load case, when it is load-case specific (Stage 1 spec: "per-port loadCase declarations"). */
-  readonly loadCase: LoadCaseCategory | null;
-}
+export type RunOutputView = PortValueView;
 
-/** A resolved source citation, ready to render without a registry lookup. */
-export interface SourceReferenceView {
-  readonly documentTitle: string;
-  readonly edition: string;
-  readonly clause: string | null;
-  readonly page: number | null;
-  readonly label: string | null;
-}
+export type { SourceReferenceView };
 
 /** One output that differs between the previous run and the latest run. */
 export interface ChangedOutputView {
@@ -134,82 +125,8 @@ export interface ModuleResultView {
   readonly comparison: RunComparisonView | null;
 }
 
-/** A stable key for deduplicating {@link ClauseReference}s across a run's checks/warnings/validity/trace/assumptions. */
-function clauseReferenceKey(ref: ClauseReference): string {
-  return `${ref.sourceRevisionId}|${ref.clause ?? ""}|${ref.page ?? ""}`;
-}
-
-/** Collects every unique `ClauseReference` cited anywhere in a computation. */
-function collectClauseReferences(
-  computation: ModuleComputation,
-): ClauseReference[] {
-  const byKey = new Map<string, ClauseReference>();
-  const add = (refs: readonly ClauseReference[] | undefined): void => {
-    for (const ref of refs ?? []) {
-      byKey.set(clauseReferenceKey(ref), ref);
-    }
-  };
-  for (const check of computation.checks) add(check.sources);
-  for (const warning of computation.warnings) add(warning.sources);
-  for (const validity of computation.validity) add(validity.sources);
-  for (const assumption of computation.assumptions) add(assumption.sources);
-  walkTrace(computation.trace, { step: (step) => add(step.sources) });
-  return [...byKey.values()];
-}
-
-/** Resolves each unique cited source; a reference this build no longer registers is skipped, not thrown. */
-function resolveSourceReferences(
-  refs: readonly ClauseReference[],
-): SourceReferenceView[] {
-  const views: SourceReferenceView[] = [];
-  for (const ref of refs) {
-    try {
-      const resolved = SOURCE_REGISTRY.resolveReference(ref);
-      views.push({
-        documentTitle: resolved.document.title,
-        edition: resolved.revision.edition,
-        clause: resolved.clause ?? null,
-        page: resolved.page ?? null,
-        label: resolved.label ?? null,
-      });
-    } catch {
-      // A stored run's citation no longer resolves in this build's source
-      // registry (e.g. a revision was renamed). The run itself is immutable
-      // and still authoritative; the result pane degrades by omitting the
-      // unresolvable citation rather than failing the whole view.
-    }
-  }
-  return views;
-}
-
-/** An output port's fields this view needs — matches `ModuleOutputPort` without importing its module-sdk source directly. */
-interface OutputPortShape {
-  readonly key: string;
-  readonly parameterId: string;
-  readonly loadCase?: LoadCaseCategory;
-}
-
-function describeOutputs(
-  outputs: Readonly<Record<string, EngineeringValue>>,
-  ports: readonly OutputPortShape[],
-): RunOutputView[] {
-  const views: RunOutputView[] = [];
-  for (const port of ports) {
-    const value = outputs[port.key];
-    if (value === undefined) continue;
-    views.push({
-      portKey: port.key,
-      parameterId: port.parameterId,
-      label: getParameter(port.parameterId)?.displayName ?? port.key,
-      value,
-      loadCase: port.loadCase ?? null,
-    });
-  }
-  return views;
-}
-
 function compareRuns(
-  ports: readonly OutputPortShape[],
+  ports: readonly PortShape[],
   before: CalculationRunRecord,
   after: CalculationRunRecord,
 ): RunComparisonView {
@@ -338,7 +255,7 @@ export async function loadModuleResultView(
       staleReason: latest.staleReason,
       createdAt: latest.createdAt,
     },
-    outputs: describeOutputs(
+    outputs: describePortValues(
       latest.snapshot.computation.outputs,
       pkg.ports.outputs,
     ),

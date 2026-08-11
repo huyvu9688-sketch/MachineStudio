@@ -27,6 +27,7 @@ import {
   renameMachineAssembly,
   renameMachineProject,
   setParameterValue,
+  startWorkflowInstance,
 } from "@/lib/application";
 import {
   asAssemblyId,
@@ -38,6 +39,7 @@ import {
   asParameterLinkId,
   asRequirementId,
   asUserId,
+  asWorkflowInstanceId,
   type ParameterNodeKind,
 } from "@/lib/db";
 import {
@@ -305,7 +307,15 @@ export async function runModuleInstanceAction(
   return { status: "success" };
 }
 
-/** Adds a module instance to an assembly, from the registered module list. */
+/**
+ * Adds a module instance to an assembly, from the registered module list.
+ * `workflowInstanceId` is optional and blank-means-omit, the same
+ * "blank hidden/select field means omit" convention `createAssemblyAction`'s
+ * `parentId` already uses — when present, this is how a module instance
+ * actually comes to fill a guided workflow's role (Unit 4.9's
+ * `addModuleInstance` extension), reusing this one form/action rather than a
+ * workflow-specific add path.
+ */
 export async function addModuleInstanceAction(
   _prevState: ActionState,
   formData: FormData,
@@ -325,6 +335,8 @@ export async function addModuleInstanceAction(
   const moduleVersion =
     separatorIndex === -1 ? "" : modulePackageKey.slice(separatorIndex + 1);
 
+  const workflowInstanceIdRaw = fieldValue(formData, "workflowInstanceId");
+
   const result = await addModuleInstance(
     {
       assemblyId: asAssemblyId(fieldValue(formData, "assemblyId")),
@@ -334,6 +346,9 @@ export async function addModuleInstanceAction(
       modulePackageId,
       moduleVersion,
       label: fieldValue(formData, "label"),
+      ...(workflowInstanceIdRaw.length > 0
+        ? { workflowInstanceId: asWorkflowInstanceId(workflowInstanceIdRaw) }
+        : {}),
     },
     asUserId(userId),
   );
@@ -342,6 +357,47 @@ export async function addModuleInstanceAction(
   }
   revalidatePath("/workspace");
   return { status: "success" };
+}
+
+/**
+ * Starts a guided workflow instance for the active configuration, from the
+ * registered workflow-definition list (`listWorkflowDefinitions`), and
+ * redirects into its own deep link — the same "redirect to the thing just
+ * created" pattern `createProjectAction` already uses. `workflowKey` reuses
+ * `addModuleInstanceAction`'s own "one combined id@version <select> value"
+ * convention (workflow ids are kebab-case and never contain "@"; versions
+ * are semver).
+ */
+export async function startWorkflowInstanceAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth.protect();
+
+  const workflowKey = fieldValue(formData, "workflowKey");
+  const separatorIndex = workflowKey.indexOf("@");
+  const workflowId =
+    separatorIndex === -1 ? workflowKey : workflowKey.slice(0, separatorIndex);
+  const workflowVersion =
+    separatorIndex === -1 ? "" : workflowKey.slice(separatorIndex + 1);
+
+  const projectId = fieldValue(formData, "projectId");
+  const configurationId = fieldValue(formData, "configurationId");
+
+  const result = await startWorkflowInstance(
+    {
+      configurationId: asMachineConfigurationId(configurationId),
+      workflowId,
+      workflowVersion,
+    },
+    asUserId(userId),
+  );
+  if (!result.ok) {
+    return { status: "error", message: result.error.message };
+  }
+  redirect(
+    `/workspace?project=${encodeURIComponent(projectId)}&configuration=${encodeURIComponent(configurationId)}&workflow=${encodeURIComponent(result.workflowInstance.id)}`,
+  );
 }
 
 const SOURCE_KINDS: readonly ParameterNodeKind[] = [

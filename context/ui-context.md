@@ -151,9 +151,9 @@ reload) rather than client-only state. Navigator collapse is instant, not
 animated — animating the navigator's width would animate a layout
 property, which this file's Motion section already forbids. Assembly rows
 are the tree's only interactive rows (real expand/collapse); module-
-instance rows and the BOM/Reports section are informational only — nothing
-they would open exists yet (Milestone 5), so they are not styled as if they
-were clickable. **Update (Unit 3.7):** the Requirements row is no longer a
+instance rows and the BOM/Reports section were informational only at this
+point — nothing they would open existed yet (Milestone 5), so they were not
+styled as if they were clickable. **Update (Unit 3.7):** the Requirements row is no longer a
 placeholder — it is a real deep link to `?...&panel=requirements`, opening
 `RequirementsWorkspace` (see the new subsection below), matching the
 project/configuration/module deep-link pattern. The status bar's "stale
@@ -169,6 +169,23 @@ aggregate. "Unit display profile" is likewise a fixed label ("SI
 (canonical)") — there is no persisted, user-configurable display-unit
 profile yet, only the per-module display units `lib/engine/units` already
 supports.
+
+**Update (Unit 5.2):** every assembly row now carries a fourth always-visible
+icon action — a report link (`IconLinkButton`, the `<a>` counterpart to the
+Dialog-triggering `IconButton`), opening `/workspace/report?assembly=<id>`
+in a new tab. Module-instance rows themselves stay navigation-only (their
+own `?module=` deep link already opens `ModuleResultPanel`, which itself now
+carries the per-module "Report" link in its header) — no icon action was
+added to `ModuleRow`.
+
+**Update (Unit 5.3):** the navigator's bottom-of-tree static "Reports" row
+is no longer a placeholder — it is `MachineReportRow`, opening
+`/workspace/report?configuration=<id>` (the whole-machine calculation
+package) in a new tab, the same `<a>`-not-`?panel=` pattern the assembly
+report link already established (a report is a printable document, not a
+workspace panel). It renders only when a configuration is selected (a
+`StaticRow` placeholder otherwise, matching Requirements/Baselines/BOM's own
+convention one row up).
 
 **Implemented (Unit 3.2, project/assembly management):** create/rename
 project, create/rename assembly, and add-module-instance are now real,
@@ -487,13 +504,40 @@ run or check satisfies which requirement is real engineering judgment no
 released contract records — the same shape of gap Unit 3.6 hit with
 `CatalogAdapter.requiredSpec()`'s missing comparison operator. A fixed
 info notice states this plainly rather than implying a requirement is
-"verified" when no calculation has actually checked it. A real
-requirement-to-run link is Milestone 5's "Requirements verification
-matrix" (Unit 5.3) to build, not invented here as a UI-only mapping.
+"verified" when no calculation has actually checked it. **Update (Unit 5.3):** the machine calculation package's own requirements
+verification matrix reuses this exact same authoring-completeness status
+rather than a real requirement-to-run link — `VerificationLink` is still
+unbuilt. Building it needs a genuine product decision (which run or check
+satisfies which requirement) and a Prisma schema change neither this panel
+nor Unit 5.3's own report-rendering unit could make without violating
+ai-workflow-rules.md's Split Rule; still open, see
+`context/progress-tracker.md` "Open decisions".
 
 ## Reports and Baselines
 
 - Reports render the same calculation trace shown in the workspace
+- **Implemented (Unit 5.2):** a module's printable report
+  (`/workspace/report?module=<id>`) and an assembly's own rollup report
+  (`/workspace/report?assembly=<id>`, nesting every module in it and its
+  nested child assemblies) open as plain HTML in a new tab — the browser's
+  own Print function produces the physical copy, per architecture.md
+  "Reports \| HTML + print CSS". Both render entirely from
+  `loadModuleReportView`/`loadAssemblyReportView`'s already-assembled data
+  (inputs, active load case, assumptions, outputs, checks/margins, warnings,
+  validity limits, the calculation trace, source references, assigned
+  parts, stale state) — no module compute code runs to produce a report,
+  matching this section's own first bullet.
+- **Implemented (Unit 5.3):** the whole-machine calculation package
+  (`/workspace/report?configuration=<id>`) — cover/project details, the
+  selected market profile and every source cited across the package,
+  the requirements verification matrix (authoring completeness only, see
+  "Requirements, Assumptions, and Load-Case UI" above), an assembly/module
+  summary table, detailed calculations (nesting the same per-module
+  fragment the module/assembly reports use), the BOM, open
+  warnings/assumptions, and the latest baseline's ID and module-package
+  hashes. One document, one `loadMachineReportView` read model, composing
+  every read model Units 5.1-5.2 already built rather than re-deriving any
+  of them.
 - Baseline creation displays current stale, failed/invalid calculation runs
   and stale component assignments; the user explicitly acknowledges them
   before proceeding

@@ -11,6 +11,8 @@ import { ModuleResultPanel } from "./module-result-panel";
 import { ComponentAssignmentPanel } from "./component-assignment-panel";
 import { BaselineWorkspace } from "./baseline-workspace";
 import { RequirementsWorkspace } from "./requirements-workspace";
+import { WorkflowInstanceWorkspace } from "./workflow-instance-workspace";
+import { BomWorkspace } from "./bom-workspace";
 import { StatusBar } from "./status-bar";
 import { EmptyState } from "./empty-state";
 import {
@@ -18,20 +20,24 @@ import {
   type MarketProfileOption,
 } from "./create-project-dialog";
 import type { ModulePackageOption } from "./add-module-instance-dialog";
+import type { WorkflowDefinitionOption } from "./start-workflow-instance-dialog";
 import type { ModuleStatusSummary } from "./module-status-summary";
 import type { MachineProjectRecord, ProjectTree } from "@/lib/db";
 import type {
+  BomView,
   ComponentAssignmentPanelView,
   BaselineWorkspaceView,
   ModuleResultView,
   ModuleWorkspaceView,
   RequirementsView,
+  WorkflowInstanceView,
 } from "@/lib/application";
 import { cn } from "@/lib/utils";
 
 export type WorkspaceShellProps = {
   readonly marketProfiles: readonly MarketProfileOption[];
   readonly modulePackages: readonly ModulePackageOption[];
+  readonly workflowDefinitions: readonly WorkflowDefinitionOption[];
 } & (
   | { readonly status: "empty" }
   | {
@@ -40,11 +46,14 @@ export type WorkspaceShellProps = {
       readonly selectedProject: ProjectTree;
       readonly selectedConfigurationId: string | null;
       readonly selectedModuleInstanceId: string | null;
+      readonly selectedWorkflowInstanceId: string | null;
       readonly moduleWorkspace: ModuleWorkspaceView | null;
       readonly moduleResult: ModuleResultView | null;
       readonly componentAssignment: ComponentAssignmentPanelView | null;
       readonly requirements: RequirementsView | null;
       readonly baselines: BaselineWorkspaceView | null;
+      readonly bom: BomView | null;
+      readonly workflowInstance: WorkflowInstanceView | null;
       readonly summary: ModuleStatusSummary;
     }
 );
@@ -112,12 +121,19 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
               </div>
             ) : (
               <MachineNavigator
+                projectId={props.selectedProject.id}
                 projectName={props.selectedProject.name}
                 configuration={selectedConfiguration}
                 modulePackages={props.modulePackages}
+                workflowDefinitions={props.workflowDefinitions}
                 selectedModuleInstanceId={
                   props.status === "loaded"
                     ? props.selectedModuleInstanceId
+                    : null
+                }
+                selectedWorkflowInstanceId={
+                  props.status === "loaded"
+                    ? props.selectedWorkflowInstanceId
                     : null
                 }
                 selectedPanel={
@@ -125,7 +141,9 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
                     ? "requirements"
                     : props.status === "loaded" && props.baselines !== null
                       ? "baselines"
-                      : null
+                      : props.status === "loaded" && props.bom !== null
+                        ? "bom"
+                        : null
                 }
               />
             )}
@@ -136,8 +154,10 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
           className={cn(
             "flex min-w-0 flex-1 overflow-y-auto",
             (props.status === "loaded" && props.moduleWorkspace !== null) ||
+              (props.status === "loaded" && props.workflowInstance !== null) ||
               (props.status === "loaded" && props.requirements !== null) ||
-              (props.status === "loaded" && props.baselines !== null)
+              (props.status === "loaded" && props.baselines !== null) ||
+              (props.status === "loaded" && props.bom !== null)
               ? "items-start justify-start"
               : "items-center justify-center",
           )}
@@ -152,6 +172,11 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
                 <ComponentAssignmentPanel view={props.componentAssignment} />
               ) : null}
             </div>
+          ) : props.status === "loaded" && props.workflowInstance !== null ? (
+            <WorkflowInstanceWorkspace
+              view={props.workflowInstance}
+              projectId={props.selectedProject.id}
+            />
           ) : props.status === "loaded" && props.requirements !== null ? (
             <RequirementsWorkspace
               view={props.requirements}
@@ -159,6 +184,8 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
             />
           ) : props.status === "loaded" && props.baselines !== null ? (
             <BaselineWorkspace view={props.baselines} />
+          ) : props.status === "loaded" && props.bom !== null ? (
+            <BomWorkspace view={props.bom} />
           ) : (
             <WorkspaceCanvas
               hasProjects={props.status === "loaded"}

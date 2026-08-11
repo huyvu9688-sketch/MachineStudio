@@ -146,6 +146,14 @@ describe("ModuleResultPanel", () => {
     expect(screen.queryByText(/F_in = 12 N/)).not.toBeInTheDocument();
   });
 
+  it("links the Report action at ?module=<id>, opened in a new tab", () => {
+    render(<ModuleResultPanel view={view()} />);
+    const link = screen.getByRole("link", { name: /report/i });
+    expect(link).toHaveAttribute("href", "/workspace/report?module=m1");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
   it("expands a trace step to reveal its inputs and outputs", async () => {
     const user = userEvent.setup();
     render(<ModuleResultPanel view={view()} />);

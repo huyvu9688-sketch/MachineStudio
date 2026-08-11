@@ -122,7 +122,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       if (!result.ok) return;
       const { view } = result;
       expect(view.definition.id).toBe("linear-axis");
+      expect(view.roles.length).toBeGreaterThan(0);
+      expect(view.roles.map((r) => r.id)).toContain("linear-axis.screw");
       expect(view.roleInstances).toEqual([]);
+      expect(view.instanceLabels).toEqual({});
       expect(view.linkProposals).toEqual([]);
       expect(view.completion.satisfied).toBe(false);
       expect(view.status).toBe("draft");
@@ -317,7 +320,15 @@ describe.skipIf(!liveDatabaseAvailable)(
       if (!result.ok) return;
       const { view } = result;
       expect(view.excludedModuleInstances).toEqual([]);
+      expect(view.roles.map((r) => r.id)).toEqual([
+        "example-workflow.source",
+        "example-workflow.relay",
+      ]);
       expect(view.roleInstances).toHaveLength(2);
+      expect(view.instanceLabels).toEqual({
+        [source.moduleInstance.id]: "Source",
+        [relay.moduleInstance.id]: "Relay",
+      });
       expect(view.linkProposals).toHaveLength(1);
       expect(view.confirmedLinkKeys).toHaveLength(1);
       expect(view.completion.satisfied).toBe(true);

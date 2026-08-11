@@ -365,11 +365,16 @@ also normalized into columns.
 - `CatalogImportBatch`
 - `ManufacturerPartRevision`
 - `ComponentAssignment`
-- `BomItem`
 
 `ComponentAssignment` is intentionally lightweight. It records the
 assigned manufacturer/manual part, target module or assembly, quantity,
 and justifying calculation run. It is not an approval workflow.
+
+`BomItem` is not a stored table. It is a computed shape — one flattened
+BOM line — generated at read time from a configuration's assembly tree and
+its `ComponentAssignment` rows (ADR-0008). A BOM is always as current as
+the assignments it is generated from; there is no separate BOM record to
+keep in sync or mark stale.
 
 ### Audit
 
@@ -389,7 +394,8 @@ Stores:
 - Searchable run summaries
 - Standards/source metadata
 - Manufacturer part revisions and import batches
-- Component assignments and BOM items
+- Component assignments (a BOM is generated from these, not stored itself —
+  ADR-0008)
 - Baselines and audit events
 
 Module-specific value payloads and part attributes use versioned JSONB

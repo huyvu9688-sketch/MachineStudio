@@ -61,6 +61,57 @@ describe("AddModuleInstanceDialog", () => {
     expect(screen.getByRole("button", { name: "Add module" })).toBeDisabled();
   });
 
+  it("does not render the workflow picker when the configuration has no workflow instances", async () => {
+    const user = userEvent.setup();
+    render(
+      <AddModuleInstanceDialog
+        assemblyId="a1"
+        configurationId="c1"
+        modulePackages={MODULE_PACKAGES}
+        trigger={<button type="button">{TRIGGER_LABEL}</button>}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+
+    expect(
+      screen.queryByLabelText("Attach to workflow (optional)"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers an optional workflow-attach picker and submits the selected workflowInstanceId (Unit 4.9)", async () => {
+    vi.mocked(addModuleInstanceAction).mockResolvedValue({ status: "success" });
+    const user = userEvent.setup();
+    render(
+      <AddModuleInstanceDialog
+        assemblyId="a1"
+        configurationId="c1"
+        modulePackages={MODULE_PACKAGES}
+        workflowInstances={[
+          { id: "wf1", workflowId: "linear-axis", workflowVersion: "1.0.0" },
+        ]}
+        trigger={<button type="button">{TRIGGER_LABEL}</button>}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+    await user.selectOptions(
+      screen.getByLabelText("Module package"),
+      "example-scaffold@0.1.0",
+    );
+    await user.type(screen.getByLabelText("Instance label"), "Thrust check");
+    await user.selectOptions(
+      screen.getByLabelText("Attach to workflow (optional)"),
+      "wf1",
+    );
+    await user.click(screen.getByRole("button", { name: "Add module" }));
+
+    expect(addModuleInstanceAction).toHaveBeenCalled();
+    const formData = vi.mocked(addModuleInstanceAction).mock
+      .calls[0]?.[1] as FormData;
+    expect(formData.get("workflowInstanceId")).toBe("wf1");
+  });
+
   it("shows the action's error message inline on failure", async () => {
     vi.mocked(addModuleInstanceAction).mockResolvedValue({
       status: "error",

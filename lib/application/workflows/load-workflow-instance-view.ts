@@ -62,6 +62,7 @@ import {
   type ReachableWorkflowStatus,
   type WorkflowInstanceContext,
   type WorkflowLinkProposal,
+  type WorkflowModuleRole,
   type WorkflowRoleInstance,
 } from "@/lib/workflows/workflow-sdk";
 import { getModulePackage } from "@/lib/modules";
@@ -107,7 +108,20 @@ export interface WorkflowInstanceView {
     readonly title: string;
     readonly description: string;
   };
+  /**
+   * The resolved definition's full role catalog — including roles with no
+   * present instance — so a UI can render "which roles still need a module"
+   * rather than only the roles `roleInstances` happens to fill.
+   */
+  readonly roles: readonly WorkflowModuleRole[];
   readonly roleInstances: readonly WorkflowInstanceContext[];
+  /**
+   * Each present role instance's `ModuleInstance.label`, keyed by
+   * `instanceId` — `WorkflowInstanceContext` itself carries no label (it is
+   * a pure workflow-sdk shape, `lib/workflows/workflow-sdk/types.ts`), and a
+   * UI rendering role instances needs a human-readable name, not just an id.
+   */
+  readonly instanceLabels: Readonly<Record<string, string>>;
   readonly linkProposals: readonly WorkflowLinkProposal[];
   readonly confirmedLinkKeys: readonly string[];
   readonly completion: CompletionResult;
@@ -213,6 +227,10 @@ export async function loadWorkflowInstanceView(
   }
 
   const roleInstances = mapped.map((m) => m.roleInstance);
+  const instanceLabels: Record<string, string> = {};
+  for (const { moduleInstance } of mapped) {
+    instanceLabels[moduleInstance.id] = moduleInstance.label;
+  }
 
   const contexts: WorkflowInstanceContext[] = [];
   for (const { moduleInstance, roleInstance } of mapped) {
@@ -297,7 +315,9 @@ export async function loadWorkflowInstanceView(
         title: definition.manifest.title,
         description: definition.manifest.description,
       },
+      roles: definition.roles,
       roleInstances: contexts,
+      instanceLabels,
       linkProposals: proposals,
       confirmedLinkKeys: [...confirmedLinkKeys],
       completion,

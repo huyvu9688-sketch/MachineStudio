@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, type ReactNode } from "react";
-import { AlertTriangle, ChevronRight, Play } from "lucide-react";
+import { AlertTriangle, ChevronRight, Play, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -446,7 +446,16 @@ export function ModuleResultPanel({ view }: ModuleResultPanelProps) {
             {view.run.createdAt.toLocaleString()}
           </span>
         ) : null}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <a
+            href={`/workspace/report?module=${encodeURIComponent(view.moduleInstance.id)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border-default px-2.5 py-1.5 text-[13px] font-medium text-text-primary hover:bg-surface-hover"
+          >
+            <Printer aria-hidden="true" className="h-3.5 w-3.5" />
+            Report
+          </a>
           <RunButton moduleInstanceId={view.moduleInstance.id} />
         </div>
       </header>

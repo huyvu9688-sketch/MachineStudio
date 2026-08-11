@@ -1,10 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
 import {
+  loadBomView,
   loadComponentAssignmentView,
   loadBaselineWorkspaceView,
   loadModuleResultView,
   loadModuleWorkspaceView,
   loadRequirementsView,
+  loadWorkflowInstanceView,
   loadWorkspaceView,
 } from "@/lib/application";
 import {
@@ -12,19 +14,23 @@ import {
   asMachineProjectId,
   asModuleInstanceId,
   asUserId,
+  asWorkflowInstanceId,
 } from "@/lib/db";
 import { listModulePackages } from "@/lib/modules";
+import { listWorkflowDefinitions } from "@/lib/workflows";
 import { marketProfileKey, SOURCE_REGISTRY } from "@/lib/standards";
 import { WorkspaceShell } from "@/components/engineering/workspace-shell";
 import { summarizeModuleStatuses } from "@/components/engineering/module-status-summary";
 import type { MarketProfileOption } from "@/components/engineering/create-project-dialog";
 import type { ModulePackageOption } from "@/components/engineering/add-module-instance-dialog";
+import type { WorkflowDefinitionOption } from "@/components/engineering/start-workflow-instance-dialog";
 
 interface WorkspacePageProps {
   readonly searchParams: Promise<{
     readonly project?: string;
     readonly configuration?: string;
     readonly module?: string;
+    readonly workflow?: string;
     readonly panel?: string;
     readonly before?: string;
     readonly after?: string;
@@ -43,6 +49,14 @@ function modulePackageOptions(): readonly ModulePackageOption[] {
     modulePackageId: pkg.manifest.id,
     moduleVersion: pkg.manifest.version,
     category: pkg.manifest.category,
+  }));
+}
+
+function workflowDefinitionOptions(): readonly WorkflowDefinitionOption[] {
+  return listWorkflowDefinitions().map((definition) => ({
+    workflowId: definition.manifest.id,
+    workflowVersion: definition.manifest.version,
+    title: definition.manifest.title,
   }));
 }
 
@@ -68,6 +82,7 @@ export default async function WorkspacePage({
 
   const marketProfiles = marketProfileOptions();
   const modulePackages = modulePackageOptions();
+  const workflowDefinitions = workflowDefinitionOptions();
 
   if (view.selectedProject === null) {
     return (
@@ -75,6 +90,7 @@ export default async function WorkspacePage({
         status="empty"
         marketProfiles={marketProfiles}
         modulePackages={modulePackages}
+        workflowDefinitions={workflowDefinitions}
       />
     );
   }
@@ -104,10 +120,24 @@ export default async function WorkspacePage({
         asUserId(userId),
       )
     : null;
-  // A module deep link owns the main canvas. Ignore a conflicting static
-  // panel parameter so the navigator cannot highlight Baselines/Requirements
-  // while the shell renders a module workspace.
-  const selectedPanel = params.module ? undefined : params.panel;
+  const workflowInstanceResult = params.workflow
+    ? await loadWorkflowInstanceView(
+        asWorkflowInstanceId(params.workflow),
+        asUserId(userId),
+      )
+    : null;
+  // `unauthorized` (not found, or owned by someone else) and
+  // `workflow_not_found` (its definition was since unregistered) both fall
+  // back to "nothing selected" here, the same treatment every other nullable
+  // deep-link view in this file already gets — no distinct error UI exists
+  // for a deep link a user could only reach by guessing or a stale bookmark.
+  const workflowInstance =
+    workflowInstanceResult?.ok === true ? workflowInstanceResult.view : null;
+  // A module deep link owns the main canvas over a workflow deep link, which
+  // itself owns the canvas over a static panel — `WorkspaceShell` applies the
+  // same precedence when choosing what to render.
+  const selectedPanel =
+    params.module || workflowInstance !== null ? undefined : params.panel;
   const requirements =
     selectedPanel === "requirements" && selectedConfiguration !== null
       ? await loadRequirementsView(
@@ -124,6 +154,13 @@ export default async function WorkspacePage({
           params.after,
         )
       : null;
+  const bom =
+    selectedPanel === "bom" && selectedConfiguration !== null
+      ? await loadBomView(
+          asMachineConfigurationId(selectedConfiguration.id),
+          asUserId(userId),
+        )
+      : null;
 
   return (
     <WorkspaceShell
@@ -132,14 +169,18 @@ export default async function WorkspacePage({
       selectedProject={view.selectedProject}
       selectedConfigurationId={selectedConfiguration?.id ?? null}
       selectedModuleInstanceId={moduleWorkspace?.moduleInstance.id ?? null}
+      selectedWorkflowInstanceId={workflowInstance?.workflowInstance.id ?? null}
       moduleWorkspace={moduleWorkspace}
       moduleResult={moduleResult}
       componentAssignment={componentAssignment}
       requirements={requirements}
       baselines={baselines}
+      bom={bom}
+      workflowInstance={workflowInstance}
       summary={summarizeModuleStatuses(selectedConfiguration?.assemblies ?? [])}
       marketProfiles={marketProfiles}
       modulePackages={modulePackages}
+      workflowDefinitions={workflowDefinitions}
     />
   );
 }

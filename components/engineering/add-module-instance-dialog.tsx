@@ -22,21 +22,35 @@ export interface ModulePackageOption {
   readonly category: string;
 }
 
+/** A configuration's existing workflow instance, for the optional "attach to workflow" picker. */
+export interface WorkflowInstanceOption {
+  readonly id: string;
+  readonly workflowId: string;
+  readonly workflowVersion: string;
+}
+
 export interface AddModuleInstanceDialogProps {
   readonly assemblyId: string;
   readonly configurationId: string;
   readonly modulePackages: readonly ModulePackageOption[];
+  /** The configuration's own workflow instances, when any exist (Unit 4.9). */
+  readonly workflowInstances?: readonly WorkflowInstanceOption[];
   readonly trigger: ReactNode;
 }
 
 /**
  * Adds a module instance to an assembly, picked from the real registered
- * module list (`lib/modules`) — never a free-typed id. Unit 3.2.
+ * module list (`lib/modules`) — never a free-typed id. Unit 3.2. When the
+ * configuration has any workflow instances, an optional "Attach to workflow"
+ * picker is offered too (Unit 4.9) — how a module instance actually comes to
+ * fill a guided workflow's role, reusing `addModuleInstance`'s own existing
+ * `workflowInstanceId` input rather than a second, workflow-specific add path.
  */
 export function AddModuleInstanceDialog({
   assemblyId,
   configurationId,
   modulePackages,
+  workflowInstances = [],
   trigger,
 }: AddModuleInstanceDialogProps) {
   const [open, setOpen] = useState(false);
@@ -46,6 +60,7 @@ export function AddModuleInstanceDialog({
   );
   const packageId = useId();
   const labelId = useId();
+  const workflowInstanceId = useId();
 
   // "Adjusting state during render," not an effect — see rename-dialog.tsx.
   const [seenStatus, setSeenStatus] = useState(state.status);
@@ -100,6 +115,26 @@ export function AddModuleInstanceDialog({
               <Label htmlFor={labelId}>Instance label</Label>
               <Input id={labelId} name="label" required maxLength={200} />
             </div>
+            {workflowInstances.length > 0 ? (
+              <div className="grid gap-1.5">
+                <Label htmlFor={workflowInstanceId}>
+                  Attach to workflow (optional)
+                </Label>
+                <select
+                  id={workflowInstanceId}
+                  name="workflowInstanceId"
+                  defaultValue=""
+                  className="h-9 rounded-md border border-border-default bg-bg-surface px-3 text-[14px] text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary"
+                >
+                  <option value="">None</option>
+                  {workflowInstances.map((workflow) => (
+                    <option key={workflow.id} value={workflow.id}>
+                      {workflow.workflowId}@{workflow.workflowVersion}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             {state.status === "error" ? (
               <p
                 role="alert"

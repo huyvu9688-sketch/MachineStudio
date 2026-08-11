@@ -32,9 +32,16 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockAuthProtect, mockSetParameterValue } = vi.hoisted(() => ({
+const {
+  mockAuthProtect,
+  mockSetParameterValue,
+  mockStartWorkflowInstance,
+  mockRedirect,
+} = vi.hoisted(() => ({
   mockAuthProtect: vi.fn(),
   mockSetParameterValue: vi.fn(),
+  mockStartWorkflowInstance: vi.fn(),
+  mockRedirect: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({
@@ -43,6 +50,15 @@ vi.mock("@clerk/nextjs/server", () => ({
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
+}));
+
+// redirect() throws internally in real Next.js to short-circuit rendering;
+// this mock instead just records its call so
+// startWorkflowInstanceAction's own success path can be asserted directly
+// (no existing test in this codebase exercises the throw-based real
+// behavior — see createProjectAction, which has no dedicated test either).
+vi.mock("next/navigation", () => ({
+  redirect: mockRedirect,
 }));
 
 // Every "as*" helper is identity at runtime (lib/db/repositories/types.ts:
@@ -59,17 +75,23 @@ vi.mock("@/lib/db", () => ({
   asParameterLinkId: (id: string) => id,
   asRequirementId: (id: string) => id,
   asUserId: (id: string) => id,
+  asWorkflowInstanceId: (id: string) => id,
 }));
 
-// setModuleInputValueAction is the only action under test here, and
-// setParameterValue is the only "@/lib/application" export it calls; every
-// other named export actions.ts imports from that module backs a different
-// action not exercised by this file.
+// setModuleInputValueAction and startWorkflowInstanceAction are the only
+// actions under test in this file; setParameterValue and
+// startWorkflowInstance are the only "@/lib/application" exports they call —
+// every other named export actions.ts imports from that module backs a
+// different action not exercised by this file.
 vi.mock("@/lib/application", () => ({
   setParameterValue: mockSetParameterValue,
+  startWorkflowInstance: mockStartWorkflowInstance,
 }));
 
-import { setModuleInputValueAction } from "./actions";
+import {
+  setModuleInputValueAction,
+  startWorkflowInstanceAction,
+} from "./actions";
 import { IDLE_ACTION_STATE } from "./action-state";
 import { SERIALIZATION_FORMAT_VERSION } from "@/lib/engine";
 
@@ -163,5 +185,81 @@ describe("setModuleInputValueAction: vector_quantity branch", () => {
       frame: "axis",
       displayUnit: "m",
     });
+  });
+});
+
+// startWorkflowInstanceAction (Unit 4.9's generic UI surface): the "id@version
+// <select> value" splitting logic mirrors addModuleInstanceAction's own
+// modulePackageKey convention, and is otherwise untested anywhere else —
+// component tests (machine-navigator.test.tsx, start-workflow-instance-
+// dialog.test.tsx) mock this whole module out, the same way they mock every
+// other action.
+describe("startWorkflowInstanceAction", () => {
+  beforeEach(() => {
+    mockAuthProtect.mockReset();
+    mockAuthProtect.mockResolvedValue({ userId: "test-user-1" });
+    mockStartWorkflowInstance.mockReset();
+    mockRedirect.mockReset();
+  });
+
+  function buildFormData(fields: Record<string, string>): FormData {
+    const data = new FormData();
+    for (const [key, value] of Object.entries(fields)) {
+      data.set(key, value);
+    }
+    return data;
+  }
+
+  it("splits the combined workflowKey and redirects into the new instance's own deep link on success", async () => {
+    mockStartWorkflowInstance.mockResolvedValue({
+      ok: true,
+      workflowInstance: { id: "wf1", configurationId: "cfg-1" },
+    });
+
+    await startWorkflowInstanceAction(
+      IDLE_ACTION_STATE,
+      buildFormData({
+        projectId: "proj-1",
+        configurationId: "cfg-1",
+        workflowKey: "linear-axis@1.0.0",
+      }),
+    );
+
+    expect(mockStartWorkflowInstance).toHaveBeenCalledWith(
+      {
+        configurationId: "cfg-1",
+        workflowId: "linear-axis",
+        workflowVersion: "1.0.0",
+      },
+      "test-user-1",
+    );
+    expect(mockRedirect).toHaveBeenCalledWith(
+      "/workspace?project=proj-1&configuration=cfg-1&workflow=wf1",
+    );
+  });
+
+  it("returns the service's error message and does not redirect on failure", async () => {
+    mockStartWorkflowInstance.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "workflow_not_found",
+        message: 'Workflow "bad@1.0.0" is not registered.',
+      },
+    });
+
+    const result = await startWorkflowInstanceAction(
+      IDLE_ACTION_STATE,
+      buildFormData({
+        projectId: "proj-1",
+        configurationId: "cfg-1",
+        workflowKey: "bad@1.0.0",
+      }),
+    );
+
+    expect(result).toEqual({
+      status: "error",
+      message: 'Workflow "bad@1.0.0" is not registered.',
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 });

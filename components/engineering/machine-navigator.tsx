@@ -29,6 +29,10 @@ import {
   AddModuleInstanceDialog,
   type ModulePackageOption,
 } from "./add-module-instance-dialog";
+import {
+  StartWorkflowInstanceDialog,
+  type WorkflowDefinitionOption,
+} from "./start-workflow-instance-dialog";
 import { RenameDialog } from "./rename-dialog";
 import { renameAssemblyAction } from "@/app/(workspace)/workspace/actions";
 import { cn } from "@/lib/utils";
@@ -36,16 +40,21 @@ import type {
   AssemblyNode,
   ConfigurationNode,
   ModuleInstanceRecord,
+  WorkflowInstanceRecord,
 } from "@/lib/db";
 
 export interface MachineNavigatorProps {
+  readonly projectId: string;
   readonly projectName: string;
   readonly configuration: ConfigurationNode | null;
   readonly modulePackages: readonly ModulePackageOption[];
+  readonly workflowDefinitions: readonly WorkflowDefinitionOption[];
   /** The module instance the `?module=` deep link currently selects, if any. */
   readonly selectedModuleInstanceId: string | null;
+  /** The workflow instance the `?workflow=` deep link currently selects, if any. */
+  readonly selectedWorkflowInstanceId: string | null;
   /** The static-row panel the `?panel=` deep link currently selects, if any. */
-  readonly selectedPanel: "requirements" | "baselines" | null;
+  readonly selectedPanel: "requirements" | "baselines" | "bom" | null;
 }
 
 /**
@@ -58,10 +67,13 @@ export interface MachineNavigatorProps {
  * nothing they would open exists yet (Milestone 5).
  */
 export function MachineNavigator({
+  projectId,
   projectName,
   configuration,
   modulePackages,
+  workflowDefinitions,
   selectedModuleInstanceId,
+  selectedWorkflowInstanceId,
   selectedPanel,
 }: MachineNavigatorProps) {
   return (
@@ -104,6 +116,7 @@ export function MachineNavigator({
                     key={assembly.id}
                     assembly={assembly}
                     modulePackages={modulePackages}
+                    workflowInstances={configuration.workflowInstances}
                     projectId={configuration.projectId}
                     selectedModuleInstanceId={selectedModuleInstanceId}
                   />
@@ -111,28 +124,29 @@ export function MachineNavigator({
               )}
             </Section>
 
-            <Section label="Workflows">
+            <Section
+              label="Workflows"
+              action={
+                <StartWorkflowInstanceDialog
+                  projectId={projectId}
+                  configurationId={configuration.id}
+                  workflowDefinitions={workflowDefinitions}
+                  trigger={<IconButton icon={Plus} label="Start workflow" />}
+                />
+              }
+            >
               {configuration.workflowInstances.length === 0 ? (
                 <p className="px-3 py-1.5 text-[12px] text-text-muted">
                   No workflows yet.
                 </p>
               ) : (
                 configuration.workflowInstances.map((workflow) => (
-                  <div
+                  <WorkflowRow
                     key={workflow.id}
-                    className="flex items-center gap-2 px-3 py-1.5 text-[13px] text-text-primary"
-                  >
-                    <GitBranch
-                      aria-hidden="true"
-                      className="h-4 w-4 shrink-0 text-text-muted"
-                    />
-                    <span className="truncate font-mono text-[12px]">
-                      {workflow.workflowId}@{workflow.workflowVersion}
-                    </span>
-                    <span className="ml-auto shrink-0 rounded-md border border-border-default px-1.5 py-0.5 text-[11px] font-medium text-text-muted capitalize">
-                      {workflow.status}
-                    </span>
-                  </div>
+                    workflow={workflow}
+                    projectId={projectId}
+                    selected={workflow.id === selectedWorkflowInstanceId}
+                  />
                 ))
               )}
             </Section>
@@ -145,6 +159,8 @@ export function MachineNavigator({
           <>
             <StaticRow icon={ListChecks} label="Requirements" />
             <StaticRow icon={GitCompareArrows} label="Baselines" />
+            <StaticRow icon={Layers} label="BOM" />
+            <StaticRow icon={FileText} label="Machine report" />
           </>
         ) : (
           <>
@@ -158,10 +174,14 @@ export function MachineNavigator({
               configurationId={configuration.id}
               selected={selectedPanel === "baselines"}
             />
+            <BomRow
+              projectId={configuration.projectId}
+              configurationId={configuration.id}
+              selected={selectedPanel === "bom"}
+            />
+            <MachineReportRow configurationId={configuration.id} />
           </>
         )}
-        <StaticRow icon={Layers} label="BOM" />
-        <StaticRow icon={FileText} label="Reports" />
       </div>
     </nav>
   );
@@ -250,14 +270,44 @@ function IconButton({
   );
 }
 
+/**
+ * The `<a>` counterpart to {@link IconButton} — a real 24px icon-only action
+ * that navigates (here, opens a Unit 5.2 printable report at `href` in a new
+ * tab) rather than triggering a Dialog, so it must be a link, not a button.
+ */
+function IconLinkButton({
+  icon: Icon,
+  label,
+  href,
+}: {
+  readonly icon: LucideIcon;
+  readonly label: string;
+  readonly href: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      title={label}
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors duration-150 ease-out hover:bg-surface-selected hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary"
+    >
+      <Icon aria-hidden="true" className="h-3.5 w-3.5" />
+    </a>
+  );
+}
+
 function AssemblyRow({
   assembly,
   modulePackages,
+  workflowInstances,
   projectId,
   selectedModuleInstanceId,
 }: {
   readonly assembly: AssemblyNode;
   readonly modulePackages: readonly ModulePackageOption[];
+  readonly workflowInstances: readonly WorkflowInstanceRecord[];
   readonly projectId: string;
   readonly selectedModuleInstanceId: string | null;
 }) {
@@ -306,6 +356,11 @@ function AssemblyRow({
             assemblyId={assembly.id}
             configurationId={assembly.configurationId}
             modulePackages={modulePackages}
+            workflowInstances={workflowInstances.map((workflow) => ({
+              id: workflow.id,
+              workflowId: workflow.workflowId,
+              workflowVersion: workflow.workflowVersion,
+            }))}
             trigger={
               <IconButton
                 icon={PackagePlus}
@@ -322,6 +377,11 @@ function AssemblyRow({
             trigger={
               <IconButton icon={Pencil} label={`Rename ${assembly.name}`} />
             }
+          />
+          <IconLinkButton
+            icon={FileText}
+            label={`Open report for ${assembly.name}`}
+            href={`/workspace/report?assembly=${encodeURIComponent(assembly.id)}`}
           />
         </div>
       </div>
@@ -341,6 +401,7 @@ function AssemblyRow({
               key={child.id}
               assembly={child}
               modulePackages={modulePackages}
+              workflowInstances={workflowInstances}
               projectId={projectId}
               selectedModuleInstanceId={selectedModuleInstanceId}
             />
@@ -420,6 +481,57 @@ function BaselinesRow({
   );
 }
 
+/** A configuration-level deep link to Unit 5.1's generic BOM workspace. */
+function BomRow({
+  projectId,
+  configurationId,
+  selected,
+}: {
+  readonly projectId: string;
+  readonly configurationId: string;
+  readonly selected: boolean;
+}) {
+  const pathname = usePathname();
+  const href = `${pathname}?project=${encodeURIComponent(projectId)}&configuration=${encodeURIComponent(configurationId)}&panel=bom`;
+
+  return (
+    <Link
+      href={href}
+      aria-current={selected ? "true" : undefined}
+      className={cn(
+        "flex items-center gap-2 px-3 py-1.5 text-[13px] text-text-primary",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary",
+        selected ? "bg-surface-selected" : "hover:bg-surface-hover",
+      )}
+    >
+      <Layers aria-hidden="true" className="h-4 w-4 shrink-0 text-text-muted" />
+      BOM
+    </Link>
+  );
+}
+
+/**
+ * A configuration-level report row (Unit 5.3) — opens
+ * `/workspace/report?configuration=<id>` (the whole-machine calculation
+ * package) in a new tab, mirroring the per-assembly `IconLinkButton`'s own
+ * "opens a real URL, not a `?panel=` deep link" behavior rather than
+ * `BomRow`'s in-app navigation: a report is a printable document, not a
+ * workspace panel.
+ */
+function MachineReportRow({ configurationId }: { readonly configurationId: string }) {
+  return (
+    <a
+      href={`/workspace/report?configuration=${encodeURIComponent(configurationId)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 px-3 py-1.5 text-[13px] text-text-primary hover:bg-surface-hover"
+    >
+      <FileText aria-hidden="true" className="h-4 w-4 shrink-0 text-text-muted" />
+      Machine report
+    </a>
+  );
+}
+
 /**
  * A module instance row — a real deep link to `?...&module=<id>`, opening
  * Unit 3.3's generic input renderer (`ModuleInputWorkspace`) in the main
@@ -457,6 +569,48 @@ function ModuleRow({
         iconOnly
       />
       <span className="truncate">{moduleInstance.label}</span>
+    </Link>
+  );
+}
+
+/**
+ * A workflow instance row — a real deep link to `?...&workflow=<id>`,
+ * opening Unit 4.9's generic `WorkflowInstanceWorkspace` in the main canvas.
+ * Deep-linkable and reload-safe, mirroring `ModuleRow`'s own convention one
+ * level up (a workflow instance, not a module instance).
+ */
+function WorkflowRow({
+  workflow,
+  projectId,
+  selected,
+}: {
+  readonly workflow: WorkflowInstanceRecord;
+  readonly projectId: string;
+  readonly selected: boolean;
+}) {
+  const pathname = usePathname();
+  const href = `${pathname}?project=${encodeURIComponent(projectId)}&configuration=${encodeURIComponent(workflow.configurationId)}&workflow=${encodeURIComponent(workflow.id)}`;
+
+  return (
+    <Link
+      href={href}
+      aria-current={selected ? "true" : undefined}
+      className={cn(
+        "flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] text-text-primary",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary",
+        selected ? "bg-surface-selected" : "hover:bg-surface-hover",
+      )}
+    >
+      <GitBranch
+        aria-hidden="true"
+        className="h-4 w-4 shrink-0 text-text-muted"
+      />
+      <span className="truncate font-mono text-[12px]">
+        {workflow.workflowId}@{workflow.workflowVersion}
+      </span>
+      <span className="ml-auto shrink-0 rounded-md border border-border-default px-1.5 py-0.5 text-[11px] font-medium text-text-muted capitalize">
+        {workflow.status}
+      </span>
     </Link>
   );
 }

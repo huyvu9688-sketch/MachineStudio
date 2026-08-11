@@ -76,3 +76,4 @@ and Sources"). When circumstances change:
 | [ADR-0005](0005-manufacturer-specs-lightweight-assignment.md) | Manufacturer specifications plus lightweight component assignment | Accepted |
 | [ADR-0006](0006-immutable-manufacturer-part-revisions.md) | Immutable manufacturer part revisions | Accepted |
 | [ADR-0007](0007-workflow-definition-contract.md) | Workflow definition contract (`WorkflowDefinition` SDK boundary) | Accepted |
+| [ADR-0008](0008-bom-generated-not-stored.md) | BOM is a generated view, not a stored `BomItem` table | Accepted |

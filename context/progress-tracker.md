@@ -9,7 +9,7 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-10 (Unit 4.9 built -- WorkflowInstance application wiring)
+Last updated: 2026-08-11 (Unit 5.3 built -- machine calculation package)
 
 ---
 
@@ -22,7 +22,7 @@ Last updated: 2026-08-10 (Unit 4.9 built -- WorkflowInstance application wiring)
 | 2 | Persistence and application services | Done |
 | 3 | Generic user experience (Units 3.1-3.9) | Done |
 | 4 | Linear-axis engineering modules | **In progress** |
-| 5 | BOM, reports, MVP release | Not started |
+| 5 | BOM, reports, MVP release | **In progress** |
 
 Roadmap phases map onto these milestones as follows (the roadmap uses phase
 letters, the implementation map and this tracker use milestone numbers —
@@ -34,16 +34,23 @@ same work, two labels):
 - Phase 1D → Milestone 5
 - Phase 2+ → after MVP
 
-**Health:** lint 0 warnings, typecheck 0 errors, 1225 tests passed / 220
-database-gated skips without a configured database; all 1445 pass with one
+Milestone 5 work started ahead of Milestone 4's own Unit 4.1 release gate
+clearing, per explicit founder direction -- the same kind of scope
+exception that authorized Units 4.8 and 4.9. See "Active work" below.
+
+**Health:** lint 0 warnings, typecheck 0 errors, 1297 tests passed / 244
+database-gated skips without a configured database; all 1541 pass with one
 (`DATABASE_URL` set against a local Postgres — see
 `context/archive/history.md` or the local dev setup notes for how), build
-clean. `format:check` currently flags 4 pre-existing files unrelated to this
-session's own changes (`app/layout.tsx`,
-`lib/modules/support-bearing/0.1.0/cross-module-links.test.ts`,
-`lib/modules/support-bearing/0.1.0/README.md`,
-`lib/workflows/linear-axis/1.0.0/README.md`) — not yet reformatted.
-Production dependencies audit clean. Parameter registry at `1.8.0`.
+clean (`/workspace/bom` and `/workspace/report` -- this codebase's first two
+Route Handlers, both still present; `/workspace/report` itself grew a third
+query-param mode this unit, not a third route). `format:check` flags ~212
+pre-existing files repo-wide on this machine (CRLF line endings from a
+Windows checkout vs. Prettier's default `endOfLine: "lf"` — see Environment
+notes), not the small fixed set an earlier session's own note named; every
+file touched by this or a prior session is formatted and not among them.
+Production dependencies audit clean. Parameter registry at `1.8.0`
+(unchanged -- Unit 5.3 needed no new parameters or registry version).
 
 ---
 
@@ -654,13 +661,283 @@ proves a registered-but-role-mismatched module instance is excluded and
 reported, not silently dropped. Attaching or running any of
 `linear-axis@1`'s own seven real modules through this wiring is still
 blocked until Unit 4.1 unblocks their registration -- this unit only
-proves the generic capability itself. What remains: a generic UI surface
-(no route/Server Action wiring yet -- stays at the `lib/application`
-boundary, matching every other use case before its own UI unit).
-Confirming a proposed workflow link needs no new code -- a
-`WorkflowLinkProposal` maps directly onto the existing `confirmParameterLink`
-use case's `CreateParameterLinkInput` shape, exercised directly in this
-unit's own tests.
+proves the generic capability itself. Confirming a proposed workflow link
+needs no new code -- a `WorkflowLinkProposal` maps directly onto the
+existing `confirmParameterLink` use case's `CreateParameterLinkInput`
+shape, exercised directly in this unit's own tests.
+
+**The generic UI surface is now built (2026-08-11).** `?workflow=<id>` is a
+new deep-link param on the single `/workspace` route
+(`app/(workspace)/workspace/page.tsx`), the same param-driven-branch
+convention every other Unit 3.x panel already uses (`?module=`,
+`?panel=requirements|baselines`) -- no new route segment. It calls
+`loadWorkflowInstanceView` directly from the Server Component, the same
+"read services return their own `{ok,error}` union, page unwraps it and
+falls back to null on either failure code" treatment other nullable deep
+links in that file already get. `WorkflowInstanceView` itself gained two
+read-only fields for this (`roles`: the resolved definition's full role
+catalog including unfilled roles, since `roleInstances` alone can't show
+"which roles still need a module"; `instanceLabels`: each present role
+instance's `ModuleInstance.label`, since `WorkflowInstanceContext` is a pure
+workflow-sdk shape with no label of its own) -- both covered in
+`load-workflow-instance-view.test.ts`.
+
+Two new Server Actions in `app/(workspace)/workspace/actions.ts`:
+`startWorkflowInstanceAction` (parses a `workflowKey` `<select>` the same
+"id@version, split on the first @" way `addModuleInstanceAction` already
+parses `modulePackageKey`, calls `startWorkflowInstance`, redirects into the
+new instance's own `?workflow=<id>` deep link on success -- the same
+redirect-to-the-thing-just-created pattern `createProjectAction` already
+uses) and `addModuleInstanceAction` extended with an optional
+`workflowInstanceId` field (blank-means-omit, `addModuleInstance`'s own
+input already supported this since Unit 4.9's first pass -- only the UI
+wiring was missing). Confirming a proposed link needed no new action at all,
+as already noted above: `components/engineering/workflow-instance-workspace.tsx`
+reuses `confirmSuggestedLinkAction` unchanged, mapping each
+`WorkflowLinkProposal` onto its existing hidden-field contract.
+
+Two new components: `WorkflowInstanceWorkspace`
+(`components/engineering/workflow-instance-workspace.tsx`) -- roles with
+cardinality and filled-instance links, link proposals with inline Confirm,
+completion-rule results, workflow-level checks (reusing `StatusBadge`), and
+excluded module instances, all rendered from `loadWorkflowInstanceView`'s
+already-shaped read model with no compute logic imported, mirroring
+`ModuleResultPanel`'s own "render the trace, don't recompute it" discipline
+one level up -- and `StartWorkflowInstanceDialog`
+(`components/engineering/start-workflow-instance-dialog.tsx`), picking from
+`listWorkflowDefinitions()`'s real registered list, mirroring
+`AddModuleInstanceDialog`'s own registered-list-only discipline. Since
+`startWorkflowInstance` only requires the *workflow definition* to be
+registered, not any of its own modules' packages, `linear-axis@1` itself is
+already startable from this dialog today, even though none of its seven
+modules can yet fill a role -- a real, working capability, not blocked
+behind Unit 4.1 the way registering any of those seven modules is.
+
+`machine-navigator.tsx`'s previously non-interactive "Workflows" section
+(a plain, unclickable `<div>` list -- the gap `ui-context.md` had explicitly
+recorded as deliberately unbuilt pending this registry) now has a real
+`WorkflowRow` deep link per instance (mirroring `ModuleRow`) and a "Start
+workflow" trigger on the section header (mirroring `CreateAssemblyDialog`'s
+own header action). `AddModuleInstanceDialog` gained an optional "Attach to
+workflow" `<select>` (rendered only when the configuration has any workflow
+instances) so a module instance can actually be assigned to fill a role
+from the UI, the missing piece needed to make the workflow view show
+anything beyond an empty role list once modules exist to attach.
+
+38 new/changed test cases across
+`load-workflow-instance-view.test.ts` (live-DB, `roles`/`instanceLabels`
+assertions), `workflow-instance-workspace.test.tsx`,
+`start-workflow-instance-dialog.test.tsx`, `add-module-instance-dialog.test.tsx`,
+`machine-navigator.test.tsx`, `workspace-shell.test.tsx`, and a new
+`startWorkflowInstanceAction` describe block in `actions.test.ts` (the
+`redirect()`-based success path, mocked rather than exercising Next's real
+throw-based control flow -- no other action in this codebase has a direct
+test for that either, `createProjectAction` included). Lint, typecheck, the
+full test suite (1465/1465 with `DATABASE_URL`), and build all pass. This
+unit is now fully done; nothing about Unit 4.1's own release gate changed
+by it.
+
+Unit 5.1 -- `BOM model and generator` (Milestone 5, Phase 1D). **Built
+2026-08-11**, an explicit scope exception ahead of Milestone 4's own Unit
+4.1 release gate clearing (per founder direction) -- the same kind of call
+that authorized Units 4.8 and 4.9, now applied one milestone further out.
+
+**No new `BomItem` table.** `context/architecture.md`'s own "Catalog and
+BOM" entity list had named `BomItem` alongside real Prisma models since
+Phase 0A, but by the time this unit was actually reached, `ComponentAssignment`
+(ADR-0005) already carried everything one BOM line needs -- target, quantity,
+part identity, and justifying calculation run -- and the Unit 2.9 part 2
+baseline-snapshot work had already frozen `componentAssignments` rather than
+inventing a `BomItem` shape ahead of this unit. ADR-0008 ("BOM is a generated
+view, not a stored `BomItem` table") records the decision and corrects both
+of `architecture.md`'s claims that a `BomItem` table exists or is stored.
+
+A BOM is generated *live*, never persisted: `lib/application/reports/
+load-bom-view.ts`'s `loadBomView` walks a configuration's assembly tree
+(`loadConfigurationTree`) and its `ComponentAssignment` rows
+(`listComponentAssignmentsForConfiguration`), resolving each into a `BomItem`
+(mirroring `loadComponentAssignmentView`'s own `describePart`/
+`describeAssignment` resolution logic -- manufacturer-name memoization, a
+dangling part revision degrading to a plain description rather than failing
+the whole view -- duplicated rather than imported, since those helpers are
+private and code-standards.md prefers explicit duplication over a premature
+shared abstraction here). Items nest into a `BomNode` tree mirroring the
+assembly hierarchy exactly (an empty assembly still appears, matching
+`AssemblyNode`'s own "present regardless of content" convention); a
+`ComponentAssignment` with no assembly (`targetKind: "assembly"`, `assemblyId:
+null` -- the documented "machine/configuration root" case) becomes a
+`machineLevelItems` entry outside the tree. 7 live-DB tests
+(`load-bom-view.test.ts`) cover null/unauthorized, an empty BOM, nested
+catalog and manual items, a machine-level item, and stale-line counting
+(built through the real `assignComponent`/`setParameterValue` services, not
+raw repository writes).
+
+CSV export is a pure function (`lib/reports/bom-csv.ts`'s `buildBomCsv`,
+RFC 4180 escaping, CRLF line endings) over the same `BomView` the UI renders
+-- never a second computation. It's served by
+`app/(workspace)/workspace/bom/route.ts`, **this codebase's first Route
+Handler** (every prior server boundary is a Server Action or a Server
+Component page). Deliberately no `.csv` in the URL path itself:
+`proxy.ts`'s Clerk middleware matcher explicitly excludes paths ending in a
+`.csv` extension from running through `clerkMiddleware()`, so a literal
+`/workspace/bom.csv` URL would bypass authentication context entirely --
+the route is `/workspace/bom?configuration=<id>`, and the downloaded
+filename (with its own `.csv` extension) comes from a `Content-Disposition`
+header instead, which is independent of the request URL. Only the failure
+path uses the `{ error: { code, message } }` envelope
+(context/code-standards.md "APIs"); success returns raw `text/csv`, the one
+legitimate exception to that convention (a file download is not JSON).
+
+Generic UI: `BomWorkspace` (`components/engineering/bom-workspace.tsx`)
+renders the same `BomView` as a recursive assembly tree with a Download CSV
+link, mirroring `ModuleResultPanel`'s own "render the already-shaped view,
+never recompute it" discipline. `machine-navigator.tsx`'s previously
+non-interactive "BOM" static row is now a real `?panel=bom` deep link
+(mirroring `RequirementsRow`/`BaselinesRow`); `workspace-shell.tsx` and
+`page.tsx` wire it the same way every other configuration-level panel is
+wired. 18 new UI/route test cases across `bom-workspace.test.tsx`,
+`bom-csv.test.ts`, `route.test.ts` (the route handler, mocked dependencies,
+no live database needed), and updated assertions in
+`machine-navigator.test.tsx`/`workspace-shell.test.tsx`. Lint, typecheck,
+the full test suite (1492/1492 with `DATABASE_URL`), and build all pass.
+
+Unit 5.2 -- `Module and assembly report renderer` (Milestone 5, Phase 1D).
+**Built 2026-08-11**, the same founder-authorized scope exception as Unit
+5.1, continuing Milestone 5 ahead of Unit 4.1's own release gate.
+
+Two new `lib/application/reports/` use cases assemble the printable read
+model, both reading only a module instance's latest immutable
+`CalculationRun` snapshot (never re-executing `compute`, per
+`implementation-map.md`'s own Unit 5.2 rule: "The renderer receives stored
+trace data; it does not import module formulas"). `loadModuleReportView`
+covers every deliverable the implementation map lists -- resolved inputs,
+the run's own active load case (resolved from
+`CalculationRunSnapshot.input.loadCaseId` against the configuration's
+`LoadCase` records -- currently almost always `null` in practice, since no
+UI yet sets that field on `executeModuleInstance`'s call; an honest,
+documented gap like `ball-screw`'s own missing gearbox-efficiency term, not
+a defect), assumptions with resolved source citations, outputs, checks with
+margins, warnings, validity limits, the calculation trace, source
+references, assigned parts (reusing `ComponentAssignment`, scoped to one
+module instance), and stale state -- plus the version pins
+(`engineSdkVersion`/`modulePackageHash`/`parameterRegistryVersion`) a report
+footer needs for reproducibility. `loadAssemblyReportView` rolls one named
+assembly and every nested child assembly up into a tree by composing
+`loadModuleReportView` per module instance, mirroring `loadBomView`'s own
+tree-walk shape (Unit 5.1) one level narrower (one assembly, not a whole
+configuration). Both share port-value description and source-reference
+resolution with `loadModuleResultView` (Unit 3.5) via a new
+`lib/application/calculations/run-view-helpers.ts`, extracted rather than
+duplicated since both read the identical stored `ModuleComputation` shape --
+`loadModuleResultView` itself is unchanged in behavior, only refactored to
+import the shared functions.
+
+`lib/reports/` gained its first HTML content alongside Unit 5.1's CSV
+renderer: `module-report-html.ts` (`renderModuleReportSection` /
+`buildModuleReportHtml`) and `assembly-report-html.ts`
+(`buildAssemblyReportHtml`, nesting the same per-module fragment rather than
+re-rendering module data, so a standalone module report and an assembly
+report's own copy of that module always agree). Both are pure functions of
+the already-assembled view -- no `lib/modules` import, satisfying Unit 5.2's
+own rule directly, not just by convention. A shared `html-shell.ts`
+(`escapeHtml`, `wrapReportHtml` with inlined print CSS -- architecture.md
+"Reports \| HTML + print CSS") and a duplicated-on-purpose
+`format-value.ts` (`lib/reports` cannot import
+`components/engineering/format-engineering-value.ts` -- architecture's UI
+boundary runs one direction only) back both renderers. Every dynamic string
+(labels, statements, notes, assembly names) is escaped -- code-standards.md
+Security: "Escape user-provided report content" -- tested directly with an
+HTML-significant-character fixture.
+
+`app/(workspace)/workspace/report/route.ts` is this codebase's second Route
+Handler (after `/workspace/bom`): `GET ?module=<id>` or `?assembly=<id>`
+(exactly one), returning `text/html` with `Content-Disposition: inline` (not
+`attachment` like the BOM CSV route -- a report opens and prints in the same
+tab rather than downloading). UI triggers: `ModuleResultPanel`'s header
+gained a "Report" link next to Run, and every `AssemblyRow` in
+`machine-navigator.tsx` gained a report icon-link (a new `IconLinkButton`,
+the `<a>` counterpart to the existing Dialog-triggering `IconButton`) --
+both open the route in a new tab. The navigator's own bottom-of-tree
+"Reports" static row stays a deliberate placeholder (Unit 5.3's whole-
+machine package, not this unit's per-module/per-assembly reports).
+
+31 new test cases (`load-module-report-view.test.ts` and
+`load-assembly-report-view.test.ts`, live-DB; `module-report-html.test.ts`
+and `assembly-report-html.test.ts`, pure; `route.test.ts`, mocked
+dependencies; plus new assertions in `module-result-panel.test.tsx` and
+`machine-navigator.test.tsx`). Lint, typecheck, the full test suite
+(1523/1523 with `DATABASE_URL`), and build all pass -- the build output now
+lists `/workspace/report` alongside `/workspace` and `/workspace/bom`.
+
+Unit 5.3 -- `Machine calculation package` (Milestone 5, Phase 1D). **Built
+2026-08-11**, the same founder-authorized scope exception as Units 5.1-5.2,
+continuing Milestone 5 ahead of Unit 4.1's own release gate.
+
+One new `lib/application/reports/load-machine-report-view.ts` use case
+assembles the whole package by composing every read model Units 5.1-5.2
+already built, rather than re-deriving any of them: `loadRequirementsView`
+(Unit 3.7) for the requirements verification matrix, `buildAssemblyReportNode`
+(Unit 5.2, exported for this reuse) once per root assembly for module
+summaries and detailed calculations, `loadBomView` (Unit 5.1) for the BOM,
+`lib/standards`' released market-profile registry (resolved from the
+project's own `marketProfileKey`, with every reference entry pre-resolved to
+its document title/edition so `lib/reports` still performs no registry
+lookup of its own), and `listMachineBaselinesForConfiguration`/
+`loadMachineBaseline` for the latest baseline's own frozen module-package
+hashes (there is no whole-baseline content hash -- `MachineBaselineSnapshot`
+only ever carried per-module `modulePackageHash` values, so "baseline ID
+and hashes" is exactly `baseline.id` plus that existing
+`BaselineCalculationRunRef[]`, not an invented aggregate).
+
+**The requirements verification matrix shows authoring completeness, not
+run-based verification -- a deliberate, already-twice-documented scope
+call, not a new gap.** `architecture.md`'s domain model names a
+`VerificationLink` class linking a requirement to the run that demonstrates
+it, but no unit has ever built it: `load-requirements-view.ts`'s own header
+(Unit 3.7) already records that deciding *which* run or check satisfies
+*which* requirement is real engineering judgment no released contract
+records, and that adding the link now would combine a Prisma schema change
+with a report/UI unit -- exactly what ai-workflow-rules.md's Split Rule
+forbids. This unit reuses `loadRequirementsView` unchanged rather than
+inventing that mapping to make Unit 5.3's own matrix look more complete than
+the live Requirements panel already honestly claims; the report's own text
+states the limitation directly next to the matrix, the same non-overclaim
+posture code-standards.md's "Standards and Sources" section already
+establishes for compliance claims.
+
+`lib/reports/machine-report-html.ts` (`buildMachineReportHtml`) renders the
+whole package as one HTML document: cover, market profile and references
+(the profile's own baseline sources plus every source actually cited across
+the package's own calculations, deduplicated), the requirements matrix,
+an assembly/module summary table, detailed calculations (nesting
+`assembly-report-html.ts`'s own `renderAssemblyNode`, exported for this
+reuse, once per root -- so a standalone module report, an assembly report,
+and this package's own copy of the same module always agree), the BOM, open
+warnings/assumptions (aggregated from every module's own computed
+`Warning`/`Assumption` list, attributed to the module instance that raised
+them -- not project-level `DesignAssumption`s, already shown in the
+requirements section), and the baseline section. `app/(workspace)/workspace/
+report/route.ts` (Unit 5.2's route) gained a third mutually-exclusive query
+mode, `?configuration=<id>`, rather than a new route -- the same
+one-route/several-scopes shape the module/assembly modes already
+established. `machine-navigator.tsx`'s previously non-interactive "Reports"
+static row is now a real `MachineReportRow`, opening
+`/workspace/report?configuration=<id>` in a new tab (the `<a>`, not
+`?panel=`, pattern every other report trigger uses, since a report is a
+printable document, not a workspace panel).
+
+29 new test cases (`load-machine-report-view.test.ts`, live-DB;
+`machine-report-html.test.ts`, pure; new assertions in `route.test.ts` and
+`machine-navigator.test.tsx`). Lint, typecheck, the full test suite
+(1541/1541 with `DATABASE_URL`), and build all pass.
+
+What remains for Milestone 5: Unit 5.4 (end-to-end MVP validation), Unit 5.5
+(production readiness). Both are optional parallel work under the same
+scope exception as Units 5.1-5.3; Unit 4.1's own release gate (still blocked
+on evidence, see below) is unchanged by any of it -- no Milestone 4 module
+can actually appear in a real machine package until it registers, the same
+dependency Unit 5.1's own BOM and Unit 5.2's own module/assembly reports
+already have on a registered module.
 
 ---
 
@@ -806,19 +1083,33 @@ variable names.
     confirmed direct-drive axes are a real configuration, so it stays
     optional — see `context/adr/0007-workflow-definition-contract.md`
     "Consequences". `lib/application` wiring (`startWorkflowInstance`,
-    `loadWorkflowInstanceView`) is now built — see Unit 4.9. What remains: a
-    generic UI surface. Sequentially gated behind Unit 4.1 regardless, the
-    same as every module above; optional parallel work in the meantime.
-11. Unit 4.9 (`WorkflowInstance` application wiring): **built 2026-08-10**
-    — see Active work for the full account.
-    `lib/db/repositories/workflow-repository.ts` and
+    `loadWorkflowInstanceView`) and the generic UI surface are now both
+    built — see Unit 4.9. Sequentially gated behind Unit 4.1 regardless, the
+    same as every module above (registering any of `linear-axis@1`'s own
+    seven modules is what's blocked, not starting or viewing the workflow
+    instance itself); optional parallel work in the meantime.
+11. Unit 4.9 (`WorkflowInstance` application wiring and generic UI surface):
+    **fully built** — application wiring 2026-08-10, the UI surface
+    2026-08-11 — see Active work for the full account.
+    `lib/db/repositories/workflow-repository.ts`,
     `lib/application/workflows/` (`startWorkflowInstance`,
-    `loadWorkflowInstanceView`) exist and are tested end to end against a
-    real database, proven generically via a new `example-workflow@1.0.0`
-    registry entry (`lib/workflows/example-workflow/1.0.0/`) rather than
-    against any of `linear-axis@1`'s own seven gated modules. What remains:
-    a generic UI surface (no route/Server Action exists yet). Optional
-    parallel work; does not move Unit 4.1's critical path.
+    `loadWorkflowInstanceView`), the `?workflow=` deep link on
+    `app/(workspace)/workspace/page.tsx`, `startWorkflowInstanceAction`,
+    `WorkflowInstanceWorkspace`, and `StartWorkflowInstanceDialog` all exist
+    and are tested (application layer end to end against a real database,
+    proven generically via a new `example-workflow@1.0.0` registry entry
+    (`lib/workflows/example-workflow/1.0.0/`) rather than against any of
+    `linear-axis@1`'s own seven gated modules; UI layer via component
+    tests). This unit is done. Nothing left to do here; does not move Unit
+    4.1's critical path either way.
+12. Unit 5.1 (BOM model and generator): **built 2026-08-11** — see Active
+    work for the full account. No stored `BomItem` table (ADR-0008);
+    `loadBomView`, `buildBomCsv`, the `/workspace/bom` Route Handler,
+    `BomWorkspace`, and the navigator's `?panel=bom` deep link all exist and
+    are tested. This unit is done. What's next in Milestone 5: Unit 5.2
+    (HTML print reports), Unit 5.3 (machine calculation package), Units 5.4
+    and 5.5 — all optional parallel work under the same founder-authorized
+    scope exception, none of it moving Unit 4.1's own critical path.
 
 ---
 
@@ -845,6 +1136,14 @@ past calls.
   reference material — internal reference only until cleared.
 - Live-verification of official Japanese and US source editions (blocked by
   the TLS interception note below).
+- A real `VerificationLink` (requirement-to-calculation-run link):
+  `architecture.md`'s domain model has named it since Phase 0A, but no unit
+  has built it — Unit 3.7 and Unit 5.3 (`context/ui-context.md`
+  "Requirements, Assumptions, and Load-Case UI") both deliberately reused
+  "acceptance criteria defined, or not yet" instead. Needs a founder call on
+  *which* run or check should count as satisfying *which* requirement (an
+  engineering-judgment question, not an implementation one) before the
+  schema/UI work is scoped.
 
 ---
 
@@ -860,9 +1159,27 @@ anything on the roadmap.
   binaries, so Playwright cannot run locally. Run it in CI.
 - Vitest does not read `.env`. Pass `DATABASE_URL` explicitly to run the
   database-backed suites; otherwise they report as skipped, never as passed.
+  **`.env`'s own `DATABASE_URL` value is double-quoted** (`DATABASE_URL="postgresql://…"`),
+  so a naive shell extraction (e.g. `cut -d= -f2-`) passes the literal quote
+  characters through, and Prisma then fails with a nonsense host like
+  `Can't reach database server at base` — strip the surrounding quotes first
+  (e.g. `sed -E 's/^DATABASE_URL="(.*)"$/\1/'`).
 - The Neon free tier occasionally exceeds Vitest's default 5000 ms timeout on
-  the `stale-propagation` and `compare-baselines` live-DB tests. Latency, not
-  a defect.
+  the `stale-propagation` and `compare-baselines` live-DB tests, and — seen
+  2026-08-11 running the full live-DB suite — can time out widely across
+  many unrelated live-DB files at once under load. Pass a longer
+  `--testTimeout` (30000 worked) when running the full suite against
+  `DATABASE_URL` rather than treating a wide timeout wave as a regression.
+  Latency, not a defect.
+- **`format:check` now flags roughly 212 files repo-wide on this Windows
+  machine** (confirmed 2026-08-11), not the small fixed set an earlier
+  session recorded: files pulled/checked-out have CRLF line endings (`git
+  check-attr` shows no `.gitattributes` `eol` rule forcing LF), while
+  Prettier's default `endOfLine: "lf"` expects LF — every CRLF file reads as
+  unformatted. Files this session's own `prettier --write` touched are LF
+  and clean; the repo-wide CRLF drift itself is untouched, since fixing it
+  is a separate, cross-cutting change (a `.gitattributes` `eol=lf` rule and/or
+  a full-repo reformat), not part of any single work unit.
 - The npm registry is pinned to `https://registry.npmjs.org/` via `.npmrc`.
 - `package.json` `overrides` pins patched `postcss`, `sharp`, and `fast-uri`
   ahead of upstream releases. Re-check on every Next.js and Prisma upgrade.
