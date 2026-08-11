@@ -267,6 +267,17 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
       "https://novanta.com/robotics-automation/technical-paper/sizing-a-shunt-resistor-for-regenerative-braking/",
     note: "Manufacturer resistor-sizing methodology for the drive-train module's own regenerative-energy check (Unit 4.7): R ~= 1.1*V_max/i_shunt, average/peak power dissipation from total mechanical energy and deceleration cycle frequency, on top of an implicit kinetic-energy term and an explicit 'assume 100% of deceleration energy goes to the shunt resistor' simplifying assumption -- no drive-electronics efficiency or DC-bus capacitor-absorption term, no worked numerical example. Read via WebFetch's own text summarization this session, not direct page images -- lower confidence than a directly read source; re-fetch and read directly before a released module cites it.",
   },
+  {
+    id: asSourceDocumentId(
+      "us.atlanta_drive_systems.rack_pinion_calculations",
+    ),
+    classification: "manufacturer_method",
+    title: "Rack and Pinion Drive Calculations and Selection",
+    authority: "Atlanta Drive Systems",
+    market: "US",
+    access: "licensed",
+    note: "Internal metadata-only manufacturer-method reference; redistribution status is unresolved.",
+  },
 ];
 
 export const engineeringMethodRevisions: readonly SourceRevision[] = [
@@ -521,5 +532,23 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     officialUrl:
       "https://novanta.com/robotics-automation/technical-paper/sizing-a-shunt-resistor-for-regenerative-braking/",
     note: "Read via WebFetch's own text summarization 2026-08-10, not direct page images -- lower confidence than a directly read source. Access-dated intake; capture a fixed edition/archive and re-read directly before a released module cites it.",
+  },
+  {
+    id: asSourceRevisionId("us.nist.sp811@2008-2nd-printing"),
+    documentId: asSourceDocumentId("us.nist.sp811"),
+    edition: "2008 Edition, second printing (November 2008)",
+    officialUrl:
+      "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication811e2008.pdf",
+    note: "Official fixed NIST publication. Appendix B.8 states the standard acceleration of free fall, g_n = 9.80665 m/s^2.",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.atlanta_drive_systems.rack_pinion_calculations@sha256-2bc6e48c2dce79dd",
+    ),
+    documentId: asSourceDocumentId(
+      "us.atlanta_drive_systems.rack_pinion_calculations",
+    ),
+    edition: "Local reference PDF, content-addressed revision",
+    note: "Internal metadata-only reference. SHA-256: 2bc6e48c2dce79dd0c252eae97cfcaa8f35fbc73c65ef5e73ace9638c42321b6. Redistribution and customer-facing citation are not authorized.",
   },
 ];

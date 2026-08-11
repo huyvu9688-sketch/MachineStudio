@@ -122,6 +122,36 @@ describe("released source registry", () => {
         "jp.oriental_motor.linear_actuator_moment@web-2026-07-31",
       ),
     ).toBeDefined();
+
+    expect(
+      SOURCE_REGISTRY.getRevision(
+        asSourceRevisionId("us.nist.sp811@2008-2nd-printing"),
+      ),
+    ).toMatchObject({
+      documentId: asSourceDocumentId("us.nist.sp811"),
+      edition: "2008 Edition, second printing (November 2008)",
+    });
+
+    expect(
+      SOURCE_REGISTRY.getRevision(
+        asSourceRevisionId(
+          "us.atlanta_drive_systems.rack_pinion_calculations@sha256-2bc6e48c2dce79dd",
+        ),
+      ),
+    ).toMatchObject({
+      documentId: asSourceDocumentId(
+        "us.atlanta_drive_systems.rack_pinion_calculations",
+      ),
+    });
+
+    expect(
+      SOURCE_REGISTRY.getDocument(
+        "us.atlanta_drive_systems.rack_pinion_calculations",
+      ),
+    ).toMatchObject({
+      access: "licensed",
+      classification: "manufacturer_method",
+    });
   });
 
   it("stores no excerpt on any licensed source (licensing policy)", () => {
