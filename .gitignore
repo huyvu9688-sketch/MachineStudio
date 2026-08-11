@@ -51,4 +51,5 @@ next-env.d.ts
 /.clerk/
 
 # agent worktrees / local Claude Code state
+/.worktrees/
 /.claude/worktrees/
