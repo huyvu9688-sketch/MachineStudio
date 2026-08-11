@@ -268,9 +268,7 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     note: "Manufacturer resistor-sizing methodology for the drive-train module's own regenerative-energy check (Unit 4.7): R ~= 1.1*V_max/i_shunt, average/peak power dissipation from total mechanical energy and deceleration cycle frequency, on top of an implicit kinetic-energy term and an explicit 'assume 100% of deceleration energy goes to the shunt resistor' simplifying assumption -- no drive-electronics efficiency or DC-bus capacitor-absorption term, no worked numerical example. Read via WebFetch's own text summarization this session, not direct page images -- lower confidence than a directly read source; re-fetch and read directly before a released module cites it.",
   },
   {
-    id: asSourceDocumentId(
-      "us.atlanta_drive_systems.rack_pinion_calculations",
-    ),
+    id: asSourceDocumentId("us.atlanta_drive_systems.rack_pinion_calculations"),
     classification: "manufacturer_method",
     title: "Rack and Pinion Drive Calculations and Selection",
     authority: "Atlanta Drive Systems",
