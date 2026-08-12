@@ -159,9 +159,17 @@ Catalog support:
 
 Gate:
 
-- Horizontal, vertical, long-stroke, and high-speed cases validate
+- Horizontal, vertical, long-stroke, and high-speed cases validate — **not
+  yet met.** `ball-screw@0.1.0` released 2026-08-12 (its own Module
+  Definition of Done items are complete — six published manufacturer
+  reference examples, independent-benchmark comparisons — see
+  `validation/ball-screw/0.1.0.md`), but no historical machine project's own
+  case has been run through it; this Gate item is a Phase 1B / Unit 5.4
+  milestone-level requirement, exercised once a complete `linear-axis@1`
+  chain runs a real historical case end to end.
 - Screw buckling, critical speed, life, and guide moment-loading checks
-  are demonstrated
+  are demonstrated — met for `ball-screw` (see above); `linear-guide` not
+  yet released.
 - Assigned components become stale when their supporting run changes
 
 ## Phase 1C — Servo Drive Train

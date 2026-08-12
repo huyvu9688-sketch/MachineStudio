@@ -1,4 +1,10 @@
-# Ball Screw 0.1.0 — Draft Package (Stage 3)
+# Ball Screw 0.1.0 — Released
+
+Released and registered 2026-08-12 as `ball-screw@0.1.0`
+(`lib/modules/registry.generated.ts`, `validation/ball-screw/0.1.0.md`).
+The package entry point is `index.ts`; its conformance suite
+(`package.test.ts`) reports `import-boundary` and `source-immutability` as
+real, passing checks — not skipped.
 
 `math.ts` is a pure SI-number kernel for the third production engineering
 module (Unit 4.3). It covers every check in
@@ -71,11 +77,11 @@ from Stage 1/2.
 ## Stage 3 package
 
 A full `ModulePackage` — manifest, ports, input schema, compute, calculation
-trace, checks, generic UI schema, report schema, and a draft validation
+trace, checks, generic UI schema, report schema, and a validation
 record — wraps `math.ts` in this directory (`manifest.ts`, `input-schema.ts`,
 `values.ts`, `trace.ts`, `checks.ts`, `compute.ts`, `ui.ts`, `report.ts`,
-`validation.ts`, assembled in `package.ts`, not `index.ts` — see "Status"
-below). It supports only the `normal`/`peak` load cases, matching
+`validation.ts`, assembled in `index.ts` — see "Status" below). It supports
+only the `normal`/`peak` load cases, matching
 `axis-load-cases 0.1.0`'s own scope restriction — there is no supported
 `holding`/`emergency_stop` thrust force to consume yet.
 
@@ -167,10 +173,6 @@ Verification Confidence" for the full numeric account.
 
 ## Status
 
-Stage 3 (compute and trace) is done as a draft. No package is registered:
-this directory has no `index.ts` (`package.ts` only), so
-`npm run registry:generate` cannot discover it.
-
 **Stage 4 (validation) is done: `validation/ball-screw/0.1.0.md` is
 complete** (2026-08-09), the first module in this project with a completed
 Stage 4 record. It has six reference examples from two independent
@@ -183,27 +185,35 @@ count) and two independent-benchmark comparisons covering every check
 record uses the documented solo-validation reviewer-substitute policy
 (`context/ai-workflow-rules.md` "Stage 4 — Validation"), citing those same
 independent-benchmark comparisons as the review substitute.
-`in-code` `validation.ts` still carries `reviewer`/`reviewDate` as `"TODO"`
-— that field feeds a future sealed `ValidationRecord` at Stage 6 (release),
-which has not started; it is not the same thing as the `validation/`
-record's own completion.
 
 **Stage 5 item closed same day: cross-module link compatibility.**
-`cross-module-links.test.ts` (new) is the first per-module-pair link-
+`cross-module-links.test.ts` is the first per-module-pair link-
 compatibility test in this codebase — it runs the real engine evaluator
 (`evaluateLinkCompatibility`) against both `axis-load-cases` 0.1.0's and
 this module's actual `manifest.ts` ports, confirming the `thrust_force`
 link works correctly (including correctly rejecting a load-case mismatch)
 and confirming, rather than assuming, that `case_time_fraction`/
 `case_linear_velocity` have no current upstream producer (a documented gap,
-`context/modules/ball-screw/stage-2-contract.md`). The remaining Stage 5
-items — workflow role integration and workflow integration tests — stay
-not-applicable until Unit 4.8 (`linear-axis@1`) exists; `manifest.ts`
-`workflowRoles` is deliberately empty rather than inventing a workflow
-vocabulary this module unit doesn't own.
+`context/modules/ball-screw/stage-2-contract.md`). Workflow role
+integration is done (2026-08-10): `manifest.ts` `workflowRoles` declares
+`"linear-axis.screw"` (Unit 4.8, `lib/workflows/linear-axis/1.0.0/
+definition.ts`), asserted in `cross-module-links.test.ts`.
 
-Stage 4 completion is a documentation milestone, not a release: production
-release no longer waits on Unit 4.1's Definition of Done —
-`axis-load-cases@0.1.0` released 2026-08-11
-(`validation/axis-load-cases/0.1.0.md`). This module's own Stage 6
-(release) simply has not started.
+## Stage 6 (release, 2026-08-12)
+
+Registration needed no source or contract change: `index.ts` (renamed from
+the earlier draft `package.ts`) assembles the same manifest, ports, compute,
+UI, report, and validation record `sealModulePackage` already sealed, so
+`npm run registry:generate` now discovers it as `ball-screw@0.1.0`
+(`lib/modules/registry.generated.ts`). `package.test.ts` pins the
+source-immutability hash (`npm run module:source-hash -- ball-screw
+0.1.0`) and asserts both `import-boundary` and `source-immutability` pass as
+real checks, not skipped. `validation.ts`'s `reviewer`/`reviewDate` are now
+finalized ("Solo validation — THK independent-benchmark substitute",
+`2026-08-12`), reusing the pre-existing `thk-benchmark.ts` independent
+benchmark as the review substitute — no new evidence was needed at Stage 6,
+since Stage 4 had already closed the evidence gaps that could be closed (the
+buckling/critical-speed and equivalent-dynamic-load methodology
+disagreements remain open, documented deviations, not release blockers —
+see `validation.ts`'s `deviations`). Full record:
+`validation/ball-screw/0.1.0.md`.

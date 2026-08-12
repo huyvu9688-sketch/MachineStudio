@@ -5,14 +5,14 @@
 - Work unit: Unit 4.3, Stage 1 — engineering specification and source intake
 - Proposed module ID: `ball-screw`
 - Proposed first released version: `0.1.0`
-- Status: **Stage 1 draft.** Written in parallel with `axis-load-cases`' Stage 4
+- Status: **Released.** Written in parallel with `axis-load-cases`' Stage 4
   evidence wait, per `context/ai-workflow-rules.md` ("Specification and
   source research may occur in parallel, but production release remains
   sequentially validation-gated") and `context/implementation-map.md`
   Milestone 4 header — the same allowance already used for `motion-profile`
-  (Unit 4.2). Production release for Unit 4.3 remains sequentially gated
-  behind Unit 4.1's Definition of Done regardless of how far this document or
-  a future package gets.
+  (Unit 4.2). `ball-screw@0.1.0` released and registered 2026-08-12 —
+  see `lib/modules/ball-screw/0.1.0/README.md` "Stage 6 (release,
+  2026-08-12)" and `validation/ball-screw/0.1.0.md` for the full account.
 - Date: 2026-08-08
 - **Update (2026-08-08):** a draft kernel now exists —
   `lib/modules/ball-screw/0.1.0/math.ts` — covering lead/speed, drive torque,
@@ -134,6 +134,16 @@
   they disagree (THK's own example never needs to answer this, since its
   scenario is direction-symmetric) remains genuinely open, recorded in
   `resolveThkDirectionalEquivalentLoad`'s own doc comment.
+
+**Update (2026-08-12, Stage 6 — release):** Stage 6 is done —
+`lib/modules/ball-screw/0.1.0/index.ts` (renamed from the earlier draft
+`package.ts`) is registered as `ball-screw@0.1.0` in
+`lib/modules/registry.generated.ts`; conformance (`import-boundary`,
+`source-immutability`) both pass as real checks, not skipped;
+`validation.ts`'s `reviewer`/`reviewDate` are finalized. The buckling/
+critical-speed and equivalent-dynamic-load methodology disagreements
+recorded above remain open, documented deviations — not release blockers.
+Full record: `validation/ball-screw/0.1.0.md`.
 
 No released parameter, module version, calculation run, or validation record
 is changed by this document.

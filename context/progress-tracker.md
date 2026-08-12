@@ -9,7 +9,7 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-12 (Unit 4.2 released as `motion-profile@0.1.0`;
+Last updated: 2026-08-12 (Unit 4.3 released as `ball-screw@0.1.0`;
 Unit 5.5 in progress -- deployment decision ADR-0009)
 
 ---
@@ -38,15 +38,15 @@ same work, two labels):
 Milestone 5 work started ahead of Milestone 4's own Unit 4.1 release gate
 clearing, per explicit founder direction -- the same kind of scope
 exception that authorized Units 4.8 and 4.9. **Unit 4.1's own release gate
-cleared 2026-08-11** (`axis-load-cases@0.1.0` released and registered) and
-**Unit 4.2's own release gate cleared 2026-08-12**
-(`motion-profile@0.1.0` released and registered) -- the other seven
-Milestone 4 units remain in progress or unregistered. See "Active work"
-below.
+cleared 2026-08-11** (`axis-load-cases@0.1.0` released and registered),
+and **Units 4.2 and 4.3's own release gates cleared 2026-08-12**
+(`motion-profile@0.1.0`, `ball-screw@0.1.0` released and registered) --
+the other six Milestone 4 units remain in progress or unregistered. See
+"Active work" below.
 
-**Health:** lint 0 warnings, typecheck 0 errors, all 1580 tests pass
+**Health:** lint 0 warnings, typecheck 0 errors, all 1588 tests pass
 (`DATABASE_URL` and `NODE_EXTRA_CA_CERTS` set against the configured Neon
-database, confirmed 2026-08-12 during Unit 4.2's own release verification —
+database, confirmed 2026-08-12 during Unit 4.3's own release verification —
 see the Environment notes below for how), build clean (`/workspace/bom` and
 `/workspace/report` -- this codebase's first two Route Handlers, both still
 present). `format:check` flags ~212
@@ -164,39 +164,63 @@ guided-workflow integration (`manifest.workflowRoles` declares
 `validation/motion-profile/0.1.0.md`. Design record: this module's own
 `README.md` "Stage 6 (release, 2026-08-12)".
 
-Unit 4.3 — `ball-screw`. **Stages 1-5 done** (2026-08-08 through
-2026-08-09; Stage 5 as far as applicable pre-Unit-4.8), drafted in parallel
-with Unit 4.1's evidence wait. Stage 1 spec: `context/modules/ball-screw/
-stage-1-spec.md` — lead/speed, drive torque, equivalent dynamic load,
-nominal life, buckling, critical speed, static safety factor, sourced from
-Rockford Ball Screw, WY Ball Screw, Steinmeyer, Oriental Motor, and THK
-(via a third-party mirror — `tech.thk.com` itself is blocked in this
-environment, see Environment notes). Stage 2 (registry `1.3.0`) resolved
-2026-08-08: `context/modules/ball-screw/stage-2-contract.md` — the static
-safety factor minimum and buckling safety margin are required module
-inputs with no built-in default, since no source met this project's
-evidence bar for either. Stage 3: a full `ModulePackage` in `lib/modules/
-ball-screw/0.1.0/`. Stage 4 (validation) resolved 2026-08-09:
-`validation/ball-screw/0.1.0.md` — six reference examples from two
-independent manufacturers (Rockford, THK; two shared scenarios, not six
-independent ones), three independent-benchmark comparisons
-(`thk-benchmark.ts`), solo-validation reviewer-substitute policy. Two real
-discrepancies remain open, not resolved: a three-way buckling/critical-
-speed calibration-constant disagreement (Rockford/Steinmeyer/THK), and an
-equivalent-dynamic-load methodology disagreement (this module's Steinmeyer-
-based single formula vs. THK's own bidirectional-duty-cycle method, ~26%
-apart on THK's own scenario — see `thk-benchmark.ts`'s
-`resolveThkDirectionalEquivalentLoad`). Stage 5: cross-module link
-compatibility against `axis-load-cases` is tested and passing
-(`cross-module-links.test.ts`, the first per-module-pair link test in this
-codebase); workflow role integration is done (2026-08-10) —
-`manifest.workflowRoles` now declares `"linear-axis.screw"`, matching
-`linear-axis@1`'s own role of that ID (Unit 4.8,
-`lib/workflows/linear-axis/1.0.0/definition.ts`), asserted in this module's
-own `cross-module-links.test.ts`. No module is registered; release no
-longer waits on Unit 4.1 (which released as `axis-load-cases@0.1.0`
-2026-08-11) — Stage 6 for this module simply has not started. See "Next
-up" below.
+Unit 4.3 — `ball-screw`. **Released and complete (2026-08-12).**
+
+Stages 1-5 done (2026-08-08 through 2026-08-09; Stage 5 as far as
+applicable pre-Unit-4.8), drafted in parallel with Unit 4.1's evidence
+wait. Stage 1 spec: `context/modules/ball-screw/stage-1-spec.md` —
+lead/speed, drive torque, equivalent dynamic load, nominal life, buckling,
+critical speed, static safety factor, sourced from Rockford Ball Screw, WY
+Ball Screw, Steinmeyer, Oriental Motor, and THK (via a third-party mirror —
+`tech.thk.com` itself is blocked in this environment, see Environment
+notes). Stage 2 (registry `1.3.0`) resolved 2026-08-08:
+`context/modules/ball-screw/stage-2-contract.md` — the static safety
+factor minimum and buckling safety margin are required module inputs with
+no built-in default, since no source met this project's evidence bar for
+either. Stage 3: a full `ModulePackage` in `lib/modules/ball-screw/0.1.0/`.
+Stage 4 (validation) resolved 2026-08-09: `validation/ball-screw/0.1.0.md`
+— six reference examples from two independent manufacturers (Rockford,
+THK; two shared scenarios, not six independent ones), three
+independent-benchmark comparisons (`thk-benchmark.ts`), solo-validation
+reviewer-substitute policy. Two real discrepancies remain open, not
+resolved: a three-way buckling/critical-speed calibration-constant
+disagreement (Rockford/Steinmeyer/THK), and an equivalent-dynamic-load
+methodology disagreement (this module's Steinmeyer-based single formula
+vs. THK's own bidirectional-duty-cycle method, ~26% apart on THK's own
+scenario — see `thk-benchmark.ts`'s `resolveThkDirectionalEquivalentLoad`)
+— both recorded as documented deviations, not release blockers. Stage 5:
+cross-module link compatibility against `axis-load-cases` is tested and
+passing (`cross-module-links.test.ts`, the first per-module-pair link test
+in this codebase); workflow role integration is done (2026-08-10) —
+`manifest.workflowRoles` declares `"linear-axis.screw"`, matching
+`linear-axis@1`'s own role of that ID (Unit 4.8), asserted in this
+module's own `cross-module-links.test.ts` and exercised by
+`lib/workflows/linear-axis/1.0.0/integration.test.ts`.
+
+**Stage 6 (release) done 2026-08-12.** `index.ts` (renamed from the
+earlier draft `package.ts`) assembles the same manifest, ports, compute,
+UI, report, and validation record `sealModulePackage` already sealed, so
+`npm run registry:generate` now discovers it: the module is registered as
+`ball-screw@0.1.0` in `lib/modules/registry.generated.ts`.
+`package.test.ts` pins the source-immutability hash (`npm run
+module:source-hash -- ball-screw 0.1.0` → `347ace63740b27fd`) and asserts
+both `import-boundary` and `source-immutability` pass as real checks, not
+skipped. `validation.ts`'s `reviewer`/`reviewDate` are finalized ("Solo
+validation — THK independent-benchmark substitute", `2026-08-12`), reusing
+the pre-existing `thk-benchmark.ts` independent benchmark — no new
+evidence was needed at Stage 6, since Stage 4 had already closed the
+evidence gaps that could be closed (the two deviations above remain open
+by design, not by omission). Sealed package content hash:
+`f7be928d5e79f7df`. **This module's own generic Module Definition of Done
+is complete, but the implementation map's own Unit 4.3 Gate ("Validate
+horizontal, vertical, long-stroke, and high-speed cases") is a separate,
+still-open Phase 1B / Unit 5.4 milestone-level requirement** — no
+historical machine project's own case has been run through this module
+(unlike `axis-load-cases`' ID39/ID42); see
+`context/implementation-map.md` Unit 4.3 "Gate" and
+`context/roadmap.md` Phase 1B for the precise distinction. Full validation
+record: `validation/ball-screw/0.1.0.md`. Design record: this module's own
+`README.md` "Stage 6 (release, 2026-08-12)".
 
 Unit 4.4 — `linear-guide`. **Stages 1-3 done 2026-08-09**, drafted under the
 same parallel-work allowance as Units 4.2-4.3. Stage 1 spec:
@@ -682,11 +706,12 @@ blocked on this unit; each module's own test file asserts its role matches
 a real `linear-axis@1` role. `lib/workflows` itself stays as pure and
 DB-free as `lib/modules`, matching every other Milestone 4 module's own
 pre-application-layer state. **Unit 4.1 released as `axis-load-cases@0.1.0`
-2026-08-11 and Unit 4.2 as `motion-profile@0.1.0` 2026-08-12**, so two of
-the seven roles (`linear-axis.axis`, `linear-axis.motion`) now have a real
-registered module (`lib/modules/registry.generated.ts`); the other five are
-still unregistered (`package.ts`, not `index.ts`, on every one) pending
-their own Stage 6.
+2026-08-11, Unit 4.2 as `motion-profile@0.1.0` and Unit 4.3 as
+`ball-screw@0.1.0` both 2026-08-12**, so three of the seven roles
+(`linear-axis.axis`, `linear-axis.motion`, `linear-axis.screw`) now have a
+real registered module (`lib/modules/registry.generated.ts`); the other
+four are still unregistered (`package.ts`, not `index.ts`, on every one)
+pending their own Stage 6.
 
 Unit 4.9 — `WorkflowInstance` application-layer wiring. **Built
 2026-08-10**, an explicit scope exception ahead of Unit 4.1's release gate
@@ -782,10 +807,11 @@ one level up -- and `StartWorkflowInstanceDialog`
 registered, not any of its own modules' packages, `linear-axis@1` itself is
 already startable from this dialog today. At the time this unit was built,
 none of its seven modules could yet fill a role; Unit 4.1's release
-2026-08-11 and Unit 4.2's release 2026-08-12 changed that for two roles
-(`linear-axis.axis`/`axis-load-cases@0.1.0`,
-`linear-axis.motion`/`motion-profile@0.1.0`) -- the other five still
-cannot, pending their own Stage 6.
+2026-08-11 and Units 4.2/4.3's releases 2026-08-12 changed that for three
+roles (`linear-axis.axis`/`axis-load-cases@0.1.0`,
+`linear-axis.motion`/`motion-profile@0.1.0`,
+`linear-axis.screw`/`ball-screw@0.1.0`) -- the other four still cannot,
+pending their own Stage 6.
 
 `machine-navigator.tsx`'s previously non-interactive "Workflows" section
 (a plain, unclickable `<div>` list -- the gap `ui-context.md` had explicitly
@@ -1008,16 +1034,16 @@ printable document, not a workspace panel).
 What remains for Milestone 5: Unit 5.4 (end-to-end MVP validation), Unit 5.5
 (production readiness). Both are optional parallel work under the same
 scope exception as Units 5.1-5.3. **Units 4.1 and 4.2's own release gates
-cleared 2026-08-11 and 2026-08-12** (`axis-load-cases@0.1.0` and
-`motion-profile@0.1.0` registered), so a real machine package can now
-include both modules -- the same dependency Unit 5.1's own BOM and Unit
-5.2's own module/assembly reports have on a registered module. Unit 5.4
-itself needs real reproduced scenarios through a complete linear-axis MVP
-(all seven `linear-axis@1` roles filled by registered modules), so it stays
-blocked on the other five modules' own Stage 6 (`ball-screw`,
-`linear-guide`, `coupling`, `support-bearing`, `drive-train`), not on Unit
-4.1/4.2 any longer -- Unit 5.5 is the only Milestone 5 work actually
-startable right now (started below).
+cleared 2026-08-11 and twice more on 2026-08-12** (`axis-load-cases@0.1.0`,
+`motion-profile@0.1.0`, and `ball-screw@0.1.0` all registered), so a real
+machine package can now include all three modules -- the same dependency
+Unit 5.1's own BOM and Unit 5.2's own module/assembly reports have on a
+registered module. Unit 5.4 itself needs real reproduced scenarios through
+a complete linear-axis MVP (all seven `linear-axis@1` roles filled by
+registered modules), so it stays blocked on the other four modules' own
+Stage 6 (`linear-guide`, `coupling`, `support-bearing`, `drive-train`), not
+on Unit 4.1/4.2/4.3 any longer -- Unit 5.5 is the only Milestone 5 work
+actually startable right now (started below).
 
 Unit 5.5 -- `Production readiness` (Milestone 5, Phase 1D). **Started
 2026-08-11**, per founder direction after confirming Unit 5.4 and the
@@ -1095,15 +1121,15 @@ variable names.
 
 ## Next up
 
-1. Unit 4.3 (`ball-screw`) Stage 6 (release) — the active/next work now
-   that Unit 4.2's own release gate cleared 2026-08-12
-   (`motion-profile@0.1.0`, see "Active work" above), following the
-   roadmap's Phase 1B order. `ball-screw` is done through Stage 5 as far as
-   applicable pre-Unit-4.8 (`validation/ball-screw/0.1.0.md`, registry
-   `1.3.0`, workflow role `"linear-axis.screw"`). What remains: registering
-   it (rename `package.ts` to `index.ts`, run `npm run registry:generate`,
-   seal the package hash) and completing Stage 6's own `reviewer`/
-   `reviewDate` fields — see item 5 below for the full status.
+1. Unit 4.4 (`linear-guide`) Stage 6 (release) — the active/next work now
+   that Unit 4.3's own release gate cleared 2026-08-12
+   (`ball-screw@0.1.0`, see "Active work" above), following the roadmap's
+   Phase 1B order. `linear-guide` is done through Stage 5
+   (`validation/linear-guide/0.1.0.md`, registry `1.5.0`, workflow role
+   `"linear-axis.guide"`). What remains: registering it (rename
+   `package.ts` to `index.ts`, run `npm run registry:generate`, seal the
+   package hash) and completing Stage 6's own `reviewer`/`reviewDate`
+   fields — see item 6 below for the full status.
 2. Unit 0.1 — add the third long-stroke/high-speed fixture alongside ID39 and
    ID42 in `tests/fixtures/axes/`. Explicitly decoupled from Unit 4.1's own
    release (2026-08-11), but still required/desirable for the broader Unit
@@ -1127,18 +1153,9 @@ variable names.
    drive train). Approved but deliberately unreleased — each ships with the
    module that needs it, at that module's Stage 2 contract. See
    `lib/engine/parameters/README.md`.
-5. Unit 4.2 (`motion-profile`): **released 2026-08-12** — see Active work
-   for the full account. Nothing left to do here.
-   Unit 4.3 (`ball-screw`): done through Stage 5 as far as applicable
-   pre-Unit-4.8 (see Active work). Workflow role integration is done
-   (2026-08-10): declares `"linear-axis.screw"` (Unit 4.8,
-   `lib/workflows/linear-axis/1.0.0/definition.ts`), asserted in its own
-   test file. Workflow integration tests exist at the workflow-definition
-   level (`lib/workflows/linear-axis/1.0.0/integration.test.ts`) rather
-   than per module, since it is not registered yet. What's left: Stage 6
-   (release) itself — no longer gated behind Unit 4.1/4.2 (both released),
-   simply not yet started; `ball-screw` is this tracker's own active/next
-   pick (item 1 above).
+5. Units 4.2 (`motion-profile`) and 4.3 (`ball-screw`): **both released,
+   2026-08-12** — see Active work for the full account. Nothing left to do
+   for either.
 6. Unit 4.4 (`linear-guide`): **Stages 1-5 done** (see Active work) —
    Stage 4 including the independent benchmark (`iko-benchmark.ts`
    implements IKO's own equivalent-load method as a genuine second
@@ -1148,8 +1165,9 @@ variable names.
    (`cross-module-links.test.ts`, already present). Workflow role
    integration is done (2026-08-10): declares `"linear-axis.guide"` (Unit
    4.8), asserted in `cross-module-links.test.ts`. What remains: Stage 6
-   (release) itself — no longer gated behind Unit 4.1 (released
-   2026-08-11), simply not yet started. Optional parallel work.
+   (release) itself — no longer gated behind Unit 4.1/4.2/4.3 (all
+   released), simply not yet started; `linear-guide` is this tracker's own
+   active/next pick (item 1 above).
 7. Unit 4.5 (`coupling`): **Stages 1-5 done** (see Active work) — Stage 4
    including the independent benchmark, Stage 5's generic UI/report schema
    (drafted at Stage 3) and cross-module link compatibility tests against
@@ -1204,13 +1222,14 @@ variable names.
     optional — see `context/adr/0007-workflow-definition-contract.md`
     "Consequences". `lib/application` wiring (`startWorkflowInstance`,
     `loadWorkflowInstanceView`) and the generic UI surface are now both
-    built — see Unit 4.9. Two of the seven roles (`linear-axis.axis`,
-    `linear-axis.motion`) now have a real registered module
-    (`axis-load-cases@0.1.0`, released 2026-08-11; `motion-profile@0.1.0`,
-    released 2026-08-12); the other five modules above remain unregistered
-    pending their own Stage 6. Starting or viewing a workflow instance
-    itself was never blocked by this either way; optional parallel work in
-    the meantime.
+    built — see Unit 4.9. Three of the seven roles (`linear-axis.axis`,
+    `linear-axis.motion`, `linear-axis.screw`) now have a real registered
+    module (`axis-load-cases@0.1.0`, released 2026-08-11;
+    `motion-profile@0.1.0` and `ball-screw@0.1.0`, both released
+    2026-08-12); the other four modules above remain unregistered pending
+    their own Stage 6. Starting or viewing a workflow instance itself was
+    never blocked by this either way; optional parallel work in the
+    meantime.
 11. Unit 4.9 (`WorkflowInstance` application wiring and generic UI surface):
     **fully built** — application wiring 2026-08-10, the UI surface
     2026-08-11 — see Active work for the full account.
@@ -1232,11 +1251,11 @@ variable names.
     and its `?configuration=` report mode all exist and are tested. All
     three units are done. Unit 5.4 (end-to-end MVP validation) needs a
     complete linear-axis MVP scenario (all seven `linear-axis@1` roles
-    filled by registered modules); Units 4.1 and 4.2 no longer block it
-    (both released), but the other five Milestone 4 modules
-    (`ball-screw`, `linear-guide`, `coupling`, `support-bearing`,
-    `drive-train`) still need their own Stage 6 — see items 5-9 above. Unit
-    5.5 (production readiness) is in progress (see below).
+    filled by registered modules); Units 4.1, 4.2, and 4.3 no longer block
+    it (all released), but the other four Milestone 4 modules
+    (`linear-guide`, `coupling`, `support-bearing`, `drive-train`) still
+    need their own Stage 6 — see items 5-9 above. Unit 5.5 (production
+    readiness) is in progress (see below).
 13. Unit 5.5 (production readiness): **started 2026-08-11** — the
     Deployment decision ADR (`context/adr/0009-deployment-target-vercel-
     neon.md`: Vercel + Neon managed Postgres) and the dependency audit

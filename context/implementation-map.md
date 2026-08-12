@@ -940,11 +940,19 @@ Phase 1B validation program.
 
 Reference profiles and historical timing cases match tolerances.
 
-**Met — Unit 4.2 complete, `motion-profile@0.1.0` released 2026-08-12.**
-Three published reference examples from two independent manufacturers (ABB,
-Oriental Motor) across three independent worked scenarios are reproduced
-within stated tolerance; the single-move kinematics has an independent
-benchmark against Oriental Motor's more general method. Evidence:
+**`motion-profile@0.1.0` released 2026-08-12** — this unit's own Module
+Definition of Done items are complete: three published reference examples
+from two independent manufacturers (ABB, Oriental Motor) across three
+independent worked scenarios are reproduced within stated tolerance, and
+the single-move kinematics has an independent benchmark against Oriental
+Motor's more general method. **The "historical timing cases" half of this
+Gate is not met by real project data**: unlike `axis-load-cases`' ID39/ID42,
+no historical machine's own move-timing record was reproduced here — the
+three reference examples above are manufacturer catalog worked examples,
+not a founder-supplied historical fixture (no such fixture exists for
+motion timing in this project). "Reference profiles... match tolerances" is
+met; "historical timing cases" stays open, the same Phase 1B / Unit 5.4
+milestone-level status as `ball-screw`'s own Gate below. Evidence:
 
 - Validation record: `validation/motion-profile/0.1.0.md`
 - Module tests: `lib/modules/motion-profile/0.1.0/package.test.ts`,
@@ -976,6 +984,31 @@ publishes one for elementary time-weighted-RMS arithmetic).
 ### Gate
 
 Validate horizontal, vertical, long-stroke, and high-speed cases.
+
+**`ball-screw@0.1.0` released 2026-08-12** — this unit's own Module
+Definition of Done items are complete (six published reference examples
+from two independent manufacturers, Rockford and THK; independent-benchmark
+comparisons for drive torque, buckling/critical speed, and equivalent
+dynamic load — see `validation/ball-screw/0.1.0.md`), the same generic
+per-module bar `axis-load-cases@0.1.0` cleared. **This Gate itself is not
+met yet**: unlike `axis-load-cases`, no historical axis project (ID39,
+ID42, or the still-missing third long-stroke/high-speed project) has been
+run through this module — it stays a Phase 1B / Unit 5.4 milestone-level
+item, exercised once a complete `linear-axis@1` chain runs a real
+historical case end to end, not a per-module Stage 6 release requirement.
+Evidence:
+
+- Validation record: `validation/ball-screw/0.1.0.md`
+- Module tests: `lib/modules/ball-screw/0.1.0/package.test.ts`,
+  `math.test.ts`, `thk-benchmark.test.ts`, `cross-module-links.test.ts`
+- Registry entry: `ball-screw@0.1.0` in `lib/modules/registry.generated.ts`
+
+Two real, unresolved deviations remain open (not release blockers, both
+documented in `validation.ts`): a three-way buckling/critical-speed
+calibration-constant disagreement (Rockford/Steinmeyer/THK), and an
+equivalent-dynamic-load methodology disagreement (this module's
+Steinmeyer-based single formula vs. THK's own bidirectional-duty-cycle
+method, ~26% apart on THK's own scenario).
 
 ## Unit 4.4 — Linear guide module
 

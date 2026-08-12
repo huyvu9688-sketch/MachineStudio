@@ -14,15 +14,14 @@
   three items `stage-1-spec.md` "Stage 2 Entry Criteria" left open (items 2,
   3, and 6 of that list; items 1 and 5 there were already resolved in Stage
   1 and are not reopened here).
-- Module status: **Stage 3 draft package built 2026-08-08** (same day as
-  this contract). A full `ModulePackage` — manifest, ports, input schema,
-  compute, calculation trace, checks, generic UI schema, report schema, and
-  a draft validation record — wraps `math.ts` in
-  `lib/modules/ball-screw/0.1.0/` (assembled in `package.ts`, not
-  `index.ts` — see that directory's `README.md` "Stage 3 package"). It
-  registers no module and creates no calculation run. Production release
-  remains sequentially gated behind Unit 4.1's Definition of Done regardless
-  (`context/implementation-map.md` Milestone 4 header).
+- Module status: **Released.** Stage 3 draft package built 2026-08-08
+  (same day as this contract). A full `ModulePackage` — manifest, ports,
+  input schema, compute, calculation trace, checks, generic UI schema,
+  report schema, and validation record — wraps `math.ts` in
+  `lib/modules/ball-screw/0.1.0/` — see that directory's `README.md`.
+  Stage 6 (release) closed 2026-08-12: the package is sealed and
+  registered as `ball-screw@0.1.0` (`lib/modules/registry.generated.ts`,
+  `validation/ball-screw/0.1.0.md`).
 
 This record does not edit `lib/modules/ball-screw/0.1.0/math.ts` — the
 Stage 1 kernel's formulas are unchanged. It fixes what the future package's
@@ -321,6 +320,9 @@ decisions: `input-schema.ts` rejects a `"distance"`-basis
 and `compute.ts` ignores the kernel's own baked-in `0.5` buckling margin,
 recomputing the permissible compressive load from the registry-supplied
 `buckling_safety_margin` input instead — see
-`lib/modules/ball-screw/0.1.0/README.md` "Stage 3 package". Production
-release remains sequentially gated behind Unit 4.1's Definition of Done
-regardless (`context/implementation-map.md` Milestone 4 header).
+`lib/modules/ball-screw/0.1.0/README.md` "Stage 3 package".
+
+**Stage 6 update (2026-08-12):** released and registered as
+`ball-screw@0.1.0` (`lib/modules/registry.generated.ts`,
+`validation/ball-screw/0.1.0.md`) — see
+`lib/modules/ball-screw/0.1.0/README.md` "Stage 6 (release, 2026-08-12)".

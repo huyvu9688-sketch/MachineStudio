@@ -25,6 +25,10 @@ describe("MODULE_REGISTRY", () => {
     expect(getModulePackage("motion-profile", "0.1.0")).toBeDefined();
   });
 
+  it("includes the released ball-screw module", () => {
+    expect(getModulePackage("ball-screw", "0.1.0")).toBeDefined();
+  });
+
   for (const [key, pkg] of entries) {
     describe(key, () => {
       it("is keyed by its manifest id@version", () => {
