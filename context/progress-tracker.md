@@ -42,9 +42,10 @@ cleared 2026-08-11** (`axis-load-cases@0.1.0` released and registered) --
 the other eight Milestone 4 units remain in progress or unregistered. See
 "Active work" below.
 
-**Health:** lint 0 warnings, typecheck 0 errors, 1297 tests passed / 244
-database-gated skips without a configured database; all 1541 pass with one
-(`DATABASE_URL` set against a local Postgres — see
+**Health:** lint 0 warnings, typecheck 0 errors, 1328 tests passed / 244
+database-gated skips without a configured database; all 1572 pass with one
+(`DATABASE_URL` set against the configured Neon database, confirmed
+2026-08-12 during Unit 4.1's own final release verification — see
 `context/archive/history.md` or the local dev setup notes for how), build
 clean (`/workspace/bom` and `/workspace/report` -- this codebase's first two
 Route Handlers, both still present; `/workspace/report` itself grew a third
@@ -1286,6 +1287,18 @@ anything on the roadmap.
   characters through, and Prisma then fails with a nonsense host like
   `Can't reach database server at base` — strip the surrounding quotes first
   (e.g. `sed -E 's/^DATABASE_URL="(.*)"$/\1/'`).
+- **Vitest also does not read `.env`'s `NODE_EXTRA_CA_CERTS`** (confirmed
+  2026-08-12): on the corporate-TLS-proxy machine (see the note above),
+  exporting only `DATABASE_URL` before a database-gated `vitest run` is not
+  enough — every query fails with an opaque WebSocket `ErrorEvent` (no
+  useful message), reproducible even on a single trivial query in complete
+  isolation, and looks exactly like a dead or overloaded database. It is
+  neither: it is the same TLS-interception block the corporate-network note
+  above describes, just surfaced through `@neondatabase/serverless`'s
+  WebSocket driver instead of a plain HTTPS fetch. Export both
+  `DATABASE_URL` and `NODE_EXTRA_CA_CERTS` (the path in `.env`, e.g.
+  `C:/Users/<user>/.certs/<name>.pem`) before running the database-gated
+  suites, not just the former.
 - The Neon free tier occasionally exceeds Vitest's default 5000 ms timeout on
   the `stale-propagation` and `compare-baselines` live-DB tests, and — seen
   2026-08-11 running the full live-DB suite — can time out widely across
