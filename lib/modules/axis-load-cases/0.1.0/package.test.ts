@@ -51,7 +51,7 @@ function baselineInput(): RawInput {
 // lib/engine/module-sdk/conformance.ts's "source-immutability" check. Update
 // this value in the same commit as a deliberate change to this directory's
 // .ts files; an unreviewed change leaves it stale and the check below fails.
-const EXPECTED_SOURCE_HASH = "3e501318cf36af8a";
+const EXPECTED_SOURCE_HASH = "f9508d94c592703a";
 
 describe("axis-load-cases 0.1.0 module conformance", () => {
   const report = runModuleConformance(axisLoadCasesModule, {

@@ -1,11 +1,11 @@
 // Pure, deterministic compute function for the axis-load-cases module
-// (v0.1.0 draft, Stage 3). Resolves the `normal` and `peak` load cases only
-// — `holding` and `emergency_stop` are deferred to a future version (see
-// ./manifest.ts). Reads input magnitudes in their canonical units, delegates
-// the physics to the pure `axis.v1` kernel in ./math (the same kernel the
-// Stage 2 historical-fixture regression tests exercise), and returns a
-// structured computation. Performs no I/O and imports only the engine's
-// public surface and this module's own files.
+// (v0.1.0, released 2026-08-11). Resolves the `normal` and `peak` load
+// cases only — `holding` and `emergency_stop` are deferred to a future
+// version (see ./manifest.ts). Reads input magnitudes in their canonical
+// units, delegates the physics to the pure `axis.v1` kernel in ./math (the
+// same kernel the Stage 2 historical-fixture regression tests exercise),
+// and returns a structured computation. Performs no I/O and imports only
+// the engine's public surface and this module's own files.
 
 import type { ModuleComputation, ModuleInput } from "@/lib/engine";
 import { makeQuantity } from "@/lib/engine";

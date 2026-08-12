@@ -73,7 +73,7 @@ function expectHistoricalMagnitude(
   expect(difference).toBeLessThanOrEqual(expected.tolerance.absolute.value);
 }
 
-describe("axis-load-cases draft historical regression", () => {
+describe("axis-load-cases historical regression", () => {
   it("reproduces ID39 horizontal source-phase force magnitudes without inventing case categories", () => {
     // ID39 does not state a signed positive-travel convention. Positive is a
     // local test convention used only to reproduce the three source magnitudes.

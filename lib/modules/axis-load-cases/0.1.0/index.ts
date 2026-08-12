@@ -3,11 +3,9 @@
 // `ModulePackage` and seals it (the content hash is stamped here).
 //
 // Named `index.ts` so `npm run registry:generate`
-// (scripts/generate-registry.mts) can discover this package. Discovery is
-// not the same as registration: the module is not yet listed in
-// `lib/modules/registry.generated.ts` — pinning the final source-
-// immutability hash and generating the registry entry is the next release
-// step (docs/superpowers/plans/2026-08-11-unit-4.1-release.md).
+// (scripts/generate-registry.mts) discovers this package. Released and
+// registered 2026-08-11 (lib/modules/registry.generated.ts,
+// docs/superpowers/plans/2026-08-11-unit-4.1-release.md).
 
 import { sealModulePackage, type ModulePackage } from "@/lib/engine";
 import { manifest, ports } from "./manifest";

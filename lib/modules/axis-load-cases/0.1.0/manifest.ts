@@ -8,10 +8,9 @@
 // and Release Gates" item 1 (resolved 2026-08-07), and
 // context/progress-tracker.md "Open decisions".
 //
-// This package is not yet registered in `lib/modules/registry.generated.ts`
-// — pinning the final source-immutability hash and generating the registry
-// entry is the next release step, not this one (see ./index.ts and
-// docs/superpowers/plans/2026-08-11-unit-4.1-release.md).
+// Released and registered 2026-08-11 (lib/modules/registry.generated.ts,
+// validation/axis-load-cases/0.1.0.md) — see ./index.ts and
+// docs/superpowers/plans/2026-08-11-unit-4.1-release.md.
 
 import {
   asParameterId,
@@ -31,11 +30,10 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   id: "axis-load-cases",
   version: "0.1.0",
   sdkRange: { min: "1.0.0" },
-  // Draft-authored against registry 1.4.0 (originally 1.1.0; bumped
-  // 2026-08-09 when this still-unregistered draft gained the
-  // resultant_force/resultant_moment output ports below — see
-  // context/modules/linear-guide/stage-1-spec.md). Keep this literal —
-  // never import the mutable current-version constant
+  // Authored against registry 1.4.0 (originally 1.1.0; bumped 2026-08-09
+  // when this module gained the resultant_force/resultant_moment output
+  // ports below — see context/modules/linear-guide/stage-1-spec.md). Keep
+  // this literal — never import the mutable current-version constant
   // (context/ai-workflow-rules.md).
   parameterRegistryVersion: "1.4.0",
   category: "motion.axis",
