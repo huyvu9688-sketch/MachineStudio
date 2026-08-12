@@ -67,12 +67,12 @@ guide` 0.1.0 is the third (`validation/linear-guide/0.1.0.md`, 2026-08-09);
 `coupling` 0.1.0 is the fourth (`validation/coupling/0.1.0.md`, 2026-08-10).
 `axis-load-cases` 0.1.0 (`validation/axis-load-cases/0.1.0.md`, 2026-08-11)
 is the fifth Stage 4 completion and the project's first module to also clear
-Stage 6 (Release): it is sealed, registered in
-`lib/modules/registry.generated.ts`, and resolves through
-`getModulePackage("axis-load-cases", "0.1.0")`. `ball-screw`, `motion-
-profile`, `linear-guide`, and `coupling` remain Stage-4-complete but not yet
-registered — their own release steps have not run (`context/progress-
-tracker.md` "Active work").
+Stage 6 (Release). `motion-profile` 0.1.0 cleared Stage 6 next
+(`validation/motion-profile/0.1.0.md`, 2026-08-12): both modules are now
+sealed, registered in `lib/modules/registry.generated.ts`, and resolve
+through `getModulePackage("<id>", "0.1.0")`. `ball-screw`, `linear-guide`,
+and `coupling` remain Stage-4-complete but not yet registered — their own
+release steps have not run (`context/progress-tracker.md` "Active work").
 
 | Source Revision ID | Title | Classification | Edition | Used by module(s) | Validation record | Notes |
 | --- | --- | --- | --- | --- | --- | --- |

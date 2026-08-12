@@ -10,23 +10,21 @@
   support stays deferred, unchanged from `stage-1-spec.md`'s working
   assumption. See "Decisions" below for the two items
   `stage-1-spec.md` "Stage 2 Entry Criteria" left open.
-- Module status: **Stage 3 draft package built 2026-08-07**, extended the
-  same day to wrap one move optionally followed by one dwell, then extended
-  again 2026-08-08 to a bounded sequence of up to 5 moves (each optionally
-  followed by its own dwell) once "Decisions" item 4 below resolved the
-  port-cardinality question. A full `ModulePackage` (manifest, ports, input
-  schema, compute, trace, checks, UI schema, report schema, draft validation
-  record) wraps `math.ts` (`resolveTrapezoidalMove`) and `cycle.ts`
-  (`resolveMotionCycle`) in `lib/modules/motion-profile/0.1.0/` — see that
-  directory's `README.md` "Stage 3 package". Named `package.ts`, not
-  `index.ts`, so `npm run registry:generate` still can't discover it — no
-  module is registered. Production release remains sequentially gated behind
-  Unit 4.1's Definition of Done regardless (`context/implementation-map.md`
-  Milestone 4 header).
+- Module status: **Released.** Stage 3 draft package built 2026-08-07,
+  extended the same day to wrap one move optionally followed by one dwell,
+  then extended again 2026-08-08 to a bounded sequence of up to 5 moves
+  (each optionally followed by its own dwell) once "Decisions" item 4 below
+  resolved the port-cardinality question. A full `ModulePackage` (manifest,
+  ports, input schema, compute, trace, checks, UI schema, report schema,
+  validation record) wraps `math.ts` (`resolveTrapezoidalMove`) and
+  `cycle.ts` (`resolveMotionCycle`) in `lib/modules/motion-profile/0.1.0/` —
+  see that directory's `README.md`. Stage 6 (release) closed 2026-08-12:
+  the package is sealed and registered as `motion-profile@0.1.0`
+  (`lib/modules/registry.generated.ts`, `validation/motion-profile/
+  0.1.0.md`).
 
-This record does not release a `ModulePackage`, register a module, or create a
-calculation run. It only resolves the parameter contract and extends the pure
-kernel that a future Stage 3 assembles into a package.
+This record resolved the parameter contract and extended the pure kernel
+that Stage 3 assembled into the now-released package.
 
 ## Decisions
 

@@ -5,13 +5,13 @@
 - Work unit: Unit 4.2, Stage 1 — engineering specification and source intake
 - Proposed module ID: `motion-profile`
 - Proposed first released version: `0.1.0`
-- Status: **Stage 1 draft.** Written in parallel with `axis-load-cases`'
+- Status: **Released.** Written in parallel with `axis-load-cases`'
   evidence wait, per `context/ai-workflow-rules.md` ("Specification and
   source research may occur in parallel, but production release remains
   sequentially validation-gated") and `context/implementation-map.md`
-  Milestone 4 header. Production release for Unit 4.2 remains
-  sequentially gated behind Unit 4.1's Definition of Done regardless of how
-  far this document gets.
+  Milestone 4 header. `axis-load-cases@0.1.0` released 2026-08-11, and
+  `motion-profile@0.1.0` itself released and registered 2026-08-12 — see
+  the "Done (2026-08-12)" update at the end of this document.
 - Date: 2026-08-07
 - **Update (2026-08-07):** the single-move trapezoidal/triangular kernel is
   now built and tested, ahead of the RMS/multi-segment/S-curve Stage 2
@@ -371,3 +371,11 @@ correction: the "worked exercise on p. 6-7" cited above under "Candidate
 Method — Single Trapezoidal Move" turned out to solve the inverse problem
 this module does not implement; the actually-reproducible example was on
 p. 2-3 instead.
+
+**Done (2026-08-12):** Stage 6 (release) is done — `lib/modules/
+motion-profile/0.1.0/index.ts` (renamed from the earlier draft `package.ts`)
+is registered as `motion-profile@0.1.0` in
+`lib/modules/registry.generated.ts`; conformance (`import-boundary`,
+`source-immutability`) both pass as real checks, not skipped;
+`validation.ts`'s `reviewer`/`reviewDate` are finalized. Full record:
+`validation/motion-profile/0.1.0.md`.

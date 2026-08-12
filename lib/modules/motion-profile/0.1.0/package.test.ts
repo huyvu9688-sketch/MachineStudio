@@ -5,7 +5,8 @@ import {
   runModuleConformance,
 } from "@/lib/engine";
 import { linearAxisDefinition } from "@/lib/workflows/linear-axis/1.0.0/definition";
-import { motionProfileModule } from "./package";
+import { readModuleSources } from "../../test-support";
+import { motionProfileModule } from "./index";
 import { asQuantity, type RawInput } from "./test-helpers";
 
 /** A minimal, valid trapezoidal-move scenario exercising every required port. */
@@ -58,6 +59,12 @@ function fiveMoveInput(): RawInput {
   return { values };
 }
 
+// Pinned by `npm run module:source-hash -- motion-profile 0.1.0` — see
+// lib/engine/module-sdk/conformance.ts's "source-immutability" check. Update
+// this value in the same commit as a deliberate change to this directory's
+// .ts files; an unreviewed change leaves it stale and the check below fails.
+const EXPECTED_SOURCE_HASH = "078276191ea6b98f";
+
 describe("motion-profile 0.1.0 module conformance", () => {
   const report = runModuleConformance(motionProfileModule, {
     sampleInputs: [
@@ -67,16 +74,30 @@ describe("motion-profile 0.1.0 module conformance", () => {
       twoMoveInput(),
       fiveMoveInput(),
     ],
+    sources: readModuleSources(import.meta.dirname),
+    expectedSourceHash: EXPECTED_SOURCE_HASH,
   });
 
   for (const check of report.checks) {
     it(`${check.id} (${check.status})`, () => {
-      expect(check.status, check.detail).not.toBe("fail");
+      expect(check.status, check.detail).toBe("pass");
     });
   }
 
   it("passes overall conformance", () => {
     expect(report.ok, JSON.stringify(report.checks, null, 2)).toBe(true);
+  });
+
+  it("runs the import-boundary check and it passes (not skipped)", () => {
+    const check = report.checks.find((c) => c.id === "import-boundary");
+    expect(check).toBeDefined();
+    expect(check?.status, check?.detail).toBe("pass");
+  });
+
+  it("runs the source-immutability check and it passes (not skipped)", () => {
+    const check = report.checks.find((c) => c.id === "source-immutability");
+    expect(check).toBeDefined();
+    expect(check?.status, check?.detail).toBe("pass");
   });
 });
 
@@ -276,6 +297,32 @@ describe("linear-axis@1 workflow role (Unit 4.8)", () => {
     );
     for (const roleId of motionProfileModule.manifest.workflowRoles) {
       expect(roleIds.has(roleId)).toBe(true);
+    }
+  });
+});
+
+describe("motion-profile 0.1.0 validation record completeness", () => {
+  it("records the finalized solo-review reviewer and review date", () => {
+    expect(motionProfileModule.validation.reviewer).toBe(
+      "Solo validation — Oriental Motor independent-benchmark substitute",
+    );
+    expect(motionProfileModule.validation.reviewDate).toBe("2026-08-12");
+  });
+
+  it("rejects provisional/draft release language in supported-use limits", () => {
+    const PROHIBITED_FRAGMENTS = [
+      "draft package",
+      "not registered",
+      "not released",
+      "reviewer is pending",
+    ];
+    const strings = motionProfileModule.validation.supportedUseLimits;
+    expect(strings.length).toBeGreaterThan(0);
+    for (const text of strings) {
+      const lower = text.toLowerCase();
+      for (const fragment of PROHIBITED_FRAGMENTS) {
+        expect(lower).not.toContain(fragment);
+      }
     }
   });
 });

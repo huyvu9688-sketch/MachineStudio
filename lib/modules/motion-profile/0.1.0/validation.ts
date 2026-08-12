@@ -1,16 +1,13 @@
 // Validation record for the motion-profile module (roadmap module definition
-// of done, item 10). Stage 4 (validation) is complete as a documentation
-// matter — see validation/motion-profile/0.1.0.md, which uses the documented
-// solo-validation reviewer-substitute policy. Three published reference
-// examples are now reproduced, from two independent manufacturers (ABB,
-// Oriental Motor) across three independent worked scenarios — see
+// of done, item 10). Stage 4 (validation) and Stage 6 (release) are both
+// complete — see validation/motion-profile/0.1.0.md, which uses the
+// documented solo-validation reviewer-substitute policy. Three published
+// reference examples are reproduced, from two independent manufacturers
+// (ABB, Oriental Motor) across three independent worked scenarios — see
 // "Reference Examples" below and validation/motion-profile/0.1.0.md for the
 // full account. The independent benchmark (Oriental Motor's general
-// asymmetric method, `./oriental-motor-benchmark.ts`) predates this and is
-// unchanged. `reviewer`/`reviewDate` stay TODO regardless: that field feeds
-// a future *sealed* `ValidationRecord` at Stage 6 (release), which has not
-// started, and is not the same thing as validation/motion-profile/0.1.0.md's
-// own completion.
+// asymmetric method, `./oriental-motor-benchmark.ts`) predates this record
+// and is unchanged.
 
 import type { ValidationRecord } from "@/lib/engine";
 import { asSourceRevisionId } from "@/lib/standards";
@@ -53,11 +50,11 @@ export const validation: ValidationRecord = {
   ],
   independentBenchmark:
     'Oriental Motor General Catalog 2015/2016 p. H-23 general trapezoidal/triangular positioning-time method (independent acceleration/deceleration rates, non-zero starting/ending speed), reduced to the a1=a2, Vs=0 case this kernel covers and cross-checked in lib/modules/motion-profile/0.1.0/oriental-motor-benchmark.test.ts. The cycle-level RMS aggregation is elementary time-weighted-RMS arithmetic (context/modules/motion-profile/stage-2-contract.md "Decisions" item 1); it has no manufacturer-specific formula to benchmark against.',
-  reviewer: "TODO",
-  reviewDate: "TODO",
+  reviewer: "Solo validation — Oriental Motor independent-benchmark substitute",
+  reviewDate: "2026-08-12",
   supportedUseLimits: [
-    "Draft Stage 3 package: not registered, not released. No second engineer reviewed this record; the independent benchmark comparison (oriental-motor-benchmark.ts) serves as the documented review substitute.",
-    "Supports a single symmetric trapezoidal/triangular move, optionally followed by one dwell, as the whole motion cycle. Asymmetric acceleration/deceleration, jerk-limited S-curve profiles, and more than one move per cycle are not implemented by this package (the cycle kernel at ./cycle.ts supports an arbitrary segment sequence, but this package's port cardinality does not yet expose it — see ./manifest.ts).",
+    "No second engineer reviewed this record; the independent benchmark comparison (oriental-motor-benchmark.ts) serves as the documented review substitute.",
+    "Supports a bounded sequence of up to 5 single-axis positioning moves (each optionally followed by its own dwell) as the whole motion cycle, using symmetric trapezoidal/triangular kinematics only. Asymmetric acceleration/deceleration and jerk-limited S-curve profiles are not implemented by this package (the cycle kernel at ./cycle.ts supports an arbitrary segment sequence, but this package's port cardinality exposes only 5 — see ./manifest.ts).",
     "move_distance > 0, max_velocity > 0, max_acceleration > 0, dwell_time >= 0 when supplied; no structural compliance, resonance/bandwidth limiting, or encoder/servo loop dynamics.",
     "The cycle-level RMS acceleration output has no published worked example to reproduce — it is elementary time-weighted-RMS arithmetic with no manufacturer-specific formula (context/modules/motion-profile/stage-2-contract.md 'Decisions' item 1), corroborated only by the internal-consistency tests in ./cycle.test.ts.",
   ],

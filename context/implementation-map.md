@@ -940,6 +940,23 @@ Phase 1B validation program.
 
 Reference profiles and historical timing cases match tolerances.
 
+**Met — Unit 4.2 complete, `motion-profile@0.1.0` released 2026-08-12.**
+Three published reference examples from two independent manufacturers (ABB,
+Oriental Motor) across three independent worked scenarios are reproduced
+within stated tolerance; the single-move kinematics has an independent
+benchmark against Oriental Motor's more general method. Evidence:
+
+- Validation record: `validation/motion-profile/0.1.0.md`
+- Module tests: `lib/modules/motion-profile/0.1.0/package.test.ts`,
+  `math.test.ts`, `cycle.test.ts`, `oriental-motor-benchmark.test.ts`
+- Registry entry: `motion-profile@0.1.0` in
+  `lib/modules/registry.generated.ts`
+
+The cycle-level `rms_acceleration` output has no published example or
+independent benchmark — a documented, honest gap recorded in
+`validation.ts`'s `supportedUseLimits`, not a release blocker (no source
+publishes one for elementary time-weighted-RMS arithmetic).
+
 ## Unit 4.3 — Ball screw and support module
 
 ### Required Checks

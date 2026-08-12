@@ -1,4 +1,10 @@
-# Motion Profile 0.1.0 — Draft Package (Stage 3)
+# Motion Profile 0.1.0 — Released
+
+Released and registered 2026-08-12 as `motion-profile@0.1.0`
+(`lib/modules/registry.generated.ts`, `validation/motion-profile/0.1.0.md`).
+The package entry point is `index.ts`; its conformance suite
+(`package.test.ts`) reports `import-boundary` and `source-immutability` as
+real, passing checks — not skipped.
 
 `math.ts` is a pure SI-number kernel for the second production engineering
 module (Unit 4.2). `resolveTrapezoidalMove` resolves a single symmetric
@@ -44,9 +50,9 @@ renders as an image, not text, in the source).
 ## Stage 3 package
 
 `manifest.ts`, `input-schema.ts`, `values.ts`, `checks.ts`, `trace.ts`,
-`compute.ts`, `ui.ts`, `report.ts`, `validation.ts`, and `package.ts` wrap
+`compute.ts`, `ui.ts`, `report.ts`, `validation.ts`, and `index.ts` wrap
 `math.ts` and `cycle.ts` in a full `ModulePackage`, the same shape
-`lib/modules/axis-load-cases/0.1.0/` used for its own Stage 3 draft.
+`lib/modules/axis-load-cases/0.1.0/` used for its own release.
 `package.test.ts` runs the module conformance suite plus boundary/
 invalid-input, dimensional-output, and multi-move cycle tests.
 
@@ -91,13 +97,10 @@ single-move package's own `move_time` output port was removed for the same
 reason — it stopped having an unambiguous single meaning once more than one
 move could be present.
 
-This directory intentionally has **no `index.ts`**. The module-registry
-generator (`scripts/generate-registry.mts`) only discovers
-`lib/modules/<id>/<version>/index.ts`, so naming the assembling file
-`package.ts` instead keeps this draft out of the user-facing module
-registry. Unit 4.1 (`axis-load-cases@0.1.0`) released 2026-08-11
-(`validation/axis-load-cases/0.1.0.md`) and no longer gates this
-registration; this module's own Stage 6 simply has not started.
+The assembling file is named `index.ts` so the module-registry generator
+(`scripts/generate-registry.mts`, which only discovers
+`lib/modules/<id>/<version>/index.ts`) finds it — see "Stage 6 (release)"
+below.
 
 ## Stage 4 evidence (2026-08-09): three reference examples, two manufacturers
 
@@ -148,9 +151,20 @@ publishes one (see "Evidence Gaps" in `stage-1-spec.md`) — and stays
 recorded as an honest gap in `validation.ts`'s `supportedUseLimits`, not
 silently assumed correct.
 
-Stage 4 completion is a documentation milestone, not a release: production
-release no longer waits on Unit 4.1's Definition of Done —
-`axis-load-cases@0.1.0` released 2026-08-11
-(`validation/axis-load-cases/0.1.0.md`). This module's own Stage 6
-(release) simply has not started (see "Next up" item 1,
-`context/progress-tracker.md`).
+## Stage 6 (release, 2026-08-12)
+
+Registration needed no source or contract change: `index.ts` (renamed from
+the earlier draft `package.ts`) assembles the same manifest, ports, compute,
+UI, report, and validation record `sealModulePackage` already sealed, so
+`npm run registry:generate` now discovers it as `motion-profile@0.1.0`
+(`lib/modules/registry.generated.ts`). `package.test.ts` pins the
+source-immutability hash (`npm run module:source-hash -- motion-profile
+0.1.0`) and asserts both `import-boundary` and `source-immutability` pass as
+real checks, not skipped — the same conformance rigor
+`axis-load-cases@0.1.0` established. `validation.ts`'s `reviewer`/
+`reviewDate` are now finalized ("Solo validation — Oriental Motor
+independent-benchmark substitute", `2026-08-12`), reusing the pre-existing
+`oriental-motor-benchmark.ts` independent-benchmark comparison as the review
+substitute — no new evidence was needed at Stage 6, since Stage 4 had
+already closed both evidence gaps (2026-08-09). Full record:
+`validation/motion-profile/0.1.0.md`.

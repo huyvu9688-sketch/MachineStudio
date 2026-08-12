@@ -1,4 +1,4 @@
-// Manifest and ports for the motion-profile module (Unit 4.2, Stage 3 draft).
+// Manifest and ports for the motion-profile module (Unit 4.2, released).
 //
 // v0.1.0 scope: up to MAX_MOVES moves, each optionally followed by its own
 // dwell, as the whole motion cycle. context/modules/motion-profile/
@@ -18,12 +18,8 @@
 // are contiguous starting at move 1, that a move's three fields are all
 // present or all absent, and that a dwell's own move is present.
 //
-// This package is intentionally NOT registered: this directory has no
-// `index.ts`, so `npm run registry:generate` cannot discover it (see
-// ./README.md). Unit 4.1 (axis-load-cases@0.1.0) released 2026-08-11
-// (validation/axis-load-cases/0.1.0.md) and no longer gates this module's
-// registration; this module's own Stage 6 (release) simply has not
-// started.
+// Released and registered 2026-08-12 as motion-profile@0.1.0
+// (lib/modules/registry.generated.ts, validation/motion-profile/0.1.0.md).
 
 import {
   asParameterId,
