@@ -1026,6 +1026,28 @@ method, ~26% apart on THK's own scenario).
 
 Independent hand and manufacturer-method comparisons pass.
 
+**Met — Unit 4.4 complete, `linear-guide@0.1.0` released 2026-08-12.** PMI's
+own Chapter 9 worked example is reproduced end to end through the module's
+real integration path (twenty per-carriage radial loads, twenty lateral
+loads, twenty equivalent loads, the governing static safety factor, and
+four mean loads/nominal lives, each to within the ±0.1 N PMI itself prints),
+and IKO's own structurally different equivalent-load method is implemented
+as a genuine second computation, reproducing IKO's own worked "Example 1"
+end to end and cross-checked against PMI's own form (a real, quantified
+5-20% disagreement, not reconciled). Evidence:
+
+- Validation record: `validation/linear-guide/0.1.0.md`
+- Module tests: `lib/modules/linear-guide/0.1.0/package.test.ts`,
+  `pmi-chapter-9.test.ts`, `iko-benchmark.test.ts`,
+  `cross-module-links.test.ts`
+- Registry entry: `linear-guide@0.1.0` in `lib/modules/registry.generated.ts`
+
+Reproducing PMI's own worked example also found and fixed two real defects
+in this module's own kernel (a swapped rail/carriage spacing that put the
+yawing-moment lever arm on the wrong term, and an unsigned lateral-load
+distribution that should have been signed and zero-sum) — see
+`validation/linear-guide/0.1.0.md` "Tolerances and Deviations".
+
 ## Unit 4.5 — Coupling module
 
 ### Required Checks

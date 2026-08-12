@@ -1,6 +1,6 @@
 // Validation record for the linear-guide module (roadmap module definition of
-// done, item 10). Stage 4 is complete as a documentation matter — see
-// validation/linear-guide/0.1.0.md.
+// done, item 10). Stage 4 (validation) and Stage 6 (release) are both
+// complete — see validation/linear-guide/0.1.0.md.
 //
 // PMI's own Chapter 9 worked example is now reproduced end to end
 // (./pmi-chapter-9.ts, ./pmi-chapter-9.test.ts): all twenty per-carriage
@@ -24,13 +24,9 @@
 // against each other on IKO's own four slide units and found to disagree by
 // a real, bounded, now-quantified amount — see ./iko-benchmark.test.ts.
 //
-// `reviewer` and `reviewDate` stay "TODO" for the same reason ball-screw's do:
-// they feed a future *sealed* record at Stage 6 (release), which has not
-// started, and that is a different thing from validation/linear-guide/
-// 0.1.0.md's own completion. Release for this module no longer waits on
-// Unit 4.1's Definition of Done -- axis-load-cases@0.1.0 released 2026-08-11
-// (validation/axis-load-cases/0.1.0.md) -- it simply has not started its own
-// Stage 6 yet.
+// `reviewer` and `reviewDate` are finalized below (Stage 6, 2026-08-12),
+// reusing the pre-existing IKO independent benchmark as the review
+// substitute -- the same treatment ball-screw's own validation.ts received.
 
 import type { ValidationRecord } from "@/lib/engine";
 import { asSourceRevisionId } from "@/lib/standards";
@@ -88,10 +84,9 @@ export const validation: ValidationRecord = {
   ],
   independentBenchmark:
     "Implemented: lib/modules/linear-guide/0.1.0/iko-benchmark.ts reproduces IKO's own worked 'Example 1' (Linear Way ME 25 C2 R640 H, catalog printed pages 15-16, a two-rail/four-slide-unit arrangement matching this module's own scope) end to end -- P1-P4 (dynamic equivalent load), P01-P04 (static equivalent load), fs = 6.3, and the ~4410 km / ~73,500 h rating life all reproduced from IKO's own conversion-factor tables (kr, ka, kOr, kOa -- catalog Table 3/5) and its own two-class dominance-weighted combination rule (X, Y -- catalog Table 4), all confirmed in iko-benchmark.test.ts. This corrects stage-1-spec.md item 7's description of X/Y as a per-series table: reading the actual table shows it is a universal two-row class table, not per-series -- only kr/ka/kOr/kOa are series/size-specific. The formula-shape corroboration on rating life and static-safety-factor definition described above still stands independently of this. The open question stage-1-spec.md item 7 recorded -- whether IKO's more elaborate formula would give a materially different answer than PMI's PE = |PR| + |PT| for the same four-block scenario -- is now answered for this series bucket (kr = ka = 1): IKO's figure is always the lower of the two, exactly PMI's figure minus 0.4 * min(|Fr|, |Fa|) (an algebraic identity, not an empirical fit), a real 5-20% disagreement across IKO's own four slide units in this example. Neither form is corrected toward the other; both are genuine, sourced methods that disagree, the same treatment ball-screw's own Rockford/THK buckling and equivalent-load disagreements receive. IKO's own 'Example 2' (a one-rail/two-slide-unit mono-rail arrangement, catalog Table 6.2) is not reproduced -- it needs an added static-equivalent-load moment term this module's 0.1.0 scope does not cover, the same mono-rail/two-or-more-guideways scope split PMI itself draws.",
-  reviewer: "TODO",
-  reviewDate: "TODO",
+  reviewer: "Solo validation — IKO independent-benchmark substitute",
+  reviewDate: "2026-08-12",
   supportedUseLimits: [
-    "Draft package: not registered, not released, no reviewer recorded (reviewer/reviewDate stay TODO -- that is a Stage 6 release field, not a Stage 4 completeness gate; see validation/linear-guide/0.1.0.md 'Reviewer'). Stage 4's reference-example reproduction and independent-benchmark items are both now complete.",
     "All reference evidence comes from a single worked example in a single manufacturer's catalog. A second source's numbers have not been reproduced.",
     "Supports only the normal and peak load cases; holding and emergency_stop are not implemented.",
     "One fixed arrangement: two parallel rails, two blocks per rail, four load-bearing points. One-rail and other multi-rail arrangements are out of scope.",

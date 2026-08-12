@@ -11,11 +11,12 @@
   match what `axis-load-cases` actually resolves — is now **resolved the
   same day** by re-reading all four PMI diagrams together instead of one at
   a time. See "The Open Question — RESOLVED" below.
-- Module status: **Stage 3 done** (2026-08-09). A full `ModulePackage` wraps
-  the kernel in `lib/modules/linear-guide/0.1.0/` — see that directory's
-  `README.md` "Stage 3 package". Registry `1.5.0` released the `guide.*`
-  parameters this document decided. No module is registered
-  (`package.ts`, not `index.ts`), and Stage 4 has not started.
+- Module status: **Released.** A full `ModulePackage` wraps the kernel in
+  `lib/modules/linear-guide/0.1.0/` — see that directory's `README.md`.
+  Registry `1.5.0` released the `guide.*` parameters this document decided.
+  Stage 6 (release) closed 2026-08-12: the package is sealed and
+  registered as `linear-guide@0.1.0` (`lib/modules/registry.generated.ts`,
+  `validation/linear-guide/0.1.0.md`).
 - **Stage 2's own last step was outstanding until Stage 3.** This document
   decided the `guide.*` parameters but nothing wrote them into
   `lib/engine/parameters/definitions.ts`, so the registry version the New
@@ -349,10 +350,15 @@ Evidence, strongest first:
   physically meaningful ones and are unchanged, so no released meaning
   moved.
 
-### Still open after Stage 4
+### Still open after Stage 4 (resolved same day)
 
-The **independent benchmark** is not satisfied: IKO corroborates the
-formulas but has not been implemented as a second computation. That, not
-the lever arm, is now what blocks this module's release on its own merits.
-See `validation/linear-guide/0.1.0.md` "Independent Method or Tool
-Comparison".
+The **independent benchmark** was not yet satisfied at this point: IKO
+corroborated the formulas but had not been implemented as a second
+computation. **Closed later the same day (2026-08-09):** `iko-benchmark.ts`
+implements IKO's own dynamic/static equivalent-load method as a genuine
+second computation, reproducing IKO's own worked "Example 1" end to end —
+see `lib/modules/linear-guide/0.1.0/README.md` "The independent benchmark
+Stage 4 was missing (closed 2026-08-09)" and
+`validation/linear-guide/0.1.0.md` "Independent Method or Tool Comparison".
+Stage 6 (release) followed 2026-08-12; see that same README's "Stage 6
+(release, 2026-08-12)".

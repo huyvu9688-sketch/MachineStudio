@@ -1,4 +1,10 @@
-# Linear Guide 0.1.0 — Draft Package (Stages 3-4)
+# Linear Guide 0.1.0 — Released
+
+Released and registered 2026-08-12 as `linear-guide@0.1.0`
+(`lib/modules/registry.generated.ts`, `validation/linear-guide/0.1.0.md`).
+The package entry point is `index.ts`; its conformance suite
+(`package.test.ts`) reports `import-boundary` and `source-immutability` as
+real, passing checks — not skipped.
 
 > **Stage 4 found two real defects in this module and corrected them.** The
 > yawing moment's lever arm was the rail spacing when it should be the
@@ -47,8 +53,8 @@ A full `ModulePackage` now wraps the kernel:
 | `compute.ts`             | Pure compute over the two supported load cases.                                                                             |
 | `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                          |
 | `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                              |
-| `validation.ts`          | Draft validation record — **Stage 4 has not started**, and it says so.                                                      |
-| `package.ts`             | Sealed package. Named `package.ts`, not `index.ts`, so `npm run registry:generate` cannot discover it.                      |
+| `validation.ts`          | Validation record.                                                                                                          |
+| `index.ts`               | Sealed package. Registered as `linear-guide@0.1.0` (Stage 6, 2026-08-12).                                                   |
 
 Registry `1.5.0` (released with this stage) adds the `guide.*` group the ports
 speak. The Stage 2 contract had decided those parameters but never wrote them
@@ -111,9 +117,6 @@ moment its centre-of-mass offset creates.
   load. Deferred rather than invented.
 - **No moment-rating input, no per-block output ports.** Both are Stage 2
   decisions, not Stage 3 omissions.
-- **No `expectedSourceHash`.** Source-immutability pinning is a Stage 6 step
-  and this version is not released, so `package.test.ts` runs conformance
-  without it (that check reports as `skipped`).
 
 ## Stage 4 (2026-08-09): PMI's Chapter 9, reproduced
 
@@ -202,10 +205,8 @@ same reason PMI's own mono-rail variant is.
 
 With this closed, the solo-validation reviewer-substitute policy is now
 invokable for this module (`validation/linear-guide/0.1.0.md` "Reviewer") —
-this module's own Stage 4 gate is clear. Release no longer waits on Unit
-4.1's Definition of Done, which released as `axis-load-cases@0.1.0` on
-2026-08-11 (`validation/axis-load-cases/0.1.0.md`); this module's own
-Stage 6 has simply not started yet.
+this module's own Stage 4 gate is clear. See "Stage 6 (release,
+2026-08-12)" below for how that translated into an actual release.
 
 ### The B19 gap the subsumption tests left open, now closed
 
@@ -244,10 +245,7 @@ this kernel from the start (written after the correction).
 
 The kernel was built ahead of the package, the same pattern
 `axis-load-cases`, `motion-profile`, and `ball-screw` all used at their own
-Stage 1/2. Production release no longer waits on Unit 4.1's Definition of
-Done, which released as `axis-load-cases@0.1.0` on 2026-08-11
-(`validation/axis-load-cases/0.1.0.md`); this module's own Stage 6 has not
-started, and this module additionally has not started Stage 4.
+Stage 1/2.
 
 ## Stage 2 (2026-08-09): the integration path, and a question found then closed
 
@@ -287,3 +285,22 @@ over: PMI prints an equal lateral magnitude on all four blocks with no
 differential sign and always divides by rail spacing, which reads as a
 per-block sizing magnitude rather than a signed equilibrium distribution.
 Reproduced as printed; flagged for Stage 4. See the Stage 2 document.
+
+## Stage 6 (release, 2026-08-12)
+
+Registration needed no source or contract change: `index.ts` (renamed from
+the earlier draft `package.ts`) assembles the same manifest, ports, compute,
+UI, report, and validation record `sealModulePackage` already sealed, so
+`npm run registry:generate` now discovers it as `linear-guide@0.1.0`
+(`lib/modules/registry.generated.ts`). `package.test.ts` pins the
+source-immutability hash (`npm run module:source-hash -- linear-guide
+0.1.0`) and asserts both `import-boundary` and `source-immutability` pass as
+real checks, not skipped. `validation.ts`'s `reviewer`/`reviewDate` are now
+finalized ("Solo validation — IKO independent-benchmark substitute",
+`2026-08-12`), reusing the pre-existing `iko-benchmark.ts` independent
+benchmark as the review substitute — no new evidence was needed at Stage 6,
+since Stage 4 had already closed both evidence gaps (2026-08-09). Workflow
+role integration was already done (2026-08-10): `manifest.ts`
+`workflowRoles` declares `"linear-axis.guide"`, asserted in
+`cross-module-links.test.ts`. Full record:
+`validation/linear-guide/0.1.0.md`.

@@ -5,16 +5,17 @@
 - Work unit: Unit 4.4, Stage 1 — engineering specification and source intake
 - Proposed module ID: `linear-guide`
 - Proposed first released version: `0.1.0`
-- Status: **Stage 1 draft.** Written as the next module in the roadmap's own
+- Status: **Released.** Written as the next module in the roadmap's own
   Phase 1B order (Ball screw → Linear guide → Coupling → Support bearings),
   in parallel with Unit 4.1's continued evidence wait, per
   `context/ai-workflow-rules.md` ("Specification and source research may
   occur in parallel, but production release remains sequentially
   validation-gated") and `context/implementation-map.md` Milestone 4
   header — the same allowance already used for `motion-profile` (Unit 4.2)
-  and `ball-screw` (Unit 4.3). Production release for Unit 4.4 remains
-  sequentially gated behind Unit 4.1's Definition of Done regardless of how
-  far this document or a future package gets.
+  and `ball-screw` (Unit 4.3). `linear-guide@0.1.0` released and registered
+  2026-08-12 — see `lib/modules/linear-guide/0.1.0/README.md` "Stage 6
+  (release, 2026-08-12)" and `validation/linear-guide/0.1.0.md` for the
+  full account.
 - Date: 2026-08-09
 
 No released parameter, module version, calculation run, or validation record
@@ -704,5 +705,12 @@ reproducing IKO's own worked "Example 1" end to end. See item 7's own
 update above and `validation/linear-guide/0.1.0.md` "Independent Method or
 Tool Comparison" for the full evidence and the resolved methodology
 comparison against PMI's own form. This module's own Stage 4 gate is now
-clear; release still waits on Unit 4.1's Definition of Done, which gates
-every Milestone 4 module regardless.
+clear.
+
+**Update (2026-08-12, Stage 6 — release):** Stage 6 is done —
+`lib/modules/linear-guide/0.1.0/index.ts` (renamed from the earlier draft
+`package.ts`) is registered as `linear-guide@0.1.0` in
+`lib/modules/registry.generated.ts`; conformance (`import-boundary`,
+`source-immutability`) both pass as real checks, not skipped;
+`validation.ts`'s `reviewer`/`reviewDate` are finalized. Full record:
+`validation/linear-guide/0.1.0.md`.

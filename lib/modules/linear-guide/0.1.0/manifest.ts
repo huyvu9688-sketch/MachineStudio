@@ -1,4 +1,4 @@
-// Manifest and ports for the linear-guide module (Unit 4.4, Stage 3 draft).
+// Manifest and ports for the linear-guide module (Unit 4.4, released).
 //
 // v0.1.0 scope: the `normal` and `peak` load cases only, matching
 // `axis-load-cases 0.1.0`'s own scope restriction — the resultant force and
@@ -13,12 +13,8 @@
 // (context/modules/linear-guide/stage-1-spec.md "A Real, Already-Documented
 // Dependency Gap").
 //
-// This package is intentionally NOT registered: this directory has no
-// `index.ts`, so `npm run registry:generate` cannot discover it (see
-// ./README.md). Unit 4.1 (axis-load-cases@0.1.0) released 2026-08-11
-// (validation/axis-load-cases/0.1.0.md) and no longer gates this module's
-// registration; this module's own Stage 6 (release) simply has not
-// started.
+// Released and registered 2026-08-12 as linear-guide@0.1.0
+// (lib/modules/registry.generated.ts, validation/linear-guide/0.1.0.md).
 
 import {
   asParameterId,
