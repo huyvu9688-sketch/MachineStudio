@@ -706,10 +706,11 @@ blocked on each module's own registration (Unit 4.1's own gate cleared
 2026-08-11 -- `axis-load-cases@0.1.0` can now fill the `linear-axis.axis`
 role -- but `motion-profile`, `ball-screw`, `linear-guide`, `coupling`,
 `support-bearing`, and `drive-train` have not reached their own Stage 6
-yet) -- this unit only proves the generic capability itself. Confirming a proposed workflow link
-needs no new code -- a `WorkflowLinkProposal` maps directly onto the
-existing `confirmParameterLink` use case's `CreateParameterLinkInput`
-shape, exercised directly in this unit's own tests.
+yet) -- this unit only proves the generic capability itself. Confirming a
+proposed workflow link needs no new code -- a `WorkflowLinkProposal` maps
+directly onto the existing `confirmParameterLink` use case's
+`CreateParameterLinkInput` shape, exercised directly in this unit's own
+tests.
 
 **The generic UI surface is now built (2026-08-11).** `?workflow=<id>` is a
 new deep-link param on the single `/workspace` route
@@ -1036,7 +1037,8 @@ procedure.
 Unit 4.1 (`axis-load-cases`) is no longer blocked here: released 2026-08-11
 as `axis-load-cases@0.1.0` (see "Active work" above and
 `validation/axis-load-cases/0.1.0.md`). The three items that used to block
-its Stage 4/release are resolved, not still open:
+its Stage 4/release no longer block release — not all three are actually
+resolved:
 
 - Release-grade ID39/ID42 records — **resolved differently, not cleared.**
   The founder accepted both fixtures at `0.1.0-release-candidate` status

@@ -145,7 +145,7 @@ added axial load — the exact scope split this module's own
   `Lh = 500*fh^3` for ball bearings — reproduced here as a genuinely
   separate computation, then proved (not just observed) to be algebraically
   identical to `resolveNominalLife`/`resolveLifeHours`'s own `(C/P)^3 *
-10^6/(60n)` form. The two are asserted to agree to floating-point
+  10^6/(60n)` form. The two are asserted to agree to floating-point
   precision, the same "proved identity" treatment
   `lib/modules/linear-guide/0.1.0/iko-benchmark.ts` gives PMI's and IKO's
   own equivalent-load forms.
