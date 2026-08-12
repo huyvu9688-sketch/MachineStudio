@@ -4,7 +4,8 @@ import {
   makeQuantity,
   runModuleConformance,
 } from "@/lib/engine";
-import { couplingModule } from "./package";
+import { readModuleSources } from "../../test-support";
+import { couplingModule } from "./index";
 import { asQuantity, type RawInput } from "./test-helpers";
 
 /**
@@ -48,19 +49,39 @@ function baselineInput(): RawInput {
   };
 }
 
+// Pinned by `npm run module:source-hash -- coupling 0.1.0` — see
+// lib/engine/module-sdk/conformance.ts's "source-immutability" check. Update
+// this value in the same commit as a deliberate change to this directory's
+// .ts files; an unreviewed change leaves it stale and the check below fails.
+const EXPECTED_SOURCE_HASH = "ff50ba8e7b2c6a6c";
+
 describe("coupling 0.1.0 module conformance", () => {
   const report = runModuleConformance(couplingModule, {
     sampleInputs: [baselineInput()],
+    sources: readModuleSources(import.meta.dirname),
+    expectedSourceHash: EXPECTED_SOURCE_HASH,
   });
 
   for (const check of report.checks) {
     it(`${check.id} (${check.status})`, () => {
-      expect(check.status, check.detail).not.toBe("fail");
+      expect(check.status, check.detail).toBe("pass");
     });
   }
 
   it("passes overall conformance", () => {
     expect(report.ok, JSON.stringify(report.checks, null, 2)).toBe(true);
+  });
+
+  it("runs the import-boundary check and it passes (not skipped)", () => {
+    const check = report.checks.find((c) => c.id === "import-boundary");
+    expect(check).toBeDefined();
+    expect(check?.status, check?.detail).toBe("pass");
+  });
+
+  it("runs the source-immutability check and it passes (not skipped)", () => {
+    const check = report.checks.find((c) => c.id === "source-immutability");
+    expect(check).toBeDefined();
+    expect(check?.status, check?.detail).toBe("pass");
   });
 });
 
@@ -210,5 +231,35 @@ describe("coupling 0.1.0 outputs", () => {
       asQuantity(computation.outputs.peak_torque_safety_factor).value,
       9,
     );
+  });
+});
+
+describe("coupling 0.1.0 validation record completeness", () => {
+  it("records the finalized solo-review reviewer and review date", () => {
+    expect(couplingModule.validation.reviewer).toBe(
+      "Solo validation — KTR DIN 740 Part II independent-benchmark substitute",
+    );
+    expect(couplingModule.validation.reviewDate).toBe("2026-08-12");
+  });
+
+  it("rejects provisional/draft release language in supported-use limits and deviations", () => {
+    const PROHIBITED_FRAGMENTS = [
+      "draft package",
+      "not registered",
+      "not released",
+      "reviewer is pending",
+      "stay todo",
+    ];
+    const strings = [
+      ...couplingModule.validation.supportedUseLimits,
+      ...couplingModule.validation.deviations,
+    ];
+    expect(strings.length).toBeGreaterThan(0);
+    for (const text of strings) {
+      const lower = text.toLowerCase();
+      for (const fragment of PROHIBITED_FRAGMENTS) {
+        expect(lower).not.toContain(fragment);
+      }
+    }
   });
 });

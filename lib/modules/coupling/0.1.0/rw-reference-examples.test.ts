@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { executeModule } from "@/lib/engine";
-import { couplingModule } from "./package";
+import { couplingModule } from "./index";
 import { asQuantity } from "./test-helpers";
 import { RW_REFERENCE_EXAMPLES } from "./rw-reference-examples";
 

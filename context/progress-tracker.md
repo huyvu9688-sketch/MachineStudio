@@ -9,8 +9,10 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-12 (Unit 4.4 released as `linear-guide@0.1.0`;
-Unit 5.5 in progress -- deployment decision ADR-0009)
+Last updated: 2026-08-12 (Unit 4.7 released as `drive-train@0.1.0` --
+**Milestone 4 complete, all seven modules registered**; Unit 5.4 Scenario 1
+(horizontal axis) complete end to end; Unit 5.5 in progress -- deployment
+decision ADR-0009)
 
 ---
 
@@ -22,7 +24,7 @@ Unit 5.5 in progress -- deployment decision ADR-0009)
 | 1 | Generic engineering engine | Done |
 | 2 | Persistence and application services | Done |
 | 3 | Generic user experience (Units 3.1-3.9) | Done |
-| 4 | Linear-axis engineering modules | **In progress** |
+| 4 | Linear-axis engineering modules | **Done** |
 | 5 | BOM, reports, MVP release | **In progress** |
 
 Roadmap phases map onto these milestones as follows (the roadmap uses phase
@@ -38,18 +40,25 @@ same work, two labels):
 Milestone 5 work started ahead of Milestone 4's own Unit 4.1 release gate
 clearing, per explicit founder direction -- the same kind of scope
 exception that authorized Units 4.8 and 4.9. **Unit 4.1's own release gate
-cleared 2026-08-11** (`axis-load-cases@0.1.0` released and registered),
-and **Units 4.2, 4.3, and 4.4's own release gates cleared 2026-08-12**
-(`motion-profile@0.1.0`, `ball-screw@0.1.0`, `linear-guide@0.1.0`
-released and registered) -- the other five Milestone 4 units remain in
-progress or unregistered. See "Active work" below.
+cleared 2026-08-11** (`axis-load-cases@0.1.0` released and registered), and
+**Units 4.2 through 4.7's own release gates all cleared 2026-08-12**
+(`motion-profile@0.1.0`, `ball-screw@0.1.0`, `linear-guide@0.1.0`,
+`coupling@0.1.0`, `support-bearing@0.1.0`, `drive-train@0.1.0` released and
+registered) -- **all seven Milestone 4 modules are now released**, and with
+Units 4.8/4.9 already built, Milestone 4 itself is complete. Every
+`linear-axis@1` role has a real registered module. See "Active work" below.
+Roadmap-level phase gates (Phase 1B's "historical machine project run
+through the module" item, Phase 1C's brake/drive/regeneration items) remain
+open Unit-5.4-or-later work, not Milestone-4-unit completion items --
+see `context/roadmap.md` Phase 1B/1C for the precise, honestly-assessed
+status of each.
 
-**Health:** lint 0 warnings, typecheck 0 errors, all 1596 tests pass
+**Health:** lint 0 warnings, typecheck 0 errors, all 1618 tests pass
 (`DATABASE_URL` and `NODE_EXTRA_CA_CERTS` set against the configured Neon
-database, confirmed 2026-08-12 during Unit 4.4's own release verification —
-see the Environment notes below for how), build clean (`/workspace/bom` and
-`/workspace/report` -- this codebase's first two Route Handlers, both still
-present). `format:check` flags ~212
+database, confirmed 2026-08-12 during Unit 5.4 Scenario 1's own
+verification — see the Environment notes below for how), build clean
+(`/workspace/bom` and `/workspace/report` -- this codebase's first two
+Route Handlers, both still present). `format:check` flags ~212
 pre-existing files repo-wide on this machine (CRLF line endings from a
 Windows checkout vs. Prettier's default `endOfLine: "lf"` — see Environment
 notes), not the small fixed set an earlier session's own note named; every
@@ -323,8 +332,10 @@ hash: `fa3b112829175ce2`. Full validation record:
 `validation/linear-guide/0.1.0.md`. Design record: this module's own
 `README.md` "Stage 6 (release, 2026-08-12)".
 
-Unit 4.5 — `coupling`. **Stages 1-3 done 2026-08-09**, next in the
-roadmap's Phase 1B order now that `linear-guide` is done through Stage 4.
+Unit 4.5 — `coupling`. **Released and complete (2026-08-12).**
+
+Stages 1-3 done 2026-08-09, drafted in the
+roadmap's Phase 1B order once `linear-guide` was done through Stage 4.
 Stage 1 spec: `context/modules/coupling/stage-1-spec.md` — two independent
 manufacturer methods (KTR, R+W America, both read via their US-market
 sites — a documented asymmetry, since this project's other modules each
@@ -383,12 +394,7 @@ whose practical risk sits with the engineer's own `service_factor` choice,
 since this project has no released motor/load-inertia parameter to compute
 `M_A` internally (`stage-1-spec.md` item 3, Unit 4.7 territory).
 `validation/coupling/0.1.0.md` records the full Stage 4 evidence and invokes
-the solo-validation reviewer-substitute policy; `reviewer`/`reviewDate` in
-`validation.ts` itself stay `TODO` pending Stage 6, the same treatment
-`ball-screw`'s and `linear-guide`'s own `validation.ts` give that pair. This
-module's own Stage 4 gate is now clear; release no longer waits on Unit 4.1
-(which released as `axis-load-cases@0.1.0` 2026-08-11) — Stage 6 for this
-module simply has not started.
+the solo-validation reviewer-substitute policy.
 
 **Stage 5's cross-module link compatibility item done 2026-08-10.**
 `lib/modules/coupling/0.1.0/cross-module-links.test.ts` (6 tests, the same
@@ -404,19 +410,36 @@ port coupling actually derives speed from — still has no producing module
 anywhere in the registry; confirmed here rather than assumed, the same
 documented gap `ball-screw`'s own cross-module-links.test.ts already
 records against its own consuming port. Generic UI/report schema already
-pass conformance (`package.test.ts`'s `package-validation` check). What
-remains for this module: workflow role integration is done (2026-08-10) —
-`manifest.workflowRoles` now declares `"linear-axis.coupling"`
-(`linear-axis@1`'s own role of that ID has cardinality 0-1, an open
-product decision — see "Open decisions" below), asserted in this module's
-own `cross-module-links.test.ts` — and Stage 6 (release), which no longer
-waits on Unit 4.1 (released as `axis-load-cases@0.1.0` 2026-08-11) and
-simply has not started. See "Next up" below.
+pass conformance (`package.test.ts`'s `package-validation` check). Workflow
+role integration is done (2026-08-10) — `manifest.workflowRoles` declares
+`"linear-axis.coupling"` (`linear-axis@1`'s own role of that ID has
+cardinality 0-1, resolved the same day: the founder confirmed direct-drive
+axes are a real configuration, so it stays optional — see
+`context/adr/0007-workflow-definition-contract.md` "Consequences"),
+asserted in this module's own `cross-module-links.test.ts`.
 
-Unit 4.6 — `support-bearing`. **Stages 1-3 done 2026-08-09 through
-2026-08-10**, next in the roadmap's Phase 1B order now that `coupling`'s
-own Stage 4 evidence is as complete as it can get without new sources.
-Stage 1 spec:
+**Stage 6 (release) done 2026-08-12.** `index.ts` (renamed from the earlier
+draft `package.ts`) assembles the same manifest, ports, compute, UI,
+report, and validation record into a single `ModulePackage` and seals it,
+so `npm run registry:generate` now discovers it: the module is registered
+as `coupling@0.1.0` in `lib/modules/registry.generated.ts`.
+`package.test.ts` pins the source-immutability hash (`npm run
+module:source-hash -- coupling 0.1.0` → `ff50ba8e7b2c6a6c`) and asserts
+both `import-boundary` and `source-immutability` pass as real checks, not
+skipped. `validation.ts`'s `reviewer`/`reviewDate` are finalized ("Solo
+validation — KTR DIN 740 Part II independent-benchmark substitute",
+`2026-08-12`), reusing the pre-existing `ktr-din740-benchmark.ts`
+independent benchmark — no new evidence was needed at Stage 6, since Stage 4
+had already closed both evidence gaps. Sealed package content hash:
+`4e6ef500bad5ddda`. Full validation record: `validation/coupling/0.1.0.md`.
+Design record: this module's own `README.md` "Stage 6 (release,
+2026-08-12)".
+
+Unit 4.6 — `support-bearing`. **Released and complete (2026-08-12).**
+
+Stages 1-3 done 2026-08-09 through 2026-08-10, drafted in the roadmap's
+Phase 1B order once `coupling`'s own Stage 4 evidence was as complete as it
+could get without new sources. Stage 1 spec:
 `context/modules/support-bearing/stage-1-spec.md` — two JP-market sources
 (a real asymmetry, recorded rather than glossed over): THK's own Ball
 Screw General Catalog "Support Unit" chapter (already a registered source,
@@ -493,12 +516,7 @@ identical to this module's own `resolveNominalLife`/`resolveLifeHours` and
 asserted to agree to floating-point precision — the same "proved identity"
 treatment `linear-guide`'s own PMI/IKO benchmark received.
 `validation.ts` records the full Stage 4 evidence and invokes the
-solo-validation reviewer-substitute policy; `reviewer`/`reviewDate` stay
-`TODO` pending Stage 6, the same treatment every other Milestone 4
-module's own `validation.ts` gives that pair. This module's own Stage 4
-gate is now clear; release no longer waits on Unit 4.1 (which released as
-`axis-load-cases@0.1.0` 2026-08-11) — Stage 6 for this module simply has
-not started.
+solo-validation reviewer-substitute policy.
 
 **Stage 5's cross-module link compatibility item done 2026-08-10.**
 `lib/modules/support-bearing/0.1.0/cross-module-links.test.ts` (6 tests,
@@ -515,21 +533,48 @@ mismatch, `motion.axis.case_linear_velocity` (this module's own speed
 input) having no producer anywhere — the same documented gap `ball-screw`'s
 and `coupling`'s own files already record — and any `bearing.*` catalog
 input accepting an upstream output. Generic UI/report schema already pass
-conformance. What remains for this module: workflow role integration is
-done (2026-08-10) — `manifest.workflowRoles` now declares
-`"linear-axis.bearing"` (`linear-axis@1`'s own role of that ID has
-cardinality 1-2, since a fixed+supported arrangement needs two instances
-of this module), asserted in this module's own
-`cross-module-links.test.ts` — and Stage 6 (release), which no longer
-waits on Unit 4.1 (released as `axis-load-cases@0.1.0` 2026-08-11) and
-simply has not started. See "Next up" below.
+conformance. Workflow role integration is done (2026-08-10) —
+`manifest.workflowRoles` declares `"linear-axis.bearing"` (`linear-axis@1`'s
+own role of that ID has cardinality 1-2, since a fixed+supported
+arrangement needs two instances of this module), asserted in this module's
+own `cross-module-links.test.ts`.
+
+**Stage 6 (release) done 2026-08-12.** `index.ts` (renamed from the earlier
+draft `package.ts`) assembles the same manifest, ports, compute, UI,
+report, and validation record into a single `ModulePackage` and seals it,
+so `npm run registry:generate` now discovers it: the module is registered
+as `support-bearing@0.1.0` in `lib/modules/registry.generated.ts`.
+`package.test.ts` pins the source-immutability hash (`npm run
+module:source-hash -- support-bearing 0.1.0` → `7abf25cd378683a7`) and
+asserts both `import-boundary` and `source-immutability` pass as real
+checks, not skipped. `validation.ts`'s `reviewer`/`reviewDate` are
+finalized ("Solo validation — NSK fh/fn independent-benchmark substitute",
+`2026-08-12`), reusing the pre-existing `nsk-fh-benchmark.ts` independent
+benchmark — no new evidence was needed at Stage 6. **This release also
+closed two real documentation gaps left over from Stage 4/5, not carried
+forward:** `validation/support-bearing/0.1.0.md` did not exist before this
+release (every other released module already had one; this one was never
+written when Stage 4 closed 2026-08-10) — it is now written, and its four
+reference-example entries split each of NSK's two worked examples into a
+dynamic-equivalent-load checkpoint and a nominal-life checkpoint (the same
+per-checkpoint granularity `linear-guide`'s own PMI Chapter 9 reference
+examples use), so the roadmap's own "at least three published reference
+examples" item is met explicitly rather than left ambiguous at two entries.
+`validation/source-index.md` also had zero rows for this module's three
+sources until this release; three rows are now added. Sealed package
+content hash: `1ac6c8a7d38cce69`. Full validation record:
+`validation/support-bearing/0.1.0.md`. Design record: this module's own
+`README.md` "Stage 6 (release, 2026-08-12)".
 
 Unit 4.7 — `drive-train` (servo motor, gearbox, drive/amplifier, holding
-brake, regenerative resistor). **Stage 1 drafted 2026-08-10**, next in the
-roadmap's own order now that every Phase 1B module (`ball-screw`,
-`linear-guide`, `coupling`, `support-bearing`) is done through Stage 5 —
-this begins Phase 1C, under the same parallel-specification allowance
-already used for Units 4.2-4.6. Stage 1 spec:
+brake, regenerative resistor). **Released and complete (2026-08-12) — the
+seventh and last Milestone 4 module.**
+
+Stage 1 drafted 2026-08-10, next in the roadmap's own order once every
+Phase 1B module (`ball-screw`, `linear-guide`, `coupling`,
+`support-bearing`) was done through Stage 5 — this began Phase 1C, under
+the same parallel-specification allowance already used for Units 4.2-4.6.
+Stage 1 spec:
 `context/modules/drive-train/stage-1-spec.md` — five sources read (Omron's
 own *Technical Guide for Servo Motor Selection*, already cached in
 `reference/source-material/Servo Selection.pdf`, with a full worked
@@ -660,9 +705,7 @@ readable text from the same mirror directly; the cached binary was read
 locally with `pdftotext -layout`. New source revision:
 `jp.thk.example_ball_screw_selection@technico-mirror-2026-08-10`
 (`lib/standards/engineering-sources.ts`). The solo-validation
-reviewer-substitute policy is now invoked; `reviewer`/`reviewDate` stay
-`TODO` pending Stage 6, the same treatment every other Milestone 4 module's
-own `validation.ts` gives that pair.
+reviewer-substitute policy is now invoked.
 
 **Stage 5's cross-module link compatibility item done 2026-08-10.**
 `lib/modules/drive-train/0.1.0/cross-module-links.test.ts` (11 tests, the
@@ -681,12 +724,44 @@ full account). `axis-load-cases` has no output this module consumes;
 registry, the same documented gap `ball-screw`'s, `coupling`'s, and
 `support-bearing`'s own files already record. Generic UI/report schema
 conformance was already passing (`package.test.ts`'s `package-validation`
-check). What remains for this module: workflow role integration is done
-(2026-08-10) — `manifest.workflowRoles` now declares `"linear-axis.drive"`,
-matching `linear-axis@1`'s own role of that ID, asserted in this module's
-own `cross-module-links.test.ts` — and Stage 6 (release), which no longer
-waits on Unit 4.1 (released as `axis-load-cases@0.1.0` 2026-08-11) and
-simply has not started. See "Next up" below.
+check). Workflow role integration is done (2026-08-10) —
+`manifest.workflowRoles` declares `"linear-axis.drive"`, matching
+`linear-axis@1`'s own role of that ID, asserted in this module's own
+`cross-module-links.test.ts`.
+
+**Stage 6 (release) done 2026-08-12.** `index.ts` (renamed from the earlier
+draft `package.ts`) assembles the same manifest, ports, compute, UI,
+report, and validation record into a single `ModulePackage` and seals it,
+so `npm run registry:generate` now discovers it: the module is registered
+as `drive-train@0.1.0` in `lib/modules/registry.generated.ts`.
+`package.test.ts` pins the source-immutability hash (`npm run
+module:source-hash -- drive-train 0.1.0` → `3afd6ea257966494`) and asserts
+both `import-boundary` and `source-immutability` pass as real checks, not
+skipped. `validation.ts`'s `reviewer`/`reviewDate` are finalized ("Solo
+validation — closed-cycle-benchmark independent-benchmark substitute",
+`2026-08-12`), reusing the pre-existing `closed-cycle-benchmark.ts`
+independent benchmark — no new evidence was needed at Stage 6. As with
+`support-bearing`, `validation/drive-train/0.1.0.md` and its
+`validation/source-index.md` rows did not exist before this release even
+though Stage 4 closed 2026-08-10 — both written now, closing the same
+documentation gap a second time. `context/implementation-map.md`'s own
+Unit 4.5, 4.6, and 4.7 "Gate" sections had also never been annotated with
+their release status (unlike Units 4.1-4.4's own, which were updated as
+each released) — all three now record their actual, honestly-assessed gate
+status (`coupling`'s "transparent rejection reasons" half is unmet by a
+published example; `drive-train`'s own brake/drive/regeneration items are
+open scope gaps, not release blockers). `context/roadmap.md`'s Phase 1C
+gate is updated the same way. Sealed package content hash:
+`7a5e2cf96a9c2fcb`. Full validation record: `validation/drive-train/0.1.0.md`.
+Design record: this module's own `README.md` "Stage 6 (release,
+2026-08-12)".
+
+**All seven Milestone 4 modules are now released and registered**
+(`axis-load-cases@0.1.0`, `motion-profile@0.1.0`, `ball-screw@0.1.0`,
+`linear-guide@0.1.0`, `coupling@0.1.0`, `support-bearing@0.1.0`,
+`drive-train@0.1.0`) — every `linear-axis@1` role has a real registered
+module, and Unit 5.4 (end-to-end MVP validation) is unblocked. See "Next
+up" below.
 
 Unit 4.8 — `linear-axis@1` workflow definition. **Built 2026-08-10**, next
 in the roadmap's own order now that every Milestone 4 module
@@ -768,14 +843,15 @@ database before a production consumer needs it. A separate test proves the
 real `linear-axis@1` definition itself resolves and evaluates correctly
 with zero attached instances (registration-independent), and another
 proves a registered-but-role-mismatched module instance is excluded and
-reported, not silently dropped. Attaching or running five of
-`linear-axis@1`'s own seven real modules through this wiring is still
-blocked on each module's own registration (Units 4.1 and 4.2's own gates
-have since cleared -- `axis-load-cases@0.1.0` and `motion-profile@0.1.0` can
-now fill the `linear-axis.axis`/`linear-axis.motion` roles -- but
-`ball-screw`, `linear-guide`, `coupling`, `support-bearing`, and
-`drive-train` have not reached their own Stage 6 yet) -- this unit only
-proves the generic capability itself. Confirming a
+reported, not silently dropped. Attaching or running all seven of
+`linear-axis@1`'s own real modules through this wiring is no longer
+blocked on any module's own registration (Units 4.1-4.7's own gates have
+all since cleared -- `axis-load-cases@0.1.0`, `motion-profile@0.1.0`,
+`ball-screw@0.1.0`, `linear-guide@0.1.0`, `coupling@0.1.0`,
+`support-bearing@0.1.0`, and `drive-train@0.1.0` can now fill all seven
+roles) -- this unit's own tests still prove the generic capability against
+`example-workflow@1.0.0` rather than a re-run against `linear-axis@1`
+itself, which is Unit 5.4 territory. Confirming a
 proposed workflow link needs no new code -- a `WorkflowLinkProposal` maps
 directly onto the existing `confirmParameterLink` use case's
 `CreateParameterLinkInput` shape, exercised directly in this unit's own
@@ -826,12 +902,14 @@ one level up -- and `StartWorkflowInstanceDialog`
 registered, not any of its own modules' packages, `linear-axis@1` itself is
 already startable from this dialog today. At the time this unit was built,
 none of its seven modules could yet fill a role; Unit 4.1's release
-2026-08-11 and Units 4.2/4.3/4.4's releases 2026-08-12 changed that for
-four roles (`linear-axis.axis`/`axis-load-cases@0.1.0`,
+2026-08-11 and Units 4.2-4.7's releases 2026-08-12 have since changed that
+for all seven roles (`linear-axis.axis`/`axis-load-cases@0.1.0`,
 `linear-axis.motion`/`motion-profile@0.1.0`,
 `linear-axis.screw`/`ball-screw@0.1.0`,
-`linear-axis.guide`/`linear-guide@0.1.0`) -- the other three still cannot,
-pending their own Stage 6.
+`linear-axis.guide`/`linear-guide@0.1.0`,
+`linear-axis.coupling`/`coupling@0.1.0`,
+`linear-axis.bearing`/`support-bearing@0.1.0`,
+`linear-axis.drive`/`drive-train@0.1.0`).
 
 `machine-navigator.tsx`'s previously non-interactive "Workflows" section
 (a plain, unclickable `<div>` list -- the gap `ui-context.md` had explicitly
@@ -1053,18 +1131,79 @@ printable document, not a workspace panel).
 
 What remains for Milestone 5: Unit 5.4 (end-to-end MVP validation), Unit 5.5
 (production readiness). Both are optional parallel work under the same
-scope exception as Units 5.1-5.3. **Unit 4.1's own release gate cleared
-2026-08-11, and Units 4.2, 4.3, and 4.4's cleared together on 2026-08-12**
-(`axis-load-cases@0.1.0`, `motion-profile@0.1.0`, `ball-screw@0.1.0`, and
-`linear-guide@0.1.0` all registered), so a real machine package can now
-include all four modules -- the same dependency Unit 5.1's own BOM and
-Unit 5.2's own module/assembly reports have on a registered module. Unit
-5.4 itself needs real reproduced scenarios through a complete linear-axis
-MVP (all seven `linear-axis@1` roles filled by registered modules), so it
-stays blocked on the other three modules' own Stage 6 (`coupling`,
-`support-bearing`, `drive-train`), not on Unit 4.1/4.2/4.3/4.4 any longer
--- Unit 5.5 is the only Milestone 5 work actually startable right now
-(started below).
+scope exception as Units 5.1-5.3. **Units 4.1 through 4.7's own release
+gates all cleared by 2026-08-12** (`axis-load-cases@0.1.0`,
+`motion-profile@0.1.0`, `ball-screw@0.1.0`, `linear-guide@0.1.0`,
+`coupling@0.1.0`, `support-bearing@0.1.0`, and `drive-train@0.1.0` all
+registered) -- **all seven Milestone 4 modules are now registered**, so a
+real machine package can now include every module, and Unit 5.4 itself is
+no longer blocked on any module's own Stage 6: all seven `linear-axis@1`
+roles are filled by a registered module. See Unit 5.4 below for what it
+actually needed next and what it now is.
+
+Unit 5.4 -- `End-to-end MVP validation` (Milestone 5, Phase 1D). **Scenario
+1 (horizontal linear axis) complete 2026-08-12.** Runs the complete, real
+`linear-axis@1.0.0` guided workflow -- all eight role instances across the
+seven Milestone 4 modules (`support-bearing` fills two, fixed + supported)
+-- through the real application-service layer (the same services a UI
+action calls: `startWorkflowInstance`, `addModuleInstance`,
+`setParameterValue`, `confirmParameterLink`, `executeModuleInstance`,
+`assignComponent`, `createBaseline`, `loadBomView`, `loadMachineReportView`)
+against a live database, not a synthetic shortcut.
+`lib/application/workflows/unit-5-4-scenario-1-horizontal-axis.test.ts`;
+full evidence record `validation/unit-5.4/scenario-1-horizontal-axis.md`;
+representative input data with per-field provenance
+`tests/fixtures/unit-5-4-scenario-1/representative-inputs.ts`.
+
+Real ID39 historical evidence drives `axis-load-cases` (reproduces `274 N`
+peak / `8 N` normal within the same `±3 N`/`±1 N` tolerances the module's
+own release regression already established) and, thinly, `motion-profile`
+(the derived `move_1_distance`/`dwell_1_time` reproduce ID39's own stated
+`cycleTime = 4.1 s` exactly). ID39 supplies **no** catalog data for
+`ball-screw`, `linear-guide`, `coupling`, `support-bearing`, or
+`drive-train` -- every one of those uses disclosed representative catalog
+data, mostly reused from this project's own already-vetted manufacturer
+reference-example files (PMI's Chapter 9 guide, R+W's own coupling example,
+NSK's own bearing 6208 examples), with a couple of hand-verified
+placeholders where no existing reference fit this scenario's own speed/
+torque combination (the coupling's `allowable_speed`; the drive-train motor
+entirely -- neither of that module's own existing reference motors, Omron's
+real one included, supports this scenario's own ~6000 rpm operating speed
+without a genuine sizing failure). Every field's provenance is tagged in
+the fixture itself; the validation record's own "Disclosed Limitations"
+section states plainly that this is not one coherent real machine's own
+BOM, only ID39's real axis-load physics validated against a workflow proven
+capable of carrying a complete, checked part selection through to a BOM,
+report, and reproducible baseline.
+
+**A real, previously-undiscovered generic-engine defect was found and
+disclosed, not hidden or silently patched.** Driving `motion-profile`
+through the real database-backed `executeModuleInstance` path (the first
+time any live-DB test in this codebase has done so) surfaced that
+`move_{1..5}_*`/`dwell_{1..5}_*` ports all share one canonical parameter ID
+each with no `loadCase` to disambiguate them (unlike `axis-load-cases`' own
+per-case ports) -- `lib/db/repositories/graph-repository.ts`'s
+`resolveModuleInputs` resolves a stored value by `(parameterId, loadCase)`
+only, never by port key, so setting `move_1_distance` makes every other
+move-index port sharing that parameter ID resolve to the same value too,
+even when never set. This computed a `cycle_time` five times too large
+(`20.5 s` instead of `4.1 s`) before being diagnosed. It is a real gap
+affecting any live use of `motion-profile@0.1.0` with more than a trivial
+single move through the actual application, not specific to this test --
+see "Open decisions" below. Founder direction (2026-08-12): document and
+route around it rather than block Unit 5.4 on a generic-engine fix. This
+scenario's own test computes and persists `motion-profile`'s run directly
+(bypassing only the buggy input-resolution step, not its compute path or
+the reality of the persisted run), disclosed in the test file's own header
+and the validation record.
+
+**Scenarios 2 (vertical axis with brake/holding requirements) and 3
+(long-stroke/high-speed axis) remain blocked on evidence**, the same wall
+Unit 4.1 hit for months: ID42 (the only vertical fixture) has no
+holding/brake case, and no long-stroke/high-speed project fixture exists at
+all (see "Blocked" below, unchanged by this unit). Unit 5.4's own exit
+criterion ("All Phase 1D gates in roadmap.md pass") is not met by Scenario
+1 alone.
 
 Unit 5.5 -- `Production readiness` (Milestone 5, Phase 1D). **Started
 2026-08-11**, per founder direction after confirming Unit 5.4 and the
@@ -1132,6 +1271,20 @@ Unit 4.2 (`motion-profile`) is no longer blocked here either: released
 2026-08-12 as `motion-profile@0.1.0` (see "Active work" above and
 `validation/motion-profile/0.1.0.md`).
 
+Unit 5.4 Scenario 1 (horizontal axis) is no longer blocked: complete
+2026-08-12 (see "Active work" above and
+`validation/unit-5.4/scenario-1-horizontal-axis.md`). Scenarios 2 and 3
+remain genuinely blocked, the same evidence wall Unit 4.1 hit for months:
+
+- Scenario 2 (vertical axis with brake/holding requirements) — ID42 is the
+  only vertical fixture available and it contains no holding/brake case
+  (`validation/axis-load-cases/0.1.0.md`); `axis-load-cases@0.1.0` itself
+  has no `holding`/`emergency_stop` support to exercise even if a case
+  existed. Needs a real sanitized project with a holding/brake case.
+- Scenario 3 (long-stroke/high-speed axis) — the third historical fixture
+  Unit 0.1 and Phase 1B both still need has never been found (see "Next up"
+  item 2 below); no synthetic substitute will be created for it.
+
 The authenticated-route E2E test (Next up item 3) needs a Clerk Development
 instance and four GitHub Actions repository secrets this session cannot
 provision itself (no dashboard/repository-settings access, no `gh` CLI
@@ -1142,15 +1295,14 @@ variable names.
 
 ## Next up
 
-1. Unit 4.5 (`coupling`) Stage 6 (release) — the active/next work now
-   that Unit 4.4's own release gate cleared 2026-08-12
-   (`linear-guide@0.1.0`, see "Active work" above), following the
-   roadmap's Phase 1B order. `coupling` is done through Stage 5
-   (`validation/coupling/0.1.0.md`, registry `1.6.0`, workflow role
-   `"linear-axis.coupling"`). What remains: registering it (rename
-   `package.ts` to `index.ts`, run `npm run registry:generate`, seal the
-   package hash) and completing Stage 6's own `reviewer`/`reviewDate`
-   fields — see item 7 below for the full status.
+1. **Milestone 4 is now complete** — Unit 4.7's own release gate cleared
+   2026-08-12 (`drive-train@0.1.0`, see "Active work" above), the seventh
+   and last Milestone 4 module. All seven `linear-axis@1` roles now have a
+   registered module. Unit 5.4 Scenario 1 (horizontal axis) is now complete
+   too (see "Active work" above); the active/next work is Unit 5.4
+   Scenarios 2 and 3, both genuinely blocked on evidence (see "Blocked"
+   above), not buildable until that evidence exists. See item 8 below for
+   Unit 5.4's full status.
 2. Unit 0.1 — add the third long-stroke/high-speed fixture alongside ID39 and
    ID42 in `tests/fixtures/axes/`. Explicitly decoupled from Unit 4.1's own
    release (2026-08-11), but still required/desirable for the broader Unit
@@ -1174,55 +1326,13 @@ variable names.
    drive train). Approved but deliberately unreleased — each ships with the
    module that needs it, at that module's Stage 2 contract. See
    `lib/engine/parameters/README.md`.
-5. Units 4.2 (`motion-profile`), 4.3 (`ball-screw`), and 4.4
-   (`linear-guide`): **all released, 2026-08-12** — see Active work for
-   the full account. Nothing left to do for any of the three.
-6. Unit 4.5 (`coupling`): **Stages 1-5 done** (see Active work) — Stage 4
-   including the independent benchmark, Stage 5's generic UI/report schema
-   (drafted at Stage 3) and cross-module link compatibility tests against
-   `ball-screw` (`cross-module-links.test.ts`, done 2026-08-10). Registry
-   `1.6.0` released, full package in `lib/modules/coupling/0.1.0/`,
-   `validation/coupling/0.1.0.md` complete. Workflow role integration is
-   done (2026-08-10): declares `"linear-axis.coupling"` (Unit 4.8;
-   `linear-axis@1`'s own role of that ID has cardinality 0-1, an open
-   product decision — see "Open decisions"), asserted in
-   `cross-module-links.test.ts`. What remains: Stage 6 (release) itself —
-   no longer gated behind Unit 4.1/4.2/4.3/4.4 (all released), simply not
-   yet started; `coupling` is this tracker's own active/next pick (item 1
-   above).
-7. Unit 4.6 (`support-bearing`): **Stages 1-5 done** (see Active work) —
-   Stage 4 including the independent benchmark (NSK's own "Rolling
-   Bearings" catalog supplied both the missing worked example and a proved
-   algebraic-identity benchmark, closing the two gaps Stage 1 recorded),
-   Stage 5's generic UI/report schema (drafted at Stage 3, already passing
-   conformance) and cross-module link compatibility tests against
-   `axis-load-cases`/`ball-screw` (`cross-module-links.test.ts`, done
-   2026-08-10). Registry `1.7.0` released, full package in
-   `lib/modules/support-bearing/0.1.0/`. Workflow role integration is done
-   (2026-08-10): declares `"linear-axis.bearing"` (Unit 4.8; cardinality
-   1-2 there, since a fixed+supported arrangement needs two instances),
-   asserted in `cross-module-links.test.ts`. What remains: Stage 6
-   (release) itself — no longer gated behind Unit 4.1 (released
-   2026-08-11), simply not yet started. Optional parallel work.
-8. Unit 4.7 (`drive-train`): **Stages 1-5 done** (see Active work) --
-   registry `1.8.0` released, full `drive.*` group; full `ModulePackage` in
-   `lib/modules/drive-train/0.1.0/` with three reference examples (Omron's
-   own R88M-U20030 worked example, plus THK's own horizontal and vertical
-   worked examples, the vertical one partial by design -- see Active work)
-   reproduced through the real compute path, and the independent benchmark
-   met (`closed-cycle-benchmark.ts`, done 2026-08-10). Stage 5's cross-module
-   link compatibility tests against `ball-screw`/`axis-load-cases`/
-   `motion-profile` are done (`cross-module-links.test.ts`, done
-   2026-08-10 -- the first module to link against a `motion-profile`
-   output), and generic UI/report schema conformance was already passing.
-   Drive/amplifier current sizing stays out of scope until the unit
-   registry gains an electrical-current dimension -- a separate
-   generic-engine unit, not bundled into this module. Workflow role
-   integration is done (2026-08-10): declares `"linear-axis.drive"` (Unit
-   4.8), asserted in `cross-module-links.test.ts`. What remains: Stage 6
-   (release) itself — no longer gated behind Unit 4.1 (released
-   2026-08-11), simply not yet started. Optional parallel work.
-9. Unit 4.8 (`linear-axis@1` workflow): **built 2026-08-10** — full
+5. Units 4.2 (`motion-profile`), 4.3 (`ball-screw`), 4.4
+   (`linear-guide`), 4.5 (`coupling`), 4.6 (`support-bearing`), and 4.7
+   (`drive-train`): **all released, 2026-08-12** — see Active work for the
+   full account. Nothing left to do for any of the six; all seven
+   Milestone 4 modules (including Unit 4.1) are now released and
+   registered.
+6. Unit 4.8 (`linear-axis@1` workflow): **built 2026-08-10** — full
     `WorkflowDefinition` contract (`lib/workflows/workflow-sdk/`) and the
     concrete `linear-axis@1` definition, tested against all seven real
     modules' own ports (`lib/workflows/linear-axis/1.0.0/`), see Active
@@ -1232,15 +1342,14 @@ variable names.
     optional — see `context/adr/0007-workflow-definition-contract.md`
     "Consequences". `lib/application` wiring (`startWorkflowInstance`,
     `loadWorkflowInstanceView`) and the generic UI surface are now both
-    built — see Unit 4.9. Four of the seven roles (`linear-axis.axis`,
-    `linear-axis.motion`, `linear-axis.screw`, `linear-axis.guide`) now
+    built — see Unit 4.9. All seven roles (`linear-axis.axis`,
+    `linear-axis.motion`, `linear-axis.screw`, `linear-axis.guide`,
+    `linear-axis.coupling`, `linear-axis.bearing`, `linear-axis.drive`) now
     have a real registered module (`axis-load-cases@0.1.0`, released
-    2026-08-11; `motion-profile@0.1.0`, `ball-screw@0.1.0`, and
-    `linear-guide@0.1.0`, all released 2026-08-12); the other three
-    modules above remain unregistered pending their own Stage 6. Starting
-    or viewing a workflow instance itself was never blocked by this either
-    way; optional parallel work in the meantime.
-10. Unit 4.9 (`WorkflowInstance` application wiring and generic UI surface):
+    2026-08-11; `motion-profile@0.1.0`, `ball-screw@0.1.0`,
+    `linear-guide@0.1.0`, `coupling@0.1.0`, `support-bearing@0.1.0`, and
+    `drive-train@0.1.0`, all released 2026-08-12). This unit is done.
+7. Unit 4.9 (`WorkflowInstance` application wiring and generic UI surface):
     **fully built** — application wiring 2026-08-10, the UI surface
     2026-08-11 — see Active work for the full account.
     `lib/db/repositories/workflow-repository.ts`,
@@ -1253,28 +1362,26 @@ variable names.
     (`lib/workflows/example-workflow/1.0.0/`) rather than against any of
     `linear-axis@1`'s own seven modules; UI layer via component
     tests). This unit is done. Nothing left to do here.
-11. Units 5.1-5.3 (BOM model and generator; module/assembly report
+8. Units 5.1-5.3 (BOM model and generator; module/assembly report
     renderer; machine calculation package): **all built 2026-08-11** — see
     Active work for the full account. No stored `BomItem` table (ADR-0008);
     `loadBomView`/`buildBomCsv`/`/workspace/bom`; `loadModuleReportView`/
     `loadAssemblyReportView`/`/workspace/report`; `loadMachineReportView`
     and its `?configuration=` report mode all exist and are tested. All
-    three units are done. Unit 5.4 (end-to-end MVP validation) needs a
-    complete linear-axis MVP scenario (all seven `linear-axis@1` roles
-    filled by registered modules); Units 4.1, 4.2, 4.3, and 4.4 no longer
-    block it (all released), but the other three Milestone 4 modules
-    (`coupling`, `support-bearing`, `drive-train`) still need their own
-    Stage 6 — see items 6-8 above. Unit 5.5 (production readiness) is in
-    progress (see below).
-12. Unit 5.5 (production readiness): **started 2026-08-11** — the
+    three units are done. **Unit 5.4 Scenario 1 (horizontal axis) is
+    complete (2026-08-12)** — see Active work and
+    `validation/unit-5.4/scenario-1-horizontal-axis.md`; Scenarios 2 and 3
+    remain genuinely blocked on evidence (see "Blocked" above), the
+    tracker's own active/next pick (item 1 above). Unit 5.5 (production
+    readiness) is in progress (see below).
+9. Unit 5.5 (production readiness): **started 2026-08-11** — the
     Deployment decision ADR (`context/adr/0009-deployment-target-vercel-
     neon.md`: Vercel + Neon managed Postgres) and the dependency audit
     (`npm audit fix`, 3 transitive high-severity advisories resolved, 0
     remaining) are both done. Remaining deliverables, not yet started:
     managed database backups, error monitoring, structured application
     logs, security review, data export and account deletion path, basic
-    performance benchmark, recovery procedure. Optional parallel work,
-    independent of Milestone 4's remaining modules.
+    performance benchmark, recovery procedure. Optional parallel work.
 
 ---
 
@@ -1313,6 +1420,23 @@ past calls.
   *which* run or check should count as satisfying *which* requirement (an
   engineering-judgment question, not an implementation one) before the
   schema/UI work is scoped.
+- **New (2026-08-12, found by Unit 5.4 Scenario 1): `motion-profile`'s
+  per-move-index ports (`move_{1..5}_*`, `dwell_{1..5}_*`) cannot be
+  correctly driven through the database-backed `executeModuleInstance`
+  path** whenever a real move beyond move 1 might exist — they all share
+  one canonical parameter ID each with no `loadCase` to disambiguate, so
+  `lib/db/repositories/graph-repository.ts`'s `resolveModuleInputs`
+  (keyed by `(parameterId, loadCase)`, never by port key) resolves the
+  same stored value for every move-index port sharing that ID, even ports
+  never explicitly set. Confirmed: setting only `move_1_distance` produced
+  a `cycle_time` five times too large through the real application path
+  (see `validation/unit-5.4/scenario-1-horizontal-axis.md` "A Real Finding
+  From This Scenario"). This affects real application use, not only that
+  test. Needs a generic-engine decision on how per-index (not per-load-
+  case) ports should be represented in the parameter-value schema — a
+  cross-cutting change, out of scope for the unit that found it. Worked
+  around in that unit's own test (direct compute+persist, bypassing only
+  the buggy resolution step); the underlying gap itself is unresolved.
 
 ---
 
@@ -1324,6 +1448,22 @@ anything on the roadmap.
 - The primary dev machine sits behind a corporate TLS-intercepting proxy. Do
   not disable TLS verification to work around it — use GitHub Actions as the
   verification environment instead.
+- **The same interception also affects the browser, not just Node** —
+  confirmed 2026-08-12: `curl -v` to
+  `https://<tenant>.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/
+  clerk.browser.js` (the exact CDN URL `/sign-in`'s own rendered HTML loads
+  Clerk's client JS from) fails schannel's revocation check
+  (`CRYPT_E_NO_REVOCATION_CHECK`), distinct from the already-fixed Node-side
+  `NODE_EXTRA_CA_CERTS` issue above. Effect: `/sign-in` (and any
+  Clerk-gated route) can render a blank page stuck on Next's "Rendering..."
+  dev indicator indefinitely, because Clerk's client script never finishes
+  loading — not a code defect, and not something `NODE_EXTRA_CA_CERTS`
+  fixes, since that only covers the Node process's own outbound TLS.
+  Playwright can't be used to verify a fix in-session either — it's blocked
+  by this machine's group policy (see the Playwright note below). Unverified
+  against a real browser this session for the same reason; if seen again,
+  check the browser's own DevTools Network tab for the failing
+  `clerk.accounts.dev` request before assuming this is the cause.
 - Group policy on that machine blocks launching freshly downloaded browser
   binaries, so Playwright cannot run locally. Run it in CI.
 - Vitest does not read `.env`. Pass `DATABASE_URL` explicitly to run the

@@ -1,15 +1,18 @@
 // Validation record for the drive-train module (roadmap module definition
-// of done, item 10). Stage 4 (validation) is now complete: three reference
-// examples (Omron's own worked example, plus THK's own horizontal and
-// vertical worked examples) are reproduced through the real compute path
-// and hand-verified. The independent-benchmark item (item 9) is also met
-// (see ./closed-cycle-benchmark.ts and its own test file) -- a structurally
+// of done, item 10). Stage 4 (validation) and Stage 6 (release) are both
+// complete — see validation/drive-train/0.1.0.md. Three reference examples
+// (Omron's own worked example, plus THK's own horizontal and vertical
+// worked examples) are reproduced through the real compute path and
+// hand-verified. The independent-benchmark item (item 9) is also met (see
+// ./closed-cycle-benchmark.ts and its own test file) -- a structurally
 // different, direct per-phase computation of the same RMS-torque physics,
 // cross-checked against resolveEffectiveTorque's closed form across varied
 // cycle shapes and (J_total, T_load) pairs, plus a counter-example proving
 // the repeating-cycle precondition is load-bearing. `reviewer`/`reviewDate`
-// stay TODO pending Stage 6, the same treatment every other Milestone 4
-// module's own validation.ts gives that pair.
+// are finalized below (Stage 6, 2026-08-12), reusing the pre-existing
+// closed-cycle-benchmark.ts independent benchmark as the review substitute
+// -- the same treatment every other Milestone 4 module's own validation.ts
+// received.
 
 import type { ValidationRecord } from "@/lib/engine";
 import { asSourceRevisionId } from "@/lib/standards";
@@ -66,10 +69,10 @@ export const validation: ValidationRecord = {
   ],
   independentBenchmark:
     "Met (lib/modules/drive-train/0.1.0/closed-cycle-benchmark.ts). A structurally different, direct per-phase computation of RMS torque (Trms = sqrt(sum(T_i^2*t_i)/sum(t_i)), the general shape every Stage 1 source gives -- stage-1-spec.md item 3) is cross-checked against resolveEffectiveTorque's closed form across four repeating-cycle shapes (2-phase symmetric, 2-phase asymmetric, 4-phase Voss-style accel/dwell/decel/dwell, 5-phase multi-sign-change) and four (J_total, T_load) magnitude pairs, matching to floating-point precision (an algebraic identity, not an approximate corroboration -- the same treatment lib/modules/support-bearing/0.1.0/nsk-fh-benchmark.ts gives NSK's own fh method). A counter-example (a non-repeating cycle, net velocity change != 0) demonstrates the two methods diverge by a large, physically meaningful margin once the repeating-cycle precondition is violated, proving that precondition -- not just the formula's arithmetic -- is what the identity actually depends on. This is this project's own derivation (context/modules/drive-train/stage-1-spec.md 'The RMS-Acceleration Dependency Question'), not sourced from a manufacturer; no new sourceRevisionId is added.",
-  reviewer: "TODO",
-  reviewDate: "TODO",
+  reviewer:
+    "Solo validation — closed-cycle-benchmark independent-benchmark substitute",
+  reviewDate: "2026-08-12",
   supportedUseLimits: [
-    "Draft Stage 3 package: not registered, not released. Stage 5 (cross-module link compatibility, generic UI/report schema conformance) is done; Stage 6 (release) no longer waits on Unit 4.1's Definition of Done, which released as axis-load-cases@0.1.0 on 2026-08-11 (validation/axis-load-cases/0.1.0.md) -- this module's own Stage 6 has simply not started yet.",
     "Supports only the normal and peak load cases; holding and emergency_stop are not implemented.",
     "One candidate servo motor per calculation run; does not search a catalog or rank candidates.",
     "drive.reflected_load_inertia is a required engineer-supplied input -- no released upstream parameter derives it (context/modules/drive-train/stage-2-contract.md 'Stage 3 corrections').",

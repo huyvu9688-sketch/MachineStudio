@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { convert, executeModule } from "@/lib/engine";
-import { supportBearingModule } from "./package";
+import { supportBearingModule } from "./index";
 import { asQuantity } from "./test-helpers";
 import { NSK_REFERENCE_EXAMPLES } from "./nsk-reference-examples";
 

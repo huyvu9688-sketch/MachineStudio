@@ -1,4 +1,11 @@
-# Drive Train 0.1.0 — Draft Package (Stages 3-5 done)
+# Drive Train 0.1.0 — Released
+
+Released and registered 2026-08-12 as `drive-train@0.1.0`
+(`lib/modules/registry.generated.ts`, `validation/drive-train/0.1.0.md`).
+The package entry point is `index.ts`; its conformance suite
+(`package.test.ts`) reports `import-boundary` and `source-immutability` as
+real, passing checks — not skipped. This is the seventh and last Milestone 4
+module to release — every `linear-axis@1` role now has a registered module.
 
 `math.ts` is a pure SI-number kernel for the seventh production engineering
 module (Unit 4.7), covering the `0.1.0` proposed scope from
@@ -37,15 +44,15 @@ gearRatio/lead)^2*a_rms^2 + T_L^2`
 
 A full `ModulePackage` wraps the kernel:
 
-| File                     | Role                                                                                                                                                            |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `manifest.ts`            | Identity, validity envelope, source revisions, and ports.                                                                                                       |
-| `input-schema.ts`        | Requires `gearbox_efficiency` whenever `gear_ratio != 1`.                                                                                                       |
-| `compute.ts`             | Pure compute over the two supported load cases.                                                                                                                 |
-| `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                                                              |
-| `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                                                                  |
-| `validation.ts`          | Validation record — Stage 4 evidence is complete: three reference examples plus the independent benchmark. `reviewer`/`reviewDate` stay `TODO` pending Stage 6. |
-| `package.ts`             | Sealed package. Named `package.ts`, not `index.ts`, so `npm run registry:generate` cannot discover it.                                                          |
+| File                     | Role                                                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `manifest.ts`            | Identity, validity envelope, source revisions, and ports.                                                                                               |
+| `input-schema.ts`        | Requires `gearbox_efficiency` whenever `gear_ratio != 1`.                                                                                               |
+| `compute.ts`             | Pure compute over the two supported load cases.                                                                                                         |
+| `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                                                      |
+| `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                                                          |
+| `validation.ts`          | Validation record — Stage 4 evidence (three reference examples plus the independent benchmark) and Stage 6's `reviewer`/`reviewDate` are both complete. |
+| `index.ts`               | Sealed package. Named `index.ts` so `npm run registry:generate` discovers it.                                                                           |
 
 No registry version is released by this package — `drive.*` was already
 released at Stage 2 (`context/modules/drive-train/stage-2-contract.md`,
@@ -210,10 +217,8 @@ a third-party mirror already used elsewhere in this project.
 
 **Stage 4 is now complete**: three reference examples plus the independent
 benchmark. The solo-validation reviewer-substitute policy
-(`context/ai-workflow-rules.md` "Stage 4 — Validation") is now invoked —
-`reviewer`/`reviewDate` stay `TODO` in `validation.ts` pending Stage 6, the
-same treatment every other Milestone 4 module's own `validation.ts` gives
-that pair.
+(`context/ai-workflow-rules.md` "Stage 4 — Validation") is now invoked — see
+"Stage 6" below for the finalized `reviewer`/`reviewDate`.
 
 <details>
 <summary>Ruled-out sources (investigated 2026-08-10, before THK was found)</summary>
@@ -270,12 +275,28 @@ producer anywhere in the registry (the same documented gap `ball-screw`'s,
 `coupling`'s, and `support-bearing`'s own files already record); and no
 `drive.*` catalog input accepts an upstream output. Generic UI/report schema
 conformance was already passing (`package.test.ts`'s `package-validation`
-check, unchanged by this work). Workflow role integration stays not
-applicable pending Unit 4.8.
+check, unchanged by this work). Workflow role integration is done
+(2026-08-10): `manifest.ts`'s `workflowRoles` declares `"linear-axis.drive"`
+(Unit 4.8), asserted in `cross-module-links.test.ts`.
 
-This module's own Stage 4 gate is now clear (see "Stage 4" above). What
-remains: workflow role integration (not applicable until Unit 4.8 exists,
-the same treatment every other Milestone 4 module gets) and Stage 6
-(release) itself — no longer gated behind Unit 4.1's Definition of Done,
-which released 2026-08-11 (`validation/axis-load-cases/0.1.0.md`), but not
-yet started for this module.
+## Stage 6 (release, 2026-08-12)
+
+`index.ts` (renamed from the earlier draft `package.ts`) assembles the same
+manifest, ports, compute, UI, report, and validation record — unchanged from
+Stage 3-5 — into a single `ModulePackage` and seals it, so `npm run
+registry:generate` now discovers it: the module is registered as
+`drive-train@0.1.0` in `lib/modules/registry.generated.ts` — the seventh and
+last Milestone 4 module to release, so every `linear-axis@1` role now has a
+registered module. `package.test.ts` pins the source-immutability hash
+(`npm run module:source-hash -- drive-train 0.1.0` → `3afd6ea257966494`) and
+asserts both `import-boundary` and `source-immutability` pass as real
+checks, not skipped — the same conformance rigor every other Milestone 4
+module's own release already established. `validation.ts`'s
+`reviewer`/`reviewDate` are finalized ("Solo validation —
+closed-cycle-benchmark independent-benchmark substitute", `2026-08-12`),
+reusing the pre-existing `closed-cycle-benchmark.ts` independent benchmark —
+no new evidence was needed at Stage 6, since Stage 4 had already closed both
+evidence gaps. Sealed package content hash: `7a5e2cf96a9c2fcb`. Full
+validation record: `validation/drive-train/0.1.0.md` (written this
+release — it did not exist before Stage 6, the same documentation gap
+`support-bearing@0.1.0`'s own release found and closed).

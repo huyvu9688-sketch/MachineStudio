@@ -1,4 +1,10 @@
-# Coupling 0.1.0 — Draft Package (Stages 3-5)
+# Coupling 0.1.0 — Released
+
+Released and registered 2026-08-12 as `coupling@0.1.0`
+(`lib/modules/registry.generated.ts`, `validation/coupling/0.1.0.md`). The
+package entry point is `index.ts`; its conformance suite (`package.test.ts`)
+reports `import-boundary` and `source-immutability` as real, passing checks —
+not skipped.
 
 `math.ts` is a pure SI-number kernel for the fifth production engineering
 module (Unit 4.5), covering the `0.1.0` proposed scope from
@@ -30,15 +36,15 @@ steady and shock load, speed limit, misalignment, and bore compatibility.
 
 A full `ModulePackage` wraps the kernel:
 
-| File                     | Role                                                                                                                                                 |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `manifest.ts`            | Identity, validity envelope, source revisions, and ports.                                                                                            |
-| `input-schema.ts`        | Rejects a bore range whose minimum exceeds its maximum (either side).                                                                                |
-| `compute.ts`             | Pure compute over the two supported load cases.                                                                                                      |
-| `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                                                   |
-| `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                                                       |
-| `validation.ts`          | Draft validation record — Stage 4 evidence (reference examples, independent benchmark) is complete; reviewer/reviewDate stay `TODO` pending Stage 6. |
-| `package.ts`             | Sealed package. Named `package.ts`, not `index.ts`, so `npm run registry:generate` cannot discover it.                                               |
+| File                     | Role                                                                                                                                      |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `manifest.ts`            | Identity, validity envelope, source revisions, and ports.                                                                                 |
+| `input-schema.ts`        | Rejects a bore range whose minimum exceeds its maximum (either side).                                                                     |
+| `compute.ts`             | Pure compute over the two supported load cases.                                                                                           |
+| `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                                        |
+| `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                                            |
+| `validation.ts`          | Validation record — Stage 4 evidence (reference examples, independent benchmark) and Stage 6's `reviewer`/`reviewDate` are both complete. |
+| `index.ts`               | Sealed package. Named `index.ts` so `npm run registry:generate` discovers it.                                                             |
 
 No registry version is released by this package — `coupling.*` and the new
 `N*m/rad` unit were already released at Stage 2
@@ -150,10 +156,10 @@ identical when `coupling.service_factor` is the fully composed
 is used without `M_A`. See `validation.ts`'s own `independentBenchmark` field
 and `validation/coupling/0.1.0.md` for the full record.
 
-**Still open:** reviewer/reviewDate — a Stage 6 (release) field, not a Stage
-4 completeness gate (see `validation/coupling/0.1.0.md` "Reviewer" for the
-now-available solo-validation independent-benchmark substitute). See
-`validation.ts` for the full record.
+**reviewer/reviewDate are now finalized (Stage 6, 2026-08-12)** — see
+`validation/coupling/0.1.0.md` "Reviewer" for the solo-validation
+independent-benchmark substitute they record. See `validation.ts` for the
+full record.
 
 ## Stage 5 (2026-08-10): cross-module link compatibility
 
@@ -176,15 +182,30 @@ port, confirmed here rather than assumed.
 Generic UI and report schema (`ui.ts`/`report.ts`, drafted at Stage 3) were
 already passing conformance validation through `package.test.ts`'s
 `runModuleConformance` `package-validation` check — nothing new was needed
-there. Workflow role integration stays not applicable: no
-`linear-axis@1` workflow vocabulary exists yet (`manifest.ts`'s
-`workflowRoles` stays empty pending Unit 4.8), the same treatment
-`ball-screw` and `linear-guide` already get.
+there. Workflow role integration is done (2026-08-10):
+`manifest.ts`'s `workflowRoles` declares `"linear-axis.coupling"`
+(`linear-axis@1`'s own role of that ID has cardinality 0-1 — resolved the
+same day, since the founder confirmed direct-drive axes are a real
+configuration, see `context/adr/0007-workflow-definition-contract.md`
+"Consequences"), asserted in `cross-module-links.test.ts`.
 
-What remains for this module is Stage 6 (release) itself — no longer
-gated behind Unit 4.1's Definition of Done, which released as
-`axis-load-cases@0.1.0` on 2026-08-11
-(`validation/axis-load-cases/0.1.0.md`).
+## Stage 6 (release, 2026-08-12)
+
+`index.ts` (renamed from the earlier draft `package.ts`) assembles the same
+manifest, ports, compute, UI, report, and validation record — unchanged from
+Stage 3-5 — into a single `ModulePackage` and seals it, so `npm run
+registry:generate` now discovers it: the module is registered as
+`coupling@0.1.0` in `lib/modules/registry.generated.ts`. `package.test.ts`
+pins the source-immutability hash (`npm run module:source-hash --
+coupling 0.1.0` → `ff50ba8e7b2c6a6c`) and asserts both `import-boundary` and
+`source-immutability` pass as real checks, not skipped — the same
+conformance rigor every other Milestone 4 module's own release already
+established. `validation.ts`'s `reviewer`/`reviewDate` are finalized ("Solo
+validation — KTR DIN 740 Part II independent-benchmark substitute",
+`2026-08-12`), reusing the pre-existing `ktr-din740-benchmark.ts` independent
+benchmark — no new evidence was needed at Stage 6, since Stage 4 had already
+closed both evidence gaps. Sealed package content hash: `4e6ef500bad5ddda`.
+Full validation record: `validation/coupling/0.1.0.md`.
 
 ## Stage 1 kernel, before the package existed
 
@@ -200,8 +221,4 @@ Stage 3's own workflow step explicitly includes "Add reference... tests"
 example run through this module's own integration path) is closed by
 `./rw-reference-examples.ts` — see "Stage 4" above.
 
-Production release no longer waits on Unit 4.1's Definition of Done —
-`axis-load-cases@0.1.0` released 2026-08-11
-(`validation/axis-load-cases/0.1.0.md`). This module's own Stage 4 is
-otherwise complete; only reviewer/reviewDate (Stage 6 fields) remain,
-since this module's own Stage 6 has not started.
+This module is now fully released — see "Stage 6" above.

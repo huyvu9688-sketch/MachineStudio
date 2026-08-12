@@ -1,10 +1,12 @@
 // Validation record for the coupling module (roadmap module definition of
-// done, item 10). Stage 4 (validation) evidence items are now BOTH met: the
-// reference-example item (see below) and the independent-benchmark item
-// (see independentBenchmark below). No reviewer is recorded yet — that is a
-// Stage 6 (release) field, the same treatment ball-screw's and linear-
-// guide's own validation.ts give it once their own review substitute
-// existed (see this file's own reviewer/reviewDate comment below).
+// done, item 10). Stage 4 (validation) and Stage 6 (release) are both
+// complete — see validation/coupling/0.1.0.md. Both Stage 4 evidence items
+// are met: the reference-example item (see below) and the independent-
+// benchmark item (see independentBenchmark below). `reviewer`/`reviewDate`
+// are finalized below (Stage 6, 2026-08-12), reusing the pre-existing
+// ktr-din740-benchmark.ts independent benchmark as the review substitute —
+// the same treatment ball-screw's and linear-guide's own validation.ts
+// received.
 //
 // ./math.test.ts reproduces KTR's own worked example (200 kW / 1500 rpm ->
 // T_AN = 1273 Nm, T_KN >= 1909.5 Nm) and both of R+W's own worked examples
@@ -94,10 +96,10 @@ export const validation: ValidationRecord = {
   ],
   independentBenchmark:
     "Implemented (2026-08-10): lib/modules/coupling/0.1.0/ktr-din740-benchmark.ts reproduces a second, distinct KTR document's own worked shock-torque example ('Coupling Selection According to DIN 740 Part II', catalog printed page 13: 160 kW/1485 rpm motor, screw-compressor load T_LN = 930 Nm, ROTEX Size 90 coupling T_KN = 2400 Nm / T_Kmax = 4800 Nm) end to end -- T_AN, T_KN required = 1348.5 Nm, the coupled inertias J_A = 2.9673 / J_L = 6.8673 kgm^2, the inertia coefficient M_A, T_S, and T_Kmax required = 3760 Nm, all within tolerances documented in ktr-din740-benchmark.test.ts. This document's own general shock-torque formula (T_Kmax >= T_S*S_Z*S_t + T_N*S_t, T_S = T_AS*M_A*S_A) is a genuinely different, more detailed derivation than KTR's other document's own (T_N+T_S)*S_Z*S_t*S_R form recorded in context/modules/coupling/stage-1-spec.md item 2 -- a real disagreement between two KTR documents, recorded rather than resolved, the same 'two sources agree on shape, disagree on specifics' treatment this project already gives cross-manufacturer disagreements. It also supplies the full published shock-torque worked example neither KTR's other document nor either of R+W's own two examples has (all three are steady-torque selections). compareModuleShockCheckToKtrDin740 then answers the exact question this field previously left open -- how this module's own simplified shock check ('required * serviceFactor') relates to KTR's own detailed method for a case that actually exercises it: algebraically identical (relative deviation ~0) when coupling.service_factor is the fully composed M_A*S_A*S_Z*S_t; understating KTR's own required torque by about 1.2% when serviceFactor is the catalog shock factor S_A alone (the module reports a slightly larger, non-conservative safety margin); and overstating it by about 43%, producing a false fail on a coupling KTR's own detailed method accepts, when serviceFactor is S_A*S_Z*S_t without the mass-distribution coefficient M_A. The practical risk this surfaces is not in this module's math -- it is that M_A depends on the driving/load inertia split, which varies by installation and which this project cannot compute internally yet (no released motor/load inertia parameter -- context/modules/coupling/stage-1-spec.md item 3, Unit 4.7 territory), so the engineer's own choice of coupling.service_factor is what actually carries this risk.",
-  reviewer: "TODO",
-  reviewDate: "TODO",
+  reviewer:
+    "Solo validation — KTR DIN 740 Part II independent-benchmark substitute",
+  reviewDate: "2026-08-12",
   supportedUseLimits: [
-    "Draft Stage 3 package: not registered, not released. No reviewer is recorded yet -- reviewer/reviewDate are a Stage 6 (release) field, not a Stage 4 completeness gate, the same treatment ball-screw's and linear-guide's own validation.ts give that pair (validation/coupling/0.1.0.md 'Reviewer' records the now-available solo-validation independent-benchmark substitute). Both Stage 4 evidence items -- reference examples and independent benchmark -- are now complete (see referenceExamples and independentBenchmark above).",
     "Supports only the normal and peak load cases; holding and emergency_stop are not implemented.",
     "One coupling connecting a ball screw's own drive shaft to its upstream driving shaft — not a multi-coupling driveline.",
     "The peak case is checked against the coupling's own maximum torque using screw.drive_torque[peak] as the required torque — a documented adaptation, not KTR's/R+W's own motor-starting-torque concept (context/modules/coupling/stage-2-contract.md 'Decisions' item 4).",

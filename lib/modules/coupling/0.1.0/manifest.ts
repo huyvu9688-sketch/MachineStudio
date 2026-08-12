@@ -1,4 +1,4 @@
-// Manifest and ports for the coupling module (Unit 4.5, Stage 3 draft).
+// Manifest and ports for the coupling module (Unit 4.5, released).
 //
 // v0.1.0 scope: the `normal` and `peak` load cases only, matching
 // `axis-load-cases 0.1.0`'s and `ball-screw 0.1.0`'s own scope restriction.
@@ -8,12 +8,8 @@
 // "motor starting torque" concept (see manifest note on `screw.drive_torque`
 // reuse and stage-2-contract.md "Decisions" item 4).
 //
-// This package is intentionally NOT registered: this directory has no
-// `index.ts`, so `npm run registry:generate` cannot discover it (see
-// ./README.md). Unit 4.1 (axis-load-cases@0.1.0) released 2026-08-11
-// (validation/axis-load-cases/0.1.0.md) and no longer gates this module's
-// registration; this module's own Stage 6 (release) simply has not
-// started.
+// Released and registered 2026-08-12 as coupling@0.1.0
+// (lib/modules/registry.generated.ts, validation/coupling/0.1.0.md).
 
 import {
   asParameterId,
@@ -37,9 +33,10 @@ export const manifest: Omit<ModuleManifest, "contentHash"> = {
   category: "coupling",
   tags: ["coupling", "transmission"],
   // linear-axis@1's "linear-axis.coupling" role (Unit 4.8,
-  // lib/workflows/linear-axis/1.0.0/definition.ts). Cardinality 0-1 there —
-  // an open product decision, not yet resolved (context/progress-tracker.md
-  // "Open decisions").
+  // lib/workflows/linear-axis/1.0.0/definition.ts). Cardinality 0-1 there,
+  // resolved 2026-08-10: the founder confirmed direct-drive axes are a real
+  // configuration, so the role stays optional
+  // (context/adr/0007-workflow-definition-contract.md "Consequences").
   workflowRoles: ["linear-axis.coupling"],
   validityEnvelopeSummary:
     "One coupling connecting a ball screw's own drive shaft to its upstream driving shaft, consuming the normal (steady) and peak (shock) load cases already resolved by ball-screw (holding and emergency_stop are not supported); torque capacity checked with one consolidated, required, no-default service factor (KTR's and R+W's own factor tables disagree); operating rotational speed derived from motion.axis.case_linear_velocity via screw.lead and screw.gear_ratio, not a released screw.* speed port; misalignment and bore compatibility are simple bound checks against catalog data; torsional stiffness and moment of inertia are reported, not evaluated — no resonant-frequency or torsional-vibration check (no released motor/load inertia parameter exists yet).",

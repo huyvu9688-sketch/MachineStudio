@@ -1,5 +1,4 @@
-// Manifest and ports for the servo drive-train module (Unit 4.7, Stage 3
-// draft).
+// Manifest and ports for the servo drive-train module (Unit 4.7, released).
 //
 // v0.1.0 scope: the `normal` and `peak` load cases only, matching every
 // other Milestone 4 module's own scope restriction. Sizes one candidate
@@ -10,12 +9,8 @@
 // input, not a computed value -- see
 // context/modules/drive-train/stage-2-contract.md "Stage 3 corrections".
 //
-// This package is intentionally NOT registered: this directory has no
-// `index.ts`, so `npm run registry:generate` cannot discover it (see
-// ./README.md). Unit 4.1 (axis-load-cases@0.1.0) released 2026-08-11
-// (validation/axis-load-cases/0.1.0.md) and no longer gates this module's
-// registration; this module's own Stage 6 (release) simply has not
-// started.
+// Released and registered 2026-08-12 as drive-train@0.1.0
+// (lib/modules/registry.generated.ts, validation/drive-train/0.1.0.md).
 
 import {
   asParameterId,

@@ -1,4 +1,10 @@
-# Support Bearing 0.1.0 — Draft Package (Stages 3-5)
+# Support Bearing 0.1.0 — Released
+
+Released and registered 2026-08-12 as `support-bearing@0.1.0`
+(`lib/modules/registry.generated.ts`, `validation/support-bearing/0.1.0.md`).
+The package entry point is `index.ts`; its conformance suite
+(`package.test.ts`) reports `import-boundary` and `source-immutability` as
+real, passing checks — not skipped.
 
 `math.ts` is a pure SI-number kernel for the sixth production engineering
 module (Unit 4.6), covering the `0.1.0` proposed scope from
@@ -31,15 +37,15 @@ margin.
 
 A full `ModulePackage` wraps the kernel:
 
-| File                     | Role                                                                                                                                           |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `manifest.ts`            | Identity, validity envelope, source revisions, and ports.                                                                                      |
-| `input-schema.ts`        | Requires `dynamic_load_factor_y`, `static_load_factor_y`, and per-case `thrust_force` together when `bearing.location` is `"fixed"`.           |
-| `compute.ts`             | Pure compute over the two supported load cases, branching on `bearing.location`.                                                               |
-| `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                                             |
-| `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                                                 |
-| `validation.ts`          | Validation record — Stage 4 evidence (reference examples, independent benchmark) is complete; reviewer/reviewDate stay `TODO` pending Stage 6. |
-| `package.ts`             | Sealed package. Named `package.ts`, not `index.ts`, so `npm run registry:generate` cannot discover it.                                         |
+| File                     | Role                                                                                                                                      |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `manifest.ts`            | Identity, validity envelope, source revisions, and ports.                                                                                 |
+| `input-schema.ts`        | Requires `dynamic_load_factor_y`, `static_load_factor_y`, and per-case `thrust_force` together when `bearing.location` is `"fixed"`.      |
+| `compute.ts`             | Pure compute over the two supported load cases, branching on `bearing.location`.                                                          |
+| `trace.ts` / `checks.ts` | Trace steps and acceptance checks.                                                                                                        |
+| `ui.ts` / `report.ts`    | Generic UI and report schemas.                                                                                                            |
+| `validation.ts`          | Validation record — Stage 4 evidence (reference examples, independent benchmark) and Stage 6's `reviewer`/`reviewDate` are both complete. |
+| `index.ts`               | Sealed package. Named `index.ts` so `npm run registry:generate` discovers it.                                                             |
 
 No registry version is released by this package — `bearing.*` was already
 released at Stage 2 (`context/modules/support-bearing/stage-2-contract.md`,
@@ -145,7 +151,7 @@ added axial load — the exact scope split this module's own
   `Lh = 500*fh^3` for ball bearings — reproduced here as a genuinely
   separate computation, then proved (not just observed) to be algebraically
   identical to `resolveNominalLife`/`resolveLifeHours`'s own `(C/P)^3 *
-  10^6/(60n)` form. The two are asserted to agree to floating-point
+10^6/(60n)` form. The two are asserted to agree to floating-point
   precision, the same "proved identity" treatment
   `lib/modules/linear-guide/0.1.0/iko-benchmark.ts` gives PMI's and IKO's
   own equivalent-load forms.
@@ -170,10 +176,34 @@ input) has no producer anywhere yet — the same documented gap
 `ball-screw`'s and `coupling`'s own files already record — and no
 `bearing.*` catalog input accepts an upstream output. Generic UI and
 report schema (`ui.ts`/`report.ts`, drafted at Stage 3) were already
-passing conformance through `package.test.ts`. Workflow role integration
-stays not applicable pending Unit 4.8.
+passing conformance through `package.test.ts`. Workflow role integration is
+done (2026-08-10): `manifest.ts`'s `workflowRoles` declares
+`"linear-axis.bearing"` (`linear-axis@1`'s own role of that ID has
+cardinality 1-2, since a fixed+supported arrangement needs two instances of
+this module), asserted in `cross-module-links.test.ts`.
 
-Production release no longer waits on Unit 4.1's Definition of Done —
-`axis-load-cases@0.1.0` released 2026-08-11
-(`validation/axis-load-cases/0.1.0.md`). This module's own Stage 6
-(release) simply has not started.
+## Stage 6 (release, 2026-08-12)
+
+`index.ts` (renamed from the earlier draft `package.ts`) assembles the same
+manifest, ports, compute, UI, report, and validation record — unchanged from
+Stage 3-5 — into a single `ModulePackage` and seals it, so `npm run
+registry:generate` now discovers it: the module is registered as
+`support-bearing@0.1.0` in `lib/modules/registry.generated.ts`.
+`package.test.ts` pins the source-immutability hash (`npm run
+module:source-hash -- support-bearing 0.1.0` → `7abf25cd378683a7`) and
+asserts both `import-boundary` and `source-immutability` pass as real
+checks, not skipped — the same conformance rigor every other Milestone 4
+module's own release already established. `validation.ts`'s
+`reviewer`/`reviewDate` are finalized ("Solo validation — NSK fh/fn
+independent-benchmark substitute", `2026-08-12`), reusing the pre-existing
+`nsk-fh-benchmark.ts` independent benchmark — no new evidence was needed at
+Stage 6, since Stage 4 had already closed both evidence gaps.
+`validation.ts`'s own `referenceExamples` were also split from two entries
+into four (dynamic-equivalent-load and nominal-life as separate entries per
+NSK example) — the same worked-example-to-checkpoint granularity
+`linear-guide`'s own PMI Chapter 9 reference examples already use — so the
+roadmap's own "at least three published reference examples" item is met by
+the record's own itemization, not just its underlying evidence. Sealed
+package content hash: `1ac6c8a7d38cce69`. Full validation record:
+`validation/support-bearing/0.1.0.md` (written this release — it did not
+exist before Stage 6).

@@ -1,6 +1,7 @@
 // Validation record for the support-bearing module (roadmap module
-// definition of done, item 10). Stage 4 (validation) is now substantially
-// complete — the two evidence gaps recorded through 2026-08-09
+// definition of done, item 10). Stage 4 (validation) and Stage 6 (release)
+// are both complete — see validation/support-bearing/0.1.0.md. The two
+// evidence gaps recorded through 2026-08-09
 // (context/modules/support-bearing/stage-1-spec.md "Evidence Gaps") are
 // both closed 2026-08-10 by a third manufacturer, NSK Ltd., whose own
 // "Rolling Bearings" catalog (CAT. No. E1102a) turned out to contain the
@@ -11,7 +12,11 @@
 // of three independently-fetched editions (see this file's own
 // independentBenchmark note and lib/standards/engineering-sources.ts's own
 // note on jp.ntn.rolling_bearings_handbook@cat-9012e for the retry that
-// reconfirmed the gap rather than closing it).
+// reconfirmed the gap rather than closing it). `reviewer`/`reviewDate` are
+// finalized below (Stage 6, 2026-08-12), reusing the pre-existing
+// nsk-fh-benchmark.ts independent benchmark as the review substitute — the
+// same treatment ball-screw's, linear-guide's, and coupling's own
+// validation.ts received.
 
 import type { ValidationRecord } from "@/lib/engine";
 import { asSourceRevisionId } from "@/lib/standards";
@@ -33,26 +38,39 @@ export const validation: ValidationRecord = {
   ],
   referenceExamples: [
     {
-      id: "nsk-example-1-6208-radial-only",
+      id: "nsk-example-1-dynamic-equivalent-load",
       description:
-        "NSK 'Rolling Bearings' (CAT. No. E1102a) Section 5.7 Example 1: single-row deep-groove ball bearing 6208 under a pure radial load (Fr=2500 N, n=900 rpm, Cr=29,100 N). Reproduced through executeModule (lib/modules/support-bearing/0.1.0/nsk-reference-examples.ts) as a bearing.location='supported' run.",
+        "NSK 'Rolling Bearings' (CAT. No. E1102a) Section 5.7 Example 1: single-row deep-groove ball bearing 6208 under a pure radial load (Fr=2500 N, n=900 rpm, Cr=29,100 N). Dynamic equivalent load P=X*Fr with X=1 (NSK's own reduction for a pure radial load) reproduced through executeModule (lib/modules/support-bearing/0.1.0/nsk-reference-examples.ts) as a bearing.location='supported' run.",
       tolerance:
-        "Dynamic equivalent load matched to floating-point precision against NSK's own exact printed P=2500 N; basic rating life matched within 2% of NSK's own stated ~29,000 h, a documented allowance for NSK's own chart-reading rounding (fh is read from its own Fig. 5.4), not slack introduced to pass the test.",
+        "Matched to floating-point precision against NSK's own exact printed P=2500 N.",
     },
     {
-      id: "nsk-example-3-6208-radial-plus-axial",
+      id: "nsk-example-1-nominal-life",
       description:
-        "NSK 'Rolling Bearings' Section 5.7 Example 3: the same bearing 6208 and radial load as Example 1, plus an axial load (Fa=1000 N, X=0.56, Y=1.67, NSK's own printed factors). Reproduced through executeModule as a bearing.location='fixed' run.",
+        "Same example: basic rating life L10h reproduced through the same executeModule run, converted to hours.",
       tolerance:
-        "Dynamic equivalent load matched to floating-point precision against NSK's own exact printed P=3070 N; basic rating life matched within 2% of NSK's own stated ~15,800 h, the same chart-reading allowance as nsk-example-1-6208-radial-only.",
+        "Matched within 2% of NSK's own stated ~29,000 h, a documented allowance for NSK's own chart-reading rounding (fh is read from its own Fig. 5.4), not slack introduced to pass the test.",
+    },
+    {
+      id: "nsk-example-3-dynamic-equivalent-load",
+      description:
+        "NSK 'Rolling Bearings' Section 5.7 Example 3: the same bearing 6208 and radial load as Example 1, plus an axial load (Fa=1000 N, X=0.56, Y=1.67, NSK's own printed factors). Dynamic equivalent load P=X*Fr+Y*Fa reproduced through executeModule as a bearing.location='fixed' run.",
+      tolerance:
+        "Matched to floating-point precision against NSK's own exact printed P=3070 N.",
+    },
+    {
+      id: "nsk-example-3-nominal-life",
+      description:
+        "Same example: basic rating life L10h reproduced through the same executeModule run, converted to hours.",
+      tolerance:
+        "Matched within 2% of NSK's own stated ~15,800 h, the same chart-reading allowance as nsk-example-1-nominal-life.",
     },
   ],
   independentBenchmark:
     "Met 2026-08-10. lib/modules/support-bearing/0.1.0/nsk-fh-benchmark.ts implements NSK's own distinct 'fatigue life factor' (fh) / 'speed factor' (fn) method (Table 5.2, ball-bearing column: fn=(0.03n)^(-1/3); fh=fn*C/P; Lh=500*fh^3) as a genuine second computation, reproducing NSK's own Example 1 and Example 3 figures (fh=3.88/3.16, ~29,000 h/~15,800 h) independently of ./math.ts's own resolveNominalLife/resolveLifeHours. The two are then shown to be a proved algebraic identity, not merely a numeric coincidence -- substituting NSK's own fn formula into Lh=500*fh^3 reduces exactly to (C/P)^3 * 10^6/(60n), the same form ./math.ts already computes (derivation in nsk-fh-benchmark.ts's own module doc comment) -- and nsk-fh-benchmark.test.ts asserts the two agree to floating-point precision across four cases, the same 'two independently-sourced formulations of one physics, proved identical' treatment lib/modules/linear-guide/0.1.0/iko-benchmark.ts gives PMI's and IKO's own equivalent-load forms. NSK's own two short 'Technical Insight' bulletins (TI Bearing Life.pdf, P_TI-0102_EN.pdf), read in an earlier session, had already corroborated the same formula shape without a full worked example to reproduce; this closes that gap with NSK's own full catalog instead.",
-  reviewer: "TODO",
-  reviewDate: "TODO",
+  reviewer: "Solo validation — NSK fh/fn independent-benchmark substitute",
+  reviewDate: "2026-08-12",
   supportedUseLimits: [
-    "Draft Stage 3 package: not registered, not released. No reviewer is recorded yet — the solo-validation reviewer-substitute policy (context/ai-workflow-rules.md 'Stage 4 — Validation') is now invokable, since both the reference-example and independent-benchmark items are met, but reviewer/reviewDate remain a Stage 6 (release) field, the same treatment ball-screw's, linear-guide's, and coupling's own validation.ts give that pair.",
     "Supports only the normal and peak load cases; holding and emergency_stop are not implemented.",
     "One support bearing per calculation run (bearing.location selects fixed or supported) — not a combined fixed+floating calculation.",
     "Two-point shaft support only; ball bearings only (life exponent p = 3).",

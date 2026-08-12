@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { executeModule } from "@/lib/engine";
-import { driveTrainModule } from "./package";
+import { driveTrainModule } from "./index";
 import {
   OMRON_ACCELERATION_TORQUE_NM,
   OMRON_EFFECTIVE_TORQUE_NM,

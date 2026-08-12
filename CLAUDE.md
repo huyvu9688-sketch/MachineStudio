@@ -42,6 +42,26 @@ contracts, parameter semantics, UI conventions, or roadmap order, update
 that context file too. A decision that constrains future implementation
 belongs in an ADR, not in the tracker.
 
+## Running the dev server
+
+`npm run dev` (Next.js/Turbopack). Before starting a new one, check whether
+an instance is already listening — Next falls back to the next free port
+when 3000 is taken, so confirm the actual port (e.g.
+`netstat -ano | findstr LISTENING | findstr :300`) rather than assuming
+3000.
+
+`/` (`app/page.tsx`) is a Milestone-0 design-token smoke test, not the
+product, and is left as-is intentionally. The real app is `/workspace`
+(`app/(workspace)/workspace/page.tsx`); it is Clerk-auth-protected and
+redirects unauthenticated requests to `/sign-in`.
+
+This machine's network intercepts TLS; `DATABASE_URL` and
+`NODE_EXTRA_CA_CERTS` must both be set for server-side Prisma/Clerk calls to
+work at all, and `/sign-in` can still render a blank/loading screen because
+the same interception separately affects the *browser's* connection to
+Clerk's hosted JS domain — see `context/progress-tracker.md` "Environment
+notes" for the confirmed detail and cert path, not a code bug to fix here.
+
 ## Invariants
 
 Released module versions, released parameter-registry versions, calculation

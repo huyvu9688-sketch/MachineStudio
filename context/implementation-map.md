@@ -1064,6 +1064,32 @@ distribution that should have been signed and zero-sum) — see
 Known coupling selections are reproduced with transparent rejection
 reasons.
 
+**Partially met — Unit 4.5 complete, `coupling@0.1.0` released
+2026-08-12.** Two real, published coupling selections are reproduced
+through the module's own real compute path: R+W America's own "Sizing and
+Selection" worked examples (`ST2/10`, `ST4/10`), both catalog-accepted
+selections, confirmed to clear their own printed requirement running
+through `executeModule` — not just the kernel formula level. **The
+"transparent rejection reasons" half is demonstrated by the module's own
+check mechanism, not yet by a published rejected-selection example**: every
+check reports a computed safety factor and margin (the transparent reason),
+verified by synthetic tests that force a failure (e.g. an oversized
+required torque), but no source read this session gives a worked example
+of a coupling selection that fails — KTR's and R+W's own examples are all
+selections the source itself already accepted. Evidence:
+
+- Validation record: `validation/coupling/0.1.0.md`
+- Module tests: `lib/modules/coupling/0.1.0/package.test.ts`,
+  `math.test.ts`, `rw-reference-examples.test.ts`,
+  `ktr-din740-benchmark.test.ts`, `cross-module-links.test.ts`
+- Registry entry: `coupling@0.1.0` in `lib/modules/registry.generated.ts`
+
+A second, independent KTR document ("Coupling Selection According to DIN
+740 Part II") supplies this module's own independent benchmark — a
+genuinely different, more detailed shock-torque derivation than KTR's other
+document's own, quantified against this module's own simplified check (see
+`validation/coupling/0.1.0.md` "Independent Method or Tool Comparison").
+
 ## Unit 4.6 — Support-bearing module
 
 ### Required Checks
@@ -1079,6 +1105,30 @@ reasons.
 
 Support-bearing output integrates with the ball-screw module without a
 custom link mapping.
+
+**Met — Unit 4.6 complete, `support-bearing@0.1.0` released 2026-08-12.**
+`cross-module-links.test.ts` confirms, against the real engine
+link-compatibility evaluator and each module's real `manifest.ts` ports,
+that this module's per-case thrust-force input accepts an upstream output
+with no custom mapping — the gate's own intent is met. **One wording
+correction**: the real upstream producer is `axis-load-cases`' own
+`motion.axis.thrust_force`, not `ball-screw` itself — `ball-screw` produces
+no output this module consumes (only `screw.*` results); `motion.axis.
+thrust_force` is the same port `ball-screw`'s own kernel already resists
+internally, so the gate's own "without a custom link mapping" test still
+holds, just against the actual producing module. Evidence:
+
+- Validation record: `validation/support-bearing/0.1.0.md`
+- Module tests: `lib/modules/support-bearing/0.1.0/package.test.ts`,
+  `math.test.ts`, `nsk-reference-examples.test.ts`,
+  `nsk-fh-benchmark.test.ts`, `cross-module-links.test.ts`
+- Registry entry: `support-bearing@0.1.0` in
+  `lib/modules/registry.generated.ts`
+
+This module's own validation record and `validation/source-index.md` rows
+were not written until Stage 6 (2026-08-12), even though Stage 4's own
+evidence closed 2026-08-10 — a documentation gap this release closed, not
+one carried forward.
 
 ## Unit 4.7 — Servo drive-train module
 
@@ -1108,6 +1158,38 @@ custom link mapping.
 
 At least one independent calculation and two manufacturer tool/catalog
 comparisons are documented.
+
+**Met — Unit 4.7 complete, `drive-train@0.1.0` released 2026-08-12 — the
+last of Milestone 4's seven modules.** One independent calculation:
+`closed-cycle-benchmark.ts` implements a structurally different, direct
+per-phase RMS-torque computation, proved algebraically identical to this
+module's own closed form across sixteen cycle-shape/inertia combinations,
+plus a counter-example proving the closed form's own precondition is
+load-bearing. Two manufacturer comparisons: Omron Corporation's own
+complete worked example (motor R88M-U20030) and THK Co., Ltd.'s own two
+worked examples (horizontal, and a partial vertical reproduction — see
+"Tolerances and Deviations" below), both reproduced through the module's
+real compute path. Evidence:
+
+- Validation record: `validation/drive-train/0.1.0.md`
+- Module tests: `lib/modules/drive-train/0.1.0/package.test.ts`,
+  `math.test.ts`, `omron-reference-example.test.ts`,
+  `thk-reference-examples.test.ts`, `closed-cycle-benchmark.test.ts`,
+  `cross-module-links.test.ts`
+- Registry entry: `drive-train@0.1.0` in `lib/modules/registry.generated.ts`
+
+THK's own vertical worked example is a real, sourced case where the
+closed-cycle RMS-torque assumption's own precondition does not hold
+(asymmetric per-direction load torque, nonzero holding torque) — the
+module's own computed effective torque diverges from THK's own printed
+figure by about 21%, a genuine, quantified deviation, not a rounding
+residual (`validation/drive-train/0.1.0.md` "Tolerances and Deviations").
+Drive/amplifier current and voltage compatibility stays out of scope
+entirely, pending a generic-engine electrical-current dimension this
+project does not have yet.
+
+**All seven Milestone 4 modules (Units 4.1-4.7) are now released and
+registered** — every `linear-axis@1` role has a real registered module.
 
 ## Unit 4.8 — Linear-axis workflow definition
 
@@ -1198,9 +1280,28 @@ One HTML print package supports a formal design review.
 
 ### Scenarios
 
-1. Horizontal linear axis
-2. Vertical linear axis with brake/holding requirements
-3. Long-stroke or high-speed axis limited by screw behavior
+1. Horizontal linear axis — **complete (2026-08-12).**
+   `lib/application/workflows/unit-5-4-scenario-1-horizontal-axis.test.ts`
+   runs the full `linear-axis@1.0.0` workflow (all seven modules, eight
+   role instances) through the real application-service layer against a
+   live database. Full evidence record:
+   `validation/unit-5.4/scenario-1-horizontal-axis.md`. Real ID39
+   historical evidence drives `axis-load-cases`/`motion-profile`; every
+   catalog-level value for the other five modules is disclosed
+   representative data (ID39 supplies none) — see that record's own
+   "Disclosed Limitations." A real, previously-undiscovered generic-engine
+   defect in `motion-profile`'s per-move-index port resolution was found,
+   disclosed, and worked around, not hidden — see that record's own "A Real
+   Finding From This Scenario" and `context/progress-tracker.md` "Open
+   decisions."
+2. Vertical linear axis with brake/holding requirements — **blocked on
+   evidence, not started.** ID42 (the only vertical historical fixture) has
+   no holding/brake case, and `axis-load-cases@0.1.0` has no
+   `holding`/`emergency_stop` support to exercise even if one existed.
+3. Long-stroke or high-speed axis limited by screw behavior — **blocked on
+   evidence, not started.** The third historical fixture Unit 0.1 and Phase
+   1B both still need has never been found; no synthetic fixture will
+   substitute for it.
 
 ### Required Evidence
 
@@ -1211,9 +1312,14 @@ One HTML print package supports a formal design review.
 - Generated BOM and report
 - Baseline reproduction
 
+Every item above is met for Scenario 1 — see
+`validation/unit-5.4/scenario-1-horizontal-axis.md`. Not yet produced for
+Scenarios 2/3, both blocked on evidence.
+
 ### Exit Criteria
 
-All Phase 1D gates in `roadmap.md` pass.
+All Phase 1D gates in `roadmap.md` pass. **Not yet met** — this requires
+all three scenarios; only Scenario 1 is complete.
 
 ## Unit 5.5 — Production readiness
 

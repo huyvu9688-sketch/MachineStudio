@@ -187,8 +187,27 @@ Modules:
 Gate:
 
 - Peak torque, RMS torque, speed, inertia, brake, drive, and regeneration
-  are validated against independent methods and manufacturer tools
-- A complete compatible drive-train set can be assigned to an axis
+  are validated against independent methods and manufacturer tools —
+  **partially met.** `drive-train@0.1.0` released 2026-08-12
+  (`validation/drive-train/0.1.0.md`); peak torque, RMS torque, speed, and
+  inertia (ratio) are validated against Omron's and THK's own manufacturer
+  worked examples and an independent per-phase RMS-torque calculation (see
+  `context/implementation-map.md` Unit 4.7 "Gate") — but **brake and drive
+  are not validated at all, and regeneration only partially**: holding-
+  brake torque is a reported catalog value with no check or comparison;
+  drive/amplifier current and voltage compatibility is out of scope
+  entirely, blocked on a generic-engine electrical-current dimension this
+  project does not have yet; regenerative energy is checked under a stated
+  "100% efficient absorption" simplifying assumption, corroborated only in
+  formula shape by Celera Motion's own resistor-sizing method, with no
+  worked numerical example reproduced. These three remain open scope gaps
+  for a future module version, not a release blocker for `0.1.0`.
+- A complete compatible drive-train set can be assigned to an axis — **not
+  yet met.** This is Unit 5.4 (end-to-end MVP validation) / application-
+  layer territory: all seven `linear-axis@1` roles now have a registered
+  module (`axis-load-cases@0.1.0` through `drive-train@0.1.0`, all released
+  by 2026-08-12), so Unit 5.4 is unblocked, but no complete drive-train set
+  has actually been assigned to a real axis in the application yet.
 
 ## Phase 1D — Guided Linear-Axis MVP
 
@@ -204,10 +223,28 @@ Deliverables:
 
 Gate:
 
-- One live linear axis is completed without the original spreadsheet
-- All assigned calculated components link to supporting runs
-- Baseline remains reproducible after newer modules and catalog imports
-- Founder accepts the workflow as a practical replacement
+- One live linear axis is completed without the original spreadsheet —
+  **partially met.** Unit 5.4 Scenario 1 (2026-08-12,
+  `validation/unit-5.4/scenario-1-horizontal-axis.md`) ran a real
+  horizontal axis end to end through the complete `linear-axis@1.0.0`
+  workflow — all seven modules, a full checked part selection, a generated
+  BOM/report, and a reproduced baseline — without any spreadsheet. It is
+  not yet a full "live linear axis" in the sense this gate means: only
+  `axis-load-cases`'/`motion-profile`'s own inputs have real historical
+  (ID39) evidence behind them, every other module's own catalog data is
+  disclosed representative data, not one real machine's own complete BOM
+  (see that record's own "Disclosed Limitations"), and Scenarios 2/3 remain
+  blocked on evidence — see `context/implementation-map.md` Unit 5.4.
+- All assigned calculated components link to supporting runs — **met for
+  Scenario 1's own six assigned parts** (each cites its own module
+  instance's `CalculationRun`, `validation/unit-5.4/
+  scenario-1-horizontal-axis.md` "Assigned Parts").
+- Baseline remains reproducible after newer modules and catalog imports —
+  **baseline reproduction itself demonstrated** (Scenario 1's own baseline
+  reloads with every module ref `pass`/not-stale); reproducibility *after a
+  later module or catalog change* is not yet separately exercised.
+- Founder accepts the workflow as a practical replacement — **not yet
+  assessed.**
 
 ## Phase 2 — Common Automation Modules
 
