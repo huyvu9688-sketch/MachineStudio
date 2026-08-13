@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import {
   addModuleInstance,
+  archiveModuleInstance,
   assignComponent,
   confirmParameterLink,
   createMachineAssembly,
@@ -24,9 +25,11 @@ import {
   createRequirementAcceptanceCriterion,
   deleteAccount,
   executeModuleInstance,
+  previewArchiveModuleInstanceImpact,
   removeParameterLink,
   renameMachineAssembly,
   renameMachineProject,
+  renameModuleInstanceLabel,
   setParameterValue,
   startWorkflowInstance,
 } from "@/lib/application";
@@ -137,6 +140,69 @@ export async function renameAssemblyAction(
   }
   revalidatePath("/workspace");
   return { status: "success" };
+}
+
+export async function renameModuleInstanceAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth.protect();
+  const result = await renameModuleInstanceLabel(
+    asModuleInstanceId(fieldValue(formData, "moduleInstanceId")),
+    fieldValue(formData, "name"),
+    asUserId(userId),
+  );
+  if (!result.ok) {
+    return { status: "error", message: result.error.message };
+  }
+  revalidatePath("/workspace");
+  return { status: "success" };
+}
+
+export async function archiveModuleInstanceAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth.protect();
+  const result = await archiveModuleInstance(
+    asModuleInstanceId(fieldValue(formData, "moduleInstanceId")),
+    asUserId(userId),
+  );
+  if (!result.ok) {
+    return { status: "error", message: result.error.message };
+  }
+  revalidatePath("/workspace");
+  return { status: "success" };
+}
+
+/**
+ * Not a `useActionState` form action like the others in this file — called
+ * directly from `ArchiveModuleInstanceDialog` as a plain async function when
+ * it opens, since the impact preview is a read, not a form submission.
+ */
+export async function previewArchiveModuleInstanceImpactAction(
+  moduleInstanceId: string,
+): Promise<
+  | {
+      readonly ok: true;
+      readonly dependentModuleInstanceLabels: readonly string[];
+      readonly attachedToWorkflow: boolean;
+    }
+  | { readonly ok: false; readonly message: string }
+> {
+  const { userId } = await auth.protect();
+  const result = await previewArchiveModuleInstanceImpact(
+    asModuleInstanceId(moduleInstanceId),
+    asUserId(userId),
+  );
+  if (!result.ok) {
+    return { ok: false, message: result.error.message };
+  }
+  return {
+    ok: true,
+    dependentModuleInstanceLabels: result.preview.dependentModuleInstanceLabels,
+    attachedToWorkflow: result.preview.attachedToWorkflow,
+  };
 }
 
 const LOAD_CASE_CATEGORIES = [
