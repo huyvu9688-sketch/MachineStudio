@@ -50,13 +50,22 @@
 // and has no gear-ratio parameter at all -- narrower scope decisions than
 // motor_sizing.ball_screw.*'s own, recorded in the module's own Stage 2
 // contract "Decisions".
+//
+// v1.14 adds 8 new motor_sizing.belt_pulley.* parameters (motion_mode,
+// deceleration_time, dwell_time, constant_velocity_time, cycle_time,
+// travel_distance, deceleration_torque, effective_torque) for the
+// belt-pulley-drive-motor-sizing 0.2.0 release (context/modules/
+// belt-pulley-drive-motor-sizing/stage-2-contract.md "0.2.0 Addendum") --
+// the first module-version bump in this project. Additive only; none of
+// the 24 parameters 1.12.0 already released for this module's own 0.1.0
+// are edited.
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.13.0";
+export const PARAMETER_REGISTRY_VERSION = "1.14.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -2923,6 +2932,110 @@ const motorSizingBeltPulley: readonly ParameterDefinition[] = [
     canonicalUnit: "W",
     displayUnits: ["W", "kW", "hp"],
     range: { min: 0, unit: "W" },
+    qualifiers: { bound: "required" },
+  }),
+
+  // 0.2.0 additions (registry 1.14.0, stage-2-contract.md "0.2.0
+  // Addendum"): a native repeating trapezoidal motion cycle (accelerate/
+  // run/decelerate/dwell), velocity-first or distance-first input, and
+  // deceleration/effective (RMS) torque outputs -- the follow-on work
+  // ADR-0011 itself named (embed motion-profile math natively inside each
+  // mechanism module, not cross-module-linked). Source: jp.oriental_motor.
+  // motor_sizing_calculations@web-2026-08-08, pp. 5-6, both generic "for
+  // all motors" formulas.
+  defineParameter({
+    id: "motor_sizing.belt_pulley.motion_mode",
+    displayName: "Motion input mode",
+    symbol: "mode",
+    definition:
+      "Which two of {target_velocity, travel_distance, constant_velocity_time, cycle_time} the engineer supplies directly, and which two the kernel derives. 'velocity': supply target_velocity and constant_velocity_time, derive travel_distance and cycle_time. 'distance': supply travel_distance and cycle_time, derive target_velocity and constant_velocity_time. Regardless of mode, all four are always reported (belt-pulley-drive-motor-sizing-0.2.0-design.md 'Input Mode').",
+    valueType: "enum",
+    enumId: "belt_pulley_motion_mode",
+    enumOptions: ["velocity", "distance"],
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.deceleration_time",
+    displayName: "Deceleration time",
+    symbol: "t3",
+    definition:
+      "Ramp time from target_velocity back to standstill -- symmetric to acceleration_time, required in both motion modes.",
+    valueType: "quantity",
+    canonicalUnit: "s",
+    displayUnits: ["s", "min"],
+    range: { min: 0, unit: "s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.dwell_time",
+    displayName: "Dwell time",
+    symbol: "t4",
+    definition:
+      "Idle time between the end of deceleration and the next cycle's own acceleration phase. Contributes zero torque but counts toward cycle_time, matching how a servo's own thermal/RMS rating averages over idle time. Zero is a structural 'no dwell modeled' default, not a guessed physical value.",
+    valueType: "quantity",
+    canonicalUnit: "s",
+    displayUnits: ["s", "min"],
+    range: { min: 0, unit: "s" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "s") },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.constant_velocity_time",
+    displayName: "Constant-velocity (run) time",
+    symbol: "t2",
+    definition:
+      "Duration of the constant-velocity phase between acceleration and deceleration. A required input in motion_mode='velocity'; a derived, always-reported output otherwise (cycle_time - acceleration_time - deceleration_time - dwell_time). Zero is a valid boundary case (a triangular move, no constant-speed phase), not an error.",
+    valueType: "quantity",
+    canonicalUnit: "s",
+    displayUnits: ["s", "min"],
+    range: { min: 0, unit: "s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.cycle_time",
+    displayName: "Total cycle time",
+    symbol: "tf",
+    definition:
+      "Total repeating-cycle duration (acceleration_time + constant_velocity_time + deceleration_time + dwell_time). A required input in motion_mode='distance'; a derived, always-reported output otherwise.",
+    valueType: "quantity",
+    canonicalUnit: "s",
+    displayUnits: ["s", "min"],
+    range: { min: 0, unit: "s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.travel_distance",
+    displayName: "Travel distance",
+    symbol: "S",
+    definition:
+      "Carriage travel distance over one accelerate/run/decelerate move (S = target_velocity*(acceleration_time+deceleration_time)/2 + target_velocity*constant_velocity_time). A required input in motion_mode='distance'; a derived, always-reported output otherwise.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.deceleration_torque",
+    displayName: "Deceleration torque",
+    symbol: "Td",
+    definition:
+      "Torque to decelerate total_system_inertia over deceleration_time from the motor-shaft-equivalent of target_velocity to standstill (Td = J_total*alpha_decel, magnitude) -- symmetric to acceleration_torque.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.effective_torque",
+    displayName: "Effective (RMS) torque",
+    symbol: "Trms",
+    definition:
+      "Trms = sqrt(((acceleration_torque+load_torque)^2*acceleration_time + load_torque^2*constant_velocity_time + (deceleration_torque-load_torque)^2*deceleration_time) / cycle_time) -- Oriental Motor's own generic per-phase effective-load-torque formula for continuous/thermal motor rating (jp.oriental_motor.motor_sizing_calculations, p. 6), additive to momentary_torque, not a replacement for it.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
     qualifiers: { bound: "required" },
   }),
 ];
