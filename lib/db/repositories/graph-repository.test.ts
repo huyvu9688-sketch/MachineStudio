@@ -326,6 +326,32 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(sourceValue(r)).toBeNull();
     });
 
+    it("lists distinct module instances linked from a source's outputs, scoped to the owner", async () => {
+      const s = await scaffold();
+      const stranger = await projects.upsertUser(`test-user-${randomUUID()}`);
+      createdUserIds.push(stranger.id);
+      const source = await newModule(s, "Source");
+      const target = await newModule(s, "Target");
+      await graph.createParameterLink({
+        configurationId: s.configId,
+        targetModuleInstanceId: target,
+        targetParameterId: "tgt.in",
+        sourceKind: "module_output",
+        sourceModuleInstanceId: source,
+        sourceParameterId: "src.out",
+      });
+
+      const linked = await graph.listModuleInstancesLinkedFromSource(
+        source,
+        s.ownerId,
+      );
+      expect(linked).toEqual([{ id: target, label: "Target" }]);
+
+      expect(
+        await graph.listModuleInstancesLinkedFromSource(source, stranger.id),
+      ).toEqual([]);
+    });
+
     it("rejects a self-cycle (a module's output linked to its own input)", async () => {
       const s = await scaffold();
       const moduleId = await newModule(s, "Loop");

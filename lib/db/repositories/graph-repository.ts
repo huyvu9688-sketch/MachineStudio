@@ -564,6 +564,42 @@ export async function listParameterLinksForConfiguration(
 }
 
 /**
+ * Every other module instance that links from `sourceModuleInstanceId`'s own
+ * outputs, distinct by target, scoped to `ownerId`. Read-only — used by the
+ * module-instance archive impact preview (module-instance-management
+ * design, 2026-08-13) to tell a founder what still depends on an instance
+ * before they archive it. Archiving never removes the underlying link, so
+ * unlike {@link deleteParameterLink} this has no stale-impact computation to
+ * run — it is a direct query, not a graph traversal.
+ */
+export async function listModuleInstancesLinkedFromSource(
+  sourceModuleInstanceId: ModuleInstanceId,
+  ownerId: UserId,
+  client: DbClient = prisma,
+): Promise<{ readonly id: ModuleInstanceId; readonly label: string }[]> {
+  const id = parse(nonEmpty, sourceModuleInstanceId);
+  const owner = parse(nonEmpty, ownerId);
+
+  const links = await client.parameterLink.findMany({
+    where: {
+      sourceModuleInstanceId: id,
+      targetModuleInstance: {
+        assembly: { configuration: { project: { ownerId: owner } } },
+      },
+    },
+    select: {
+      targetModuleInstanceId: true,
+      targetModuleInstance: { select: { label: true } },
+    },
+    distinct: ["targetModuleInstanceId"],
+  });
+  return links.map((link) => ({
+    id: asModuleInstanceId(link.targetModuleInstanceId),
+    label: link.targetModuleInstance.label,
+  }));
+}
+
+/**
  * Lists the *current* value at every graph node in a configuration, scoped to
  * the owner. `ParameterValue` rows are append-only history (Unit 2.2/2.5:
  * changing a value creates a new row rather than editing one), so this
