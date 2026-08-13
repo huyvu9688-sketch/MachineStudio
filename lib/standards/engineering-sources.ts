@@ -390,7 +390,7 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     edition: "web page/PDF accessed 2026-08-08",
     officialUrl:
       "https://www.orientalmotor.com/technology/motor-sizing-calculations.html",
-    note: "Access-dated intake; page-verified against the cached PDF (reference/source-material/Oriental_Motor Sizing Calculators.pdf, p. 4, 'Load Torque Calculation - Ball Screw Drive'). Capture a fixed edition/archive before a released module cites it.",
+    note: "Access-dated intake; page-verified against the cached PDF (reference/source-material/Oriental_Motor Sizing Calculators.pdf, p. 4, 'Load Torque Calculation - Ball Screw Drive'). Capture a fixed edition/archive before a released module cites it. Additionally verified 2026-08-13/14 (belt-pulley-drive-motor-sizing 0.2.0) against the same cached PDF, pp. 5-6, 'Acceleration Torque' (Ta = (J0*i^2+JL)*(NM/t1), the common formula for all motors) and 'Calculation for the Effective Load Torque (Trms) for Servo Motors and BX Series Brushless Motors' (Trms = sqrt(((Ta+TL)^2*t1+TL^2*t2+(Td-TL)^2*t3)/tf)) -- both generic, not belt/pulley-specific, and both formulas only, no worked numerical example on this page.",
   },
   {
     id: asSourceRevisionId(
