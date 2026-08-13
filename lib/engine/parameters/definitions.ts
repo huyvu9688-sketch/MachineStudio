@@ -26,14 +26,37 @@
 // drive.* group for the servo drive-train module
 // (context/modules/drive-train/stage-2-contract.md), the last of the five
 // result groups context/implementation-map.md Unit 1.3 named as initial
-// groups -- all five are now released.
+// groups -- all five are now released. v1.9 adds the full
+// motor_sizing.ball_screw.* group for the ball-screw-motor-sizing module
+// (context/modules/ball-screw-motor-sizing/stage-2-contract.md), the first
+// module in the new Motor Sizing Tool family (ADR-0011, Milestone 6). This
+// module is self-contained: it reproduces, rather than links to, the
+// physics already released in axis-load-cases, ball-screw, motion-profile,
+// and drive-train, and reuses only screw.lead, screw.gear_ratio,
+// screw.preload, screw.internal_friction_coefficient,
+// screw.mechanical_efficiency, and the motion.axis.* orientation/mass/
+// friction/gravity group directly. Its own motion inputs use distinct
+// forward_*/return_* parameter IDs rather than an indexed shared-ID family,
+// deliberately avoiding motion-profile's own move_{1..5}_* port-resolution
+// defect (context/progress-tracker.md "Open decisions"). v1.10 adds the
+// full motor_sizing.direct_drive_conveyor.* group for the
+// direct-drive-conveyor-motor-sizing module (context/modules/
+// direct-drive-conveyor-motor-sizing/stage-2-contract.md), the second
+// Motor Sizing Tool family module. Also self-contained; reuses only
+// motion.axis.gravity. Its own belt_friction_coefficient is a deliberately
+// new parameter, not a reuse of motion.axis.friction_coefficient (a
+// different physical interface with a different typical value). Scoped to
+// a single acceleration event (no deceleration phase, no RMS torque check)
+// and has no gear-ratio parameter at all -- narrower scope decisions than
+// motor_sizing.ball_screw.*'s own, recorded in the module's own Stage 2
+// contract "Decisions".
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.8.0";
+export const PARAMETER_REGISTRY_VERSION = "1.13.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -1702,7 +1725,1467 @@ const driveTrain: readonly ParameterDefinition[] = [
   }),
 ];
 
-/** All released parameter definitions for registry v1.8, in authored order. */
+// --- Ball-screw motor sizing (Unit 6.2 Stage 2) ------------------------------
+// See context/modules/ball-screw-motor-sizing/stage-2-contract.md.
+// `ball-screw-motor-sizing 0.1.0` is self-contained (ADR-0011 "Reuse
+// policy"): it reproduces the physics already released in
+// axis-load-cases, ball-screw, motion-profile, and drive-train rather than
+// linking to their outputs, and calls lib/engine/mechanics (Unit 6.1)
+// directly for moment of inertia and Ta = J*alpha. Its own motion inputs
+// (forward_*/return_*/dwell_time) are distinct parameter IDs per phase
+// slot, not an indexed family sharing one canonical ID -- the specific fix
+// for motion-profile's own move_{1..5}_* port-resolution defect
+// (context/progress-tracker.md "Open decisions"). Its own safety-factor
+// inputs (effective_torque_safety_factor, momentary_torque_safety_factor,
+// both >= 1) multiply a computed torque up to a required minimum motor
+// rating -- the inverse direction from drive.rms_torque_margin/
+// drive.peak_torque_margin (<= 1, an allowed fraction of a known candidate
+// motor's own rated torque), because this module takes no candidate
+// motor's own rated/peak torque as an input at all (stage-2-contract.md
+// "Decisions" item 4).
+
+const motorSizingBallScrew: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "motor_sizing.ball_screw.screw_diameter",
+    displayName: "Ball-screw shaft nominal diameter",
+    symbol: "D",
+    definition:
+      "Nominal (outer) diameter of the ball-screw shaft, used for a solid-cylinder moment-of-inertia estimate (lib/engine/mechanics' solidCylinderInertia). Distinct from screw.minor_diameter, which is the root/minor diameter the buckling and critical-speed formulas need -- a different engineering purpose.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.screw_mass",
+    displayName: "Ball-screw shaft mass",
+    symbol: "M_B",
+    definition:
+      "Mass of the ball-screw shaft, matching Oriental Motor's own worked example's directly-stated MB rather than a density-derived value (stage-1-spec.md 'Reference Examples' item 1).",
+    valueType: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: [...massDisplay],
+    range: { min: 0, unit: "kg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.external_force",
+    displayName: "External force along the axis of travel",
+    symbol: "F_A",
+    definition:
+      "External force along the axis of travel, beyond gravity and friction (Oriental Motor's own F_A). Zero is a structural 'no additional external force' default, the same category as screw.gear_ratio = 1 -- not a guessed physical value.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { unit: "N" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "N") },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.forward_move_distance",
+    displayName: "Forward move distance",
+    symbol: "L_fwd",
+    definition:
+      "Commanded travel distance of the forward move -- the one move every 0.1.0 cycle has (stage-2-contract.md 'Decisions' item 2). On a vertical or inclined axis, 'forward' is the direction that moves away from gravity (upward); 'return' is gravity-assisted (downward) -- a structural convention stated here, not a guessed physical value, needed to resolve the sign of the gravity term in forward_load_torque/return_load_torque. Direction is immaterial on a horizontal axis.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.forward_max_velocity",
+    displayName: "Forward move maximum velocity",
+    symbol: "V_fwd",
+    definition: "Velocity ceiling for the forward move.",
+    valueType: "quantity",
+    canonicalUnit: "m/s",
+    displayUnits: [...speedDisplay],
+    range: { min: 0, unit: "m/s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.forward_max_acceleration",
+    displayName: "Forward move maximum acceleration",
+    symbol: "A_fwd",
+    definition:
+      "Symmetric acceleration/deceleration ceiling for the forward move.",
+    valueType: "quantity",
+    canonicalUnit: "m/s^2",
+    displayUnits: [...accelDisplay],
+    range: { min: 0, unit: "m/s^2" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.return_move_distance",
+    displayName: "Return move distance",
+    symbol: "L_ret",
+    definition:
+      "Commanded travel distance of an optional return move -- the gravity-assisted (downward, on a vertical/inclined axis) direction; see forward_move_distance's own definition for the direction convention. Required together with return_max_velocity and return_max_acceleration whenever any one is supplied -- a package-level input-schema rule, not a registry constraint (stage-2-contract.md 'Decisions' item 2).",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.return_max_velocity",
+    displayName: "Return move maximum velocity",
+    symbol: "V_ret",
+    definition: "Velocity ceiling for the return move.",
+    valueType: "quantity",
+    canonicalUnit: "m/s",
+    displayUnits: [...speedDisplay],
+    range: { min: 0, unit: "m/s" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.return_max_acceleration",
+    displayName: "Return move maximum acceleration",
+    symbol: "A_ret",
+    definition:
+      "Symmetric acceleration/deceleration ceiling for the return move.",
+    valueType: "quantity",
+    canonicalUnit: "m/s^2",
+    displayUnits: [...accelDisplay],
+    range: { min: 0, unit: "m/s^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.dwell_time",
+    displayName: "Dwell time",
+    symbol: "t_dwell",
+    definition:
+      "Stationary dwell duration within one full cycle. Zero (the default) is a structural 'no dwell modeled' statement, not a guessed physical value -- the same category as screw.gear_ratio = 1.",
+    valueType: "quantity",
+    canonicalUnit: "s",
+    displayUnits: ["s", "min"],
+    range: { min: 0, unit: "s" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "s") },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.motor_rotor_inertia",
+    displayName: "Candidate motor rotor moment of inertia",
+    symbol: "J_M",
+    definition:
+      "Rotor moment of inertia of the candidate servo motor, from its own catalog data -- the one engineer-typed catalog figure this module's 0.1.0 scope needs, required so the inertia-ratio check has something real to check against (stage-2-contract.md 'Decisions' item 4). Used by total_system_inertia and inertia_ratio.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.effective_torque_safety_factor",
+    displayName: "Effective (RMS) torque safety factor",
+    symbol: "Sf_rms",
+    definition:
+      "Multiplier (>= 1) applied to effective_torque to obtain required_motor_rated_torque -- the minimum continuous torque rating a candidate motor must have. Engineer-supplied, no built-in default: this is the inverse direction from drive.rms_torque_margin (<= 1, a fraction of a known motor's own rated torque), since this module takes no candidate motor's own rated torque as an input (stage-2-contract.md 'Decisions' item 4). Oriental Motor's own page 6 gives this exact Sf shape (TM = (TL+Ta)*Sf).",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.momentary_torque_safety_factor",
+    displayName: "Momentary (peak) torque safety factor",
+    symbol: "Sf_peak",
+    definition:
+      "Multiplier (>= 1) applied to momentary_torque to obtain required_motor_peak_torque -- the minimum peak torque rating a candidate motor must have. Kept separate from effective_torque_safety_factor: RMS/continuous and momentary/peak are two physically distinct failure modes, and no source ties them to one shared number (the same reasoning drive-train/stage-2-contract.md 'Decisions' item 3 already gives for its own two separate margins).",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.inertia_ratio_maximum",
+    displayName: "Maximum allowable load-to-rotor inertia ratio",
+    symbol: "R_Jmax",
+    definition:
+      "Maximum acceptable inertia_ratio, engineer-supplied with no built-in default -- the same five-way sourced disagreement (2:1 to 100:1, depending on control technology, tuning method, and positioning objective) drive-train/stage-1-spec.md item 5 already documents, reused by citation here, not re-researched.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.screw_inertia",
+    displayName: "Ball-screw shaft rotating inertia",
+    symbol: "J_B",
+    definition:
+      "The ball-screw shaft's own rotating moment of inertia (solidCylinderInertia over screw_diameter and screw_mass).",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.load_inertia",
+    displayName: "Screw-shaft-reflected load inertia",
+    symbol: "J_W",
+    definition:
+      "screw_inertia plus the table-and-load's own linear-motion-equivalent inertia (linearMotionInertia over total_moving_mass and the screw lead), reflected to the screw shaft -- matching Oriental Motor's own JW = M*(P/2pi)^2 + JB.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.reflected_load_inertia",
+    displayName: "Motor-shaft-reflected load inertia",
+    symbol: "J_L",
+    definition:
+      "load_inertia reflected to the motor shaft through screw.gear_ratio (JL = JW/i^2).",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.total_system_inertia",
+    displayName: "Total system inertia",
+    symbol: "J_total",
+    definition: "motor_rotor_inertia + reflected_load_inertia.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.inertia_ratio",
+    displayName: "Load-to-rotor inertia ratio",
+    symbol: "R_J",
+    definition:
+      "reflected_load_inertia / motor_rotor_inertia. Checked against inertia_ratio_maximum -- the one real catalog-free pass/fail check in 0.1.0.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.forward_load_torque",
+    displayName: "Forward-direction load torque",
+    symbol: "T_Lfwd",
+    definition:
+      "Load torque for the forward direction, per Oriental Motor's own ball-screw-drive load-torque formula.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.return_load_torque",
+    displayName: "Return-direction load torque",
+    symbol: "T_Lret",
+    definition:
+      "Load torque for the return direction -- generally different from forward_load_torque on a vertical or inclined axis, since gravity's own contribution flips sign by direction (stage-2-contract.md 'Decisions' item 3). Meaningful only when a return move is declared.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.forward_acceleration_torque",
+    displayName: "Forward-direction acceleration torque",
+    symbol: "T_Afwd",
+    definition:
+      "Acceleration/deceleration torque during the forward move's own accel/decel phases (Ta = total_system_inertia * alpha, lib/engine/mechanics' accelerationTorque).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.return_acceleration_torque",
+    displayName: "Return-direction acceleration torque",
+    symbol: "T_Aret",
+    definition:
+      "Acceleration/deceleration torque during the return move's own accel/decel phases. Meaningful only when a return move is declared.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.momentary_torque",
+    displayName: "Maximum momentary torque",
+    symbol: "T_1",
+    definition:
+      "Highest single-phase torque across every phase in the full cycle (T1 = Ta + TL, taken at whichever phase governs).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required", aggregation: "peak" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.effective_torque",
+    displayName: "Effective (RMS) torque",
+    symbol: "T_rms",
+    definition:
+      "RMS torque over the full cycle, Trms = sqrt(sum(T_i^2*t_i)/sum(t_i)) over every real phase in the cycle -- a genuine multi-phase computation, not drive-train@0.1.0's own closed-form approximation from a single scalar rms_acceleration (stage-1-spec.md item 5, the structural fix ADR-0011 exists to make).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required", aggregation: "rms" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.operating_speed",
+    displayName: "Motor-shaft operating speed",
+    symbol: "N_op",
+    definition:
+      "Peak motor-shaft rotational speed across the forward and return moves.",
+    valueType: "quantity",
+    canonicalUnit: "rad/s",
+    displayUnits: [...angularVelocityDisplay],
+    range: { min: 0, unit: "rad/s" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.required_motor_rated_torque",
+    displayName: "Required motor rated (continuous) torque",
+    symbol: "T_Mreq",
+    definition:
+      "effective_torque * effective_torque_safety_factor -- the minimum continuous torque rating a candidate motor must have.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.required_motor_peak_torque",
+    displayName: "Required motor peak (maximum momentary) torque",
+    symbol: "T_Mmaxreq",
+    definition:
+      "momentary_torque * momentary_torque_safety_factor -- the minimum peak torque rating a candidate motor must have.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.ball_screw.required_power",
+    displayName: "Required motor power",
+    symbol: "P_req",
+    definition:
+      "rotationalPower(required_motor_rated_torque, operating_speed) -- lib/engine/units' already-released P = T*omega. The required-power figure ADR-0011 'Output scope' names alongside torque/speed/inertia.",
+    valueType: "quantity",
+    canonicalUnit: "W",
+    displayUnits: ["W", "kW", "hp"],
+    range: { min: 0, unit: "W" },
+    qualifiers: { bound: "required" },
+  }),
+];
+
+// --- Direct-drive conveyor motor sizing (Unit 6.3 Stage 2) ------------------
+// See context/modules/direct-drive-conveyor-motor-sizing/stage-2-contract.md.
+// A second, independent Motor Sizing Tool family module (ADR-0011),
+// self-contained the same way motor_sizing.ball_screw.* is: reuses only
+// motion.axis.gravity directly and calls lib/engine/mechanics (Unit 6.1)
+// for linearMotionInertia/accelerationTorque. Its own belt_friction_
+// coefficient is a deliberately new parameter, not a reuse of motion.axis.
+// friction_coefficient -- a different physical interface (belt-to-load
+// friction, typically ~0.3) with a different typical value from a
+// linear-guide's own sliding friction (~0.05). Scoped to a single
+// acceleration event (0 to target_belt_speed), not a full accelerate/run/
+// decelerate cycle or an RMS torque check -- no source found for this
+// mechanism computes or needs either (stage-2-contract.md "Decisions" item
+// 3), a narrower scope than motor_sizing.ball_screw.* by design. Has no
+// gear-ratio parameter at all, not one defaulted to 1: 0.1.0's own purpose
+// is specifically the direct-drive (no gearbox) case (stage-2-contract.md
+// "Decisions" item 5).
+
+const motorSizingDirectDriveConveyor: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.drive_roller_diameter",
+    displayName: "Drive roller diameter",
+    symbol: "D1",
+    definition: "Diameter of the motor-driven roller.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.drive_roller_mass",
+    displayName: "Drive roller mass",
+    symbol: "M1",
+    definition: "Mass of the drive roller.",
+    valueType: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: [...massDisplay],
+    range: { min: 0, unit: "kg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.idler_roller_diameter",
+    displayName: "Idler roller diameter",
+    symbol: "D2",
+    definition:
+      "Diameter of the non-driven (idler) roller. May differ from drive_roller_diameter -- Omron's own general inertia formula reflects the idler by (D1/D2)^2 (stage-1-spec.md 'Candidate Methods' item 1).",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.idler_roller_mass",
+    displayName: "Idler roller mass",
+    symbol: "M2",
+    definition: "Mass of the idler roller.",
+    valueType: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: [...massDisplay],
+    range: { min: 0, unit: "kg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.belt_mass",
+    displayName: "Belt mass",
+    symbol: "M4",
+    definition:
+      "Mass of the conveyor belt itself -- Omron's own distinct belt-mass inertia term, not folded into carried_load_mass (stage-1-spec.md 'Candidate Methods' item 1).",
+    valueType: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: [...massDisplay],
+    range: { min: 0, unit: "kg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.carried_load_mass",
+    displayName: "Carried load mass",
+    symbol: "M3",
+    definition: "Mass of the object(s) riding the belt.",
+    valueType: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: [...massDisplay],
+    range: { min: 0, unit: "kg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.belt_friction_coefficient",
+    displayName: "Belt/load friction coefficient",
+    symbol: "mu",
+    definition:
+      "Coefficient of friction between the belt and the carried load. Deliberately not a reuse of motion.axis.friction_coefficient (a different physical interface with a materially different typical value -- stage-2-contract.md 'Decisions' item 2). No upper cap: unlike a lubricated linear-guide interface, a belt/load material pair can genuinely exceed a coefficient of 1.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.mechanical_efficiency",
+    displayName: "Belt/roller mechanical efficiency",
+    symbol: "eta",
+    definition:
+      "Mechanical efficiency of the belt/roller drive, used by the load-torque formula (both reference examples use 0.9 -- stage-1-spec.md 'Reference Examples').",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio", "percent"],
+    range: { min: 0, max: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.target_belt_speed",
+    displayName: "Target belt speed",
+    symbol: "V_belt",
+    definition: "Commanded steady-state belt speed.",
+    valueType: "quantity",
+    canonicalUnit: "m/s",
+    displayUnits: [...speedDisplay],
+    range: { min: 0, unit: "m/s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.acceleration_time",
+    displayName: "Acceleration time",
+    symbol: "t_A",
+    definition:
+      "Ramp time from standstill to target_belt_speed -- the single event this module's own torque checks are governed by (stage-2-contract.md 'Decisions' item 3; no source found for this mechanism computes a deceleration-phase or RMS torque).",
+    valueType: "quantity",
+    canonicalUnit: "s",
+    displayUnits: ["s", "min"],
+    range: { min: 0, unit: "s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.motor_rotor_inertia",
+    displayName: "Candidate motor rotor moment of inertia",
+    symbol: "J_M",
+    definition:
+      "Rotor moment of inertia of the candidate motor, from its own catalog data -- the one engineer-typed catalog figure this module's 0.1.0 scope needs, required so the inertia-ratio check has something real to check against (the same role motor_sizing.ball_screw.motor_rotor_inertia already plays).",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.required_torque_safety_factor",
+    displayName: "Required torque safety factor",
+    symbol: "Sf",
+    definition:
+      "Multiplier (>= 1) applied to momentary_torque to obtain required_torque. A single combined factor, not two separate margins: this module computes no RMS torque distinct from its own momentary torque (stage-2-contract.md 'Decisions' item 4), unlike motor_sizing.ball_screw.*. Engineer-supplied, no built-in default; both fully-verified reference examples use Sf = 2.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.inertia_ratio_maximum",
+    displayName: "Maximum allowable load-to-rotor inertia ratio",
+    symbol: "R_Jmax",
+    definition:
+      "Maximum acceptable inertia_ratio, engineer-supplied with no built-in default -- the same required-input-no-default precedent motor_sizing.ball_screw.inertia_ratio_maximum already established, reused by citation, not re-researched.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.reflected_load_inertia",
+    displayName: "Reflected load inertia",
+    symbol: "J_L",
+    definition:
+      "Total inertia of the idler roller (reflected by (drive_roller_diameter/idler_roller_diameter)^2), the belt, and the carried load, all already on the drive-roller/motor shaft in 0.1.0's own direct-drive scope. Excludes the drive roller's own inertia, which total_system_inertia adds directly (stage-2-contract.md 'Method Sources' -- a naming-consistency split from Omron's own single combined JW, not a physics difference).",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.total_system_inertia",
+    displayName: "Total system inertia",
+    symbol: "J_total",
+    definition:
+      "motor_rotor_inertia + drive_roller_inertia (internal) + reflected_load_inertia.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.inertia_ratio",
+    displayName: "Load-to-rotor inertia ratio",
+    symbol: "R_J",
+    definition:
+      "reflected_load_inertia / motor_rotor_inertia. Checked against inertia_ratio_maximum -- the one real catalog-free pass/fail check in 0.1.0.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.load_torque",
+    displayName: "Load torque",
+    symbol: "T_L",
+    definition:
+      "Steady-state friction-driven load torque: T_L = mu*(belt_mass+carried_load_mass)*gravity*drive_roller_diameter / (2*mechanical_efficiency).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.acceleration_torque",
+    displayName: "Acceleration torque",
+    symbol: "T_A",
+    definition:
+      "Torque to accelerate total_system_inertia over acceleration_time up to target_belt_speed (Ta = J_total*alpha, lib/engine/mechanics' accelerationTorque). Always positive in 0.1.0's own accelerate-only scope (stage-2-contract.md 'Decisions' item 3).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.momentary_torque",
+    displayName: "Maximum momentary torque",
+    symbol: "T1",
+    definition:
+      "acceleration_torque + load_torque -- the governing peak/starting torque, matching both reference examples' own combined breakaway/acceleration check.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required", aggregation: "peak" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.required_torque",
+    displayName: "Required motor torque",
+    symbol: "T_req",
+    definition:
+      "momentary_torque * required_torque_safety_factor -- the minimum torque rating a candidate motor must have. Reported as an output value, not checked pass/fail against anything in 0.1.0 (ADR-0011's own 'required specs only' scope).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.operating_speed",
+    displayName: "Motor-shaft operating speed",
+    symbol: "N_op",
+    definition:
+      "Motor/drive-roller shaft rotational speed at target_belt_speed (omega = target_belt_speed / (drive_roller_diameter/2)).",
+    valueType: "quantity",
+    canonicalUnit: "rad/s",
+    displayUnits: [...angularVelocityDisplay],
+    range: { min: 0, unit: "rad/s" },
+  }),
+  defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.required_power",
+    displayName: "Required motor power",
+    symbol: "P_req",
+    definition:
+      "rotationalPower(required_torque, operating_speed) -- lib/engine/units' already-released P = T*omega. The required-power figure ADR-0011 'Output scope' names alongside torque/speed/inertia.",
+    valueType: "quantity",
+    canonicalUnit: "W",
+    displayUnits: ["W", "kW", "hp"],
+    range: { min: 0, unit: "W" },
+    qualifiers: { bound: "required" },
+  }),
+];
+
+// --- Rack-and-pinion motor sizing (Unit 6.4 Stage 2) ------------------------
+// See context/modules/rack-pinion-motor-sizing/stage-2-contract.md. The
+// third Motor Sizing Tool family module (ADR-0011), architecturally closer
+// to motor_sizing.ball_screw.* than to motor_sizing.direct_drive_conveyor.*
+// -- a rack-and-pinion axis is the same "one rigid carriage on a guide"
+// mechanism class as a ball screw, not the conveyor's "loose load on a
+// moving surface" class (stage-1-spec.md "Relationship to Existing and
+// Planned Modules"). Reuses motion.axis.orientation/incline_angle/gravity/
+// friction_coefficient/total_moving_mass directly -- the identical physical
+// interface and formula shape motor_sizing.ball_screw.* already reuses
+// (Oriental Motor's own general_catalog_motor_fan_sizing page F-3 prints
+// the ball-screw and rack-and-pinion force formulas identically:
+// F = FA + m*(sin(alpha)+mu*cos(alpha))). New gear_ratio/mechanical_
+// efficiency/external_force parameters are minted rather than reusing
+// screw.gear_ratio/screw.mechanical_efficiency/motor_sizing.ball_screw.
+// external_force -- same quantity kind, different meaning-scoped namespace
+// (code-standards.md "Canonical Parameters"). Scoped to a single
+// accelerate-to-speed event, not a full accelerate/run/decelerate cycle or
+// an RMS torque check -- no source found for this mechanism computes or
+// needs either (stage-1-spec.md "Purpose"), the same finding
+// motor_sizing.direct_drive_conveyor.* already established, independently
+// confirmed here for a different mechanism.
+
+const motorSizingRackPinion: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "motor_sizing.rack_pinion.pinion_pitch_diameter",
+    displayName: "Pinion pitch diameter",
+    symbol: "D",
+    definition:
+      "Pitch diameter of the drive pinion, used for both the load-torque conversion and the pinion's own moment of inertia (lib/engine/mechanics' solidCylinderInertia).",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.pinion_mass",
+    displayName: "Pinion mass",
+    symbol: "M_pinion",
+    definition: "Mass of the drive pinion.",
+    valueType: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: [...massDisplay],
+    range: { min: 0, unit: "kg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.gear_ratio",
+    displayName: "Rack-and-pinion drive gear ratio",
+    symbol: "i",
+    definition:
+      "Gear ratio between the pinion and its driving motor shaft. 1 for a direct-connected pinion with no gearbox in between (the default -- a structural statement about the drive path, not a guessed physical value, the same convention screw.gear_ratio already establishes). Not a reuse of screw.gear_ratio -- that ID's own meaning is scoped to ball/lead-screw mechanisms (stage-1-spec.md 'Existing Parameter Review').",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(1, "ratio") },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.mechanical_efficiency",
+    displayName: "Rack-and-pinion mechanical efficiency",
+    symbol: "eta",
+    definition:
+      "Mechanical efficiency of the rack-and-pinion gear mesh, used by the load-torque formula (Oriental Motor's own T_L = F*D/(2*eta*i)). Not a reuse of screw.mechanical_efficiency -- a gear mesh is a different physical interface from a ball-nut/screw, with no established shared typical-value precedent (stage-1-spec.md 'Existing Parameter Review').",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio", "percent"],
+    range: { min: 0, max: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.external_force",
+    displayName: "External force along the axis of travel",
+    symbol: "F_A",
+    definition:
+      "External force along the axis of travel, beyond gravity and friction (Oriental Motor's own F_A). Zero is a structural 'no additional external force' default, the same category as gear_ratio = 1 -- not a guessed physical value. Not a reuse of motor_sizing.ball_screw.external_force (stage-1-spec.md 'Existing Parameter Review').",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { unit: "N" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "N") },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.target_velocity",
+    displayName: "Target carriage velocity",
+    symbol: "V",
+    definition:
+      "Commanded steady-state carriage velocity along the axis of travel.",
+    valueType: "quantity",
+    canonicalUnit: "m/s",
+    displayUnits: [...speedDisplay],
+    range: { min: 0, unit: "m/s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.acceleration_time",
+    displayName: "Acceleration time",
+    symbol: "t_A",
+    definition:
+      "Ramp time from standstill to target_velocity -- the single event this module's own torque checks are governed by (stage-1-spec.md 'Purpose'; no source found for this mechanism computes a return-move, dwell, or RMS-cycle torque).",
+    valueType: "quantity",
+    canonicalUnit: "s",
+    displayUnits: ["s", "min"],
+    range: { min: 0, unit: "s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.motor_rotor_inertia",
+    displayName: "Candidate motor rotor moment of inertia",
+    symbol: "J_M",
+    definition:
+      "Rotor moment of inertia of the candidate motor, from its own catalog data -- the one engineer-typed catalog figure this module's 0.1.0 scope needs, required so the inertia-ratio check has something real to check against (the same role every other motor_sizing.*.motor_rotor_inertia already plays).",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.required_torque_safety_factor",
+    displayName: "Required torque safety factor",
+    symbol: "Sf",
+    definition:
+      "Multiplier (>= 1) applied to momentary_torque to obtain required_torque. A single combined factor, not two separate margins: this module computes no RMS torque distinct from its own momentary torque (stage-1-spec.md 'Purpose'), unlike motor_sizing.ball_screw.*. Engineer-supplied, no built-in default.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.inertia_ratio_maximum",
+    displayName: "Maximum allowable load-to-rotor inertia ratio",
+    symbol: "R_Jmax",
+    definition:
+      "Maximum acceptable inertia_ratio, engineer-supplied with no built-in default -- the same required-input-no-default precedent every other motor_sizing.*.inertia_ratio_maximum already established, reused by citation, not re-researched.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.pinion_inertia",
+    displayName: "Pinion rotating inertia",
+    symbol: "J_pinion",
+    definition:
+      "The drive pinion's own moment of inertia: J_pinion = (1/8)*M_pinion*D^2 (lib/engine/mechanics' solidCylinderInertia).",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.load_inertia",
+    displayName: "Load inertia (pinion + carriage)",
+    symbol: "J_W",
+    definition:
+      "pinion_inertia plus the carriage's own linear-motion-equivalent inertia at the pinion shaft (lib/engine/mechanics' linearMotionInertia, travel per pinion revolution = pi*D) -- mirrors motor_sizing.ball_screw.load_inertia's own combined (screw + carried mass) composition.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.reflected_load_inertia",
+    displayName: "Reflected load inertia",
+    symbol: "J_L",
+    definition: "load_inertia / gear_ratio^2.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.total_system_inertia",
+    displayName: "Total system inertia",
+    symbol: "J_total",
+    definition: "motor_rotor_inertia + reflected_load_inertia.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.inertia_ratio",
+    displayName: "Load-to-rotor inertia ratio",
+    symbol: "R_J",
+    definition:
+      "reflected_load_inertia / motor_rotor_inertia. Checked against inertia_ratio_maximum -- the one real catalog-free pass/fail check in 0.1.0.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.load_torque",
+    displayName: "Load torque",
+    symbol: "T_L",
+    definition:
+      "T_L = F*D/(2*eta*i), F = F_A + total_moving_mass*gravity*(sin(incline_angle)+friction_coefficient*cos(incline_angle)) -- Oriental Motor's own rack-and-pinion load-torque formula, identical in shape to the ball-screw formula on the same source page (stage-1-spec.md 'Candidate Methods' item 1).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.acceleration_torque",
+    displayName: "Acceleration torque",
+    symbol: "T_A",
+    definition:
+      "Torque to accelerate total_system_inertia over acceleration_time up to the motor-shaft-equivalent of target_velocity (Ta = J_total*alpha, lib/engine/mechanics' accelerationTorque). Always positive in 0.1.0's own accelerate-only scope.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.momentary_torque",
+    displayName: "Maximum momentary torque",
+    symbol: "T1",
+    definition:
+      "acceleration_torque + load_torque -- the governing peak/starting torque, matching Andantex's own and Atlanta's own combined tangential-force check (stage-1-spec.md 'Candidate Methods' items 3-4), converted to torque via the pinion pitch radius.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required", aggregation: "peak" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.required_torque",
+    displayName: "Required motor torque",
+    symbol: "T_req",
+    definition:
+      "momentary_torque * required_torque_safety_factor -- the minimum torque rating a candidate motor must have. Reported as an output value, not checked pass/fail against anything in 0.1.0 (ADR-0011's own 'required specs only' scope).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.operating_speed",
+    displayName: "Motor-shaft operating speed",
+    symbol: "N_op",
+    definition:
+      "Motor shaft rotational speed at target_velocity: omega_pinion = target_velocity/(pinion_pitch_diameter/2); omega_motor = omega_pinion*gear_ratio.",
+    valueType: "quantity",
+    canonicalUnit: "rad/s",
+    displayUnits: [...angularVelocityDisplay],
+    range: { min: 0, unit: "rad/s" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.required_power",
+    displayName: "Required motor power",
+    symbol: "P_req",
+    definition:
+      "rotationalPower(required_torque, operating_speed) -- lib/engine/units' already-released P = T*omega.",
+    valueType: "quantity",
+    canonicalUnit: "W",
+    displayUnits: ["W", "kW", "hp"],
+    range: { min: 0, unit: "W" },
+    qualifiers: { bound: "required" },
+  }),
+];
+
+// --- Belt-pulley drive motor sizing (Unit 6.5 Stage 2) ---------------------
+// See context/modules/belt-pulley-drive-motor-sizing/stage-1-spec.md. The
+// fourth Motor Sizing Tool family module (ADR-0011). Shares one
+// load-torque/force formula set with motor_sizing.rack_pinion.* -- three
+// independent sources state the belt-drive and rack-and-pinion equations
+// as one combined set (Oriental Motor's own "Wire Belt Mechanism, Rack and
+// Pinion Mechanism" page F-3; AutomationDirect's own "Belt Drive (or Rack
+// & Pinion) Equations" Table 1; Andantex corroborating the same shape) --
+// so this group reuses motion.axis.* for orientation/incline/gravity/
+// friction/mass exactly as motor_sizing.rack_pinion.* does. What genuinely
+// differs and justifies a separate group: two pulleys rather than one
+// pinion, and a belt that carries its own translating mass (a fixed rack
+// carries none). Efficiency is applied to LOAD TORQUE, following Oriental
+// Motor and every already-released sibling module -- AutomationDirect's own
+// source instead divides the INERTIA by efficiency, a real, disclosed
+// modeling disagreement (stage-1-spec.md "A real disagreement between
+// sources"), not silently reconciled.
+
+const motorSizingBeltPulley: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "motor_sizing.belt_pulley.pulley_pitch_diameter",
+    displayName: "Pulley pitch diameter",
+    symbol: "D",
+    definition:
+      "Pitch diameter of the drive pulley, used for the load-torque conversion, the pulley moment of inertia, and the belt/carriage linear-motion-equivalent inertia. Both pulleys are assumed equal in diameter (every source's own worked example assumes this -- stage-1-spec.md 'Validity Envelope').",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.pulley_mass",
+    displayName: "Drive pulley mass",
+    symbol: "M_drive",
+    definition: "Mass of the motor-driven pulley.",
+    valueType: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: [...massDisplay],
+    range: { min: 0, unit: "kg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.idler_pulley_mass",
+    displayName: "Idler pulley mass",
+    symbol: "M_idler",
+    definition:
+      "Mass of the non-driven (idler) pulley. A distinct input rather than a doubling of pulley_mass: AutomationDirect's own worked example multiplies one pulley's inertia by 2 ('remember, there are two pulleys') only because both pulleys are identical in that example, which is not required in general.",
+    valueType: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: [...massDisplay],
+    range: { min: 0, unit: "kg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.belt_mass",
+    displayName: "Belt mass",
+    symbol: "M_belt",
+    definition:
+      "Mass of the drive belt itself, which translates with the carriage and contributes its own linear-motion-equivalent inertia. The term a rack-and-pinion drive does not have at all (a fixed rack contributes no inertia) -- one of the two real differences justifying a separate module from motor_sizing.rack_pinion.* (stage-1-spec.md).",
+    valueType: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: [...massDisplay],
+    range: { min: 0, unit: "kg" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "kg") },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.gear_ratio",
+    displayName: "Belt-pulley drive gear ratio",
+    symbol: "i",
+    definition:
+      "Gear ratio between the drive pulley and its driving motor shaft. 1 for a direct-connected pulley with no gearbox in between (the default -- a structural statement about the drive path, not a guessed physical value).",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(1, "ratio") },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.mechanical_efficiency",
+    displayName: "Belt/pulley mechanical efficiency",
+    symbol: "eta",
+    definition:
+      "Mechanical efficiency of the belt-and-pulley drive, applied to the load-torque formula (T_L = F*D/(2*eta*i)), following Oriental Motor's own convention and every already-released Motor Sizing Tool sibling. AutomationDirect's own source instead divides the inertia by efficiency -- a real, disclosed modeling disagreement between the two primary sources (stage-1-spec.md).",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio", "percent"],
+    range: { min: 0, max: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.external_force",
+    displayName: "External force along the axis of travel",
+    symbol: "F_A",
+    definition:
+      "External force along the axis of travel, beyond gravity and friction. Zero is a structural 'no additional external force' default, not a guessed physical value.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { unit: "N" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "N") },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.target_velocity",
+    displayName: "Target carriage velocity",
+    symbol: "V",
+    definition:
+      "Commanded steady-state carriage velocity along the axis of travel.",
+    valueType: "quantity",
+    canonicalUnit: "m/s",
+    displayUnits: [...speedDisplay],
+    range: { min: 0, unit: "m/s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.acceleration_time",
+    displayName: "Acceleration time",
+    symbol: "t_A",
+    definition:
+      "Ramp time from standstill to target_velocity -- the single event this module's own torque checks are governed by; no source found for this mechanism computes a return-move, dwell, or RMS-cycle torque.",
+    valueType: "quantity",
+    canonicalUnit: "s",
+    displayUnits: ["s", "min"],
+    range: { min: 0, unit: "s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.motor_rotor_inertia",
+    displayName: "Candidate motor rotor moment of inertia",
+    symbol: "J_M",
+    definition:
+      "Rotor moment of inertia of the candidate motor, from its own catalog data -- required so the inertia-ratio check has something real to check against (the same role every other motor_sizing.*.motor_rotor_inertia already plays).",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.required_torque_safety_factor",
+    displayName: "Required torque safety factor",
+    symbol: "Sf",
+    definition:
+      "Multiplier (>= 1) applied to momentary_torque to obtain required_torque. A single combined factor: this module computes no RMS torque distinct from its own momentary torque. Engineer-supplied, no built-in default.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.inertia_ratio_maximum",
+    displayName: "Maximum allowable load-to-rotor inertia ratio",
+    symbol: "R_Jmax",
+    definition:
+      "Maximum acceptable inertia_ratio, engineer-supplied with no built-in default -- the same required-input-no-default precedent every other motor_sizing.*.inertia_ratio_maximum already established. AutomationDirect's own belt-drive example uses 10 ('It is best to keep the load to motor inertia ratio at or below 10'), one datapoint among the wide sourced disagreement drive-train/stage-1-spec.md already records.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.pulley_inertia",
+    displayName: "Combined pulley rotating inertia",
+    symbol: "J_pulleys",
+    definition:
+      "Drive plus idler pulley moment of inertia about the drive shaft: (1/8)*(M_drive+M_idler)*D^2, both pulleys sharing one diameter (lib/engine/mechanics' solidCylinderInertia).",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.belt_inertia",
+    displayName: "Belt linear-motion-equivalent inertia",
+    symbol: "J_belt",
+    definition:
+      "The belt's own translating mass expressed as inertia at the drive-pulley shaft: M_belt*(D/2)^2 (lib/engine/mechanics' linearMotionInertia, travel per revolution = pi*D).",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.load_inertia",
+    displayName: "Load inertia (pulleys + belt + carriage)",
+    symbol: "J_W",
+    definition:
+      "pulley_inertia + belt_inertia + the carriage's own linear-motion-equivalent inertia at the drive-pulley shaft.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.reflected_load_inertia",
+    displayName: "Reflected load inertia",
+    symbol: "J_L",
+    definition: "load_inertia / gear_ratio^2.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.total_system_inertia",
+    displayName: "Total system inertia",
+    symbol: "J_total",
+    definition: "motor_rotor_inertia + reflected_load_inertia.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.inertia_ratio",
+    displayName: "Load-to-rotor inertia ratio",
+    symbol: "R_J",
+    definition:
+      "reflected_load_inertia / motor_rotor_inertia. Checked against inertia_ratio_maximum -- the one real catalog-free pass/fail check in 0.1.0.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.load_torque",
+    displayName: "Load torque",
+    symbol: "T_L",
+    definition:
+      "T_L = F*D/(2*eta*i), F = F_A + total_moving_mass*gravity*(sin(incline_angle)+friction_coefficient*cos(incline_angle)) -- Oriental Motor's own combined wire-belt/rack-and-pinion load-torque formula (p. F-3).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.acceleration_torque",
+    displayName: "Acceleration torque",
+    symbol: "T_A",
+    definition:
+      "Torque to accelerate total_system_inertia over acceleration_time up to the motor-shaft-equivalent of target_velocity (Ta = J_total*alpha).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.momentary_torque",
+    displayName: "Maximum momentary torque",
+    symbol: "T1",
+    definition:
+      "acceleration_torque + load_torque -- the governing peak/starting torque, matching AutomationDirect's own T_motor = T_accel + T_run shape.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required", aggregation: "peak" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.required_torque",
+    displayName: "Required motor torque",
+    symbol: "T_req",
+    definition:
+      "momentary_torque * required_torque_safety_factor -- the minimum torque rating a candidate motor must have. Reported as an output value, not checked pass/fail against anything in 0.1.0.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.operating_speed",
+    displayName: "Motor-shaft operating speed",
+    symbol: "N_op",
+    definition:
+      "Motor shaft rotational speed at target_velocity: omega_pulley = target_velocity/(pulley_pitch_diameter/2); omega_motor = omega_pulley*gear_ratio.",
+    valueType: "quantity",
+    canonicalUnit: "rad/s",
+    displayUnits: [...angularVelocityDisplay],
+    range: { min: 0, unit: "rad/s" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.required_power",
+    displayName: "Required motor power",
+    symbol: "P_req",
+    definition:
+      "rotationalPower(required_torque, operating_speed) -- lib/engine/units' already-released P = T*omega.",
+    valueType: "quantity",
+    canonicalUnit: "W",
+    displayUnits: ["W", "kW", "hp"],
+    range: { min: 0, unit: "W" },
+    qualifiers: { bound: "required" },
+  }),
+];
+
+// motor_sizing.index_table.* -- Unit 6.6, the fifth Motor Sizing Tool
+// module (ADR-0011). Genuinely different in kind from every sibling: an
+// index table's own motion is rotary (index_angle over index_time,
+// commanded directly in angular terms), not a carriage translating along a
+// linear axis, so this is the first Motor Sizing Tool group with NO
+// motion.axis.* reuse at all (stage-1-spec.md "Genuinely different in
+// kind"). load_torque is a required INPUT with a 0 N*m structural default,
+// not a computed output -- both primary sources (Oriental Motor,
+// AutomationDirect) independently omit a load-torque formula for this
+// mechanism entirely, stating bearing/support friction is negligible
+// (stage-1-spec.md "The central finding").
+
+const motorSizingIndexTable: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "motor_sizing.index_table.table_mass",
+    displayName: "Index table mass",
+    symbol: "M_table",
+    definition:
+      "Mass of the rotating table/dial itself, treated as a solid cylinder about its own rotation axis.",
+    valueType: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: [...massDisplay],
+    range: { min: 0, unit: "kg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.table_diameter",
+    displayName: "Index table diameter",
+    symbol: "D",
+    definition:
+      "Outer diameter of the index table, used for the table's own moment of inertia. Not used for any speed conversion -- this mechanism's own motion is commanded directly in angular terms (stage-1-spec.md 'Genuinely different in kind').",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.attached_load_inertia",
+    displayName: "Attached mounted-load inertia",
+    symbol: "J_load",
+    definition:
+      "Combined moment of inertia of any workpieces or fixtures mounted on the table, about the table's own rotation axis -- engineer-resolved (e.g. via the parallel-axis theorem for point loads at a radius) and supplied as one figure, the same 'engineer supplies the resolved figure' treatment motor_sizing.belt_pulley.belt_mass already established. Zero is a structural 'no mounted load modeled' default, not a guessed physical value.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "kg*m^2") },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.gear_ratio",
+    displayName: "Index-table drive gear ratio",
+    symbol: "i",
+    definition:
+      "Gear ratio between the table shaft and its driving motor shaft. 1 for a direct-connected table with no gearbox in between (the default -- a structural statement about the drive path, not a guessed physical value, the same convention every sibling motor_sizing.*.gear_ratio already establishes).",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(1, "ratio") },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.index_angle",
+    displayName: "Index angle",
+    symbol: "theta_index",
+    definition:
+      "Angle rotated per index move, at the table shaft. Commanded directly in angular terms -- no linear-to-rotary radius conversion, unlike every sibling module's own target_velocity (stage-1-spec.md 'Genuinely different in kind').",
+    valueType: "quantity",
+    canonicalUnit: "rad",
+    displayUnits: ["deg", "rad"],
+    range: { min: 0, unit: "rad" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.index_time",
+    displayName: "Index time",
+    symbol: "t_index",
+    definition:
+      "Total move time for one index, at the table shaft: standstill to standstill, covering index_angle.",
+    valueType: "quantity",
+    canonicalUnit: "s",
+    displayUnits: ["s", "min"],
+    range: { min: 0, unit: "s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.acceleration_time",
+    displayName: "Acceleration time",
+    symbol: "t_A",
+    definition:
+      "Ramp time within index_time, assumed symmetric between acceleration and deceleration -- the same role and required-input treatment every sibling motor_sizing.*.acceleration_time already plays, reused by name and role rather than by parameter ID (no sibling shares this module's own angular motion port shape).",
+    valueType: "quantity",
+    canonicalUnit: "s",
+    displayUnits: ["s", "min"],
+    range: { min: 0, unit: "s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.load_torque",
+    displayName: "Load torque",
+    symbol: "T_L",
+    definition:
+      "Motor-shaft-referred running torque due to friction or external resistance -- engineer-supplied, not computed by this module. Both primary sources (Oriental Motor, AutomationDirect) independently omit a load-torque formula for this mechanism entirely, stating that bearing/support friction is negligible (stage-1-spec.md 'The central finding'); zero is a structural default reflecting that finding, not a guessed physical value.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "N*m") },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.motor_rotor_inertia",
+    displayName: "Candidate motor rotor moment of inertia",
+    symbol: "J_M",
+    definition:
+      "Rotor moment of inertia of the candidate motor, from its own catalog data -- required so the inertia-ratio check has something real to check against (the same role every other motor_sizing.*.motor_rotor_inertia already plays).",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.required_torque_safety_factor",
+    displayName: "Required torque safety factor",
+    symbol: "Sf",
+    definition:
+      "Multiplier (>= 1) applied to momentary_torque to obtain required_torque. A single combined factor: this module computes no RMS torque distinct from its own momentary torque. Engineer-supplied, no built-in default.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.inertia_ratio_maximum",
+    displayName: "Maximum allowable load-to-rotor inertia ratio",
+    symbol: "R_Jmax",
+    definition:
+      "Maximum acceptable inertia_ratio, engineer-supplied with no built-in default -- the same required-input-no-default precedent every other motor_sizing.*.inertia_ratio_maximum already established.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.table_inertia",
+    displayName: "Table moment of inertia",
+    symbol: "J_T",
+    definition:
+      "The table's own rotating inertia about its own axis: (1/8)*table_mass*table_diameter^2 (lib/engine/mechanics' solidCylinderInertia).",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.load_inertia",
+    displayName: "Load inertia (table + mounted load)",
+    symbol: "J_W",
+    definition: "table_inertia + attached_load_inertia.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.reflected_load_inertia",
+    displayName: "Reflected load inertia",
+    symbol: "J_L",
+    definition: "load_inertia / gear_ratio^2.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.total_system_inertia",
+    displayName: "Total system inertia",
+    symbol: "J_total",
+    definition: "motor_rotor_inertia + reflected_load_inertia.",
+    valueType: "quantity",
+    canonicalUnit: "kg*m^2",
+    displayUnits: [...inertiaDisplay],
+    range: { min: 0, unit: "kg*m^2" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.inertia_ratio",
+    displayName: "Load-to-rotor inertia ratio",
+    symbol: "R_J",
+    definition:
+      "reflected_load_inertia / motor_rotor_inertia. Checked against inertia_ratio_maximum -- the one real catalog-free pass/fail check in 0.1.0.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.acceleration_torque",
+    displayName: "Acceleration torque",
+    symbol: "T_A",
+    definition:
+      "Torque to accelerate total_system_inertia over acceleration_time up to the motor-shaft-equivalent indexing speed (Ta = J_total*alpha).",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.momentary_torque",
+    displayName: "Maximum momentary torque",
+    symbol: "T1",
+    definition:
+      "acceleration_torque + load_torque -- the governing peak/starting torque, matching AutomationDirect's own T_motor = T_accel + T_run shape.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required", aggregation: "peak" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.required_torque",
+    displayName: "Required motor torque",
+    symbol: "T_req",
+    definition:
+      "momentary_torque * required_torque_safety_factor -- the minimum torque rating a candidate motor must have. Reported as an output value, not checked pass/fail against anything in 0.1.0.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.operating_speed",
+    displayName: "Motor-shaft operating speed",
+    symbol: "N_op",
+    definition:
+      "Motor shaft rotational speed at the commanded indexing rate: omega_table = index_angle/(index_time-acceleration_time); omega_motor = omega_table*gear_ratio.",
+    valueType: "quantity",
+    canonicalUnit: "rad/s",
+    displayUnits: [...angularVelocityDisplay],
+    range: { min: 0, unit: "rad/s" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.required_power",
+    displayName: "Required motor power",
+    symbol: "P_req",
+    definition:
+      "rotationalPower(required_torque, operating_speed) -- lib/engine/units' already-released P = T*omega.",
+    valueType: "quantity",
+    canonicalUnit: "W",
+    displayUnits: ["W", "kW", "hp"],
+    range: { min: 0, unit: "W" },
+    qualifiers: { bound: "required" },
+  }),
+];
+
+/** All released parameter definitions for registry v1.13, in authored order. */
 export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...projectAndEnvironment,
   ...axisApplication,
@@ -1712,4 +3195,9 @@ export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...coupling,
   ...supportBearing,
   ...driveTrain,
+  ...motorSizingBallScrew,
+  ...motorSizingDirectDriveConveyor,
+  ...motorSizingRackPinion,
+  ...motorSizingBeltPulley,
+  ...motorSizingIndexTable,
 ];

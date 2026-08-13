@@ -173,6 +173,54 @@ torque dimension carries no angle exponent, so energy and torque share
 identical SI base-unit exponents; `N*m` keeps sole ownership of the
 `siCoherent` flag.
 
+Registry v1.9 adds the `motor_sizing.ball_screw.*` group for the
+`ball-screw-motor-sizing` module (context/modules/
+ball-screw-motor-sizing/stage-2-contract.md), the first module in the new
+Motor Sizing Tool family (ADR-0011, Milestone 6). Unlike every group
+above, this module is deliberately self-contained: it reproduces, rather
+than links to, the physics already released in `axis-load-cases`,
+`ball-screw`, `motion-profile`, and `drive-train`, reusing only
+`screw.lead`, `screw.gear_ratio`, `screw.preload`, `screw.internal_
+friction_coefficient`, `screw.mechanical_efficiency`, and the
+`motion.axis.*` orientation/mass/friction/gravity group directly -- not
+`screw.drive_torque`, `drive.reflected_load_inertia`, or any `drive.*`
+margin/limit parameter, each for its own documented reason
+(stage-2-contract.md "Decisions"). Its own motion inputs use six distinct
+`forward_*`/`return_*` parameter IDs plus one `dwell_time`, never an
+indexed shared-ID family -- the specific fix for a real defect Unit 5.4
+found in `motion-profile`'s own `move_{1..5}_*` ports (this file's own
+v1.2 note; `context/progress-tracker.md` "Open decisions"): those five
+ports all share one canonical `move_distance` ID, so the database layer
+(keyed by `(parameterId, loadCase)` only) cannot tell them apart. Its own
+`effective_torque_safety_factor`/`momentary_torque_safety_factor` are
+`>= 1` multipliers applied to a computed torque to get a required minimum
+motor rating -- the inverse direction from `drive.rms_torque_margin`/
+`drive.peak_torque_margin` (`<= 1`, a fraction of a _known_ candidate
+motor's own rated torque), because this module takes no candidate motor's
+own rated/peak torque as an input at all (ADR-0011's own "no catalog
+matching" scope). No new unit or dimension is needed.
+
+Registry v1.10 adds the `motor_sizing.direct_drive_conveyor.*` group for the
+`direct-drive-conveyor-motor-sizing` module (context/modules/
+direct-drive-conveyor-motor-sizing/stage-2-contract.md), the second module
+in the Motor Sizing Tool family (ADR-0011). Also self-contained, reusing
+only `motion.axis.gravity` and calling `lib/engine/mechanics` (Unit 6.1)
+directly. Its own `belt_friction_coefficient` is a deliberately new
+parameter, not a reuse of `motion.axis.friction_coefficient` -- a different
+physical interface (belt-to-load friction, ~0.3) with a materially
+different typical value from a linear-guide's own sliding friction
+(~0.05), and no upper cap (unlike `motion.axis.friction_coefficient`'s own
+`max: 1`), since some belt/load material pairs genuinely exceed a
+coefficient of 1. Scoped narrower than `motor_sizing.ball_screw.*` in two
+ways found while writing this contract: a single acceleration event (no
+deceleration phase, no dwell, no repeating cycle) rather than a round trip,
+since no source for this mechanism computes or needs a deceleration-phase
+or RMS torque; and one combined `required_torque_safety_factor` (`>= 1`)
+rather than two separate margins, since there is only one computed torque
+figure to apply a margin to. Has no gear-ratio parameter at all -- `0.1.0`'s
+own purpose is specifically the direct-drive (no gearbox) case, not one
+merely defaulted to a ratio of `1`. No new unit or dimension is needed.
+
 Follow this before adding a parameter (mirrors context/code-standards.md
 "Canonical Parameters"). Every item must be satisfied.
 

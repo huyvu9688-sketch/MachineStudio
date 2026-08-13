@@ -34,11 +34,13 @@ lib/
   db/
   engine/
     graph/
+    mechanics/
     module-sdk/
     parameters/
     trace/
     units/
     values/
+  logging/
   modules/
   reports/
   requirements/
@@ -62,6 +64,18 @@ Generic deterministic calculation infrastructure only:
 - Calculation trace primitives
 - Module execution
 - Dependency graph resolution
+- Generic rigid-body mechanics (`lib/engine/mechanics/`, Unit 6.1) — mass
+  moment of inertia for standard shapes and `Ta = J*alpha`, bare-SI-number
+  functions consumed by module math kernels below the
+  `EngineeringValue`/`Quantity` boundary. Genuinely source-independent
+  physics (no manufacturer method disagreement, the same "ordinary physics"
+  category `drive-train@0.1.0`'s own `resolveRegenEnergy` doc comment
+  already used for `E = J*omega^2/2`) lives here so every module depends on
+  one audited implementation instead of reproducing it — see
+  `context/adr/0011-motor-sizing-tool-architecture.md` "Reuse policy" and
+  `lib/engine/mechanics/README.md`. Mechanism-specific load-torque formulas
+  and motion-profile kinematics are not generic in this sense and stay
+  module-owned, reproduced per module rather than shared.
 
 It imports nothing from `app`, `lib/db`, network clients, authentication,
 or catalog persistence.
@@ -179,6 +193,17 @@ reimplement formulas.
 ### `lib/audit/`
 
 Append-only engineering event records.
+
+### `lib/logging/`
+
+Structured, server-only operational logging (Unit 5.5) — one JSON line per
+entry (timestamp, level, message, optional context), written to
+stdout/stderr for the deployment platform's own log collector to ingest
+(ADR-0009: Vercel). This is operational visibility for production
+incidents, not the domain audit trail `lib/audit/` owns; it never
+substitutes for an `AuditEvent`, and it never receives data destined for an
+API response (`code-standards.md` "APIs" forbids exposing a stack trace
+there).
 
 ### `lib/db/`
 

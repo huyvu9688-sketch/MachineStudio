@@ -8,6 +8,7 @@ export type { DbClient } from "./db-client";
 export {
   ProjectRepositoryError,
   upsertUser,
+  deleteUserAccount,
   createProject,
   createConfiguration,
   createAssembly,

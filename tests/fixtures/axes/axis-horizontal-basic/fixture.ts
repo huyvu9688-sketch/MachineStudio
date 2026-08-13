@@ -29,7 +29,7 @@ export const axisHorizontalBasicFixture = {
   ],
   sourceEvidence: [
     {
-      rawMaterialPath: "reference/source-material/Image (4).jpg",
+      rawMaterialPath: "reference/source-material/ball screw/Image (4).jpg",
       printedPage: "24",
       rawMaterialSha256:
         "1ED01431FB40C47E341C529B3CA9E8548638C9E75363B67310A3BFF1A7C5524D",
@@ -40,7 +40,7 @@ export const axisHorizontalBasicFixture = {
         "Source page provides horizontal-axis inputs and the three axial-load equations/results.",
     },
     {
-      rawMaterialPath: "reference/source-material/Image (3).jpg",
+      rawMaterialPath: "reference/source-material/ball screw/Image (3).jpg",
       printedPage: "25",
       rawMaterialSha256:
         "1F90E1DC74ECFC06764B6653506023372A07ABD7F9C9FD891FCBB366957B30C6",
@@ -51,7 +51,7 @@ export const axisHorizontalBasicFixture = {
         "Source page summarizes the reported axial loads and duty-cycle values.",
     },
     {
-      rawMaterialPath: "reference/source-material/Image (2).jpg",
+      rawMaterialPath: "reference/source-material/ball screw/Image (2).jpg",
       printedPage: "26",
       rawMaterialSha256:
         "6618289C593ECDD34317B8F7C611E618AF483EA3F47F0F895368CBEEF243E4CD",
@@ -62,7 +62,7 @@ export const axisHorizontalBasicFixture = {
         "Source page records downstream critical-speed and allowable-axial-load checks.",
     },
     {
-      rawMaterialPath: "reference/source-material/Image.jpg",
+      rawMaterialPath: "reference/source-material/ball screw/Image.jpg",
       printedPage: "29",
       rawMaterialSha256:
         "623B4533FF24143957B742E495B8E8DF202F778E058350D4C76B2B3CAB8A1B38",

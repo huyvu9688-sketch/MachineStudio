@@ -22,6 +22,7 @@ import {
   createMachineProject,
   createMachineRequirement,
   createRequirementAcceptanceCriterion,
+  deleteAccount,
   executeModuleInstance,
   removeParameterLink,
   renameMachineAssembly,
@@ -731,4 +732,29 @@ export async function createBaselineAction(
   }
   revalidatePath("/workspace");
   return { status: "success" };
+}
+
+/**
+ * Permanently deletes the caller's own account and everything they own
+ * (Unit 5.5). `confirmationPhrase` is re-validated server-side by
+ * `deleteAccount` itself, not trusted from the client — see that service's
+ * own doc comment. On success, redirects to `/account-deleted`, a public
+ * route outside `(workspace)` (mirrors createProjectAction's own
+ * redirect-to-the-outcome pattern), since after this call the caller's
+ * `MachineProject` rows (and, in a race, possibly their `User` row) no
+ * longer exist for `/workspace` to load.
+ */
+export async function deleteAccountAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth.protect();
+  const result = await deleteAccount(
+    asUserId(userId),
+    fieldValue(formData, "confirmationPhrase"),
+  );
+  if (!result.ok) {
+    return { status: "error", message: result.error.message };
+  }
+  redirect("/account-deleted");
 }

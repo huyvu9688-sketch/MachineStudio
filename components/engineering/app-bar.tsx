@@ -8,6 +8,7 @@ import {
   ChevronsRight,
   Pencil,
   Plus,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
@@ -23,6 +24,7 @@ import {
   type MarketProfileOption,
 } from "./create-project-dialog";
 import { RenameDialog } from "./rename-dialog";
+import { AccountSettingsDialog } from "./account-settings-dialog";
 import { renameProjectAction } from "@/app/(workspace)/workspace/actions";
 import type {
   MachineConfigurationRecord,
@@ -163,6 +165,18 @@ export function AppBar({
       )}
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
+        <AccountSettingsDialog
+          trigger={
+            <button
+              type="button"
+              aria-label="Account settings"
+              title="Account settings"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-on-accent/80 transition-colors duration-150 ease-out hover:bg-white/10 hover:text-text-on-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <UserCog aria-hidden="true" className="h-3.5 w-3.5" />
+            </button>
+          }
+        />
         <UserButton />
       </div>
     </header>

@@ -194,3 +194,17 @@ export {
   type MachineReportBaselineView,
   type MachineReportBaselineModuleRef,
 } from "./reports";
+
+export {
+  exportAccountData,
+  type AccountDataExport,
+  type ExportedProjectData,
+  type ExportedConfigurationData,
+  type ExportedModuleInstanceRuns,
+  type ExportedCalculationRun,
+  deleteAccount,
+  DELETE_ACCOUNT_CONFIRMATION_PHRASE,
+  type DeleteAccountResult,
+  type DeleteAccountError,
+  type DeleteAccountErrorCode,
+} from "./account";

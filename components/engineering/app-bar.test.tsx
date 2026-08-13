@@ -23,6 +23,7 @@ vi.mock("@clerk/nextjs", () => ({
 vi.mock("@/app/(workspace)/workspace/actions", () => ({
   renameProjectAction: vi.fn(),
   createProjectAction: vi.fn(),
+  deleteAccountAction: vi.fn(),
 }));
 
 const MARKET_PROFILES: MarketProfileOption[] = [

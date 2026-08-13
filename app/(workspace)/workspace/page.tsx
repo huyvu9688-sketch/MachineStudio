@@ -44,20 +44,44 @@ function marketProfileOptions(): readonly MarketProfileOption[] {
   }));
 }
 
+/**
+ * The seven Milestone 4 linear-axis discipline categories (ADR-0011
+ * "Existing modules: kept, immutable, hidden from the primary picker"). Their
+ * modules and `linear-axis@1` itself stay registered and immutable — this is
+ * a route-level "Add module" list filter over an unmodified registry, not a
+ * core-engine, module-SDK, or generic-UI change.
+ */
+const HIDDEN_MODULE_CATEGORIES: ReadonlySet<string> = new Set([
+  "motion.axis",
+  "motion.profile",
+  "screw",
+  "guide",
+  "coupling",
+  "bearing",
+  "drive",
+]);
+
+/** `linear-axis@1`'s own workflow id, hidden from "Start workflow" the same way. */
+const HIDDEN_WORKFLOW_IDS: ReadonlySet<string> = new Set(["linear-axis"]);
+
 function modulePackageOptions(): readonly ModulePackageOption[] {
-  return listModulePackages().map((pkg) => ({
-    modulePackageId: pkg.manifest.id,
-    moduleVersion: pkg.manifest.version,
-    category: pkg.manifest.category,
-  }));
+  return listModulePackages()
+    .filter((pkg) => !HIDDEN_MODULE_CATEGORIES.has(pkg.manifest.category))
+    .map((pkg) => ({
+      modulePackageId: pkg.manifest.id,
+      moduleVersion: pkg.manifest.version,
+      category: pkg.manifest.category,
+    }));
 }
 
 function workflowDefinitionOptions(): readonly WorkflowDefinitionOption[] {
-  return listWorkflowDefinitions().map((definition) => ({
-    workflowId: definition.manifest.id,
-    workflowVersion: definition.manifest.version,
-    title: definition.manifest.title,
-  }));
+  return listWorkflowDefinitions()
+    .filter((definition) => !HIDDEN_WORKFLOW_IDS.has(definition.manifest.id))
+    .map((definition) => ({
+      workflowId: definition.manifest.id,
+      workflowVersion: definition.manifest.version,
+      title: definition.manifest.title,
+    }));
 }
 
 /**

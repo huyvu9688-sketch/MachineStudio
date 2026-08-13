@@ -401,6 +401,193 @@ describe.skipIf(!liveDatabaseAvailable)(
   },
 );
 
+// A separate top-level describe (Unit 5.5, account deletion) so its own
+// beforeAll can import the extra repos a full component-assignment fixture
+// needs (catalog, graph, execute-module-instance) without pulling them into
+// every other test in this file.
+describe.skipIf(!liveDatabaseAvailable)(
+  "deleteUserAccount (live database)",
+  () => {
+    let repo: typeof import("./project-repository");
+    let graph: typeof import("./graph-repository");
+    let catalog: typeof import("./catalog-repository");
+    let assignments: typeof import("./component-assignment-repository");
+    let executeModuleInstance: typeof import("../../application/calculations/execute-module-instance").executeModuleInstance;
+    let makeQuantity: typeof import("@/lib/engine").makeQuantity;
+    let client: typeof import("../client");
+    const createdUserIds: string[] = [];
+    const createdManufacturerIds: string[] = [];
+    const createdComponentTypeIds: string[] = [];
+
+    beforeAll(async () => {
+      repo = await import("./project-repository");
+      graph = await import("./graph-repository");
+      catalog = await import("./catalog-repository");
+      assignments = await import("./component-assignment-repository");
+      executeModuleInstance = (
+        await import("../../application/calculations/execute-module-instance")
+      ).executeModuleInstance;
+      makeQuantity = (await import("@/lib/engine")).makeQuantity;
+      client = await import("../client");
+    });
+
+    afterEach(async () => {
+      // Catalog rows are shared, ownerless data (context/code-standards.md
+      // "Catalog") — never touched by the user cascade — so they need their
+      // own cleanup, in the same dependency order
+      // component-assignment-repository.test.ts already established
+      // (component assignment before part revision, if any survived).
+      if (createdComponentTypeIds.length > 0) {
+        await client.prisma.componentType.deleteMany({
+          where: { id: { in: createdComponentTypeIds.splice(0) } },
+        });
+      }
+      if (createdManufacturerIds.length > 0) {
+        await client.prisma.manufacturer.deleteMany({
+          where: { id: { in: createdManufacturerIds.splice(0) } },
+        });
+      }
+      if (createdUserIds.length > 0) {
+        await client.prisma.user.deleteMany({
+          where: { id: { in: createdUserIds.splice(0) } },
+        });
+      }
+    });
+
+    it("deletes a user with no data and reports nothing removed the second time", async () => {
+      const user = await repo.upsertUser(`test-user-${randomUUID()}`);
+      createdUserIds.push(user.id);
+
+      expect(await repo.deleteUserAccount(user.id)).toBe(true);
+      expect(await repo.deleteUserAccount(user.id)).toBe(false);
+    });
+
+    // The one edge case worth a real, not assumed, live-database proof:
+    // ComponentAssignment.calculationRun is the single onDelete: Restrict
+    // edge anywhere below User in this schema (every other edge in the
+    // subtree is Cascade), while ComponentAssignment ALSO holds a direct
+    // Cascade edge to its own MachineConfiguration. deleteUserAccount's own
+    // doc comment argues PostgreSQL resolves the full Cascade set (which
+    // deletes the assignment via its direct configuration_id edge) before
+    // ever evaluating the Restrict on calculation_run_id, so no conflict
+    // occurs — this test is what actually proves that reasoning true against
+    // this project's real schema, rather than trusting it unverified.
+    it("cascades a user with a live ComponentAssignment (Restrict edge from a Cascade-reachable row) without a foreign-key violation", async () => {
+      const user = await repo.upsertUser(`test-user-${randomUUID()}`);
+      createdUserIds.push(user.id);
+      const project = await repo.createProject({
+        ownerId: user.id,
+        name: "Axis",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const config = await repo.createConfiguration({
+        projectId: project.id,
+        name: "Baseline",
+      });
+      const assembly = await repo.createAssembly({
+        configurationId: config.id,
+        name: "X axis",
+      });
+      const moduleInstance = await repo.createModuleInstance({
+        assemblyId: assembly.id,
+        configurationId: config.id,
+        modulePackageId: "example-scaffold",
+        moduleVersion: "0.1.0",
+        label: "Screw sizing",
+      });
+      await graph.createParameterValue({
+        configurationId: config.id,
+        moduleInstanceId: moduleInstance.id,
+        nodeKind: "module_input",
+        parameterId: "motion.axis.payload_mass",
+        source: "manual",
+        value: makeQuantity(10, "kg"),
+      });
+      const runResult = await executeModuleInstance({
+        moduleInstanceId: moduleInstance.id,
+        ownerId: user.id,
+      });
+      if (!runResult.ok) {
+        throw new Error(`seed execution failed: ${runResult.error.message}`);
+      }
+
+      const manufacturer = await catalog.createManufacturer({
+        name: `Test Manufacturer ${randomUUID()}`,
+      });
+      createdManufacturerIds.push(manufacturer.id);
+      const componentType = await catalog.createComponentType({
+        id: `ball-screw-${randomUUID()}`,
+        name: "Ball screw",
+      });
+      createdComponentTypeIds.push(componentType.id);
+      const schemaVersion = await catalog.createComponentSchemaVersion({
+        componentTypeId: componentType.id,
+        version: "1.0.0",
+        fields: [
+          {
+            key: "lead",
+            label: "Lead",
+            valueKind: "quantity",
+            required: true,
+            unit: "mm",
+          },
+        ],
+      });
+      const partRevision = await catalog.createManufacturerPartRevision({
+        manufacturerId: manufacturer.id,
+        componentTypeId: componentType.id,
+        componentSchemaVersionId: schemaVersion.id,
+        partNumber: "BSS1520-914",
+        sourceRevision: "2026-catalog",
+        attributes: { lead: makeQuantity(20, "mm") },
+      });
+
+      await assignments.createComponentAssignment({
+        configurationId: config.id,
+        targetKind: "module_instance",
+        moduleInstanceId: moduleInstance.id,
+        partSource: "catalog",
+        manufacturerPartRevisionId: partRevision.id,
+        calculationRunId: runResult.run.id,
+        quantity: 1,
+        assignedByUserId: user.id,
+      });
+
+      // The proof: deleting the account must not throw a foreign-key
+      // violation, and must actually remove every row in the subtree,
+      // including the assignment and the run it pointed to.
+      await expect(repo.deleteUserAccount(user.id)).resolves.toBe(true);
+
+      expect(
+        await client.prisma.componentAssignment.count({
+          where: { configurationId: config.id },
+        }),
+      ).toBe(0);
+      expect(
+        await client.prisma.calculationRun.count({
+          where: { moduleInstanceId: moduleInstance.id },
+        }),
+      ).toBe(0);
+      expect(
+        await client.prisma.machineProject.count({
+          where: { id: project.id },
+        }),
+      ).toBe(0);
+
+      // The part revision is shared catalog data (no owner) and must
+      // survive the account deletion untouched.
+      expect(
+        await client.prisma.manufacturerPartRevision.count({
+          where: { id: partRevision.id },
+        }),
+      ).toBe(1);
+      await client.prisma.manufacturerPartRevision.deleteMany({
+        where: { id: partRevision.id },
+      });
+    });
+  },
+);
+
 // Local narrow helper so the test file does not import the runtime module
 // eagerly (env/prisma import is deferred to beforeAll, mirroring
 // health.test.ts). Identity at runtime.

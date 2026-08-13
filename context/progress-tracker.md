@@ -9,10 +9,34 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-12 (Unit 4.7 released as `drive-train@0.1.0` --
-**Milestone 4 complete, all seven modules registered**; Unit 5.4 Scenario 1
-(horizontal axis) complete end to end; Unit 5.5 in progress -- deployment
-decision ADR-0009)
+Last updated: 2026-08-13 (Milestone 4 complete, all seven linear-axis
+modules registered; Unit 5.4 Scenario 1 complete end to end; Unit 5.5
+(production readiness) done; **ADR-0011 records a new founder-directed
+architecture: a mechanism-oriented "Motor Sizing Tool" module family**,
+planned to become the primary user-facing entry point ahead of the
+existing seven linear-axis discipline modules; **Milestone 6's own module
+work is now complete -- Unit 6.1 (`lib/engine/mechanics`) built and
+released, and Units 6.2 (`ball-screw-motor-sizing@0.1.0`), 6.3
+(`direct-drive-conveyor-motor-sizing@0.1.0`), 6.4
+(`rack-pinion-motor-sizing@0.1.0`), 6.5
+(`belt-pulley-drive-motor-sizing@0.1.0`), and 6.6
+(`index-table-motor-sizing@0.1.0`) are now all fully released** -- all
+five Motor Sizing Tool family modules ADR-0011's own "Phase scope" named,
+each with published worked examples (or an internal-only benchmark / a
+disclosed partial reproduction filling a disclosed evidence gap)
+reproduced through the real compute path, an independent benchmark, and
+cross-module link/workflow-role conformance confirmed -- Units 6.3
+through 6.6 each found and disclosed real evidence gaps in their own
+source material rather than glossing over them. **Unit 6.6 closed the
+load-torque evidence gap ADR-0011 itself predicted** (two independent
+manufacturers both omit a load-torque formula for an index table
+entirely, not merely agree on a value) **and is the first Motor Sizing
+Tool module with no `motion.axis.*` reuse and no compatible
+cross-module-link pair at all** -- a genuinely different-in-kind
+mechanism (rotary, not linear), confirmed rather than merely predicted.
+**The `AddModuleInstanceDialog` mechanism-picker UI work (Unit 6.7) is now
+also built** -- Milestone 6 and Phase 1E are both fully complete -- see
+"Next up" item 1 below)
 
 ---
 
@@ -26,6 +50,7 @@ decision ADR-0009)
 | 3 | Generic user experience (Units 3.1-3.9) | Done |
 | 4 | Linear-axis engineering modules | **Done** |
 | 5 | BOM, reports, MVP release | **In progress** |
+| 6 | Motor Sizing Tool family (ADR-0011) | **Done** |
 
 Roadmap phases map onto these milestones as follows (the roadmap uses phase
 letters, the implementation map and this tracker use milestone numbers —
@@ -35,6 +60,7 @@ same work, two labels):
 - Phase 1A → Milestones 3 and 4
 - Phase 1B / 1C → Milestone 4 (later units)
 - Phase 1D → Milestone 5
+- Phase 1E → Milestone 6
 - Phase 2+ → after MVP
 
 Milestone 5 work started ahead of Milestone 4's own Unit 4.1 release gate
@@ -53,10 +79,49 @@ open Unit-5.4-or-later work, not Milestone-4-unit completion items --
 see `context/roadmap.md` Phase 1B/1C for the precise, honestly-assessed
 status of each.
 
-**Health:** lint 0 warnings, typecheck 0 errors, all 1618 tests pass
-(`DATABASE_URL` and `NODE_EXTRA_CA_CERTS` set against the configured Neon
-database, confirmed 2026-08-12 during Unit 5.4 Scenario 1's own
-verification — see the Environment notes below for how), build clean
+**Health:** lint 0 warnings on every file this or a prior session touched
+(typecheck 0 errors), all 1642 tests pass with `DATABASE_URL` and
+`NODE_EXTRA_CA_CERTS` set against the configured Neon database (confirmed
+2026-08-12 — see the Environment notes below for how, though that specific
+count predates Units 6.2-6.6's own Stage 3-6 additions below, and has not
+been re-confirmed against the DB-gated suite since; none of those units'
+own modules touches persistence, so this is not expected to change that
+count). **Unit 6.1 added 44 (1436 non-DB tests without those two
+variables set), Unit 6.2 Stages 3-6 added 64 more (1503), Unit 6.3 Stages
+3-6 added 57 more (1563), Unit 6.4 Stages 3-6 added 50 more (1616), Unit
+6.5 Stages 3-6 added 61 more (1680), and Unit 6.6 Stages 3-6 added 64 more
+(1744 non-DB tests pass without those two variables set, confirmed
+2026-08-13 in this session)**, lint and
+typecheck clean on every file this session touched, build clean
+(re-confirmed this session). `markdownlint-cli2` (no project config
+found, run with its own defaults) flags `MD013` line-length on this
+module's own table-heavy `README.md`/validation-record lines -- the same
+default-config behavior an already-released sibling
+(`rack-pinion-motor-sizing@0.1.0`'s own README/validation record) already
+trips, confirmed by running it directly; not a regression, not fixed
+(pre-existing pattern, not this unit's own gap to close).
+
+**A real, non-code breakage found and fixed this session:** the 34
+`reference/source-material/Image*.jpg` files backing the ID39/ID42 axis
+fixtures were moved into a new `reference/source-material/ball screw/`
+subfolder outside this session's own edits (a reference-material
+reorganization), which broke all 8 of
+`tests/fixtures/axes/evidence-integrity.test.ts`'s own SHA-256 checks with
+`ENOENT`. Verified this session that every one of the 8 recorded hashes
+still matches the moved file byte for byte — a **pure move**, no evidence
+was modified — and updated each fixture's own `rawMaterialPath` to the new
+location. The evidence-integrity guarantee itself is unchanged and the
+test passes again (13/13).
+**A pre-existing, unrelated `.worktrees/unit-4-1-release/` checkout** (a
+superseded branch from the 2026-08-11 Unit 4.1 release session, already
+fully incorporated into `main` and not an ancestor of it) **has a stale
+`.next/dev/types/` build artifact that a bare `npm run lint` from the repo
+root walks into**, since `eslint.config.mjs`'s own `.next/**` global-ignore
+pattern does not match nested `.worktrees/*/.next/**` paths — a real gap in
+that ignore list, not a new defect. Confirmed unrelated to any change in
+this session by linting the changed files directly. Not fixed here (out of
+scope for Unit 5.5's own logging work); either broaden the ignore glob or
+remove the stale worktree in a separate small unit.
 (`/workspace/bom` and `/workspace/report` -- this codebase's first two
 Route Handlers, both still present). `format:check` flags ~212
 pre-existing files repo-wide on this machine (CRLF line endings from a
@@ -64,8 +129,16 @@ Windows checkout vs. Prettier's default `endOfLine: "lf"` — see Environment
 notes), not the small fixed set an earlier session's own note named; every
 file touched by this or a prior session is formatted and not among them.
 `npm audit` clean (0 vulnerabilities across the full tree, prod and dev --
-see Unit 5.5 below for the 2026-08-11 fix). Parameter registry at `1.8.0`
-(unchanged -- Unit 5.3 needed no new parameters or registry version).
+see Unit 5.5 below for the 2026-08-11 fix). Parameter registry at `1.13.0`
+(Unit 6.2 Stage 2 released the `motor_sizing.ball_screw.*` group
+2026-08-12; Unit 6.3 Stage 2 released the `motor_sizing.
+direct_drive_conveyor.*` group 2026-08-13; Unit 6.4 Stage 2 released the
+`motor_sizing.rack_pinion.*` group 2026-08-13; Unit 6.5 Stage 2 released
+the `motor_sizing.belt_pulley.*` group 2026-08-13, consumed by
+`belt-pulley-drive-motor-sizing@0.1.0`, released the same day; Unit 6.6
+Stage 2 released the `motor_sizing.index_table.*` group 2026-08-13,
+consumed by `index-table-motor-sizing@0.1.0`, released the same day -- see
+Active work).
 
 ---
 
@@ -1238,10 +1311,628 @@ only patch/minor bumps (`package.json` itself untouched, no `--force`, no
 major-version jump); `npm audit` now reports 0 vulnerabilities. Verified
 clean after: lint, typecheck, build, and the full non-DB test suite
 (1297/1297 passing, matching the pre-existing baseline) all still pass.
-Remaining Unit 5.5 deliverables, not yet started: managed database backups,
-error monitoring, structured application logs, security review, data
-export and account deletion path, basic performance benchmark, recovery
-procedure.
+**Structured application logs done 2026-08-12.** `lib/logging/` (new —
+`logger.ts`, `normalize-error.ts`, `index.ts`, both files' own test suites)
+is a small, dependency-free structured logger: each call emits one JSON
+line (`timestamp`, `level`, `message`, optional `context`) to
+stdout/stderr via `console.info`/`warn`/`error`, for the deployment
+platform's own log collector to ingest (ADR-0009: Vercel) — a real, if
+narrow, gap this session found: the only two existing operational-error
+call sites in the app (`lib/db/index.ts`'s `checkDatabaseHealth`, and any
+unhandled exception thrown inside either Route Handler) either used a bare
+unstructured `console.error` or had no server-side visibility at all
+(`/workspace/bom` and `/workspace/report` had no top-level `try/catch`, so
+a thrown error became Next's own default unstructured 500). Both are now
+wired: `checkDatabaseHealth`'s existing `console.error` call is replaced
+with `logger.error` (its own doc comment already established "the
+underlying error is logged instead" as intentional design — Unit 0.4 — so
+this is a format change, not a new decision), and both route handlers now
+wrap their post-auth body in `try/catch`, logging the normalized error with
+route/ID/user context and returning a generic
+`{ error: { code: "internal_error", ... } }` 500 that never leaks the raw
+message (`code-standards.md` "APIs": never expose a stack trace). New
+`context/architecture.md` "`lib/logging/`" boundary section and
+`code-standards.md` "Logging" section record the contract: operational
+visibility only, distinct from `lib/audit`'s append-only *engineering*
+event trail, and log only unexpected/unhandled failures at a boundary —
+not every typed `{ ok: false }` domain result, which is an expected,
+already user-facing outcome. 8 new tests (`lib/logging/logger.test.ts`,
+`normalize-error.test.ts`, plus one new 500-path case in each route's own
+`route.test.ts`); full suite 1625/1625 with `DATABASE_URL`. **Deliberately
+not done in this pass, and not assumed:** wiring the same logger into the
+16 Server Actions in `app/(workspace)/workspace/actions.ts` or into
+individual `lib/application` use-case catch blocks — Next.js already
+catches an unhandled Server Action throw and reports it server-side on its
+own, so the two Route Handlers (which had no such safety net at all) were
+the real, verified gap; broadening coverage further is real follow-up
+work, not assumed-equivalent to what shipped here.
+
+**The remaining six Unit 5.5 deliverables all done 2026-08-12, closing this
+unit.**
+
+- **Data export and account deletion path.** `lib/db/repositories/
+  project-repository.ts`'s new `deleteUserAccount` deletes the caller's own
+  `User` row; the schema's own `onDelete: Cascade` chain removes everything
+  they own. The one non-`Cascade` edge in that subtree
+  (`ComponentAssignment.calculationRun`, `onDelete: Restrict`) was a real,
+  previously unverified risk — proven safe, not assumed, by a new live-DB
+  test that attaches a real `ComponentAssignment` before deleting the
+  account and confirms no foreign-key violation
+  (`project-repository.test.ts`). `lib/application/account/` adds
+  `exportAccountData` (walks every owned project/configuration to a JSON
+  document, including every calculation run's own full stored snapshot)
+  and `deleteAccount` (requires a server-revalidated confirmation phrase —
+  the one irreversible write in the app). `/workspace/account/export`
+  (Route Handler, JSON download) and `deleteAccountAction` (Server Action,
+  redirects to a new public `/account-deleted` page) wire both in;
+  `AccountSettingsDialog` (new, triggered from the app bar) is the UI —
+  type-to-confirm, submit stays disabled until the phrase matches exactly.
+- **Basic performance benchmark.** `scripts/perf-benchmark.script.test.ts`
+  (`npm run perf:benchmark`) times the operations a real session waits on
+  against a disposable live-DB fixture it creates and deletes itself:
+  `executeModuleInstance` ~507ms, `loadWorkspaceView` ~322ms, `loadBomView`
+  ~302ms, `loadMachineReportView` ~957ms, `exportAccountData` ~509ms (one
+  run against the configured Neon database from this dev machine — a
+  snapshot, not a committed performance budget). Lives as a `*.test.ts`
+  file run through a dedicated `vitest.perf-benchmark.config.ts` rather
+  than a standalone script: Node's native TypeScript execution cannot
+  resolve this codebase's extensionless relative imports the way Vitest
+  and Next.js both already do (confirmed directly,
+  `ERR_MODULE_NOT_FOUND`), and adding a new dependency (e.g. `tsx`) for one
+  script was rejected in favor of reusing proven tooling.
+  `vitest.config.ts` now excludes `scripts/**` so this never runs as part
+  of the normal `npm test`/`npm run verify`.
+- **Error monitoring.** New `app/report-client-error.ts`
+  (`reportClientErrorAction`, a Server Action) gets a client error
+  boundary's caught error into the same structured `lib/logging` output
+  every server-side failure already goes through — closing a real gap: the
+  existing `app/(workspace)/error.tsx` only ever logged to the browser's
+  own console, invisible to a production operator. Also added
+  `app/global-error.tsx`, the root error boundary — this codebase had none
+  before, so a failure above `app/(workspace)/error.tsx`'s own scope (e.g.
+  in the root layout) fell through to Next's unstyled default page with no
+  server-side record at all. Not a full third-party integration (no
+  error-monitoring SaaS account/DSN available this session) — swapping
+  `logger.error` for a real service's `captureException` later is a
+  one-function change, not a redesign.
+- **Backup and recovery procedure.**
+  `context/adr/0010-backup-recovery-strategy.md`: use Neon's own
+  point-in-time restore (confirmed directly against Neon's current docs —
+  a rolling restore window from 6 hours on the Free plan up to 30 days on
+  paid tiers, branch-based instant restore, no custom `pg_dump` cron
+  built or needed) as the only backup mechanism, with a five-step written
+  recovery procedure (identify timestamp, create a Neon restore branch,
+  verify before promoting, promote/repoint `DATABASE_URL`, record the
+  incident). Not yet rehearsed against a real database — no production
+  Neon project exists yet (ADR-0009's own follow-on work) — recorded as a
+  plan, not something this session could exercise end to end.
+- **Security review.** A scoped review of this session's own new surface
+  (account export/deletion, client error reporting, the structured
+  logger, the two modified Route Handlers) against `code-standards.md`
+  "Security" — ownership scoping, server-side confirmation revalidation,
+  no data exposure across users, no injection surface. No high-confidence
+  findings.
+
+Verified after all six: lint 0 errors on every changed file (the
+pre-existing `.worktrees/unit-4-1-release` stale-build-artifact lint noise
+is unrelated, see Health above), typecheck 0 errors, full suite
+**1642/1642 passing** with `DATABASE_URL`, build clean (`/account-deleted`
+and `/workspace/account/export` both now listed alongside the existing
+routes).
+
+**Unit 5.5 is done. Milestone 5's own remaining open item is Unit 5.4
+Scenarios 2/3, still blocked on evidence (see "Blocked" below) — unchanged
+by this unit.**
+
+Unit 6.1 -- `lib/engine/mechanics`, the shared rigid-body-physics package
+(Milestone 6, Phase 1E, ADR-0011). **Built and released 2026-08-12** --
+founder-directed follow-on to ADR-0011, the prerequisite every mechanism
+module in the new family needs internally before its own Stage 3 can start
+(ADR-0011 "Module shape" steps 2 and 4).
+
+Generic, source-independent rigid-body dynamics only -- moment of inertia
+for standard shapes (point mass, solid/hollow cylinder in both mass and
+density forms, rectangular pillar, parallel-axis offset transfer, and a
+linearly moving mass converted to an equivalent shaft-side inertia) and
+`Ta = J*alpha` plus the angular-acceleration-from-speed-ramp conversion
+that produces `alpha` from a motion profile's own ramp. Restated with the
+same symbols and constants as Oriental Motor Co., Ltd.'s *Motor Sizing
+Calculations* (`jp.oriental_motor.motor_sizing_calculations@web-2026-08-08`,
+already a registered source for `ball-screw@0.1.0`; cached
+`reference/source-material/Oriental_Motor Sizing Calculators.pdf`, pp. 2-3
+and p. 5) -- but the underlying physics is ordinary rigid-body dynamics no
+source disagrees on, the same "ordinary physics, not a sourced engineering
+method" category `drive-train@0.1.0`'s own `resolveRegenEnergy` doc comment
+already used for `E = J*omega^2/2`. This is why it is a shared
+`lib/engine/mechanics/` package (exported from `lib/engine/index.ts`, the
+same way `lib/engine/units` and `lib/engine/values` already are) rather than
+reproduced per mechanism module the way ADR-0011's own "Reuse policy"
+requires for mechanism-specific load-torque formulas.
+
+Built as a Generic Platform Workflow unit
+(`context/ai-workflow-rules.md`), not a New Module Workflow module: no
+manifest, ports, or registry entry -- a plain TypeScript package two
+directories below the module-package boundary, called from module math
+kernels that already work in bare SI numbers (the same convention every
+`lib/modules/*` `math.ts` uses), never a source of `EngineeringValue`
+conversion itself. 44 tests (`inertia.test.ts`, `torque.test.ts`) cover
+reference-value reproduction against the source's own printed formulas,
+boundary/invalid-input rejection, algebraic identities (the density forms
+proved identical to the mass forms; the offset-axis transfer composed with
+the rectangular-pillar form reproducing the source's own printed composed
+result; the linear-motion form matching the point-mass form at the implied
+radius), dimensional-consistency scaling checks (mass-form shapes scale as
+`mass*length^2`; density-form shapes scale as `length^5` at fixed density),
+and a cross-check of `accelerationTorque` composed with
+`angularAccelerationFromSpeedRamp` against the source's own rpm-packaged
+form `Ta = J*N/(9.55*t1)` (agreement to the precision the source's own
+rounded `9.55` constant allows). Only the rotation-axis (`Jx`) forms are
+implemented -- the source also prints transverse-axis (`Jy`) forms nothing
+in this codebase consumes yet, not built ahead of a consumer. Full design
+record: `lib/engine/mechanics/README.md`.
+
+`lint`, `typecheck`, the full test suite, and `build` all pass (see Health
+above for the current count).
+
+Unit 6.2 -- `ball-screw-motor-sizing` (Milestone 6, Phase 1E). **Stage 1
+done (2026-08-12).** `context/modules/ball-screw-motor-sizing/
+stage-1-spec.md` -- the recommended first mechanism module
+(`context/implementation-map.md` Milestone 6 "Unit 6.2"), since its
+physics is already validated end to end elsewhere in this codebase.
+Reproduces (not imports) physics already released in `axis-load-cases@
+0.1.0`, `ball-screw@0.1.0`, `motion-profile@0.1.0`, and `drive-train@
+0.1.0`, and calls `lib/engine/mechanics` (Unit 6.1) directly for moment of
+inertia and `Ta = J*alpha` -- the one genuinely shared piece, per ADR-0011
+"Reuse policy". Scoped to one full point-to-point round trip (forward
+move, optional return move, optional dwell), deliberately not
+`motion-profile@0.1.0`'s own bounded-5-move sequence, to avoid inheriting
+that module's own undiscovered-until-Unit-5.4 per-move-index port defect
+(see "Open decisions" below). Computes effective (RMS) torque as a
+genuine N-phase sum rather than reusing `drive-train@0.1.0`'s own
+closed-form approximation -- the literal structural fix ADR-0011 exists
+to make. Two reference-example sources identified, both already
+registered and re-verified directly this session: Omron Corporation's own
+worked example (re-read at its own primary pages, cross-checked by hand
+against `lib/engine/mechanics`'s formulas -- e.g. its printed `JB=1.5e-4`,
+`JW=1.63e-4 kg*m^2` reproduce exactly) and THK Co., Ltd.'s own two worked
+examples, where the vertical one is the key validation target: this
+module's own N-phase computation is expected to reproduce THK's own
+printed `743 N*mm` effective torque, where `drive-train@0.1.0`'s own
+closed-form approximation computes `~901 N*mm` (a ~21% overstatement
+already disclosed in `validation/drive-train/0.1.0.md`).
+
+**Stage 2 (parameter contract) done (2026-08-12).**
+`context/modules/ball-screw-motor-sizing/stage-2-contract.md` -- registry
+`1.9.0` releases the full `motor_sizing.ball_screw.*` group (29 new
+parameters) and resolves all four questions Stage 1 left open: a
+per-mechanism prefix, not a shared `motor_sizing.*` bucket; six distinct
+`forward_*`/`return_*` motion-input parameter IDs plus one `dwell_time`
+-- never an indexed shared-ID family, the specific fix for
+`motion-profile@0.1.0`'s own `move_{1..5}_*` port-resolution defect (see
+"Open decisions" below); true signed per-direction load/acceleration
+torque, not `drive-train@0.1.0`'s own conservative summation; and two
+`>= 1` safety factors (the inverse direction from `drive.rms_torque_
+margin`/`drive.peak_torque_margin`'s own `<= 1` shape), since this module
+takes no candidate motor's own rated/peak torque as an input. Reuses ten
+already-released parameters directly (`motion.axis.orientation`/
+`incline_angle`/`gravity`/`friction_coefficient`/`total_moving_mass`,
+`screw.lead`/`gear_ratio`/`preload`/`internal_friction_coefficient`/
+`mechanical_efficiency`); deliberately does not reuse `screw.minor_
+diameter`, `screw.drive_torque`, `drive.reflected_load_inertia`, or any
+`drive.*` margin/limit parameter, each for its own documented reason. No
+new unit or dimension needed. `PARAMETER_REGISTRY_SUPPORTED_VERSIONS` now
+includes `1.8.0` (the version `drive-train@0.1.0`'s own manifest pins),
+following the same pattern that version's own release already
+established. Full registry invariant suite (57 tests) passes against the
+new group. **Stage 3 (compute and trace) done (2026-08-12).** Full `ModulePackage`
+in `lib/modules/ball-screw-motor-sizing/0.1.0/` -- see that directory's
+own `README.md`. `math.ts` reproduces physics from four already-released
+modules and calls `lib/engine/mechanics` (Unit 6.1) directly; a genuine
+N-phase `Trms = sqrt(sum(T_i^2*t_i)/sum(t_i))` computation replaces
+`drive-train@0.1.0`'s own closed-form approximation -- the structural fix
+ADR-0011 exists to make. Omron Corporation's own complete worked example
+is reproduced twice (kernel-level in `math.test.ts`, and through the real
+`executeModule` compute path in `package.test.ts`) -- every printed
+intermediate figure (screw/load inertia `1.5e-4`/`1.63e-4 kg*m^2`, load
+torque `7.8e-3 N*m`, speed `1800 rpm`, acceleration/momentary/effective
+torque `0.165`/`0.173`/`0.0828 N*m`) reproduces within the source's own
+rounding. 44 tests, all passing; conformance reports `package-validation`
+and `import-boundary` as real passes, `source-immutability` as skipped
+(Stage 6). No module registered (`package.ts`, not `index.ts`).
+
+Two real gaps found while wiring the kernel, corrected directly in the
+still-unconsumed registry `1.9.0` -- `forward_move_distance`'s and
+`return_move_distance`'s own definitions now state the "forward = away
+from gravity" direction convention explicitly (`context/modules/
+ball-screw-motor-sizing/stage-2-contract.md` "Stage 3 corrections").
+
+**Stage 4 (validation) done (2026-08-12).** THK Co., Ltd.'s own two worked
+examples (`jp.thk.example_ball_screw_selection@technico-mirror-2026-08-10`,
+read directly this session via `pdftotext -layout` against the registered
+technico.com mirror -- physical PDF pages 449-467) are both reproduced
+through `executeModule` (`thk-reference-examples.ts`/`.test.ts`): the
+horizontal baseline within 1% on every figure including effective torque;
+the vertical case within 1% on load torque, inertia, and momentary torque,
+but `effective_torque` understates THK's own printed `743 N*mm` by ~29%
+through the real compute path, because THK's own cycle has a real, nonzero
+`658 N*mm` stationary holding torque this module's own dwell phase does not
+model (an already-disclosed scope gap, now quantified). Isolated from that
+gap, a kernel-level test feeding `resolveEffectiveTorque` THK's own seven
+printed phases directly (including the `658 N*mm` term) reproduces THK's
+own `743 N*mm` within 0.5% -- direct confirmation the N-phase Trms formula
+itself, the actual ADR-0011 structural fix, is correct. **A suspected sign
+bug in `resolveDriveForce` was investigated and ruled out, not fixed**:
+THK's own printed torques are unsigned magnitudes; the module's own signed
+gravity-flip-by-direction is the mathematically correct projection of the
+same fixed-frame force balance `axis-load-cases@0.1.0`'s own
+`resolveAxisLoadPhase` already uses, and `resolveMomentaryTorque`/
+`resolveEffectiveTorque` are already sign-agnostic -- recorded in
+`validation.ts` as a finding, not a deviation; no code changed. The
+independent-benchmark item is also met (`independent-benchmark.test.ts`):
+this module's own N-phase Trms agrees with `drive-train@0.1.0`'s own
+closed-form `resolveEffectiveTorque` within 1% on the horizontal case and
+diverges by ~21% on the vertical case, reproducing -- not just resembling
+-- the exact gap `validation/drive-train/0.1.0.md` already discloses. Full
+record: `lib/modules/ball-screw-motor-sizing/0.1.0/validation.ts`; design
+narrative: that module's own `README.md` "Stage 4 (validation, done
+2026-08-12)".
+
+**Stage 5 (generic surfaces) done (2026-08-13).** Generic UI/report schema
+were already built in Stage 3 and already pass `package-validation`
+conformance -- no new work needed there. `manifest.workflowRoles` stays
+`[]` (this module has no `linear-axis@1` role and no other guided workflow
+exists for the `motor-sizing.*` family yet), now confirmed by a real test
+rather than left as an unchecked comment. `cross-module-links.test.ts`'s
+own exhaustive sweep (every input port against every output port of all
+four reproduced-from modules, the real `evaluateLinkCompatibility`
+evaluator) **found and corrected a real inaccuracy**: this module's own
+prior "no port links" claim was false -- `axis-load-cases@0.1.0`'s own
+resolved `total_moving_mass` output is genuinely link-compatible with this
+module's own `total_moving_mass` input (both reuse the identical
+`motion.axis.total_moving_mass` parameter ID), the *only* compatible pair
+across the full sweep. Not a calculation-level dependency (ADR-0011's own
+"reproduce, don't import" policy is unaffected) and nothing wires it today
+(no workflow role exists to confirm it through) -- corrected in
+`manifest.ts`'s own header comment and the module's own `README.md` rather
+than left as a disproven blanket claim. Catalog adapter: not applicable
+(ADR-0011 "Output scope" excludes motor catalog matching from this phase).
+63 tests total in the module directory, all passing.
+
+**Stage 6 (release) done (2026-08-13).** `index.ts` (renamed from
+`package.ts`) assembles the same manifest, ports, compute, UI, report, and
+validation record into a single `ModulePackage` and seals it, so `npm run
+registry:generate` now discovers it: the module is registered as
+`ball-screw-motor-sizing@0.1.0` in `lib/modules/registry.generated.ts` --
+**the first module in the Motor Sizing Tool family (ADR-0011), and the
+first Milestone 6 module released.** `package.test.ts` pins the
+source-immutability hash (`npm run module:source-hash --
+ball-screw-motor-sizing 0.1.0` -> `18c8f078d2b91c8a`) and asserts
+`import-boundary` and `source-immutability` both pass as real checks, not
+skipped. Sealed package content hash: `1246d12939032577`.
+`validation/ball-screw-motor-sizing/0.1.0.md` and its three
+`validation/source-index.md` rows were written the same day Stage 4
+closed (2026-08-12), not deferred to Stage 6 the way `support-bearing@
+0.1.0`'s and `drive-train@0.1.0`'s own records had to be. 64 tests total
+in the module directory, all passing. Full validation record:
+`validation/ball-screw-motor-sizing/0.1.0.md`; design record: this
+module's own `README.md` "Stage 6 (release, done 2026-08-13)". **This
+module's entire New Module Workflow (Stages 1-6) is now complete.**
+
+Unit 6.3 — `direct-drive-conveyor-motor-sizing` (Milestone 6, Phase 1E).
+**Stage 1 done (2026-08-13).** `context/modules/
+direct-drive-conveyor-motor-sizing/stage-1-spec.md` — the founder's own
+pick among ADR-0011's four remaining mechanisms (over `belt-pulley-drive`/
+`rack-pinion`, both exploratory-only per this project's own
+validation-case history, and `index-table`, blocked on a missing
+load-torque source), because it closes a real, previously reported gap:
+the founder's own Oriental Motor sizing tool has fixed mechanism templates
+but no template for a conveyor with the motor directly on the drive-roller
+shaft, and the founder has hit this on a real project. Two sources read
+directly this session (Omron's own already-registered *Servo Motor
+Selection* guide, pp. 7-9, not previously read past p. 6 for this
+codebase's other modules' own narrower ball-screw scope; a newly
+registered Oriental Motor General Catalog Technical Reference chapter,
+`jp.oriental_motor.general_catalog_motor_fan_sizing`, pp. F-2 through
+F-10) agree on the same conveyor inertia/load-torque formula shape and
+reuse `lib/engine/mechanics` (Unit 6.1) directly, the same treatment
+`ball-screw-motor-sizing@0.1.0` already established. Two real findings
+narrow this module's own scope relative to that one: no source frames a
+conveyor's own duty cycle as a repeating cycle needing an effective (RMS)
+torque check (every source instead checks a single breakaway/acceleration
+event's peak torque plus a continuous running torque), and the conveyor
+formula's own friction coefficient (`mu = 0.3` in both worked examples) is
+a materially different quantity from `motion.axis.friction_coefficient`'s
+own `0.05` sliding-guide default, so it will need its own new parameter,
+not a reuse. Two full worked numerical examples were found and hand-
+verified this session in the newly registered catalog document (p. F-8, a
+geared belt conveyor selecting a standard AC motor, fully reconciled; p.
+F-9, a second geared conveyor selecting a brushless DC motor, with one
+unresolved printed inertia figure not blocking Stage 2 — see the spec's
+own "Evidence Gaps"); a third, lower-confidence blog example was also
+found and registered. This module's own `0.1.0` scope fixes the gear
+ratio at `i = 1` (direct drive) even though both fully-verified reference
+examples are geared — the specific resolution path ADR-0011 itself
+anticipated for this module ("treat i = 1 as a documented special case of
+the geared-belt formula").
+
+**Stage 2 (parameter contract) done (2026-08-13).**
+`context/modules/direct-drive-conveyor-motor-sizing/stage-2-contract.md`
+-- registry `1.10.0` releases the full `motor_sizing.direct_drive_
+conveyor.*` group (20 new parameters, reusing only `motion.axis.gravity`).
+Resolves all five items `stage-1-spec.md` "Stage 2 Entry Criteria" left
+open, and two of them turned out narrower than Stage 1 itself proposed --
+found while writing the contract, not assumed going in: no source for this
+mechanism computes or needs a deceleration-phase or RMS-cycle torque
+(every worked example checks a single breakaway/acceleration event only),
+so `0.1.0`'s own motion input is one `acceleration_time` ramp to
+`target_belt_speed`, not a full accelerate/run/decelerate cycle; and
+because there is therefore only one computed torque figure, the module
+uses a single combined `required_torque_safety_factor` (`>= 1`), not
+`ball-screw-motor-sizing@0.1.0`'s own two separate RMS/momentary margins.
+`belt_friction_coefficient` is confirmed genuinely new (not a reuse of
+`motion.axis.friction_coefficient` -- a different physical interface,
+`~0.3` typical versus `~0.05`, no upper cap). The gear ratio has no
+parameter at all in `0.1.0`'s own schema, not one defaulted to `1` --
+this module's own purpose is specifically the no-gearbox case.
+`PARAMETER_REGISTRY_SUPPORTED_VERSIONS` now includes `1.9.0` (the version
+`ball-screw-motor-sizing@0.1.0`'s own manifest pins), following the same
+pattern every prior module's own Stage 2 already established.
+
+**Stages 3-6 done (2026-08-13) — released and registered as
+`direct-drive-conveyor-motor-sizing@0.1.0`, the second module in the Motor
+Sizing Tool family.** A full `ModulePackage` exists in
+`lib/modules/direct-drive-conveyor-motor-sizing/0.1.0/` (manifest, ports,
+math kernel, compute, trace, checks, generic UI/report schema, validation
+record — see that directory's own `README.md`). Self-contained per
+ADR-0011 "Reuse policy" like `ball-screw-motor-sizing@0.1.0`, reproducing
+Omron Corporation's and Oriental Motor Co., Ltd.'s own conveyor sizing
+methods rather than importing them; the one genuine import is
+`lib/engine/mechanics` (Unit 6.1) — this module is the first in the family
+to reuse that package's own `angularAccelerationFromSpeedRamp` directly,
+not just inertia/`Ta=J*alpha`.
+
+**Two real findings came out of Stage 4, both disclosed rather than
+worked around.** First: neither of Oriental Motor's own two conveyor
+worked examples (General Catalog Technical Reference pp. F-8 "Belt and
+Pully", p. F-9 "Conveyor" — the full 9-page document fetched and read
+directly this session, resolving the p. F-9 evidence gap `stage-1-spec.md`
+had left open) computes an acceleration-torque term at all — both derive
+their own final required-torque figure from load (friction) torque alone.
+This module's own already-released parameter contract (registry `1.10.0`)
+nonetheless defines `acceleration_torque`/`momentary_torque`/
+`required_torque`, mirroring the general `TM=(TL+Ta)*Sf` shape the
+already-registered Oriental Motor web page states; the kernel computes
+real figures for all three, but they are validated only at the formula
+level (`Ta=J*alpha`, already independently confirmed by
+`lib/engine/mechanics`' own `torque.test.ts` and by
+`ball-screw-motor-sizing@0.1.0`'s own worked examples), not against either
+conveyor-specific printed figure — a disclosed evidence gap, not a code
+defect. Second: p. F-9's own printed belt+work inertia figure
+(`Jm2=132 oz-in^2`) is internally inconsistent with its own adjacent
+single-roller inertia figure (`Jm1=70.4 oz-in^2`) — it omits the same
+lb-to-oz conversion factor `Jm1` correctly applies three lines earlier in
+the same worked example. This module's own kernel implements the
+physically correct formula and does not reproduce the printed `132`
+figure; `load_torque` and the single-roller inertia term (both internally
+consistent in the source) are still reproduced. `load_torque`, the full
+on-shaft inertia sum, and operating speed from p. F-8 all reproduce within
+the source's own printed rounding, through both a kernel-level test and
+the real `executeModule` compute path.
+
+**The independent-benchmark item is met via a property-based sweep, not
+just the one hand-verified scenario.** `omron-independent-benchmark.ts`/
+`.test.ts` reimplements Omron Corporation's own combined `JW=J1+J2+J3+J4`
+inertia formula as a genuinely separate mm-based computation and confirms
+algebraic identity with this module's own decomposed kernel across 200
+random roller/belt/load scenarios (including unequal roller diameters), to
+floating-point precision. The solo-validation reviewer-substitute policy
+is invoked. An exhaustive cross-module-link sweep
+(`cross-module-links.test.ts`, against all seven Milestone-4 modules plus
+`ball-screw-motor-sizing@0.1.0`) confirms zero compatible pairs — unlike
+`ball-screw-motor-sizing@0.1.0`'s own sweep, this module reuses only one
+already-released parameter (`motion.axis.gravity`), so no incidental
+overlap exists. `manifest.workflowRoles` stays `[]` (not part of
+`linear-axis@1`; no other guided workflow exists for the `motor-sizing.*`
+family yet). `index.ts` (renamed from `package.ts`) assembles and seals
+the package; `npm run module:source-hash -- direct-drive-conveyor-motor-sizing
+0.1.0` → `3fa1417cf144229a`, pinned in `package.test.ts`, with
+`import-boundary` and `source-immutability` both passing as real checks.
+57 tests total. Full validation record:
+`validation/direct-drive-conveyor-motor-sizing/0.1.0.md`. Design record:
+this module's own `README.md`.
+
+### Unit 6.4 -- Rack-and-pinion motor sizing module
+
+**Done and released, 2026-08-13 -- all six stages, same session.**
+`rack-pinion-motor-sizing@0.1.0`, the third Motor Sizing Tool module.
+Architecturally closer to `ball-screw-motor-sizing@0.1.0` than to the
+conveyor module: the primary source
+(`jp.oriental_motor.general_catalog_motor_fan_sizing`, p. F-3) prints the
+ball-screw and rack-and-pinion force formulas identically, so this module
+reuses `motion.axis.orientation/incline_angle/gravity/
+friction_coefficient/total_moving_mass` directly -- the opposite reuse
+conclusion from the conveyor's own deliberate non-reuse of
+`friction_coefficient`, reached for the opposite, equally source-backed
+reason. Registry `1.11.0` releases `motor_sizing.rack_pinion.*` (21
+parameters); a second independent public source
+(`us.andantex.modular_rack_pinion_system`, newly registered) corroborates
+the same formula shape, hand-verified this session.
+
+**A genuine, disclosed evidence gap: no publicly citable worked numerical
+example exists for this mechanism** -- both public sources give the
+formula only. Atlanta Drive Systems' own two worked numerical examples
+(already on hand from Unit 4.1's own validation work, already registered
+`access: "licensed"`) fill this gap as an internal-only benchmark, the
+exact precedent `axis-load-cases@0.1.0` already set for this same
+document: reproduced through `executeModule` within `0.01%` for both a
+horizontal and a vertical scenario, reusing `axis-load-cases@0.1.0`'s own
+already-tested `resolveAtlantaHorizontalForce`/
+`resolveAtlantaVerticalForce` directly, never cited in `manifest.ts` or a
+customer-facing trace. Unlike the conveyor module, orientation/incline are
+supported (both Atlanta's and Andantex's own sources give a dedicated
+vertical formula); like the conveyor module, motion is a single
+accelerate-to-speed event, independently reconfirmed for this mechanism,
+not assumed. Cross-module link sweep finds the same one incidental
+compatible pair (`axis-load-cases@0.1.0`'s own `total_moving_mass`)
+`ball-screw-motor-sizing@0.1.0`'s own sweep already found. 50 tests total.
+Full validation record: `validation/rack-pinion-motor-sizing/0.1.0.md`.
+Design record: this module's own `README.md`.
+
+### Unit 6.5 -- Belt-pulley drive motor sizing module
+
+**Done and released, 2026-08-13 -- all six stages, same session.**
+`belt-pulley-drive-motor-sizing@0.1.0`, the fourth Motor Sizing Tool
+module. Registry `1.12.0` releases `motor_sizing.belt_pulley.*` (24
+parameters). Records:
+`context/modules/belt-pulley-drive-motor-sizing/stage-1-spec.md`,
+`stage-2-contract.md`.
+
+**Central finding: three independent sources state the belt-drive and
+rack-and-pinion equations as one combined set** (Oriental Motor's "Wire
+Belt Mechanism, Rack and Pinion Mechanism"; AutomationDirect's "Belt Drive
+(or Rack & Pinion) Equations"; Andantex corroborating). What justifies a
+separate module, on read evidence rather than assumption: two pulleys
+instead of one pinion, and a belt carrying its own translating mass. The
+kernel (`lib/modules/belt-pulley-drive-motor-sizing/0.1.0/math.ts`)
+reproduces `rack-pinion-motor-sizing@0.1.0`'s own force/load-torque shape
+directly, adding `resolvePulleyInertia` (both pulleys, added directly --
+no speed-ratio reduction, since the belt connects them without slip at one
+shared diameter) and `resolveBeltInertia` (the belt's own translating
+mass, defaulting to 0).
+
+**A newly registered public source closes the gap Unit 6.4 could not.**
+`us.automationdirect.sureservo_selection_appendix` carries a full,
+publicly citable belt-drive worked example (pp. B-11-B-13) -- where
+rack-pinion had to fall back on a licensed internal-only benchmark for
+want of any public example.
+
+**Stage 3/4 found the Stage 1 spec's own reproduction claim was too
+broad -- a real, disclosed narrowing, not silently absorbed.** Only
+`pulley_inertia` reproduces the source's own printed figure unconditionally
+(it carries no efficiency term in either source's own convention, within
+0.2%). Every other inertia output (`load_inertia`, `reflected_load_inertia`)
+reproduces its own printed figure only once AutomationDirect's own disclosed
+`1/e` convention (dividing the *carriage's* inertia by mechanical
+efficiency -- the same convention this module's kernel deliberately does
+NOT adopt, following Oriental Motor instead like every sibling) is
+reapplied explicitly at the **test** level, within 0.1% -- proving the
+underlying physics is correct and quantifying the exact expected gap
+rather than hiding it. `load_torque`/`momentary_torque`/`required_torque`
+are not reproduced at all (the efficiency-convention difference, compounded
+by AutomationDirect's own confirmed arithmetic slip -- friction computed on
+`100 lb` where its stated weight is `90 lb`, the third such source-internal
+slip this project has found). **A further finding, genuinely new at Stage
+3/4, not anticipated at Stage 1:** `acceleration_torque` and
+`inertia_ratio` cannot be numerically checked against the source's own
+printed `T_accel=0.46 lb-in`/`inertia ratio=9.6` figures at all -- the
+source's own worked example never prints its own candidate motor's rotor
+inertia as an independent figure, and back-solving it two different ways
+from those two printed downstream figures disagrees by ~15-20%, most
+plausibly compounding rounding in the source's own low-precision
+intermediate results. Both compute end to end and are exercised by the
+reference-example test, just not asserted against a printed value --
+recorded honestly in `validation/belt-pulley-drive-motor-sizing/0.1.0.md`
+as a disclosed evidence gap discovered this session, not a pre-existing
+one carried forward.
+
+**The independent-benchmark item** (`independent-benchmark.test.ts`)
+reimplements Oriental Motor's own combined force/load-torque formula as a
+structurally separate expression, proved algebraically identical to this
+module's own two-function kernel across a 300-scenario deterministic
+property sweep -- the solo-validation reviewer-substitute policy is
+invoked. Cross-module link sweep against all seven Milestone-4 modules plus
+all three prior Motor Sizing Tool modules finds the same one incidental
+compatible pair (`axis-load-cases@0.1.0`'s own `total_moving_mass`) every
+prior sweep already found. `index.ts` assembles and seals the package;
+`npm run module:source-hash -- belt-pulley-drive-motor-sizing 0.1.0` →
+`1f371cb2c7a12ab8`, pinned in `package.test.ts`. Sealed package content
+hash: `4c920fac2f89e3f6`. 61 tests total, all passing. Full validation
+record: `validation/belt-pulley-drive-motor-sizing/0.1.0.md`. Design
+record: this module's own `README.md`.
+
+### Unit 6.6 -- Index-table motor sizing module
+
+**Done and released, 2026-08-13 -- all six stages, same session.**
+`index-table-motor-sizing@0.1.0`, the fifth and last Motor Sizing Tool
+module ADR-0011's own "Phase scope" named. Registry `1.13.0` releases
+`motor_sizing.index_table.*` (18 parameters). Records:
+`context/modules/index-table-motor-sizing/stage-1-spec.md`,
+`stage-2-contract.md`.
+
+**Genuinely different in kind from every prior Motor Sizing Tool module
+-- confirmed by two sources read this session, not merely predicted by
+ADR-0011.** An index table's own motion is rotary, commanded directly in
+angle/time: no `motion.axis.*` reuse at all (the first Motor Sizing Tool
+module with an entirely self-contained parameter group), no
+linear-to-rotary radius conversion anywhere, and `load_torque` is a
+required, engineer-supplied input with a `0 N*m` default rather than a
+computed output. Both Oriental Motor's own General Catalog Technical
+Reference (pp. F-8-F-9, "Frictional load is omitted because it is
+negligible. Load torque is considered 0") and AutomationDirect's own
+SureServo Selection Appendix (pp. B-14-B-16, `Trun = 0`, no formula given
+at all) independently omit a load-torque formula for this mechanism --
+the evidence gap ADR-0011's own "Phase scope" flagged in advance before
+either source was read in full, now genuinely closed.
+
+**A real unit-convention finding disclosed during this session's own
+hand-verification, not previously known.** AutomationDirect's own worked
+examples -- including the belt-drive example
+`belt-pulley-drive-motor-sizing@0.1.0` already validated -- compute
+acceleration torque with a rounded `0.1` constant standing in for the
+exact `2*pi/60=0.10472` (confirmed against the same document's own
+Example 7, which uses the unrounded form and reproduces its own printed
+figure only that way). This module's own kernel uses exact physics
+throughout, so its own torque outputs are systematically `~8%` higher
+than this source's own printed index-table figures -- reapplying the
+source's own rounded constant and its own further-rounded intermediate
+values at the test level exactly reproduces its own printed figure,
+proving the deviation is fully explained, not a defect. This same
+rounding convention most likely also explains part of the residual
+`belt-pulley-drive-motor-sizing@0.1.0`'s own validation record already
+disclosed for its own AutomationDirect reference example -- noted here
+for the record; that module's own release is immutable and was not
+revisited or re-released.
+
+**Two worked examples, one fully reproduced through `executeModule`, one
+partially reproduced at the kernel level.** AutomationDirect's own
+"Index Table - Example Calculations" (a 12 in diameter steel table, 6:1
+gear reducer, indexing 45 deg in 0.5 s): table inertia, reflected
+inertia, operating speed, and inertia ratio all reproduce within
+0.3%-1%; torque figures reproduce only after the source's own disclosed
+rounded-constant convention is reapplied. Oriental Motor's own richer
+"Index Table -- Using Stepping Motors" example (a table plus 12 discrete
+mounted workpieces at a fixed radius, parallel-axis theorem): its own
+inertia and operating-speed figures reproduce within 0.2%-1.5% at the
+kernel level (`lib/engine/mechanics`' own `pointMassInertia`/
+`offsetAxisInertia`, already-released generic physics, reused directly
+for the 12-workpiece sum); its own final torque figures use a
+stepping-motor pulse-speed convention this module does not share and its
+own source page is OCR-degraded past reliable hand-verification in this
+environment -- a disclosed, out-of-scope gap, not reproduced.
+
+**The independent-benchmark item** (`independent-benchmark.test.ts`)
+reimplements this module's own full inertia-to-acceleration-torque chain
+as a structurally separate expression, proved algebraically identical
+across a 300-scenario property sweep -- the solo-validation
+reviewer-substitute policy is invoked. **Cross-module link sweep against
+all seven Milestone-4 modules plus all four prior Motor Sizing Tool
+modules finds zero compatible pairs** -- the first Motor Sizing Tool
+module's own sweep to find none at all, since this module reuses no
+`motion.axis.*` or sibling `motor_sizing.*` parameter ID (confirmed by an
+exhaustive sweep, not assumed). `index.ts` assembles and seals the
+package; `npm run module:source-hash -- index-table-motor-sizing 0.1.0` →
+`0e6bd7b721780cd5`, pinned in `package.test.ts`. Sealed package content
+hash: `bdb83dd90479f8c3`. 61 tests total, all passing. Full validation
+record: `validation/index-table-motor-sizing/0.1.0.md`. Design record:
+this module's own `README.md`.
+
+**All five Motor Sizing Tool family mechanism modules ADR-0011's own
+"Phase scope" named are now released and registered**
+(`ball-screw-motor-sizing@0.1.0`, `direct-drive-conveyor-motor-sizing@
+0.1.0`, `rack-pinion-motor-sizing@0.1.0`,
+`belt-pulley-drive-motor-sizing@0.1.0`, `index-table-motor-sizing@0.1.0`).
+The only Phase 1E deliverable left open is the `AddModuleInstanceDialog`
+category-filter/mechanism-picker UI work -- see "Next up" below.
 
 ---
 
@@ -1295,14 +1986,38 @@ variable names.
 
 ## Next up
 
-1. **Milestone 4 is now complete** — Unit 4.7's own release gate cleared
-   2026-08-12 (`drive-train@0.1.0`, see "Active work" above), the seventh
-   and last Milestone 4 module. All seven `linear-axis@1` roles now have a
-   registered module. Unit 5.4 Scenario 1 (horizontal axis) is now complete
-   too (see "Active work" above); the active/next work is Unit 5.4
-   Scenarios 2 and 3, both genuinely blocked on evidence (see "Blocked"
-   above), not buildable until that evidence exists. See item 8 below for
-   Unit 5.4's full status.
+1. **All five Motor Sizing Tool family mechanism modules are fully released
+   (2026-08-13), and Phase 1E's own last open deliverable — the
+   `AddModuleInstanceDialog` category step/mechanism picker and the
+   route-level discipline-category filter — is now built (Unit 6.7, same
+   day).** `ball-screw-motor-sizing@0.1.0`, `direct-drive-conveyor-motor-
+   sizing@0.1.0`, `rack-pinion-motor-sizing@0.1.0`, `belt-pulley-drive-
+   motor-sizing@0.1.0`, and `index-table-motor-sizing@0.1.0` — see "Active
+   work" Units 6.2-6.6 for the full account: all five registered in
+   `lib/modules/registry.generated.ts` (64, 57, 50, 61, and 61 passing
+   tests respectively), all five with completed validation records
+   (`validation/ball-screw-motor-sizing/0.1.0.md`,
+   `validation/direct-drive-conveyor-motor-sizing/0.1.0.md`,
+   `validation/rack-pinion-motor-sizing/0.1.0.md`,
+   `validation/belt-pulley-drive-motor-sizing/0.1.0.md`,
+   `validation/index-table-motor-sizing/0.1.0.md`). **Unit 6.7 (see
+   `context/implementation-map.md` Milestone 6) hides the seven Milestone 4
+   discipline categories and `linear-axis@1`'s own "Start workflow" trigger
+   from the default pickers via a new route-level filter in
+   `app/(workspace)/workspace/page.tsx`, and gives `motor-sizing.*` modules
+   their own "Motor Sizing Tools" entry point/mechanism picker inside
+   `AddModuleInstanceDialog`** — none of the seven discipline modules or
+   `linear-axis@1` were edited or unregistered (immutability invariant
+   intact), and the dialog stays generic (the toggle only renders when both
+   a motor-sizing and a non-motor-sizing package are present in whatever
+   list it's given). **Milestone 6 and Phase 1E are now both fully
+   complete** — every deliverable ADR-0011 named is built. Everything else
+   in Milestone 4/5 is either done or blocked: Milestone 4 is complete
+   (Unit 4.7's gate cleared 2026-08-12, `drive-train@0.1.0`, the seventh
+   and last module; all seven `linear-axis@1` roles filled), Unit 5.4
+   Scenario 1 is complete (see "Active work"), Unit 5.5 is done (item 9),
+   and Unit 5.4 Scenarios 2/3 remain genuinely blocked on evidence (see
+   "Blocked" above), not buildable until that evidence exists.
 2. Unit 0.1 — add the third long-stroke/high-speed fixture alongside ID39 and
    ID42 in `tests/fixtures/axes/`. Explicitly decoupled from Unit 4.1's own
    release (2026-08-11), but still required/desirable for the broader Unit
@@ -1374,14 +2089,52 @@ variable names.
     remain genuinely blocked on evidence (see "Blocked" above), the
     tracker's own active/next pick (item 1 above). Unit 5.5 (production
     readiness) is in progress (see below).
-9. Unit 5.5 (production readiness): **started 2026-08-11** — the
-    Deployment decision ADR (`context/adr/0009-deployment-target-vercel-
-    neon.md`: Vercel + Neon managed Postgres) and the dependency audit
-    (`npm audit fix`, 3 transitive high-severity advisories resolved, 0
-    remaining) are both done. Remaining deliverables, not yet started:
-    managed database backups, error monitoring, structured application
-    logs, security review, data export and account deletion path, basic
-    performance benchmark, recovery procedure. Optional parallel work.
+9. Unit 5.5 (production readiness): **done, 2026-08-12** — all nine
+    deliverables closed: the Deployment decision ADR
+    (`context/adr/0009-deployment-target-vercel-neon.md`), the dependency
+    audit, structured application logs (`lib/logging/`), data export and
+    account deletion (`lib/application/account/`, `/workspace/account/
+    export`, `AccountSettingsDialog`), a basic performance benchmark
+    (`npm run perf:benchmark`), error monitoring
+    (`app/report-client-error.ts`, `app/global-error.tsx`), managed backups
+    and a recovery procedure (`context/adr/0010-backup-recovery-strategy.md`
+    — Neon PITR, no custom backup job), and a security review (no
+    high-confidence findings) — see Active work for the full account.
+    Nothing left to do here.
+10. **New, 2026-08-12: `context/adr/0011-motor-sizing-tool-architecture.md`**
+    — founder direction, after using the running application, that the
+    seven linear-axis discipline modules (Units 4.1-4.7) organize by
+    mechanical discipline, not by the mechanism the founder actually sizes
+    a motor for, and that `drive-train@0.1.0` cannot size a motor for
+    anything but a ball screw (every function in its own kernel hard-
+    requires `screw.lead`/`screw.gear_ratio`). The ADR records the decision
+    — a new `motor-sizing.<mechanism>` module family (ball screw, belt
+    conveyor split into geared/pulley-drive and direct-drive, rack and
+    pinion, index table), each module self-contained (motion profile
+    computed per-phase inside the module, not linked in from
+    `motion-profile@0.1.0` — this also fixes the ~21% RMS-torque deviation
+    `validation/drive-train/0.1.0.md` already discloses, at its structural
+    root), required-specs-only output (no motor catalog matching yet), and
+    a new shared `lib/engine/mechanics/` package for genuinely generic
+    rigid-body physics (moment of inertia, `Ta = J*alpha`) that every
+    mechanism module depends on rather than reproduces. The seven existing
+    modules and `linear-axis@1` stay registered and immutable (the
+    project's own invariant) but get hidden from the default "Add module"
+    picker via a category filter in `page.tsx` — not deleted, not edited,
+    not superseded. **`lib/engine/mechanics/` is now built (Unit 6.1, see
+    "Active work")** — the first piece of this ADR's own follow-on list.
+    **`ball-screw-motor-sizing`'s own Stages 1-3 are now done (Unit 6.2,
+    see "Active work")** — registry `1.9.0` released, and a full
+    `ModulePackage` exists with Omron's own worked example reproduced
+    through the real compute path. **Still not yet built**: Stages 4-6 of
+    `ball-screw-motor-sizing`; each of the remaining four mechanisms' own
+    Stage 1 spec (index-table's own load-torque formula is a genuine
+    sourced gap — Oriental Motor's own calculations page has none); and
+    those four mechanism modules themselves, each following the full New
+    Module Workflow stage-gate separately, per the ADR's own explicit
+    rejection of one combined module. See the ADR's own "Consequences" and
+    `context/implementation-map.md` Milestone 6 for the full follow-on
+    list.
 
 ---
 
@@ -1437,6 +2190,14 @@ past calls.
   cross-cutting change, out of scope for the unit that found it. Worked
   around in that unit's own test (direct compute+persist, bypassing only
   the buggy resolution step); the underlying gap itself is unresolved.
+  **`ball-screw-motor-sizing`'s own Stage 2 (2026-08-12) avoids inheriting
+  this defect for its own motion inputs** by minting distinct parameter
+  IDs per named phase slot (`forward_move_distance`, `return_move_
+  distance`) instead of an indexed family sharing one ID
+  (`context/modules/ball-screw-motor-sizing/stage-2-contract.md`
+  "Decisions" item 2) — a per-module workaround for a much smaller, fixed
+  motion shape, not a fix to `motion-profile@0.1.0`'s own generic-engine
+  gap, which remains exactly as described above.
 
 ---
 

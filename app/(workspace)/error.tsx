@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { reportClientErrorAction } from "@/app/report-client-error";
 
 /**
  * Route-segment error UI (Next.js App Router convention) — catches an
@@ -21,6 +22,16 @@ export default function WorkspaceError({
 }) {
   useEffect(() => {
     console.error("Workspace failed to load:", error);
+    // Structured server-side visibility (Unit 5.5) — the console.error
+    // above only reaches the browser's own console, invisible to
+    // production operators. Fire-and-forget: a failure reporting the
+    // failure must not itself break the error boundary's own render.
+    reportClientErrorAction({
+      message: error.message,
+      stack: error.stack,
+      digest: error.digest,
+      url: typeof window !== "undefined" ? window.location.href : undefined,
+    }).catch(() => {});
   }, [error]);
 
   return (

@@ -32,7 +32,7 @@ export const axisVerticalFixture = {
   ],
   sourceEvidence: [
     {
-      rawMaterialPath: "reference/source-material/Image (35).jpg",
+      rawMaterialPath: "reference/source-material/ball screw/Image (35).jpg",
       printedPage: "1",
       rawMaterialSha256:
         "BE610EED69E343F6953B01449D22AC353E040265DD5A50D0E5E0826DFEF45721",
@@ -43,7 +43,7 @@ export const axisVerticalFixture = {
         "Source page identifies a vertical ball-screw axis, combined moving mass, and provisional components.",
     },
     {
-      rawMaterialPath: "reference/source-material/Image (34).jpg",
+      rawMaterialPath: "reference/source-material/ball screw/Image (34).jpg",
       printedPage: "2",
       rawMaterialSha256:
         "8ACA1B3AA8609EAFB098EDADEF246D4BB7E2F2503B22D9B2E37161C1A70B12DA",
@@ -54,7 +54,7 @@ export const axisVerticalFixture = {
         "Source page records motion, gravity, ball-screw lead, and efficiency inputs.",
     },
     {
-      rawMaterialPath: "reference/source-material/Image (33).jpg",
+      rawMaterialPath: "reference/source-material/ball screw/Image (33).jpg",
       printedPage: "3",
       rawMaterialSha256:
         "542FFF4203AA0A73B8C5EDBC65E001FC655E9C8E60EB4BF3E927B4E40316415B",
@@ -64,7 +64,7 @@ export const axisVerticalFixture = {
       extractionNote: "Source page records the trapezoidal-motion timing.",
     },
     {
-      rawMaterialPath: "reference/source-material/Image (32).jpg",
+      rawMaterialPath: "reference/source-material/ball screw/Image (32).jpg",
       printedPage: "4",
       rawMaterialSha256:
         "F8744FA9AE076E1652E1D01E105A1780DB8CA2FF9C6D8B1280E29E41A024AE86",

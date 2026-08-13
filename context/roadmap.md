@@ -12,6 +12,7 @@ work, two labels:
 | 1A | 3, 4 |
 | 1B, 1C | 4 (later units) |
 | 1D | 5 |
+| 1E | 6 |
 | 2 and later | after MVP |
 
 ## Product Strategy
@@ -21,6 +22,19 @@ delivered to the US and Japanese markets. The
 roadmap prioritizes end-to-end credibility over the number of calculators.
 Additional modules may be added only when the shared contracts remain
 consistent and the active workflow gate is not weakened.
+
+**Phase 1E (2026-08-12, ADR-0011) reprioritizes the primary entry point
+without reopening Phases 1A-1D.** The founder's own direct feedback, after
+using the running application, is that a mechanism-oriented "Motor Sizing
+Tool" module family (ball screw, belt/pulley drive, direct-drive conveyor,
+rack and pinion, index table) answers the question they actually have —
+"size the correct motor for a given mechanism" — better than the seven
+linear-axis discipline modules Phases 1A-1C shipped. See
+`context/adr/0011-motor-sizing-tool-architecture.md` for the full
+reasoning. The seven discipline modules and `linear-axis@1` stay released,
+immutable, and exactly as their own Phase 1A-1D gates record (below); they
+are hidden from the default "Add module" picker, not removed, deprecated,
+or superseded.
 
 ## Module Prioritization
 
@@ -245,6 +259,50 @@ Gate:
   later module or catalog change* is not yet separately exercised.
 - Founder accepts the workflow as a practical replacement — **not yet
   assessed.**
+
+## Phase 1E — Motor Sizing Tool Family
+
+Founder-directed (ADR-0011), the first Phase-1 item that is neither done
+nor blocked on evidence once Milestone 4 completed. Deliverables:
+
+- `lib/engine/mechanics/` — generic, source-independent rigid-body physics
+  (moment of inertia, `Ta = J*alpha`) shared by every mechanism module —
+  **done** (Unit 6.1, `context/implementation-map.md`).
+- `motor-sizing.ball-screw`, `motor-sizing.belt-pulley-drive`,
+  `motor-sizing.direct-drive-conveyor`, `motor-sizing.rack-pinion`,
+  `motor-sizing.index-table` — five self-contained modules, each following
+  the full New Module Workflow stage gate separately (motion profile
+  computed per-phase inside the module, not linked in from
+  `motion-profile@0.1.0`; required specs only, no catalog matching yet).
+  **All five now released: `motor-sizing.ball-screw` as
+  `ball-screw-motor-sizing@0.1.0`, `motor-sizing.direct-drive-conveyor` as
+  `direct-drive-conveyor-motor-sizing@0.1.0`, `motor-sizing.rack-pinion` as
+  `rack-pinion-motor-sizing@0.1.0`, `motor-sizing.belt-pulley-drive` as
+  `belt-pulley-drive-motor-sizing@0.1.0` (all four 2026-08-13), and
+  `motor-sizing.index-table` as `index-table-motor-sizing@0.1.0`
+  (2026-08-13)** (`context/implementation-map.md` Units 6.2-6.6). Every
+  mechanism module ADR-0011's own "Phase scope" named is now released,
+  registered, and validated independently.
+- `AddModuleInstanceDialog`'s "Motor Sizing Tools" category step and
+  mechanism picker; the route-level category filter hiding the seven
+  discipline categories from the default picker — **done** (Unit 6.7,
+  2026-08-13, `context/implementation-map.md`) — the only Phase 1E
+  deliverable left open, now closed. Phase 1E is fully complete.
+
+Gate:
+
+- A founder can size a motor for at least one real mechanism (ball screw)
+  through the new module family without needing to understand what
+  `axis-load-cases`, `linear-guide`, or `coupling` are for. **Met** — all
+  five mechanisms are now presented through `AddModuleInstanceDialog`'s own
+  "Motor Sizing Tools" mechanism picker, the seven discipline categories
+  hidden from the default picker the way ADR-0011 intends.
+- Every mechanism module meets the Module Definition of Done independently
+  — one module's own formula fix or new reference example never forces
+  re-releasing another (ADR-0011 "Explicitly rejected alternative"). **Met**
+  — five independent module versions, five independent validation records.
+- The seven Phase 1A-1D discipline modules and `linear-axis@1` remain
+  registered, immutable, and untouched by this phase. **Met.**
 
 ## Phase 2 — Common Automation Modules
 

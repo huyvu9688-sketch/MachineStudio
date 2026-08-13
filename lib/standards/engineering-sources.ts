@@ -268,6 +268,31 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     note: "Manufacturer resistor-sizing methodology for the drive-train module's own regenerative-energy check (Unit 4.7): R ~= 1.1*V_max/i_shunt, average/peak power dissipation from total mechanical energy and deceleration cycle frequency, on top of an implicit kinetic-energy term and an explicit 'assume 100% of deceleration energy goes to the shunt resistor' simplifying assumption -- no drive-electronics efficiency or DC-bus capacitor-absorption term, no worked numerical example. Read via WebFetch's own text summarization this session, not direct page images -- lower confidence than a directly read source; re-fetch and read directly before a released module cites it.",
   },
   {
+    id: asSourceDocumentId(
+      "jp.oriental_motor.general_catalog_motor_fan_sizing",
+    ),
+    classification: "manufacturer_method",
+    title: "Technical Reference — Motor Sizing Calculations (Section F)",
+    authority: "Oriental Motor Co., Ltd.",
+    market: "JP",
+    access: "public",
+    officialUrl: "https://www.orientalmotor.com/products/pdfs/F_TecRef/TecMtrSiz.pdf",
+    note: "A different document from the already-registered jp.oriental_motor.motor_sizing_calculations (a current web page): this is a printed General Catalog technical-reference chapter (imperial units throughout — oz, oz-in, oz-in^2 — with its own explicit weight-based-vs-mass-based inertia convention requiring division by g=386 in/s^2, pp. F-2 through F-10), found investigating candidate sources for the direct-drive-conveyor-motor-sizing module (Unit 6.3). Gives the same ball-screw/pulley/wire-belt/rack-and-pinion load-torque and inertia formula shapes already registered elsewhere in this file, plus two items no other registered source covers: a full worked numerical example selecting a standard AC motor for a geared belt conveyor (p. F-8, 'Belt and Pully') and a second, independent worked example selecting a brushless DC motor for a geared belt conveyor using a simpler single-roller inertia model (p. F-9, 'Conveyor').",
+  },
+  {
+    id: asSourceDocumentId(
+      "jp.oriental_motor.variable_speed_belt_conveyor_sizing_example",
+    ),
+    classification: "manufacturer_method",
+    title: "Motor Sizing & Selection Example: Variable Speed Belt Conveyor",
+    authority: "Oriental Motor Co., Ltd.",
+    market: "JP",
+    access: "public",
+    officialUrl:
+      "https://blog.orientalmotor.com/motor-sizing-selection-basics-variable-speed-belt-conveyor",
+    note: "A third, independent belt-conveyor worked scenario (100 lb belt+load, 4 pulleys, mu=0.1, D=12in, two-speed 12/24 in/s profile), found alongside jp.oriental_motor.general_catalog_motor_fan_sizing while researching the direct-drive-conveyor-motor-sizing module (Unit 6.3). States every input and the final results (load inertia, required speed, required torque, selected motor) but not the intermediate formula steps — lower fidelity than a directly page-image-read source (the same caveat this file already gives jp.oriental_motor.motor_sizing_basics_rms_torque and us.celera_motion.shunt_resistor_regenerative_braking); useful for a final-answer cross-check, not for reproducing an intermediate figure.",
+  },
+  {
     id: asSourceDocumentId("us.atlanta_drive_systems.rack_pinion_calculations"),
     classification: "manufacturer_method",
     title: "Rack and Pinion Drive Calculations and Selection",
@@ -275,6 +300,29 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     market: "US",
     access: "licensed",
     note: "Internal metadata-only manufacturer-method reference; redistribution status is unresolved.",
+  },
+  {
+    id: asSourceDocumentId("us.automationdirect.sureservo_selection_appendix"),
+    classification: "manufacturer_method",
+    title:
+      "SureServo Servo Systems User Manual, Appendix B — Selecting the SureServo Servo System",
+    authority: "AutomationDirect",
+    market: "US",
+    access: "public",
+    officialUrl:
+      "https://cdn.automationdirect.com/static/manuals/sureservomanual_01_17/appxb.pdf",
+    note: "Found researching the belt-pulley-drive module (Unit 6.5): the only source located across three sessions that carries FULL, publicly citable worked numerical examples for a belt drive (pp. B-11-B-13) AND an index table (pp. B-14-B-16), each with every input, intermediate inertia/torque figure, and selected motor printed. Its Table 1 (p. B-6) is titled 'Belt Drive (or Rack & Pinion) Equations' -- a third independent source confirming these two mechanisms share one formula set, corroborating jp.oriental_motor.general_catalog_motor_fan_sizing's own combined 'Wire Belt Mechanism, Rack and Pinion Mechanism' page. Places mechanical efficiency on the INERTIA term (J_W = (W/(g*e))*r^2) rather than on the load torque (T_run = F_total*r/i, no efficiency) -- the opposite convention from Oriental Motor's own T_L = F*D/(2*eta*i); a real modeling difference, not a disagreement about physics. Read directly this session (all 18 pages). Contains one confirmed arithmetic slip: the belt-drive example's own friction force is computed as 0.05*100 = 5.0 lb though its stated table+workpiece weight is 90 lb (correct: 4.5 lb).",
+  },
+  {
+    id: asSourceDocumentId("us.andantex.modular_rack_pinion_system"),
+    classification: "manufacturer_method",
+    title: "Modular Rack & Pinion System — Selection & Calculations",
+    authority: "Andantex USA, Inc. (Redex)",
+    market: "US",
+    access: "public",
+    officialUrl:
+      "https://redexusa.com/wp-content/uploads/2016/06/RackSelectionsRatings.pdf",
+    note: "Found researching the rack-pinion-motor-sizing module (Unit 6.4): a full, publicly citable HORIZONTAL-translation/VERTICAL-lifting selection procedure (application force Fr = mu*M*g+M*a+F horizontal / M*g+M*a+F vertical; pinion torque Tp=Fr*d/2; design torque Td=Tp*S.F.; max pinion speed Np=V/(pi*d)) -- the same force/torque shape the already-registered us.atlanta_drive_systems.rack_pinion_calculations uses (verified algebraically identical this session), but public and redistributable, unlike Atlanta's own unresolved-licensing status. No worked numerical example with printed intermediate results; the torque-rating tables (by module/tooth-count) are catalog-selection data, not a sizing worked example.",
   },
 ];
 
@@ -541,6 +589,31 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
   },
   {
     id: asSourceRevisionId(
+      "jp.oriental_motor.general_catalog_motor_fan_sizing@f-tecref-2003-2004",
+    ),
+    documentId: asSourceDocumentId(
+      "jp.oriental_motor.general_catalog_motor_fan_sizing",
+    ),
+    edition:
+      "ORIENTAL MOTOR GENERAL CATALOG 2003/2004, Technical Reference Section F ('Motor and Fan Sizing'), pp. F-2 through F-10",
+    officialUrl:
+      "https://www.orientalmotor.com/products/pdfs/F_TecRef/TecMtrSiz.pdf",
+    note: "Fetched and read directly 2026-08-13 (all 9 content pages). p. F-8 ('Belt and Pully', geared i=50 belt conveyor, standard AC motor) hand-verified end to end this session: F = mu*m1 = 0.3*30 lb = 144 oz; TL = F*D/(2*eta) = 144*4/(2*0.9) = 320 oz-in (D=4in is labeled 'drum radius' in the spec table but is arithmetically used as a diameter throughout — a labeling inconsistency in the source itself, not corrected here, the same treatment this file already gives us.hmk.servo_motor_amplifier_sizing_guide's own Nm/Amp inconsistency); J1 (both rollers) = (1/8)*m2*D^2*2 = (1/8)*35.27*16*2 = 141 oz-in^2; J2 (belt+work) = m1[oz]*(pi*D/(2*pi))^2 = 480*4 = 1920 oz-in^2 (m1=30 lb converted to 480 oz before substitution, consistent with the document's own oz-in^2 convention and its own explicit F=9lb=144oz conversion one line above it). All three figures reproduce the source's own printed values exactly. p. F-9 ('Conveyor', geared i=15, brushless DC motor) is a second, structurally simpler independent example (a single drive-roller inertia term, no explicit second-roller or belt-mass term, closer to Omron's own 'Inertia where Work is Placed between Rollers' shape than to this same document's own p. F-8 model) — its own Jm1 = (1/8)*m1*D^2 = (1/8)*2.2*16*4^2 = 70.4 oz-in^2 reproduces exactly (with the same lb-to-oz conversion applied explicitly in the printed arithmetic), but its own printed Jm2 = m2*(pi*D/2*pi)^2 = 33*(2)^2 = 132 oz-in^2 does NOT apply that same conversion (33 lb used directly, not 528 oz) — an apparent internal inconsistency against its own Jm1 line and against p. F-8's own analogous J2 term, not resolved this session; either a real error in this source or a mis-extraction of this specific dense multi-column PDF page (this environment cannot render page images to check directly — no pdftoppm, see context/progress-tracker.md 'Environment notes'). p. F-9 is kept as a secondary, lower-confidence reference candidate pending that resolution; p. F-8 is the primary candidate.",
+  },
+  {
+    id: asSourceRevisionId(
+      "jp.oriental_motor.variable_speed_belt_conveyor_sizing_example@web-2026-08-13",
+    ),
+    documentId: asSourceDocumentId(
+      "jp.oriental_motor.variable_speed_belt_conveyor_sizing_example",
+    ),
+    edition: "web page, accessed 2026-08-13",
+    officialUrl:
+      "https://blog.orientalmotor.com/motor-sizing-selection-basics-variable-speed-belt-conveyor",
+    note: "Read via WebFetch's own text summarization 2026-08-13, not direct page images — lower confidence than a directly read source, the same caveat this file already gives jp.oriental_motor.motor_sizing_basics_rms_torque. Access-dated intake; re-fetch and read directly (or locate a text/HTML mirror) before a released module cites its own final figures for anything beyond a sanity cross-check.",
+  },
+  {
+    id: asSourceRevisionId(
       "us.atlanta_drive_systems.rack_pinion_calculations@sha256-2bc6e48c2dce79dd",
     ),
     documentId: asSourceDocumentId(
@@ -548,5 +621,27 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     ),
     edition: "Local reference PDF, content-addressed revision",
     note: "Internal metadata-only reference. SHA-256: 2bc6e48c2dce79dd0c252eae97cfcaa8f35fbc73c65ef5e73ace9638c42321b6. Redistribution and customer-facing citation are not authorized.",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.automationdirect.sureservo_selection_appendix@2nd-ed-rev-b-08-2011",
+    ),
+    documentId: asSourceDocumentId(
+      "us.automationdirect.sureservo_selection_appendix",
+    ),
+    edition: "2nd Ed, Rev B 08/2011, Appendix B (printed pages B-1 - B-18)",
+    officialUrl:
+      "https://cdn.automationdirect.com/static/manuals/sureservomanual_01_17/appxb.pdf",
+    note: "Read directly this session, all 18 pages. Supplies belt-pulley-drive@0.1.0's own primary reference example (pp. B-11-B-13) -- the first publicly citable, fully worked belt-drive motor-sizing example located for this project. Its index-table example (pp. B-14-B-16) independently reconfirms the index-table load-torque gap ADR-0011 records: it too sets T_run = 0 outright ('T_motor = T_accel + T_run = 12.38 + 0'), giving inertia and acceleration torque but no load-torque formula.",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.andantex.modular_rack_pinion_system@web-2026-08-13",
+    ),
+    documentId: asSourceDocumentId("us.andantex.modular_rack_pinion_system"),
+    edition: "web page (PDF), accessed 2026-08-13",
+    officialUrl:
+      "https://redexusa.com/wp-content/uploads/2016/06/RackSelectionsRatings.pdf",
+    note: "Read directly this session (full PDF, not a text summarization). Public, redistributable second-manufacturer corroboration of us.atlanta_drive_systems.rack_pinion_calculations' own force/torque shape, and the source cited in rack-pinion-motor-sizing@0.1.0's own manifest and trace (Atlanta stays internal-only per the precedent axis-load-cases@0.1.0 already set).",
   },
 ];

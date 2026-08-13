@@ -36,11 +36,13 @@ const {
   mockAuthProtect,
   mockSetParameterValue,
   mockStartWorkflowInstance,
+  mockDeleteAccount,
   mockRedirect,
 } = vi.hoisted(() => ({
   mockAuthProtect: vi.fn(),
   mockSetParameterValue: vi.fn(),
   mockStartWorkflowInstance: vi.fn(),
+  mockDeleteAccount: vi.fn(),
   mockRedirect: vi.fn(),
 }));
 
@@ -78,19 +80,22 @@ vi.mock("@/lib/db", () => ({
   asWorkflowInstanceId: (id: string) => id,
 }));
 
-// setModuleInputValueAction and startWorkflowInstanceAction are the only
-// actions under test in this file; setParameterValue and
-// startWorkflowInstance are the only "@/lib/application" exports they call —
-// every other named export actions.ts imports from that module backs a
-// different action not exercised by this file.
+// setModuleInputValueAction, startWorkflowInstanceAction, and
+// deleteAccountAction are the only actions under test in this file;
+// setParameterValue, startWorkflowInstance, and deleteAccount are the only
+// "@/lib/application" exports they call — every other named export
+// actions.ts imports from that module backs a different action not
+// exercised by this file.
 vi.mock("@/lib/application", () => ({
   setParameterValue: mockSetParameterValue,
   startWorkflowInstance: mockStartWorkflowInstance,
+  deleteAccount: mockDeleteAccount,
 }));
 
 import {
   setModuleInputValueAction,
   startWorkflowInstanceAction,
+  deleteAccountAction,
 } from "./actions";
 import { IDLE_ACTION_STATE } from "./action-state";
 import { SERIALIZATION_FORMAT_VERSION } from "@/lib/engine";
@@ -259,6 +264,51 @@ describe("startWorkflowInstanceAction", () => {
     expect(result).toEqual({
       status: "error",
       message: 'Workflow "bad@1.0.0" is not registered.',
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteAccountAction", () => {
+  beforeEach(() => {
+    mockAuthProtect.mockReset();
+    mockAuthProtect.mockResolvedValue({ userId: "test-user-1" });
+    mockDeleteAccount.mockReset();
+    mockRedirect.mockReset();
+  });
+
+  it("passes the typed confirmation phrase through and redirects to /account-deleted on success", async () => {
+    mockDeleteAccount.mockResolvedValue({ ok: true });
+
+    await deleteAccountAction(
+      IDLE_ACTION_STATE,
+      buildFormData({ confirmationPhrase: "DELETE MY ACCOUNT" }),
+    );
+
+    expect(mockDeleteAccount).toHaveBeenCalledWith(
+      "test-user-1",
+      "DELETE MY ACCOUNT",
+    );
+    expect(mockRedirect).toHaveBeenCalledWith("/account-deleted");
+  });
+
+  it("returns the service's error message and does not redirect when the confirmation phrase is wrong", async () => {
+    mockDeleteAccount.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "confirmation_mismatch",
+        message: 'Type "DELETE MY ACCOUNT" exactly to confirm.',
+      },
+    });
+
+    const result = await deleteAccountAction(
+      IDLE_ACTION_STATE,
+      buildFormData({ confirmationPhrase: "delete my account" }),
+    );
+
+    expect(result).toEqual({
+      status: "error",
+      message: 'Type "DELETE MY ACCOUNT" exactly to confirm.',
     });
     expect(mockRedirect).not.toHaveBeenCalled();
   });

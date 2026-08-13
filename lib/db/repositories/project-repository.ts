@@ -250,6 +250,44 @@ export async function upsertUser(
   return toUserRecord(row);
 }
 
+// --- Deletes ---------------------------------------------------------------
+
+/**
+ * Deletes the `User` ownership reference itself and, through the schema's
+ * `onDelete: Cascade` chain (`MachineProject` -> `MachineConfiguration` ->
+ * `Assembly`/`ModuleInstance`/... -> `CalculationRun`), everything that user
+ * owns (Unit 5.5, "project ownership boundaries" — the account-deletion
+ * deliverable). Returns `true` when a row was deleted, `false` when the id
+ * did not exist (already deleted, or never created — the same
+ * "nothing to report" outcome {@link deleteProject} returns).
+ *
+ * `ComponentAssignment.calculationRun` is `onDelete: Restrict`, the one
+ * non-Cascade edge anywhere in this subtree (context/code-standards.md
+ * "Database and Migrations": "Immutable records are protected by service
+ * rules and database constraints where practical" — a `CalculationRun` a
+ * live assignment still cites must not silently disappear). This is not a
+ * conflict: `ComponentAssignment` also holds a direct `Cascade` edge to its
+ * own `MachineConfiguration`, and PostgreSQL resolves the full transitive
+ * cascade set before evaluating any `Restrict`, so the assignment row is
+ * already gone by the time the `CalculationRun` deletion is considered —
+ * proven directly in this function's own test with a real assignment
+ * attached, not assumed from the schema alone. Catalog data itself
+ * (`Manufacturer`, `ManufacturerPartRevision`, ...) is shared,
+ * project-independent reference data with no owner
+ * (context/code-standards.md "Catalog") and is never touched by this
+ * cascade; only `CatalogImportBatch.importedByUserId` (a plain attribution
+ * string, not a foreign key) is left pointing at a deleted user, the same
+ * as `AuditEvent.userId` already does for an unattributed event.
+ */
+export async function deleteUserAccount(
+  id: UserId,
+  client: DbClient = prisma,
+): Promise<boolean> {
+  const userId = parse(nonEmpty, id);
+  const result = await client.user.deleteMany({ where: { id: userId } });
+  return result.count > 0;
+}
+
 /**
  * Creates a `MachineProject` owned by `input.ownerId`. Accepts an optional
  * transaction `client` (Unit 3.2: `createMachineProject` creates a project

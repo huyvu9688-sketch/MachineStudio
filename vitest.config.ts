@@ -38,6 +38,11 @@ export default defineConfig({
       "**/.claude/**",
       "**/.worktrees/**",
       "**/e2e/**",
+      // The Unit 5.5 performance benchmark is a deliberate opt-in
+      // (`npm run perf:benchmark`), not part of the normal suite — it
+      // prints a latency table rather than asserting pass/fail, which
+      // would be noise on every `npm test`/`npm run verify` run.
+      "scripts/**",
     ],
     coverage: {
       provider: "v8",

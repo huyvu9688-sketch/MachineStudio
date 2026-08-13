@@ -6,10 +6,13 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockAuthProtect, mockLoadBomView } = vi.hoisted(() => ({
-  mockAuthProtect: vi.fn(),
-  mockLoadBomView: vi.fn(),
-}));
+const { mockAuthProtect, mockLoadBomView, mockLoggerError } = vi.hoisted(
+  () => ({
+    mockAuthProtect: vi.fn(),
+    mockLoadBomView: vi.fn(),
+    mockLoggerError: vi.fn(),
+  }),
+);
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: { protect: mockAuthProtect },
@@ -17,6 +20,11 @@ vi.mock("@clerk/nextjs/server", () => ({
 
 vi.mock("@/lib/application", () => ({
   loadBomView: mockLoadBomView,
+}));
+
+vi.mock("@/lib/logging", () => ({
+  logger: { error: mockLoggerError },
+  normalizeError: (error: unknown) => ({ value: error }),
 }));
 
 // buildBomCsv is exercised for real (it's pure, no reason to mock it) —
@@ -40,6 +48,7 @@ describe("GET /workspace/bom", () => {
     mockAuthProtect.mockReset();
     mockAuthProtect.mockResolvedValue({ userId: "test-user-1" });
     mockLoadBomView.mockReset();
+    mockLoggerError.mockReset();
   });
 
   it("returns 400 when ?configuration= is missing", async () => {
@@ -98,6 +107,26 @@ describe("GET /workspace/bom", () => {
 
     expect(response.headers.get("Content-Disposition")).toBe(
       'attachment; filename="bom-configuration.csv"',
+    );
+  });
+
+  it("returns a generic 500 and logs the real error when loadBomView throws", async () => {
+    const failure = new Error("connection reset");
+    mockLoadBomView.mockRejectedValue(failure);
+
+    const response = await GET(requestFor("?configuration=cfg-1"));
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error.code).toBe("internal_error");
+    expect(body.error.message).not.toContain("connection reset");
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      "BOM route failed",
+      expect.objectContaining({
+        route: "/workspace/bom",
+        configurationId: "cfg-1",
+        error: { value: failure },
+      }),
     );
   });
 });

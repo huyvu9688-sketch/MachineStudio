@@ -1,7 +1,8 @@
 // lib/engine owns generic, deterministic calculation infrastructure only:
 // engineering value types, unit definitions and conversion, the canonical
 // parameter registry, the module SDK and conformance rules, calculation
-// trace primitives, module execution, and dependency graph resolution.
+// trace primitives, module execution, dependency graph resolution, and
+// generic rigid-body mechanics.
 // It imports nothing from app, lib/db, network clients, authentication,
 // or catalog persistence. See context/architecture.md.
 
@@ -22,3 +23,7 @@ export * from "./module-sdk";
 
 // Unit 1.8 — Parameter graph core.
 export * from "./graph";
+
+// Unit 6.1 — Rigid-body mechanics (generic, source-independent physics for
+// the Motor Sizing Tool family — ADR-0011).
+export * from "./mechanics";

@@ -195,6 +195,21 @@ an ID, message, observed value, criterion, source, and severity.
 - Escape user-provided report content
 - Record security-relevant mutations in the audit log
 
+## Logging
+
+- Use `lib/logging`'s `logger` for server-side operational visibility, not
+  a bare `console.*` call
+- Log unexpected/unhandled failures at a boundary (a route handler's outer
+  catch, a health check) — not every typed `{ ok: false }` domain result,
+  which is an expected, already user-facing outcome, not an incident
+- Never put a raw error object, stack trace, or caught value straight into
+  a log call; normalize it with `normalizeError` first
+- A log entry's `context` is for operational fields (route, IDs, a
+  normalized error) — never a raw request body, credential, or full
+  `EngineeringValue` payload
+- Structured logs are operational, not a substitute for `lib/audit`'s
+  append-only engineering event trail
+
 ## UI and Styling
 
 - Use design tokens from `ui-context.md`
@@ -218,6 +233,7 @@ an ID, message, observed value, criterion, source, and severity.
 - `lib/standards/` — source and market metadata
 - `lib/reports/` — trace-driven rendering
 - `lib/audit/` — audit event definitions
+- `lib/logging/` — structured operational logging
 - `lib/db/` — persistence adapters
 - `prisma/` — schema and migrations
 - `context/` — product and implementation specifications

@@ -20,6 +20,7 @@
     "module:new": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/module-new.mts",
     "registry:generate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/generate-registry.mts",
     "module:source-hash": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/module-source-hash.mts",
+    "perf:benchmark": "vitest run scripts/perf-benchmark.script.test.ts --config vitest.perf-benchmark.config.ts --reporter=verbose",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"

@@ -19,6 +19,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { loadBomView } from "@/lib/application";
+import { logger, normalizeError } from "@/lib/logging";
 import { buildBomCsv } from "@/lib/reports";
 import { asMachineConfigurationId, asUserId } from "@/lib/db";
 
@@ -53,26 +54,40 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  const view = await loadBomView(
-    asMachineConfigurationId(configurationId),
-    asUserId(userId),
-  );
-  if (view === null) {
+  try {
+    const view = await loadBomView(
+      asMachineConfigurationId(configurationId),
+      asUserId(userId),
+    );
+    if (view === null) {
+      return errorResponse(
+        404,
+        "not_found",
+        "Configuration not found or not owned by this user.",
+      );
+    }
+
+    const csv = buildBomCsv(view);
+    const filename = `bom-${slugify(view.configurationName)}.csv`;
+
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
+  } catch (error) {
+    logger.error("BOM route failed", {
+      route: "/workspace/bom",
+      configurationId,
+      userId,
+      error: normalizeError(error),
+    });
     return errorResponse(
-      404,
-      "not_found",
-      "Configuration not found or not owned by this user.",
+      500,
+      "internal_error",
+      "Something went wrong while generating the BOM.",
     );
   }
-
-  const csv = buildBomCsv(view);
-  const filename = `bom-${slugify(view.configurationName)}.csv`;
-
-  return new Response(csv, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-    },
-  });
 }

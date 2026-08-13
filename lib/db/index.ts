@@ -12,6 +12,7 @@
 // project-scoped. BOM (5.1) is a later work unit. See context/architecture.md.
 
 import "server-only";
+import { logger, normalizeError } from "@/lib/logging";
 import { prisma } from "./client";
 
 export { prisma } from "./client";
@@ -63,7 +64,9 @@ export async function checkDatabaseHealth(): Promise<DatabaseHealthResult> {
     await prisma.$queryRaw`SELECT 1`;
     return { ok: true, latencyMs: performance.now() - startedAt };
   } catch (error) {
-    console.error("Database health check failed:", error);
+    logger.error("Database health check failed", {
+      error: normalizeError(error),
+    });
     return {
       ok: false,
       error: "Database health check failed.",

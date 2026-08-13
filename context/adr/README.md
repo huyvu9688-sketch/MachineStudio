@@ -78,3 +78,5 @@ and Sources"). When circumstances change:
 | [ADR-0007](0007-workflow-definition-contract.md) | Workflow definition contract (`WorkflowDefinition` SDK boundary) | Accepted |
 | [ADR-0008](0008-bom-generated-not-stored.md) | BOM is a generated view, not a stored `BomItem` table | Accepted |
 | [ADR-0009](0009-deployment-target-vercel-neon.md) | Deployment target is Vercel with managed PostgreSQL (Neon) | Accepted |
+| [ADR-0010](0010-backup-recovery-strategy.md) | Managed database backups and recovery procedure (Neon PITR, no custom backup infrastructure) | Accepted |
+| [ADR-0011](0011-motor-sizing-tool-architecture.md) | Motor Sizing Tool — mechanism-oriented module family, replacing the linear-axis discipline modules as the primary user-facing entry point | Accepted |

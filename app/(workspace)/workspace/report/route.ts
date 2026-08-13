@@ -20,6 +20,7 @@ import {
   loadMachineReportView,
   loadModuleReportView,
 } from "@/lib/application";
+import { logger, normalizeError } from "@/lib/logging";
 import {
   buildAssemblyReportHtml,
   buildMachineReportHtml,
@@ -74,66 +75,82 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  let html: string;
-  let filenamePrefix: string;
-  let filenameSubject: string;
+  try {
+    let html: string;
+    let filenamePrefix: string;
+    let filenameSubject: string;
 
-  if (moduleId !== null) {
-    const view = await loadModuleReportView(
-      asModuleInstanceId(moduleId),
-      ownerId,
-    );
-    if (view === null) {
-      return errorResponse(
-        404,
-        "not_found",
-        "Module instance not found or not owned by this user.",
+    if (moduleId !== null) {
+      const view = await loadModuleReportView(
+        asModuleInstanceId(moduleId),
+        ownerId,
       );
-    }
-    html = buildModuleReportHtml(view);
-    filenamePrefix = "module";
-    filenameSubject = view.moduleInstance.label;
-  } else if (assemblyId !== null) {
-    const view = await loadAssemblyReportView(
-      asAssemblyId(assemblyId),
-      ownerId,
-    );
-    if (view === null) {
-      return errorResponse(
-        404,
-        "not_found",
-        "Assembly not found or not owned by this user.",
+      if (view === null) {
+        return errorResponse(
+          404,
+          "not_found",
+          "Module instance not found or not owned by this user.",
+        );
+      }
+      html = buildModuleReportHtml(view);
+      filenamePrefix = "module";
+      filenameSubject = view.moduleInstance.label;
+    } else if (assemblyId !== null) {
+      const view = await loadAssemblyReportView(
+        asAssemblyId(assemblyId),
+        ownerId,
       );
-    }
-    html = buildAssemblyReportHtml(view);
-    filenamePrefix = "assembly";
-    filenameSubject = view.root.assemblyName;
-  } else {
-    // `configurationId` is non-null here: `providedCount === 1` and both
-    // branches above were false, so it must be the one provided parameter.
-    const view = await loadMachineReportView(
-      asMachineConfigurationId(configurationId as string),
-      ownerId,
-    );
-    if (view === null) {
-      return errorResponse(
-        404,
-        "not_found",
-        "Configuration not found or not owned by this user.",
+      if (view === null) {
+        return errorResponse(
+          404,
+          "not_found",
+          "Assembly not found or not owned by this user.",
+        );
+      }
+      html = buildAssemblyReportHtml(view);
+      filenamePrefix = "assembly";
+      filenameSubject = view.root.assemblyName;
+    } else {
+      // `configurationId` is non-null here: `providedCount === 1` and both
+      // branches above were false, so it must be the one provided parameter.
+      const view = await loadMachineReportView(
+        asMachineConfigurationId(configurationId as string),
+        ownerId,
       );
+      if (view === null) {
+        return errorResponse(
+          404,
+          "not_found",
+          "Configuration not found or not owned by this user.",
+        );
+      }
+      html = buildMachineReportHtml(view);
+      filenamePrefix = "machine";
+      filenameSubject = view.configuration.name;
     }
-    html = buildMachineReportHtml(view);
-    filenamePrefix = "machine";
-    filenameSubject = view.configuration.name;
+
+    const filename = `${filenamePrefix}-report-${slugify(filenameSubject)}.html`;
+
+    return new Response(html, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Disposition": `inline; filename="${filename}"`,
+      },
+    });
+  } catch (error) {
+    logger.error("Report route failed", {
+      route: "/workspace/report",
+      moduleId,
+      assemblyId,
+      configurationId,
+      userId: ownerId,
+      error: normalizeError(error),
+    });
+    return errorResponse(
+      500,
+      "internal_error",
+      "Something went wrong while generating the report.",
+    );
   }
-
-  const filename = `${filenamePrefix}-report-${slugify(filenameSubject)}.html`;
-
-  return new Response(html, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Content-Disposition": `inline; filename="${filename}"`,
-    },
-  });
 }

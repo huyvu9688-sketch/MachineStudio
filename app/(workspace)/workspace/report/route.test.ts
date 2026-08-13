@@ -14,11 +14,13 @@ const {
   mockLoadModuleReportView,
   mockLoadAssemblyReportView,
   mockLoadMachineReportView,
+  mockLoggerError,
 } = vi.hoisted(() => ({
   mockAuthProtect: vi.fn(),
   mockLoadModuleReportView: vi.fn(),
   mockLoadAssemblyReportView: vi.fn(),
   mockLoadMachineReportView: vi.fn(),
+  mockLoggerError: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({
@@ -29,6 +31,11 @@ vi.mock("@/lib/application", () => ({
   loadModuleReportView: mockLoadModuleReportView,
   loadAssemblyReportView: mockLoadAssemblyReportView,
   loadMachineReportView: mockLoadMachineReportView,
+}));
+
+vi.mock("@/lib/logging", () => ({
+  logger: { error: mockLoggerError },
+  normalizeError: (error: unknown) => ({ value: error }),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -116,6 +123,7 @@ describe("GET /workspace/report", () => {
     mockLoadModuleReportView.mockReset();
     mockLoadAssemblyReportView.mockReset();
     mockLoadMachineReportView.mockReset();
+    mockLoggerError.mockReset();
   });
 
   it("returns 400 when none of ?module=, ?assembly=, ?configuration= is given", async () => {
@@ -141,21 +149,30 @@ describe("GET /workspace/report", () => {
     mockLoadModuleReportView.mockResolvedValue(null);
     const response = await GET(requestFor("?module=mi-1"));
     expect(response.status).toBe(404);
-    expect(mockLoadModuleReportView).toHaveBeenCalledWith("mi-1", "test-user-1");
+    expect(mockLoadModuleReportView).toHaveBeenCalledWith(
+      "mi-1",
+      "test-user-1",
+    );
   });
 
   it("returns 404 when the assembly is not found or not owned", async () => {
     mockLoadAssemblyReportView.mockResolvedValue(null);
     const response = await GET(requestFor("?assembly=a-1"));
     expect(response.status).toBe(404);
-    expect(mockLoadAssemblyReportView).toHaveBeenCalledWith("a-1", "test-user-1");
+    expect(mockLoadAssemblyReportView).toHaveBeenCalledWith(
+      "a-1",
+      "test-user-1",
+    );
   });
 
   it("returns 404 when the configuration is not found or not owned", async () => {
     mockLoadMachineReportView.mockResolvedValue(null);
     const response = await GET(requestFor("?configuration=c-1"));
     expect(response.status).toBe(404);
-    expect(mockLoadMachineReportView).toHaveBeenCalledWith("c-1", "test-user-1");
+    expect(mockLoadMachineReportView).toHaveBeenCalledWith(
+      "c-1",
+      "test-user-1",
+    );
   });
 
   it("renders a module report as inline HTML with a slugified filename", async () => {
@@ -175,7 +192,9 @@ describe("GET /workspace/report", () => {
   });
 
   it("renders an assembly report as inline HTML with a slugified filename", async () => {
-    mockLoadAssemblyReportView.mockResolvedValue(assemblyView("X Axis / Rev 2!"));
+    mockLoadAssemblyReportView.mockResolvedValue(
+      assemblyView("X Axis / Rev 2!"),
+    );
     const response = await GET(requestFor("?assembly=a-1"));
 
     expect(response.status).toBe(200);
@@ -197,5 +216,25 @@ describe("GET /workspace/report", () => {
     const text = await response.text();
     expect(text).toContain("X Axis / Rev 2!");
     expect(text).toContain("Machine Calculation Package");
+  });
+
+  it("returns a generic 500 and logs the real error when a report view throws", async () => {
+    const failure = new Error("connection reset");
+    mockLoadModuleReportView.mockRejectedValue(failure);
+
+    const response = await GET(requestFor("?module=mi-1"));
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error.code).toBe("internal_error");
+    expect(body.error.message).not.toContain("connection reset");
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      "Report route failed",
+      expect.objectContaining({
+        route: "/workspace/report",
+        moduleId: "mi-1",
+        error: { value: failure },
+      }),
+    );
   });
 });

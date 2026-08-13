@@ -41,6 +41,7 @@ vi.mock("@/app/(workspace)/workspace/actions", () => ({
   createLoadCaseAction: vi.fn(),
   createBaselineAction: vi.fn(),
   startWorkflowInstanceAction: vi.fn(),
+  deleteAccountAction: vi.fn(),
 }));
 
 const MARKET_PROFILES: MarketProfileOption[] = [

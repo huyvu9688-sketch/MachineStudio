@@ -22,6 +22,28 @@ export interface ModulePackageOption {
   readonly category: string;
 }
 
+const MOTOR_SIZING_CATEGORY_PREFIX = "motor-sizing.";
+
+/**
+ * Friendly mechanism names for the Motor Sizing Tool family (ADR-0011
+ * "Add-module UI flow"), keyed by module id. `ModuleManifest` has no
+ * display-name field to read this from — adding one would change every
+ * released module's own content hash (ai-workflow-rules.md "Protected
+ * Files") — so this is a UI-layer-only lookup. A motor-sizing module id
+ * missing from this map falls back to its own id rather than throwing.
+ */
+const MECHANISM_LABELS: Readonly<Record<string, string>> = {
+  "ball-screw-motor-sizing": "Ball Screw",
+  "belt-pulley-drive-motor-sizing": "Belt & Pulley Drive",
+  "direct-drive-conveyor-motor-sizing": "Direct-Drive Conveyor",
+  "rack-pinion-motor-sizing": "Rack & Pinion",
+  "index-table-motor-sizing": "Index Table",
+};
+
+function mechanismLabel(pkg: ModulePackageOption): string {
+  return MECHANISM_LABELS[pkg.modulePackageId] ?? pkg.modulePackageId;
+}
+
 /** A configuration's existing workflow instance, for the optional "attach to workflow" picker. */
 export interface WorkflowInstanceOption {
   readonly id: string;
@@ -59,6 +81,7 @@ export function AddModuleInstanceDialog({
     IDLE_ACTION_STATE,
   );
   const packageId = useId();
+  const categoryLabelId = useId();
   const labelId = useId();
   const workflowInstanceId = useId();
 
@@ -70,6 +93,27 @@ export function AddModuleInstanceDialog({
       setOpen(false);
     }
   }
+
+  // ADR-0011 "Add-module UI flow": motor-sizing.* modules get a first-level
+  // category step — "Motor Sizing Tools" as one entry point opening a
+  // mechanism picker — instead of sitting inline in the flat module list.
+  // Every other registered module (including a future non-motor-sizing,
+  // non-hidden category) keeps the original flat picker unchanged, so this
+  // stays a generic dialog rendering whatever list it is given, not a
+  // motor-sizing-specific component.
+  const motorSizingPackages = modulePackages.filter((pkg) =>
+    pkg.category.startsWith(MOTOR_SIZING_CATEGORY_PREFIX),
+  );
+  const otherPackages = modulePackages.filter(
+    (pkg) => !pkg.category.startsWith(MOTOR_SIZING_CATEGORY_PREFIX),
+  );
+  const showCategoryStep =
+    motorSizingPackages.length > 0 && otherPackages.length > 0;
+  const [category, setCategory] = useState<"motor-sizing" | "other">(
+    motorSizingPackages.length > 0 ? "motor-sizing" : "other",
+  );
+  const activePackages =
+    category === "motor-sizing" ? motorSizingPackages : otherPackages;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -86,27 +130,70 @@ export function AddModuleInstanceDialog({
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {showCategoryStep ? (
+              <div className="grid gap-1.5">
+                <span
+                  id={categoryLabelId}
+                  className="text-[13px] font-medium text-text-primary"
+                >
+                  Module category
+                </span>
+                <div
+                  role="group"
+                  aria-labelledby={categoryLabelId}
+                  className="flex gap-1.5"
+                >
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={
+                      category === "motor-sizing" ? "default" : "outline"
+                    }
+                    aria-pressed={category === "motor-sizing"}
+                    onClick={() => setCategory("motor-sizing")}
+                  >
+                    Motor Sizing Tools
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={category === "other" ? "default" : "outline"}
+                    aria-pressed={category === "other"}
+                    onClick={() => setCategory("other")}
+                  >
+                    Other modules
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             <div className="grid gap-1.5">
-              <Label htmlFor={packageId}>Module package</Label>
+              <Label htmlFor={packageId}>
+                {category === "motor-sizing" ? "Mechanism" : "Module package"}
+              </Label>
               <select
+                key={category}
                 id={packageId}
                 name="modulePackageKey"
                 required
                 defaultValue=""
-                disabled={modulePackages.length === 0}
+                disabled={activePackages.length === 0}
                 className="h-9 rounded-md border border-border-default bg-bg-surface px-3 text-[14px] text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary"
               >
                 <option value="" disabled>
-                  {modulePackages.length === 0
+                  {activePackages.length === 0
                     ? "No modules registered yet"
-                    : "Select a module"}
+                    : category === "motor-sizing"
+                      ? "Select a mechanism"
+                      : "Select a module"}
                 </option>
-                {modulePackages.map((pkg) => (
+                {activePackages.map((pkg) => (
                   <option
                     key={`${pkg.modulePackageId}@${pkg.moduleVersion}`}
                     value={`${pkg.modulePackageId}@${pkg.moduleVersion}`}
                   >
-                    {pkg.modulePackageId}@{pkg.moduleVersion} ({pkg.category})
+                    {category === "motor-sizing"
+                      ? `${mechanismLabel(pkg)} (${pkg.modulePackageId}@${pkg.moduleVersion})`
+                      : `${pkg.modulePackageId}@${pkg.moduleVersion} (${pkg.category})`}
                   </option>
                 ))}
               </select>
