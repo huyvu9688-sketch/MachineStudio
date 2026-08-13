@@ -138,6 +138,26 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
     });
 
+    it("does not suggest an archived module instance's output as a source", async () => {
+      const s = await scaffold();
+      const source = await newRelay(s, s.assemblyId, "Archived relay");
+      const target = await newRelay(s, s.assemblyId, "Downstream relay");
+      expect(await projects.archiveModuleInstance(source, s.ownerId)).toBe(true);
+
+      const index = await suggest.buildConfigurationSuggestionIndex(
+        s.configId,
+        s.ownerId,
+      );
+      expect(index).not.toBeNull();
+      if (index === null) return;
+
+      const suggestions = suggest.describeLinkSuggestions(
+        index,
+        targetInputSinkId(target),
+      );
+      expect(suggestions).toEqual([]);
+    });
+
     it("does not suggest a module's own input port as a source for another port", async () => {
       const s = await scaffold();
       const target = await newRelay(s, s.assemblyId, "Only relay");

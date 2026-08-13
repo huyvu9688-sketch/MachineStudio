@@ -143,7 +143,15 @@ export async function buildConfigurationSuggestionIndex(
   if (tree === null) return null;
 
   const assemblies = flattenAssemblies(tree.assemblies);
-  const moduleInstances = assemblies.flatMap((a) => a.moduleInstances);
+  // Archived instances are excluded from the suggestion graph entirely —
+  // neither offered as a link source nor a link target — the same
+  // "hidden, not suggested" treatment the navigator itself gives them
+  // (module-instance-management design, "Effects of archiving"). This does
+  // not affect any already-confirmed ParameterLink, which resolves
+  // independently of this suggestion index.
+  const moduleInstances = assemblies
+    .flatMap((a) => a.moduleInstances)
+    .filter((mi) => mi.archivedAt === null);
 
   const rootScopeId = asScopeId(configurationId);
   const scopes: GraphScope[] = [
