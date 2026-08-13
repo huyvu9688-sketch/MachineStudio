@@ -20,6 +20,8 @@ export {
   renameAssembly,
   loadModuleInstanceForOwner,
   updateModuleInstanceRunStatus,
+  renameModuleInstance,
+  archiveModuleInstance,
   isConfigurationOwnedBy,
   loadAssemblyForOwner,
   loadConfigurationForOwner,
@@ -64,6 +66,7 @@ export {
   listParameterLinksForConfiguration,
   listCurrentParameterValuesForConfiguration,
   findCurrentParameterValueForNode,
+  listModuleInstancesLinkedFromSource,
 } from "./graph-repository";
 export type {
   GraphRepositoryErrorCode,
