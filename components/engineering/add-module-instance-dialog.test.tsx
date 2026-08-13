@@ -264,4 +264,71 @@ describe("AddModuleInstanceDialog", () => {
       'Module package "bad@1.0.0" is not registered.',
     );
   });
+
+  it("prefills the instance label with the friendly mechanism name on selection", async () => {
+    const user = userEvent.setup();
+    const packages: ModulePackageOption[] = [
+      {
+        modulePackageId: "belt-pulley-drive-motor-sizing",
+        moduleVersion: "0.1.0",
+        category: "motor-sizing.belt-pulley-drive",
+      },
+    ];
+    render(
+      <AddModuleInstanceDialog
+        assemblyId="a1"
+        configurationId="c1"
+        modulePackages={packages}
+        trigger={<button type="button">{TRIGGER_LABEL}</button>}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+    await user.selectOptions(
+      screen.getByLabelText("Mechanism"),
+      "belt-pulley-drive-motor-sizing@0.1.0",
+    );
+
+    expect(screen.getByLabelText("Instance label")).toHaveValue(
+      "Belt & Pulley Drive",
+    );
+  });
+
+  it("does not overwrite a label the founder already typed", async () => {
+    const user = userEvent.setup();
+    const packages: ModulePackageOption[] = [
+      {
+        modulePackageId: "belt-pulley-drive-motor-sizing",
+        moduleVersion: "0.1.0",
+        category: "motor-sizing.belt-pulley-drive",
+      },
+      {
+        modulePackageId: "index-table-motor-sizing",
+        moduleVersion: "0.1.0",
+        category: "motor-sizing.index-table",
+      },
+    ];
+    render(
+      <AddModuleInstanceDialog
+        assemblyId="a1"
+        configurationId="c1"
+        modulePackages={packages}
+        trigger={<button type="button">{TRIGGER_LABEL}</button>}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+    await user.selectOptions(
+      screen.getByLabelText("Mechanism"),
+      "belt-pulley-drive-motor-sizing@0.1.0",
+    );
+    await user.clear(screen.getByLabelText("Instance label"));
+    await user.type(screen.getByLabelText("Instance label"), "X-axis drive");
+    await user.selectOptions(
+      screen.getByLabelText("Mechanism"),
+      "index-table-motor-sizing@0.1.0",
+    );
+
+    expect(screen.getByLabelText("Instance label")).toHaveValue("X-axis drive");
+  });
 });
