@@ -437,7 +437,11 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(reloaded?.moduleInstance.label).toBe("Belt & Pulley Drive");
 
       expect(
-        await repo.renameModuleInstance(moduleInstance.id, strangerId, "Hijacked"),
+        await repo.renameModuleInstance(
+          moduleInstance.id,
+          strangerId,
+          "Hijacked",
+        ),
       ).toBe(false);
       expect(
         (await repo.loadModuleInstanceForOwner(moduleInstance.id, ownerId))
@@ -477,18 +481,18 @@ describe.skipIf(!liveDatabaseAvailable)(
           ?.moduleInstance.archivedAt,
       ).toBeNull();
 
-      expect(
-        await repo.archiveModuleInstance(moduleInstance.id, ownerId),
-      ).toBe(true);
+      expect(await repo.archiveModuleInstance(moduleInstance.id, ownerId)).toBe(
+        true,
+      );
       expect(
         (await repo.loadModuleInstanceForOwner(moduleInstance.id, ownerId))
           ?.moduleInstance.archivedAt,
       ).not.toBeNull();
 
       // Already archived: archiving again is a no-op, not an error.
-      expect(
-        await repo.archiveModuleInstance(moduleInstance.id, ownerId),
-      ).toBe(false);
+      expect(await repo.archiveModuleInstance(moduleInstance.id, ownerId)).toBe(
+        false,
+      );
     });
   },
 );

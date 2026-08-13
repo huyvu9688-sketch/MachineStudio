@@ -129,7 +129,9 @@ export async function previewArchiveModuleInstanceImpact(
   return {
     ok: true,
     preview: {
-      dependentModuleInstanceLabels: dependents.map((dependent) => dependent.label),
+      dependentModuleInstanceLabels: dependents.map(
+        (dependent) => dependent.label,
+      ),
       attachedToWorkflow: context.moduleInstance.workflowInstanceId !== null,
     },
   };

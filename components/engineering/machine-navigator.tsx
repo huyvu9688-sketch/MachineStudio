@@ -530,7 +530,11 @@ function BomRow({
  * `BomRow`'s in-app navigation: a report is a printable document, not a
  * workspace panel.
  */
-function MachineReportRow({ configurationId }: { readonly configurationId: string }) {
+function MachineReportRow({
+  configurationId,
+}: {
+  readonly configurationId: string;
+}) {
   return (
     <a
       href={`/workspace/report?configuration=${encodeURIComponent(configurationId)}`}
@@ -538,7 +542,10 @@ function MachineReportRow({ configurationId }: { readonly configurationId: strin
       rel="noopener noreferrer"
       className="flex items-center gap-2 px-3 py-1.5 text-[13px] text-text-primary hover:bg-surface-hover"
     >
-      <FileText aria-hidden="true" className="h-4 w-4 shrink-0 text-text-muted" />
+      <FileText
+        aria-hidden="true"
+        className="h-4 w-4 shrink-0 text-text-muted"
+      />
       Machine report
     </a>
   );
@@ -592,14 +599,20 @@ function ModuleRow({
           idValue={moduleInstance.id}
           currentName={moduleInstance.label}
           trigger={
-            <IconButton icon={Pencil} label={`Rename ${moduleInstance.label}`} />
+            <IconButton
+              icon={Pencil}
+              label={`Rename ${moduleInstance.label}`}
+            />
           }
         />
         <ArchiveModuleInstanceDialog
           moduleInstanceId={moduleInstance.id}
           moduleInstanceLabel={moduleInstance.label}
           trigger={
-            <IconButton icon={Archive} label={`Archive ${moduleInstance.label}`} />
+            <IconButton
+              icon={Archive}
+              label={`Archive ${moduleInstance.label}`}
+            />
           }
         />
       </div>

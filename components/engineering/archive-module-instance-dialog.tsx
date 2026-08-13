@@ -101,13 +101,17 @@ export function ArchiveModuleInstanceDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <form action={formAction}>
-          <input type="hidden" name="moduleInstanceId" value={moduleInstanceId} />
+          <input
+            type="hidden"
+            name="moduleInstanceId"
+            value={moduleInstanceId}
+          />
           <DialogHeader>
             <DialogTitle>Archive &quot;{moduleInstanceLabel}&quot;</DialogTitle>
             <DialogDescription>
-              Archiving hides this module from the navigator. Nothing is
-              deleted — its saved values, links, and run history stay exactly
-              as they are.
+              Archiving hides this module from the navigator. Nothing is deleted
+              — its saved values, links, and run history stay exactly as they
+              are.
             </DialogDescription>
           </DialogHeader>
 
@@ -124,8 +128,8 @@ export function ArchiveModuleInstanceDialog({
               <>
                 {preview.dependentModuleInstanceLabels.length > 0 ? (
                   <p>
-                    {preview.dependentModuleInstanceLabels.length} other
-                    module{preview.dependentModuleInstanceLabels.length === 1
+                    {preview.dependentModuleInstanceLabels.length} other module
+                    {preview.dependentModuleInstanceLabels.length === 1
                       ? ""
                       : "s"}{" "}
                     still link
@@ -144,8 +148,8 @@ export function ArchiveModuleInstanceDialog({
                 )}
                 {preview.attachedToWorkflow ? (
                   <p>
-                    This module fills a role in an active workflow. Archiving
-                    it leaves that role unfilled.
+                    This module fills a role in an active workflow. Archiving it
+                    leaves that role unfilled.
                   </p>
                 ) : null}
               </>

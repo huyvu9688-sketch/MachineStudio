@@ -33,7 +33,9 @@ describe("ArchiveModuleInstanceDialog", () => {
     await waitFor(() => {
       expect(screen.getByText(/Index Table/)).toBeInTheDocument();
     });
-    expect(previewArchiveModuleInstanceImpactAction).toHaveBeenCalledWith("mi_1");
+    expect(previewArchiveModuleInstanceImpactAction).toHaveBeenCalledWith(
+      "mi_1",
+    );
   });
 
   it("shows no-dependents text when nothing links from this instance", async () => {

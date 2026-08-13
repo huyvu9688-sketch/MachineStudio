@@ -142,7 +142,9 @@ describe.skipIf(!liveDatabaseAvailable)(
       const s = await scaffold();
       const source = await newRelay(s, s.assemblyId, "Archived relay");
       const target = await newRelay(s, s.assemblyId, "Downstream relay");
-      expect(await projects.archiveModuleInstance(source, s.ownerId)).toBe(true);
+      expect(await projects.archiveModuleInstance(source, s.ownerId)).toBe(
+        true,
+      );
 
       const index = await suggest.buildConfigurationSuggestionIndex(
         s.configId,
