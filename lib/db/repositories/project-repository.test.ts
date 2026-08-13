@@ -398,6 +398,98 @@ describe.skipIf(!liveDatabaseAvailable)(
           ?.name,
       ).toBe("Renamed assembly");
     });
+
+    it("renames a module instance owned by the caller and rejects a stranger", async () => {
+      const ownerId = await newUser();
+      const strangerId = await newUser();
+      const project = await repo.createProject({
+        ownerId,
+        name: "Axis",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const config = await repo.createConfiguration({
+        projectId: project.id,
+        name: "Baseline",
+      });
+      const assembly = await repo.createAssembly({
+        configurationId: config.id,
+        name: "X axis",
+      });
+      const moduleInstance = await repo.createModuleInstance({
+        assemblyId: assembly.id,
+        configurationId: config.id,
+        modulePackageId: "example-scaffold",
+        moduleVersion: "0.1.0",
+        label: "belt-pulley-drive-motor-sizing@0.1.0",
+      });
+
+      expect(
+        await repo.renameModuleInstance(
+          moduleInstance.id,
+          ownerId,
+          "Belt & Pulley Drive",
+        ),
+      ).toBe(true);
+      const reloaded = await repo.loadModuleInstanceForOwner(
+        moduleInstance.id,
+        ownerId,
+      );
+      expect(reloaded?.moduleInstance.label).toBe("Belt & Pulley Drive");
+
+      expect(
+        await repo.renameModuleInstance(moduleInstance.id, strangerId, "Hijacked"),
+      ).toBe(false);
+      expect(
+        (await repo.loadModuleInstanceForOwner(moduleInstance.id, ownerId))
+          ?.moduleInstance.label,
+      ).toBe("Belt & Pulley Drive");
+    });
+
+    it("archives a module instance once, and a stranger cannot archive it", async () => {
+      const ownerId = await newUser();
+      const strangerId = await newUser();
+      const project = await repo.createProject({
+        ownerId,
+        name: "Axis",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const config = await repo.createConfiguration({
+        projectId: project.id,
+        name: "Baseline",
+      });
+      const assembly = await repo.createAssembly({
+        configurationId: config.id,
+        name: "X axis",
+      });
+      const moduleInstance = await repo.createModuleInstance({
+        assemblyId: assembly.id,
+        configurationId: config.id,
+        modulePackageId: "example-scaffold",
+        moduleVersion: "0.1.0",
+        label: "Belt drive",
+      });
+
+      expect(
+        await repo.archiveModuleInstance(moduleInstance.id, strangerId),
+      ).toBe(false);
+      expect(
+        (await repo.loadModuleInstanceForOwner(moduleInstance.id, ownerId))
+          ?.moduleInstance.archivedAt,
+      ).toBeNull();
+
+      expect(
+        await repo.archiveModuleInstance(moduleInstance.id, ownerId),
+      ).toBe(true);
+      expect(
+        (await repo.loadModuleInstanceForOwner(moduleInstance.id, ownerId))
+          ?.moduleInstance.archivedAt,
+      ).not.toBeNull();
+
+      // Already archived: archiving again is a no-op, not an error.
+      expect(
+        await repo.archiveModuleInstance(moduleInstance.id, ownerId),
+      ).toBe(false);
+    });
   },
 );
 

@@ -152,6 +152,7 @@ interface ModuleInstanceRow {
   label: string;
   lastCalculationRunId: string | null;
   lastRunStatus: CheckStatus | null;
+  archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -221,6 +222,7 @@ function toModuleInstanceRecord(row: ModuleInstanceRow): ModuleInstanceRecord {
     label: row.label,
     lastCalculationRunId: row.lastCalculationRunId,
     lastRunStatus: row.lastRunStatus,
+    archivedAt: row.archivedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -496,6 +498,45 @@ export async function renameAssembly(
   const result = await prisma.assembly.updateMany({
     where: { id, configuration: { project: { ownerId: owner } } },
     data: { name: newName },
+  });
+  return result.count > 0;
+}
+
+/** Renames a module instance owned by `ownerId`. Returns `false` when not found or not owned. */
+export async function renameModuleInstance(
+  moduleInstanceId: ModuleInstanceId,
+  ownerId: UserId,
+  label: string,
+): Promise<boolean> {
+  const id = parse(nonEmpty, moduleInstanceId);
+  const owner = parse(nonEmpty, ownerId);
+  const newLabel = parse(nonEmpty, label);
+  const result = await prisma.moduleInstance.updateMany({
+    where: { id, assembly: { configuration: { project: { ownerId: owner } } } },
+    data: { label: newLabel },
+  });
+  return result.count > 0;
+}
+
+/**
+ * Archives a module instance owned by `ownerId` — sets `archivedAt`, never
+ * deletes anything (module-instance-management design, 2026-08-13). Returns
+ * `false` when the instance does not exist, is not owned by `ownerId`, or is
+ * already archived (idempotent no-op, not an error).
+ */
+export async function archiveModuleInstance(
+  moduleInstanceId: ModuleInstanceId,
+  ownerId: UserId,
+): Promise<boolean> {
+  const id = parse(nonEmpty, moduleInstanceId);
+  const owner = parse(nonEmpty, ownerId);
+  const result = await prisma.moduleInstance.updateMany({
+    where: {
+      id,
+      archivedAt: null,
+      assembly: { configuration: { project: { ownerId: owner } } },
+    },
+    data: { archivedAt: new Date() },
   });
   return result.count > 0;
 }

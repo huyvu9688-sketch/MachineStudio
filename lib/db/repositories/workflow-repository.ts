@@ -91,6 +91,7 @@ interface ModuleInstanceRow {
   label: string;
   lastCalculationRunId: string | null;
   lastRunStatus: CheckStatus | null;
+  archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -122,6 +123,7 @@ function toModuleInstanceRecord(row: ModuleInstanceRow): ModuleInstanceRecord {
     label: row.label,
     lastCalculationRunId: row.lastCalculationRunId,
     lastRunStatus: row.lastRunStatus,
+    archivedAt: row.archivedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
