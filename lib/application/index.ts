@@ -129,6 +129,15 @@ export {
   type AddModuleInstanceResult,
   type AddModuleInstanceError,
   type AddModuleInstanceErrorCode,
+  renameModuleInstanceLabel,
+  archiveModuleInstance,
+  previewArchiveModuleInstanceImpact,
+  type ManageModuleInstanceErrorCode,
+  type ManageModuleInstanceError,
+  type RenameModuleInstanceResult,
+  type ArchiveModuleInstanceResult,
+  type ArchiveModuleInstanceImpactPreview,
+  type PreviewArchiveModuleInstanceImpactResult,
 } from "./projects";
 
 export {

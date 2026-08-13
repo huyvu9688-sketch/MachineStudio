@@ -36,3 +36,15 @@ export {
   type AddModuleInstanceError,
   type AddModuleInstanceErrorCode,
 } from "./add-module-instance";
+
+export {
+  renameModuleInstanceLabel,
+  archiveModuleInstance,
+  previewArchiveModuleInstanceImpact,
+  type ManageModuleInstanceErrorCode,
+  type ManageModuleInstanceError,
+  type RenameModuleInstanceResult,
+  type ArchiveModuleInstanceResult,
+  type ArchiveModuleInstanceImpactPreview,
+  type PreviewArchiveModuleInstanceImpactResult,
+} from "./manage-module-instances";
