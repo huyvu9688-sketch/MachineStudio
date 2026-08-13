@@ -4,6 +4,7 @@ import { useState, type ComponentProps, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Archive,
   Boxes,
   ChevronRight,
   FileText,
@@ -34,7 +35,11 @@ import {
   type WorkflowDefinitionOption,
 } from "./start-workflow-instance-dialog";
 import { RenameDialog } from "./rename-dialog";
-import { renameAssemblyAction } from "@/app/(workspace)/workspace/actions";
+import { ArchiveModuleInstanceDialog } from "./archive-module-instance-dialog";
+import {
+  renameAssemblyAction,
+  renameModuleInstanceAction,
+} from "@/app/(workspace)/workspace/actions";
 import { cn } from "@/lib/utils";
 import type {
   AssemblyNode,
@@ -312,8 +317,15 @@ function AssemblyRow({
   readonly selectedModuleInstanceId: string | null;
 }) {
   const [open, setOpen] = useState(true);
+  // Archived instances are hidden here, not filtered out of the read model
+  // — a UI-layer filter, the same "hide without deleting or reshaping the
+  // repository read" precedent ADR-0011 already established for hiding the
+  // linear-axis discipline categories from the module picker.
+  const visibleModuleInstances = assembly.moduleInstances.filter(
+    (moduleInstance) => moduleInstance.archivedAt === null,
+  );
   const hasChildren =
-    assembly.children.length > 0 || assembly.moduleInstances.length > 0;
+    assembly.children.length > 0 || visibleModuleInstances.length > 0;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -388,7 +400,7 @@ function AssemblyRow({
 
       {hasChildren ? (
         <CollapsibleContent className="ml-3.5 overflow-hidden border-l border-border-default pl-2">
-          {assembly.moduleInstances.map((moduleInstance) => (
+          {visibleModuleInstances.map((moduleInstance) => (
             <ModuleRow
               key={moduleInstance.id}
               moduleInstance={moduleInstance}
@@ -551,25 +563,47 @@ function ModuleRow({
   const href = `${pathname}?project=${encodeURIComponent(projectId)}&configuration=${encodeURIComponent(moduleInstance.configurationId)}&module=${encodeURIComponent(moduleInstance.id)}`;
 
   return (
-    <Link
-      href={href}
-      aria-current={selected ? "true" : undefined}
-      className={cn(
-        "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] text-text-primary",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary",
-        selected ? "bg-surface-selected" : "hover:bg-surface-hover",
-      )}
-    >
-      <Boxes
-        aria-hidden="true"
-        className="h-3.5 w-3.5 shrink-0 text-text-muted"
-      />
-      <StatusBadge
-        status={moduleInstance.lastRunStatus ?? "not_configured"}
-        iconOnly
-      />
-      <span className="truncate">{moduleInstance.label}</span>
-    </Link>
+    <div className="flex items-center gap-0.5 rounded-md pr-1 hover:bg-surface-hover">
+      <Link
+        href={href}
+        aria-current={selected ? "true" : undefined}
+        className={cn(
+          "flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] text-text-primary",
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary",
+          selected && "bg-surface-selected",
+        )}
+      >
+        <Boxes
+          aria-hidden="true"
+          className="h-3.5 w-3.5 shrink-0 text-text-muted"
+        />
+        <StatusBadge
+          status={moduleInstance.lastRunStatus ?? "not_configured"}
+          iconOnly
+        />
+        <span className="truncate">{moduleInstance.label}</span>
+      </Link>
+
+      <div className="flex shrink-0 items-center gap-0.5">
+        <RenameDialog
+          title="Rename module"
+          action={renameModuleInstanceAction}
+          idFieldName="moduleInstanceId"
+          idValue={moduleInstance.id}
+          currentName={moduleInstance.label}
+          trigger={
+            <IconButton icon={Pencil} label={`Rename ${moduleInstance.label}`} />
+          }
+        />
+        <ArchiveModuleInstanceDialog
+          moduleInstanceId={moduleInstance.id}
+          moduleInstanceLabel={moduleInstance.label}
+          trigger={
+            <IconButton icon={Archive} label={`Archive ${moduleInstance.label}`} />
+          }
+        />
+      </div>
+    </div>
   );
 }
 

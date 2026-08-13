@@ -23,6 +23,9 @@ vi.mock("@/app/(workspace)/workspace/actions", () => ({
   createAssemblyAction: vi.fn(),
   addModuleInstanceAction: vi.fn(),
   startWorkflowInstanceAction: vi.fn(),
+  renameModuleInstanceAction: vi.fn(),
+  archiveModuleInstanceAction: vi.fn(),
+  previewArchiveModuleInstanceImpactAction: vi.fn(),
 }));
 // Module rows are real `<Link>`s (Unit 3.3) built from `usePathname()`, the
 // same mocking approach app-bar.test.tsx already uses for its project/
@@ -523,5 +526,59 @@ describe("MachineNavigator", () => {
       "aria-current",
       "true",
     );
+  });
+
+  it("hides an archived module instance from the tree", () => {
+    const withArchived: ConfigurationNode = {
+      ...configuration,
+      assemblies: [
+        {
+          ...rootAssembly,
+          moduleInstances: [
+            moduleInstance("m1", "Thrust check", "pass"),
+            moduleInstance("m3", "Archived module", null, new Date()),
+          ],
+          children: [],
+        },
+      ],
+    };
+
+    render(
+      <MachineNavigator
+        projectId="project"
+        projectName="Palletizer axis"
+        configuration={withArchived}
+        modulePackages={MODULE_PACKAGES}
+        workflowDefinitions={WORKFLOW_DEFINITIONS}
+        selectedModuleInstanceId={null}
+        selectedWorkflowInstanceId={null}
+        selectedPanel={null}
+      />,
+    );
+
+    expect(screen.getByText("Thrust check")).toBeInTheDocument();
+    expect(screen.queryByText("Archived module")).not.toBeInTheDocument();
+  });
+
+  it("renders rename and archive actions for a module row", () => {
+    render(
+      <MachineNavigator
+        projectId="project"
+        projectName="Palletizer axis"
+        configuration={configuration}
+        modulePackages={MODULE_PACKAGES}
+        workflowDefinitions={WORKFLOW_DEFINITIONS}
+        selectedModuleInstanceId={null}
+        selectedWorkflowInstanceId={null}
+        selectedPanel={null}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Rename Thrust check" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Archive Thrust check" }),
+    ).toBeInTheDocument();
   });
 });
