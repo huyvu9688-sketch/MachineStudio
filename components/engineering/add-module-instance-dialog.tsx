@@ -115,8 +115,37 @@ export function AddModuleInstanceDialog({
   const activePackages =
     category === "motor-sizing" ? motorSizingPackages : otherPackages;
 
+  // Prefills "Instance label" from the selected package (the friendly
+  // mechanism name for motor-sizing, the raw id otherwise) so new instances
+  // stop defaulting to a blank field a founder has to fill by hand — the
+  // gap that left existing instances named after raw ids like
+  // "belt-pulley-drive-motor-sizing@0.1.0"
+  // (docs/superpowers/specs/2026-08-13-module-instance-management-design.md).
+  // Stops auto-filling the moment the founder types their own text, tracked
+  // by `labelTouched` rather than by diffing values.
+  const [label, setLabel] = useState("");
+  const [labelTouched, setLabelTouched] = useState(false);
+
+  function handlePackageChange(key: string): void {
+    const pkg = activePackages.find(
+      (candidate) => `${candidate.modulePackageId}@${candidate.moduleVersion}` === key,
+    );
+    if (pkg !== undefined && !labelTouched) {
+      setLabel(category === "motor-sizing" ? mechanismLabel(pkg) : pkg.modulePackageId);
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) {
+          setLabel("");
+          setLabelTouched(false);
+        }
+      }}
+    >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <form action={formAction}>
@@ -150,7 +179,11 @@ export function AddModuleInstanceDialog({
                       category === "motor-sizing" ? "default" : "outline"
                     }
                     aria-pressed={category === "motor-sizing"}
-                    onClick={() => setCategory("motor-sizing")}
+                    onClick={() => {
+                      setCategory("motor-sizing");
+                      setLabelTouched(false);
+                      setLabel("");
+                    }}
                   >
                     Motor Sizing Tools
                   </Button>
@@ -159,7 +192,11 @@ export function AddModuleInstanceDialog({
                     size="sm"
                     variant={category === "other" ? "default" : "outline"}
                     aria-pressed={category === "other"}
-                    onClick={() => setCategory("other")}
+                    onClick={() => {
+                      setCategory("other");
+                      setLabelTouched(false);
+                      setLabel("");
+                    }}
                   >
                     Other modules
                   </Button>
@@ -177,6 +214,7 @@ export function AddModuleInstanceDialog({
                 required
                 defaultValue=""
                 disabled={activePackages.length === 0}
+                onChange={(event) => handlePackageChange(event.target.value)}
                 className="h-9 rounded-md border border-border-default bg-bg-surface px-3 text-[14px] text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary"
               >
                 <option value="" disabled>
@@ -200,7 +238,17 @@ export function AddModuleInstanceDialog({
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor={labelId}>Instance label</Label>
-              <Input id={labelId} name="label" required maxLength={200} />
+              <Input
+                id={labelId}
+                name="label"
+                required
+                maxLength={200}
+                value={label}
+                onChange={(event) => {
+                  setLabelTouched(true);
+                  setLabel(event.target.value);
+                }}
+              />
             </div>
             {workflowInstances.length > 0 ? (
               <div className="grid gap-1.5">

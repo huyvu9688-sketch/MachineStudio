@@ -180,6 +180,12 @@ model ModuleInstance {
   lastRunStatus        CheckStatus?
   createdAt            DateTime     @default(now()) @db.Timestamptz(6)
   updatedAt            DateTime     @updatedAt @db.Timestamptz(6)
+  /// Set when a founder archives this instance to declutter the navigator
+  /// (module-instance-management design, 2026-08-13). Archiving hides, never
+  /// deletes: parameter values, parameter links, and calculation run history
+  /// are all left exactly as they are, respecting the "calculation runs ...
+  /// are immutable" invariant (CLAUDE.md) literally. Null means active.
+  archivedAt           DateTime?    @db.Timestamptz(6)
 
   assembly             Assembly          @relation(fields: [assemblyId, configurationId], references: [id, configurationId], onDelete: Cascade)
   workflowInstance     WorkflowInstance? @relation(fields: [workflowInstanceId], references: [id], onDelete: SetNull)
