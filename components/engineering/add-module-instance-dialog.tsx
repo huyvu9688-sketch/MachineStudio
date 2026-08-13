@@ -122,9 +122,7 @@ export function AddModuleInstanceDialog({
   // "belt-pulley-drive-motor-sizing@0.1.0"
   // (docs/superpowers/specs/2026-08-13-module-instance-management-design.md).
   // Stops auto-filling the moment the founder types their own text, tracked
-  // by `labelTouched` rather than by diffing values — the same
-  // auto-slug-until-touched pattern used across this codebase's own admin
-  // tooling conventions.
+  // by `labelTouched` rather than by diffing values.
   const [label, setLabel] = useState("");
   const [labelTouched, setLabelTouched] = useState(false);
 
@@ -138,7 +136,16 @@ export function AddModuleInstanceDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) {
+          setLabel("");
+          setLabelTouched(false);
+        }
+      }}
+    >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <form action={formAction}>

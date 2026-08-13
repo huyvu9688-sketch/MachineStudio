@@ -331,4 +331,113 @@ describe("AddModuleInstanceDialog", () => {
 
     expect(screen.getByLabelText("Instance label")).toHaveValue("X-axis drive");
   });
+
+  it("resets the label field to blank when the dialog closes and reopens", async () => {
+    vi.mocked(addModuleInstanceAction).mockResolvedValue({ status: "success" });
+    const user = userEvent.setup();
+    const packages: ModulePackageOption[] = [
+      {
+        modulePackageId: "belt-pulley-drive-motor-sizing",
+        moduleVersion: "0.1.0",
+        category: "motor-sizing.belt-pulley-drive",
+      },
+    ];
+    render(
+      <AddModuleInstanceDialog
+        assemblyId="a1"
+        configurationId="c1"
+        modulePackages={packages}
+        trigger={<button type="button">{TRIGGER_LABEL}</button>}
+      />,
+    );
+
+    // First open: select mechanism (auto-fills label), submit to close
+    await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+    await user.selectOptions(
+      screen.getByLabelText("Mechanism"),
+      "belt-pulley-drive-motor-sizing@0.1.0",
+    );
+    expect(screen.getByLabelText("Instance label")).toHaveValue(
+      "Belt & Pulley Drive",
+    );
+    await user.click(screen.getByRole("button", { name: "Add module" }));
+
+    // Dialog closes after successful submit; reopen it
+    await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+
+    // Label must be blank again, not stale from the previous instance
+    expect(screen.getByLabelText("Instance label")).toHaveValue("");
+  });
+
+  it("clears the label when switching category tabs after typing", async () => {
+    const user = userEvent.setup();
+    const packages: ModulePackageOption[] = [
+      {
+        modulePackageId: "example-scaffold",
+        moduleVersion: "0.1.0",
+        category: "example",
+      },
+      {
+        modulePackageId: "ball-screw-motor-sizing",
+        moduleVersion: "0.1.0",
+        category: "motor-sizing.ball-screw",
+      },
+    ];
+    render(
+      <AddModuleInstanceDialog
+        assemblyId="a1"
+        configurationId="c1"
+        modulePackages={packages}
+        trigger={<button type="button">{TRIGGER_LABEL}</button>}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+    await user.selectOptions(
+      screen.getByLabelText("Mechanism"),
+      "ball-screw-motor-sizing@0.1.0",
+    );
+    expect(screen.getByLabelText("Instance label")).toHaveValue("Ball Screw");
+
+    // Type a custom label
+    await user.clear(screen.getByLabelText("Instance label"));
+    await user.type(screen.getByLabelText("Instance label"), "My custom label");
+
+    // Switch to "Other modules" tab
+    await user.click(screen.getByRole("button", { name: "Other modules" }));
+
+    // Label should be cleared when switching tabs
+    expect(screen.getByLabelText("Instance label")).toHaveValue("");
+  });
+
+  it("prefills the instance label with the raw module ID for non-motor-sizing modules", async () => {
+    const user = userEvent.setup();
+    const packages: ModulePackageOption[] = [
+      ...MODULE_PACKAGES,
+      {
+        modulePackageId: "ball-screw-motor-sizing",
+        moduleVersion: "0.1.0",
+        category: "motor-sizing.ball-screw",
+      },
+    ];
+    render(
+      <AddModuleInstanceDialog
+        assemblyId="a1"
+        configurationId="c1"
+        modulePackages={packages}
+        trigger={<button type="button">{TRIGGER_LABEL}</button>}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+    await user.click(screen.getByRole("button", { name: "Other modules" }));
+    await user.selectOptions(
+      screen.getByLabelText("Module package"),
+      "example-scaffold@0.1.0",
+    );
+
+    expect(screen.getByLabelText("Instance label")).toHaveValue(
+      "example-scaffold",
+    );
+  });
 });
