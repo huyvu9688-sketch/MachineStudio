@@ -130,6 +130,8 @@ export interface ModuleInstanceRecord {
    */
   readonly lastCalculationRunId: string | null;
   readonly lastRunStatus: CheckStatus | null;
+  /** When this instance was archived (hidden from the navigator, nothing deleted); `null` when active. */
+  readonly archivedAt: Date | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }

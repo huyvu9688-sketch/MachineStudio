@@ -16,6 +16,7 @@ function moduleInstance(
     label: id,
     lastCalculationRunId: null,
     lastRunStatus,
+    archivedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

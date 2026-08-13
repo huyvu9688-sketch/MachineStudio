@@ -51,6 +51,7 @@ function moduleInstance(
   id: string,
   label: string,
   lastRunStatus: ModuleInstanceRecord["lastRunStatus"],
+  archivedAt: Date | null = null,
 ): ModuleInstanceRecord {
   return {
     id: id as ModuleInstanceRecord["id"],
@@ -62,6 +63,7 @@ function moduleInstance(
     label,
     lastCalculationRunId: null,
     lastRunStatus,
+    archivedAt,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

@@ -99,6 +99,7 @@ const projectTree: ProjectTree = {
               label: "Thrust check",
               lastCalculationRunId: null,
               lastRunStatus: "pass",
+              archivedAt: null,
               createdAt: new Date(),
               updatedAt: new Date(),
             },
