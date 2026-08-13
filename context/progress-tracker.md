@@ -36,7 +36,9 @@ cross-module-link pair at all** -- a genuinely different-in-kind
 mechanism (rotary, not linear), confirmed rather than merely predicted.
 **The `AddModuleInstanceDialog` mechanism-picker UI work (Unit 6.7) is now
 also built** -- Milestone 6 and Phase 1E are both fully complete -- see
-"Next up" item 1 below)
+"Next up" item 1 below; **module instance management (friendly default
+labels, rename, archive-based removal) also shipped 2026-08-13** -- see
+"Active work" below)
 
 ---
 
@@ -1933,6 +1935,50 @@ this module's own `README.md`.
 `belt-pulley-drive-motor-sizing@0.1.0`, `index-table-motor-sizing@0.1.0`).
 The only Phase 1E deliverable left open is the `AddModuleInstanceDialog`
 category-filter/mechanism-picker UI work -- see "Next up" below.
+
+**Module instance management (friendly default labels, rename, and
+archive-based removal) shipped 2026-08-13**, per the approved design at
+`docs/superpowers/specs/2026-08-13-module-instance-management-design.md`
+and implementation plan at
+`docs/superpowers/plans/2026-08-13-module-instance-management.md`. A new
+nullable `ModuleInstance.archivedAt` column
+(`prisma/migrations/20260813120000_module_instance_archive/`) marks an
+instance archived without deleting it -- parameter values, links, and
+calculation-run history are all left untouched, honoring the "calculation
+runs ... are immutable" invariant (`CLAUDE.md`) literally. Repository
+layer: `renameModuleInstance`/`archiveModuleInstance`
+(`lib/db/repositories/project-repository.ts`) and
+`listModuleInstancesLinkedFromSource`
+(`lib/db/repositories/graph-repository.ts`), both ownership-scoped.
+Application layer: `renameModuleInstanceLabel`, `archiveModuleInstance`,
+and `previewArchiveModuleInstanceImpact`
+(`lib/application/projects/manage-module-instances.ts`) -- the preview
+reports what still links from an instance's outputs and whether it fills a
+workflow role, shown before the founder confirms. Server Actions
+(`renameModuleInstanceAction`, `archiveModuleInstanceAction`,
+`previewArchiveModuleInstanceImpactAction`) and a new
+`ArchiveModuleInstanceDialog` wire this into `MachineNavigator`'s own
+module rows alongside the existing rename action; archived instances are
+filtered out of the navigator tree and out of
+`suggest-link-sources.ts`'s link-suggestion graph (neither offered as a
+source nor a target for new links), without touching any already-confirmed
+`ParameterLink`. `AddModuleInstanceDialog` now also prefills "Instance
+label" with the selected mechanism's friendly name rather than leaving it
+blank, until the founder types their own text. No module, parameter
+registry, calculation run, or baseline was touched -- confirmed by diff
+review, not assumed. Full verification (`npm run verify`) passes: lint and
+typecheck clean on every file this work touched; `format:check` and
+`lint`'s remaining flags are both the same pre-existing, already-documented
+gaps below (CRLF-vs-LF repo-wide, and the stale
+`.worktrees/unit-4-1-release/.next/dev/types/` artifact); the full test
+suite passes (2015/2015, after re-running four tests that hit Neon
+free-tier latency past Vitest's 5s default timeout with a longer one -- the
+same documented flakiness pattern, not a regression); `npm run build`
+succeeds. One real drift from the plan's own file list, found and fixed
+during implementation: `lib/db/repositories/workflow-repository.ts` has its
+own second, independent `ModuleInstanceRow`/`toModuleInstanceRecord`
+mapper the plan did not anticipate, needing the same `archivedAt` field
+added to typecheck clean.
 
 ---
 
