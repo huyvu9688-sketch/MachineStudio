@@ -238,7 +238,7 @@ git commit -m "feat: prefill instance label with the friendly mechanism name"
 - Modify: `prisma/schema.prisma`
 - Create: `prisma/migrations/20260813120000_module_instance_archive/migration.sql`
 
-- [ ] **Step 1: Add the column to the Prisma schema**
+- [x] **Step 1: Add the column to the Prisma schema**
 
 In `prisma/schema.prisma`, in the `ModuleInstance` model, insert a new field right after `updatedAt`:
 
@@ -264,12 +264,12 @@ With:
   assembly             Assembly          @relation(fields: [assemblyId, configurationId], references: [id, configurationId], onDelete: Cascade)
 ```
 
-- [ ] **Step 2: Regenerate the Prisma client**
+- [x] **Step 2: Regenerate the Prisma client**
 
 Run: `npx prisma generate`
 Expected: succeeds, no errors (this project's network can reach `binaries.prisma.sh`; see `20260730180000_same_configuration_constraints/migration.sql`'s own note on this).
 
-- [ ] **Step 3: Hand-write the migration SQL**
+- [x] **Step 3: Hand-write the migration SQL**
 
 Create `prisma/migrations/20260813120000_module_instance_archive/migration.sql`:
 
@@ -294,7 +294,7 @@ Create `prisma/migrations/20260813120000_module_instance_archive/migration.sql`:
 ALTER TABLE "module_instances" ADD COLUMN "archivedAt" TIMESTAMPTZ(6);
 ```
 
-- [ ] **Step 4: Apply the migration and verify schema sync**
+- [x] **Step 4: Apply the migration and verify schema sync**
 
 Run: `npx prisma migrate deploy`
 Expected: reports the new migration applied, no drift.
@@ -302,7 +302,7 @@ Expected: reports the new migration applied, no drift.
 Run: `npx prisma validate`
 Expected: "The schema at prisma/schema.prisma is valid".
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prisma/schema.prisma prisma/migrations/20260813120000_module_instance_archive/migration.sql
