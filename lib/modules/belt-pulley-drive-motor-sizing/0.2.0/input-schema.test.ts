@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { inputSchema } from "./input-schema";
 
 const BASE_VALUES: Record<string, unknown> = {
-  orientation: { v: 1, kind: "enum", enumId: "axis_orientation", value: "horizontal" },
+  orientation: {
+    v: 1,
+    kind: "enum",
+    enumId: "axis_orientation",
+    value: "horizontal",
+  },
   incline_angle: { v: 1, kind: "quantity", value: 0, unit: "rad" },
   friction_coefficient: { v: 1, kind: "quantity", value: 0.1, unit: "ratio" },
   total_moving_mass: { v: 1, kind: "quantity", value: 50, unit: "kg" },
@@ -13,14 +18,24 @@ const BASE_VALUES: Record<string, unknown> = {
   acceleration_time: { v: 1, kind: "quantity", value: 0.5, unit: "s" },
   deceleration_time: { v: 1, kind: "quantity", value: 0.5, unit: "s" },
   motor_rotor_inertia: { v: 1, kind: "quantity", value: 5e-3, unit: "kg*m^2" },
-  required_torque_safety_factor: { v: 1, kind: "quantity", value: 2, unit: "ratio" },
+  required_torque_safety_factor: {
+    v: 1,
+    kind: "quantity",
+    value: 2,
+    unit: "ratio",
+  },
   inertia_ratio_maximum: { v: 1, kind: "quantity", value: 30, unit: "ratio" },
 };
 
 function velocityModeValues(): Record<string, unknown> {
   return {
     ...BASE_VALUES,
-    motion_mode: { v: 1, kind: "enum", enumId: "belt_pulley_motion_mode", value: "velocity" },
+    motion_mode: {
+      v: 1,
+      kind: "enum",
+      enumId: "belt_pulley_motion_mode",
+      value: "velocity",
+    },
     target_velocity: { v: 1, kind: "quantity", value: 0.5, unit: "m/s" },
     constant_velocity_time: { v: 1, kind: "quantity", value: 1, unit: "s" },
   };
@@ -29,7 +44,12 @@ function velocityModeValues(): Record<string, unknown> {
 function distanceModeValues(): Record<string, unknown> {
   return {
     ...BASE_VALUES,
-    motion_mode: { v: 1, kind: "enum", enumId: "belt_pulley_motion_mode", value: "distance" },
+    motion_mode: {
+      v: 1,
+      kind: "enum",
+      enumId: "belt_pulley_motion_mode",
+      value: "distance",
+    },
     travel_distance: { v: 1, kind: "quantity", value: 1, unit: "m" },
     cycle_time: { v: 1, kind: "quantity", value: 3, unit: "s" },
   };

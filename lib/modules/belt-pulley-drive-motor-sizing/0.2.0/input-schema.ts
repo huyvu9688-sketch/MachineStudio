@@ -11,7 +11,7 @@
 import { z } from "zod";
 import { ModuleInputSchema, type ModuleInput } from "@/lib/engine";
 
-function require(
+function requireForMode(
   input: ModuleInput,
   ctx: z.RefinementCtx,
   key: string,
@@ -26,18 +26,17 @@ function require(
   }
 }
 
-export const inputSchema: z.ZodType<ModuleInput> = ModuleInputSchema.superRefine(
-  (input, ctx) => {
+export const inputSchema: z.ZodType<ModuleInput> =
+  ModuleInputSchema.superRefine((input, ctx) => {
     const motionMode = input.values.motion_mode;
     if (motionMode?.kind !== "enum") {
       return;
     }
     if (motionMode.value === "velocity") {
-      require(input, ctx, "target_velocity", "velocity");
-      require(input, ctx, "constant_velocity_time", "velocity");
+      requireForMode(input, ctx, "target_velocity", "velocity");
+      requireForMode(input, ctx, "constant_velocity_time", "velocity");
     } else if (motionMode.value === "distance") {
-      require(input, ctx, "travel_distance", "distance");
-      require(input, ctx, "cycle_time", "distance");
+      requireForMode(input, ctx, "travel_distance", "distance");
+      requireForMode(input, ctx, "cycle_time", "distance");
     }
-  },
-);
+  });
