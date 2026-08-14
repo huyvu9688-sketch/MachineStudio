@@ -51,6 +51,11 @@
 // motor_sizing.ball_screw.*'s own, recorded in the module's own Stage 2
 // contract "Decisions".
 //
+// v1.11 added the full motor_sizing.rack_pinion.* group; v1.12 added the
+// full motor_sizing.belt_pulley.* group (0.1.0); v1.13 added the full
+// motor_sizing.index_table.* group -- see each module's own
+// stage-2-contract.md for the full account.
+//
 // v1.14 adds 8 new motor_sizing.belt_pulley.* parameters (motion_mode,
 // deceleration_time, dwell_time, constant_velocity_time, cycle_time,
 // travel_distance, deceleration_torque, effective_torque) for the
@@ -2957,7 +2962,7 @@ const motorSizingBeltPulley: readonly ParameterDefinition[] = [
   defineParameter({
     id: "motor_sizing.belt_pulley.deceleration_time",
     displayName: "Deceleration time",
-    symbol: "t3",
+    symbol: "t_D",
     definition:
       "Ramp time from target_velocity back to standstill -- symmetric to acceleration_time, required in both motion modes.",
     valueType: "quantity",
@@ -2969,7 +2974,7 @@ const motorSizingBeltPulley: readonly ParameterDefinition[] = [
   defineParameter({
     id: "motor_sizing.belt_pulley.dwell_time",
     displayName: "Dwell time",
-    symbol: "t4",
+    symbol: "t_dwell",
     definition:
       "Idle time between the end of deceleration and the next cycle's own acceleration phase. Contributes zero torque but counts toward cycle_time, matching how a servo's own thermal/RMS rating averages over idle time. Zero is a structural 'no dwell modeled' default, not a guessed physical value.",
     valueType: "quantity",
@@ -3017,7 +3022,7 @@ const motorSizingBeltPulley: readonly ParameterDefinition[] = [
   defineParameter({
     id: "motor_sizing.belt_pulley.deceleration_torque",
     displayName: "Deceleration torque",
-    symbol: "Td",
+    symbol: "T_D",
     definition:
       "Torque to decelerate total_system_inertia over deceleration_time from the motor-shaft-equivalent of target_velocity to standstill (Td = J_total*alpha_decel, magnitude) -- symmetric to acceleration_torque.",
     valueType: "quantity",
@@ -3029,14 +3034,14 @@ const motorSizingBeltPulley: readonly ParameterDefinition[] = [
   defineParameter({
     id: "motor_sizing.belt_pulley.effective_torque",
     displayName: "Effective (RMS) torque",
-    symbol: "Trms",
+    symbol: "T_rms",
     definition:
       "Trms = sqrt(((acceleration_torque+load_torque)^2*acceleration_time + load_torque^2*constant_velocity_time + (deceleration_torque-load_torque)^2*deceleration_time) / cycle_time) -- Oriental Motor's own generic per-phase effective-load-torque formula for continuous/thermal motor rating (jp.oriental_motor.motor_sizing_calculations, p. 6), additive to momentary_torque, not a replacement for it.",
     valueType: "quantity",
     canonicalUnit: "N*m",
     displayUnits: [...torqueDisplay],
     range: { min: 0, unit: "N*m" },
-    qualifiers: { bound: "required" },
+    qualifiers: { bound: "required", aggregation: "rms" },
   }),
 ];
 
