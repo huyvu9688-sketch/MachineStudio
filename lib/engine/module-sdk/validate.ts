@@ -143,6 +143,7 @@ export function validateModulePackage(
     );
   }
   const inputKeySet = new Set(inputKeys);
+  const inputPortsByKey = new Map(pkg.ports.inputs.map((p) => [p.key, p]));
   for (const group of ui.data.groups) {
     for (const field of group.fields) {
       if (!inputKeySet.has(field.portKey)) {
@@ -151,6 +152,25 @@ export function validateModulePackage(
           `Module "${id}" UI field references unknown input port "${field.portKey}".`,
           field.portKey,
         );
+      }
+
+      if (field.disabledWhen !== undefined) {
+        const drivingPort = inputPortsByKey.get(field.disabledWhen.portKey);
+        if (drivingPort === undefined) {
+          fail(
+            "invalid_ui_schema",
+            `Module "${id}" UI field "${field.portKey}" has disabledWhen referencing unknown input port "${field.disabledWhen.portKey}".`,
+            field.disabledWhen.portKey,
+          );
+        }
+        const drivingDefinition = registry.get(drivingPort.parameterId);
+        if (drivingDefinition?.valueType !== "enum") {
+          fail(
+            "invalid_ui_schema",
+            `Module "${id}" UI field "${field.portKey}" has disabledWhen referencing non-enum input port "${field.disabledWhen.portKey}".`,
+            field.disabledWhen.portKey,
+          );
+        }
       }
     }
   }

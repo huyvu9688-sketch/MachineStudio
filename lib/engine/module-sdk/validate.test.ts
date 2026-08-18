@@ -176,6 +176,82 @@ describe("validateModulePackage", () => {
     expectSdkError(() => validateModulePackage(pkg), "invalid_ui_schema");
   });
 
+  it("rejects a UI field's disabledWhen referencing an unknown input port", () => {
+    const draft = baseDraft();
+    const pkg = sealModulePackage({
+      ...draft,
+      uiSchema: {
+        groups: [
+          {
+            id: "g",
+            title: "G",
+            fields: [
+              { portKey: "mass", disabledWhen: { portKey: "nope", equals: "x" } },
+            ],
+          },
+        ],
+      },
+    });
+    expectSdkError(() => validateModulePackage(pkg), "invalid_ui_schema");
+  });
+
+  it("rejects a UI field's disabledWhen referencing a non-enum input port", () => {
+    const draft = baseDraft();
+    const pkg = sealModulePackage({
+      ...draft,
+      uiSchema: {
+        groups: [
+          {
+            id: "g",
+            title: "G",
+            fields: [
+              {
+                portKey: "mass",
+                disabledWhen: { portKey: "mass", equals: "x" },
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expectSdkError(() => validateModulePackage(pkg), "invalid_ui_schema");
+  });
+
+  it("accepts a UI field's disabledWhen referencing a declared enum input port", () => {
+    const draft = baseDraft();
+    const pkg = sealModulePackage({
+      ...draft,
+      ports: {
+        inputs: [
+          ...draft.ports.inputs,
+          {
+            key: "orientation",
+            parameterId: asParameterId("motion.axis.orientation"),
+            required: false,
+          },
+        ],
+        outputs: draft.ports.outputs,
+      },
+      uiSchema: {
+        groups: [
+          {
+            id: "g",
+            title: "G",
+            fields: [
+              { portKey: "orientation" },
+              {
+                portKey: "mass",
+                disabledWhen: { portKey: "orientation", equals: "vertical" },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(() => validateModulePackage(pkg)).not.toThrow();
+  });
+
   it("rejects duplicate report section IDs", () => {
     const draft = baseDraft();
     const pkg = sealModulePackage({
