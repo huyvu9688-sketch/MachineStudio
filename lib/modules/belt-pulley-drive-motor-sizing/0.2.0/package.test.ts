@@ -1,3 +1,9 @@
+// Imports from the Stage-3-draft `./package`, not `./index` -- every other
+// module's own package.test.ts imports `./index`, but this module's
+// package.ts hasn't been renamed to index.ts yet. Task 13 does that rename
+// (alongside recomputing EXPECTED_SOURCE_HASH below), the same convention
+// documented in this module's own package.ts header comment.
+
 import { describe, expect, it } from "vitest";
 import {
   executeModule,
@@ -83,7 +89,7 @@ function verticalInput(): RawInput {
 
 // Pinned by `npm run module:source-hash -- belt-pulley-drive-motor-sizing
 // 0.2.0` -- see lib/engine/module-sdk/conformance.ts's
-// "source-immutability" check. Recomputed in Task 14 after package.ts is
+// "source-immutability" check. Recomputed in Task 13 after package.ts is
 // renamed to index.ts (the hash covers this directory's own filenames).
 const EXPECTED_SOURCE_HASH = "fe8105b28ee143c4";
 
