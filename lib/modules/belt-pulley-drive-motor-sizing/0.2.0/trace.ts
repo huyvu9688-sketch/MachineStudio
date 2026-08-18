@@ -268,9 +268,10 @@ export function buildTrace(input: TraceInput): CalculationTrace {
         ref: "motor_sizing.belt_pulley.operating_speed",
       },
     ],
-    sources: ORIENTAL_MOTOR_SIZING_CALCULATIONS_SOURCE,
+    sources: [],
     notes: [
       `motion_mode: ${String(input.motionMode.value)} -- the other side (velocity/distance and run-time/cycle-time) is derived, not supplied, and always reported regardless of mode.`,
+      "This trapezoidal motion-cycle derivation is this module's own design decision, not an external manufacturer method (belt-pulley-drive-motor-sizing-0.2.0-design.md 'Input Mode').",
     ],
   };
 
@@ -280,7 +281,7 @@ export function buildTrace(input: TraceInput): CalculationTrace {
     title: "Acceleration and deceleration torque",
     methodId: "motor_sizing.belt_pulley.acceleration_torque",
     expression:
-      "alpha_accel = omega_motor/t1; T_A = J_total*alpha_accel; alpha_decel = omega_motor/t3; T_D = J_total*alpha_decel",
+      "alpha_accel = N_op/t1; T_A = J_total*alpha_accel; alpha_decel = N_op/t3; T_D = J_total*alpha_decel",
     inputs: [],
     outputs: [
       {
@@ -294,7 +295,7 @@ export function buildTrace(input: TraceInput): CalculationTrace {
         ref: "motor_sizing.belt_pulley.deceleration_torque",
       },
     ],
-    sources: AUTOMATIONDIRECT_SOURCE,
+    sources: ORIENTAL_MOTOR_SIZING_CALCULATIONS_SOURCE,
     notes: [
       "T_D is symmetric to T_A -- the same alpha=omega/t, T=J*alpha shape, over deceleration_time instead of acceleration_time.",
     ],
@@ -355,6 +356,7 @@ export function buildTrace(input: TraceInput): CalculationTrace {
     notes: [
       "Dwell time (t4) contributes zero torque to the numerator but counts toward tf, matching how a servo's own thermal/RMS rating averages over idle time too.",
       "No pass/fail check is applied to effective_torque in 0.2.0 -- no source found gives a universal continuous-torque acceptance criterion for this mechanism family.",
+      "No published worked example carries printed per-phase torque figures for this formula; validated only via an algebraic-identity independent benchmark (independent-benchmark.test.ts), not against a manufacturer's own numbers -- a disclosed, open evidence gap.",
     ],
   };
 
