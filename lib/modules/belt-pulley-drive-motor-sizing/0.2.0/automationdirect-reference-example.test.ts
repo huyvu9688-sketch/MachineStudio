@@ -1,12 +1,6 @@
-// Imports from the Stage-3-draft `./package`, not `./index` -- every other
-// module's own automationdirect-reference-example.test.ts imports
-// `./index`, but this module's package.ts hasn't been renamed to index.ts
-// yet. Task 13 does that rename, the same convention documented in this
-// module's own package.test.ts header comment.
-
 import { describe, expect, it } from "vitest";
 import { executeModule } from "@/lib/engine";
-import { beltPulleyDriveMotorSizingModule } from "./package";
+import { beltPulleyDriveMotorSizingModule } from "./index";
 import { asQuantity } from "./test-helpers";
 import {
   AUTOMATIONDIRECT_BELT_DRIVE_REFERENCE_EXAMPLE,
