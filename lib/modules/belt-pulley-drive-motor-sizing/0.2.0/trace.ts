@@ -356,7 +356,7 @@ export function buildTrace(input: TraceInput): CalculationTrace {
     notes: [
       "Dwell time (t4) contributes zero torque to the numerator but counts toward tf, matching how a servo's own thermal/RMS rating averages over idle time too.",
       "No pass/fail check is applied to effective_torque in 0.2.0 -- no source found gives a universal continuous-torque acceptance criterion for this mechanism family.",
-      "No published worked example carries printed per-phase torque figures for this formula; validated only via an algebraic-identity independent benchmark (independent-benchmark.test.ts), not against a manufacturer's own numbers -- a disclosed, open evidence gap.",
+      "No published worked example carries printed per-phase torque figures for this formula -- a disclosed, open evidence gap.",
     ],
   };
 
