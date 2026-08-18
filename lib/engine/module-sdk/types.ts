@@ -157,6 +157,20 @@ export interface ModuleUiField {
   readonly label?: string;
   /** Optional help text. */
   readonly help?: string;
+  /**
+   * When present, the generic renderer shows this field disabled (visible,
+   * non-editable) whenever the named enum input port currently resolves to
+   * `equals`. Deliberately minimal — one condition, enum-equality only —
+   * because that is the only case any module needs today (a motion-mode
+   * toggle selecting which of two input pairs applies). `portKey` must
+   * reference a declared enum-kind input port on the same module — a
+   * later task adds registration-time validation for this in
+   * `lib/engine/module-sdk/validate.ts`.
+   */
+  readonly disabledWhen?: {
+    readonly portKey: string;
+    readonly equals: string;
+  };
 }
 
 /** A titled group of UI fields, rendered by the generic module workspace. */

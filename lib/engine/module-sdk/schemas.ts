@@ -100,6 +100,12 @@ export const ModuleUiFieldSchema = z.strictObject({
   portKey: nonEmptyString,
   label: nonEmptyString.optional(),
   help: nonEmptyString.optional(),
+  disabledWhen: z
+    .strictObject({
+      portKey: nonEmptyString,
+      equals: nonEmptyString,
+    })
+    .optional(),
 });
 
 export const ModuleUiGroupSchema = z.strictObject({
