@@ -221,6 +221,16 @@ figure to apply a margin to. Has no gear-ratio parameter at all -- `0.1.0`'s
 own purpose is specifically the direct-drive (no gearbox) case, not one
 merely defaulted to a ratio of `1`. No new unit or dimension is needed.
 
+Registry v1.15 adds one new parameter per Motor Sizing mechanism —
+`motor_sizing.<mechanism>.inertia_ratio_recommended_maximum` (ball_screw,
+direct_drive_conveyor, rack_pinion, belt_pulley, index_table) — a sibling
+of each mechanism's own existing `*.inertia_ratio_maximum` (required, no
+default, unedited by this release). Each new parameter carries a
+founder-directed default of 10, disclosed in its own definition text as
+founder judgment rather than a manufacturer-sourced figure — see
+`docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md`
+"Inertia-ratio recommended default" for the full account.
+
 Follow this before adding a parameter (mirrors context/code-standards.md
 "Canonical Parameters"). Every item must be satisfied.
 

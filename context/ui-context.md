@@ -377,6 +377,24 @@ aggregate across every module instance in a configuration, which
 `implementation-map.md`'s Unit 3.5 deliverable list does not name — revisit
 only if a later unit actually needs that aggregate.
 
+**Implemented (disabledWhen):** A `ModuleUiField` may declare
+`disabledWhen: { portKey, equals }` (`lib/engine/module-sdk/types.ts`) to
+disable itself whenever another enum-valued input port on the same module
+currently resolves to a specific value — e.g. a `motion_mode` toggle that
+selects which of two input pairs actually applies. Resolution happens
+once, server-side, in `loadModuleWorkspaceView` (a pure
+`resolveFieldDisabled` helper reads the driving port's currently-*saved*
+resolved value); the renderer then shows the disabled field's label, help
+text, and any previously-saved value, but blocks its control(s) and Save
+button via the native HTML `disabled` attribute, and omits its
+link-suggestion panel entirely (not a disabled attribute — the panel
+simply isn't rendered). There is no client-side reactivity: the existing
+per-field form already causes a full page reload from the database after
+every save, which is when a driving field's change actually takes effect
+for the fields it disables. Before the driving port has ever been set, no
+dependent field is disabled — showing everything normally is safer than
+guessing which mode applies.
+
 ## Link Suggestions
 
 Example:
