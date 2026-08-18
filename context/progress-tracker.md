@@ -37,8 +37,12 @@ mechanism (rotary, not linear), confirmed rather than merely predicted.
 **The `AddModuleInstanceDialog` mechanism-picker UI work (Unit 6.7) is now
 also built** -- Milestone 6 and Phase 1E are both fully complete -- see
 "Next up" item 1 below; **module instance management (friendly default
-labels, rename, archive-based removal) also shipped 2026-08-13** -- see
-"Active work" below)
+labels, rename, archive-based removal) also shipped 2026-08-13**; **and
+`belt-pulley-drive-motor-sizing@0.2.0` -- this project's first module-
+version bump, adding a native repeating trapezoidal motion cycle and two
+new outputs (`deceleration_torque`, `effective_torque`) on top of
+everything `0.1.0` already computes -- shipped 2026-08-18, `0.1.0` staying
+released, registered, and untouched** -- see "Active work" below)
 
 ---
 
@@ -1979,6 +1983,63 @@ during implementation: `lib/db/repositories/workflow-repository.ts` has its
 own second, independent `ModuleInstanceRow`/`toModuleInstanceRecord`
 mapper the plan did not anticipate, needing the same `archivedAt` field
 added to typecheck clean.
+
+**`belt-pulley-drive-motor-sizing@0.2.0` shipped 2026-08-18**, per the
+approved design at `docs/superpowers/specs/2026-08-13-belt-pulley-drive-
+motor-sizing-0.2.0-design.md` and implementation plan at
+`docs/superpowers/plans/2026-08-13-belt-pulley-drive-motor-sizing-0.2.0.md`
+-- this project's first module-version bump (ADR-0011's own "follow-on
+work" note: embed motion-profile math natively inside each mechanism
+module rather than cross-module-linking it). `0.1.0` stays released,
+registered, and untouched -- nothing in this release edits
+`lib/modules/belt-pulley-drive-motor-sizing/0.1.0/`. `0.2.0` adds a native
+repeating trapezoidal motion cycle (accelerate/run/decelerate/dwell,
+entered velocity-first or distance-first via `motion_mode`) and two new
+outputs, `deceleration_torque` (symmetric to `acceleration_torque`) and
+`effective_torque` (Trms, continuous/thermal motor rating) --
+`required_torque` stays governed by the acceleration phase alone,
+`effective_torque` is additive. Parameter registry bumped to `1.14.0` for
+the 8 new `motor_sizing.belt_pulley.*` ports this release adds. **A
+disclosed, open evidence gap, not a defect:** Oriental Motor's own
+effective-torque formula is stated generically for all motors, with no
+belt/pulley-specific worked numerical example, so `effective_torque` is
+validated only via an algebraic-identity independent benchmark (a
+structurally separate direct per-phase reimplementation, plus a
+deterministic property sweep) -- the missing published example stays open,
+to be closed against a real project's own duty-cycle results later, never
+a synthetic fixture. Full account: `validation/belt-pulley-drive-motor-
+sizing/0.2.0.md`. Registered in `lib/modules/registry.generated.ts`;
+`cross-module-links.test.ts` exhaustively sweeps compatibility against
+`0.1.0` itself as a coexisting sibling version -- the first version-to-
+version link sweep in this project. **Full verification (`npm run
+verify`) run this session:** typecheck 0 errors repo-wide; lint 0 issues
+on every file this plan touched (a bare repo-root `npm run lint` still
+hits the already-documented stale
+`.worktrees/unit-4-1-release/.next/dev/types/` artifact below --
+confirmed unrelated by linting the 26 changed `.ts` files directly, 0
+problems); `format:check`'s only flags among this plan's own 30 changed
+files are pre-existing, not new -- `lib/modules/registry.generated.ts`
+(the same CRLF-vs-LF pattern documented below), one already-unformatted
+line in `lib/standards/engineering-sources.ts` that predates this plan's
+own edit to that file (confirmed against the pre-Task-1 revision), and
+`manifest.ts`/`README.md` (the same long-string-literal/hand-wrapped-prose
+pattern every already-released sibling module's own `manifest.ts`/
+`README.md` already exhibits -- e.g. `rack-pinion-motor-sizing@0.1.0`,
+`direct-drive-conveyor-motor-sizing@0.1.0`, confirmed directly); the full
+suite is 2074/2080 passing (`DATABASE_URL`/`NODE_EXTRA_CA_CERTS` set,
+`--testTimeout=30000`) -- the 6 failures are all in
+`components/engineering/workspace-shell.test.tsx`, a real, pre-existing
+gap from the prior module-instance-management release (its own `vi.mock`
+of `@/app/(workspace)/workspace/actions` was never updated with
+`renameModuleInstanceAction`), confirmed unmodified by and unrelated to
+this plan -- last touched by commit `a10c777`, predating this plan's own
+Task 1 (`ba8845b`); not fixed here (out of scope for this release), a real
+follow-up item; `npm run build` succeeds. Changed-file scope confirmed by
+`git diff --stat` against the commit before this plan's own Task 1
+(`e2527d0`): exactly the 30 files this plan's own scope names, nothing
+under `lib/modules/belt-pulley-drive-motor-sizing/0.1.0/`, any other
+module's own directory, `lib/modules/motion-profile/`, or
+`lib/modules/drive-train/`.
 
 ---
 
