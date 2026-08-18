@@ -67,6 +67,7 @@ import {
   describeField,
   type ModuleInputFieldDescriptor,
 } from "./describe-field";
+import { resolveFieldDisabled } from "./resolve-field-disabled";
 
 export { describeField };
 export type { ModuleInputFieldDescriptor };
@@ -95,6 +96,15 @@ export interface ModuleInputFieldView {
    * is no link to remove.
    */
   readonly linkRemovalImpact: number | null;
+  /**
+   * True when the module's own `ModuleUiField.disabledWhen` condition is
+   * currently met by another port's resolved value — the generic renderer
+   * shows this field but blocks interaction. Optional (rather than always
+   * `false`) so the dozens of existing `ModuleInputFieldView` test fixtures
+   * across this codebase compile unchanged; `undefined` renders identically
+   * to `false`.
+   */
+  readonly disabled?: boolean;
 }
 
 /** A titled group of resolved input fields, in the module's declared UI order. */
@@ -245,6 +255,7 @@ export async function loadModuleWorkspaceView(
           resolved.source === "linked"
             ? (removalImpactByPortKey.get(field.portKey) ?? 0)
             : null,
+        disabled: resolveFieldDisabled(field.disabledWhen, resolvedByPortKey),
       };
     }),
   }));
