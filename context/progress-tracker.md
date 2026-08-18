@@ -9,7 +9,7 @@ rationale that ~45 source-file comments still cite as
 `context/progress-tracker.md`. New code comments cite an ADR
 (`context/adr/`) or a module spec, never this file.
 
-Last updated: 2026-08-13 (Milestone 4 complete, all seven linear-axis
+Last updated: 2026-08-18 (Milestone 4 complete, all seven linear-axis
 modules registered; Unit 5.4 Scenario 1 complete end to end; Unit 5.5
 (production readiness) done; **ADR-0011 records a new founder-directed
 architecture: a mechanism-oriented "Motor Sizing Tool" module family**,
@@ -135,7 +135,7 @@ Windows checkout vs. Prettier's default `endOfLine: "lf"` — see Environment
 notes), not the small fixed set an earlier session's own note named; every
 file touched by this or a prior session is formatted and not among them.
 `npm audit` clean (0 vulnerabilities across the full tree, prod and dev --
-see Unit 5.5 below for the 2026-08-11 fix). Parameter registry at `1.13.0`
+see Unit 5.5 below for the 2026-08-11 fix). Parameter registry at `1.14.0`
 (Unit 6.2 Stage 2 released the `motor_sizing.ball_screw.*` group
 2026-08-12; Unit 6.3 Stage 2 released the `motor_sizing.
 direct_drive_conveyor.*` group 2026-08-13; Unit 6.4 Stage 2 released the
@@ -143,8 +143,10 @@ direct_drive_conveyor.*` group 2026-08-13; Unit 6.4 Stage 2 released the
 the `motor_sizing.belt_pulley.*` group 2026-08-13, consumed by
 `belt-pulley-drive-motor-sizing@0.1.0`, released the same day; Unit 6.6
 Stage 2 released the `motor_sizing.index_table.*` group 2026-08-13,
-consumed by `index-table-motor-sizing@0.1.0`, released the same day -- see
-Active work).
+consumed by `index-table-motor-sizing@0.1.0`, released the same day;
+`1.14.0` released 2026-08-18 for the 8 new `motor_sizing.belt_pulley.*`
+ports `belt-pulley-drive-motor-sizing@0.2.0` consumes -- see Active
+work).
 
 ---
 
@@ -2040,6 +2042,18 @@ follow-up item; `npm run build` succeeds. Changed-file scope confirmed by
 under `lib/modules/belt-pulley-drive-motor-sizing/0.1.0/`, any other
 module's own directory, `lib/modules/motion-profile/`, or
 `lib/modules/drive-train/`.
+
+**A real, non-blocking finding from this plan's own Task 13 review, not
+fixed here:** `belt-pulley-drive-motor-sizing@0.2.0` is now visible in the
+real "Add module instance" UI picker alongside `0.1.0`, with zero visual
+distinction between the two versions --
+`app/(workspace)/workspace/page.tsx`'s `modulePackageOptions()` filters
+only by category, not by module id/version, and
+`add-module-instance-dialog.tsx`'s own `MECHANISM_LABELS` map already
+includes `belt-pulley-drive-motor-sizing`. This project has no
+established convention yet for surfacing or hiding an in-progress or
+superseding module version from the picker -- a real gap, not this
+release's own scope to close.
 
 ---
 
