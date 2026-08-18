@@ -64,13 +64,27 @@
 // the first module-version bump in this project. Additive only; none of
 // the 24 parameters 1.12.0 already released for this module's own 0.1.0
 // are edited.
+//
+// v1.15 adds one new parameter per Motor Sizing mechanism --
+// motor_sizing.<mechanism>.inertia_ratio_recommended_maximum (ball_screw,
+// direct_drive_conveyor, rack_pinion, belt_pulley, index_table) -- a
+// sibling of each mechanism's own existing *.inertia_ratio_maximum
+// (required, no default, unedited and unaffected by this release). Each
+// new parameter carries a founder-directed default of 10, disclosed in its
+// own definition text as founder judgment, not a manufacturer-sourced
+// figure -- a deliberate, disclosed departure from this project's usual
+// evidence bar for a numeric default, matching drive-train/stage-1-spec.md
+// item 5's own finding that five sources disagree on this exact ratio (2:1
+// to 100:1). See docs/superpowers/specs/
+// 2026-08-18-motor-sizing-consistency-pass-design.md "Inertia-ratio
+// recommended default" for the full account.
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.14.0";
+export const PARAMETER_REGISTRY_VERSION = "1.15.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -1923,6 +1937,18 @@ const motorSizingBallScrew: readonly ParameterDefinition[] = [
     defaultPolicy: { kind: "required" },
   }),
   defineParameter({
+    id: "motor_sizing.ball_screw.inertia_ratio_recommended_maximum",
+    displayName: "Recommended maximum inertia ratio",
+    symbol: "R_Jmax,rec",
+    definition:
+      "Suggested maximum load-to-rotor inertia ratio, editable. Founder-directed default (10:1, general industrial automation), not a manufacturer-sourced value -- use the motor manufacturer's own published limit when available. Typical servo-industry ranges: ~5:1 for high-precision/fast-response applications, ~10:1 for general automation, ~20:1 for moderate-performance applications, and up to 30:1 or higher where a specific manufacturer permits it. A sibling of inertia_ratio_maximum (required, no default, unedited by this release), not a replacement for it -- a new module version may choose to use this parameter instead.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(10, "ratio") },
+  }),
+  defineParameter({
     id: "motor_sizing.ball_screw.screw_inertia",
     displayName: "Ball-screw shaft rotating inertia",
     symbol: "J_B",
@@ -2268,6 +2294,18 @@ const motorSizingDirectDriveConveyor: readonly ParameterDefinition[] = [
     defaultPolicy: { kind: "required" },
   }),
   defineParameter({
+    id: "motor_sizing.direct_drive_conveyor.inertia_ratio_recommended_maximum",
+    displayName: "Recommended maximum inertia ratio",
+    symbol: "R_Jmax,rec",
+    definition:
+      "Suggested maximum load-to-rotor inertia ratio, editable. Founder-directed default (10:1, general industrial automation), not a manufacturer-sourced value -- use the motor manufacturer's own published limit when available. Typical servo-industry ranges: ~5:1 for high-precision/fast-response applications, ~10:1 for general automation, ~20:1 for moderate-performance applications, and up to 30:1 or higher where a specific manufacturer permits it. A sibling of inertia_ratio_maximum (required, no default, unedited by this release), not a replacement for it -- a new module version may choose to use this parameter instead.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(10, "ratio") },
+  }),
+  defineParameter({
     id: "motor_sizing.direct_drive_conveyor.reflected_load_inertia",
     displayName: "Reflected load inertia",
     symbol: "J_L",
@@ -2515,6 +2553,18 @@ const motorSizingRackPinion: readonly ParameterDefinition[] = [
     displayUnits: ["ratio"],
     range: { min: 0, unit: "ratio" },
     defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.rack_pinion.inertia_ratio_recommended_maximum",
+    displayName: "Recommended maximum inertia ratio",
+    symbol: "R_Jmax,rec",
+    definition:
+      "Suggested maximum load-to-rotor inertia ratio, editable. Founder-directed default (10:1, general industrial automation), not a manufacturer-sourced value -- use the motor manufacturer's own published limit when available. Typical servo-industry ranges: ~5:1 for high-precision/fast-response applications, ~10:1 for general automation, ~20:1 for moderate-performance applications, and up to 30:1 or higher where a specific manufacturer permits it. A sibling of inertia_ratio_maximum (required, no default, unedited by this release), not a replacement for it -- a new module version may choose to use this parameter instead.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(10, "ratio") },
   }),
   defineParameter({
     id: "motor_sizing.rack_pinion.pinion_inertia",
@@ -2803,6 +2853,18 @@ const motorSizingBeltPulley: readonly ParameterDefinition[] = [
     displayUnits: ["ratio"],
     range: { min: 0, unit: "ratio" },
     defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.belt_pulley.inertia_ratio_recommended_maximum",
+    displayName: "Recommended maximum inertia ratio",
+    symbol: "R_Jmax,rec",
+    definition:
+      "Suggested maximum load-to-rotor inertia ratio, editable. Default of 10:1 -- founder-directed, and also the one value AutomationDirect's own belt-drive worked example uses ('It is best to keep the load to motor inertia ratio at or below 10', already cited by motor_sizing.belt_pulley.inertia_ratio_maximum's own definition) -- one corroborating datapoint, not a full sourced justification for every application. Use the motor manufacturer's own published limit when available. Typical servo-industry ranges: ~5:1 for high-precision/fast-response applications, ~10:1 for general automation, ~20:1 for moderate-performance applications, and up to 30:1 or higher where a specific manufacturer permits it. A sibling of inertia_ratio_maximum (required, no default, unedited by this release), not a replacement for it -- a new module version may choose to use this parameter instead.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(10, "ratio") },
   }),
   defineParameter({
     id: "motor_sizing.belt_pulley.pulley_inertia",
@@ -3189,6 +3251,18 @@ const motorSizingIndexTable: readonly ParameterDefinition[] = [
     displayUnits: ["ratio"],
     range: { min: 0, unit: "ratio" },
     defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "motor_sizing.index_table.inertia_ratio_recommended_maximum",
+    displayName: "Recommended maximum inertia ratio",
+    symbol: "R_Jmax,rec",
+    definition:
+      "Suggested maximum load-to-rotor inertia ratio, editable. Founder-directed default (10:1, general industrial automation), not a manufacturer-sourced value -- use the motor manufacturer's own published limit when available. Typical servo-industry ranges: ~5:1 for high-precision/fast-response applications, ~10:1 for general automation, ~20:1 for moderate-performance applications, and up to 30:1 or higher where a specific manufacturer permits it. This mechanism is rotary, not linear, but the same inertia-ratio concept and numeric guidance applies unchanged. A sibling of inertia_ratio_maximum (required, no default, unedited by this release), not a replacement for it -- a new module version may choose to use this parameter instead.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(10, "ratio") },
   }),
   defineParameter({
     id: "motor_sizing.index_table.table_inertia",
