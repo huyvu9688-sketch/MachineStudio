@@ -42,7 +42,10 @@ labels, rename, archive-based removal) also shipped 2026-08-13**; **and
 version bump, adding a native repeating trapezoidal motion cycle and two
 new outputs (`deceleration_torque`, `effective_torque`) on top of
 everything `0.1.0` already computes -- shipped 2026-08-18, `0.1.0` staying
-released, registered, and untouched** -- see "Active work" below)
+released, registered, and untouched** -- see "Active work" below; **and the
+6 pre-existing `workspace-shell.test.tsx` failures that release's own
+verification disclosed (a stale `vi.mock` missing three module-instance-
+management actions) are fixed the same day** -- non-DB suite is 2080/2080)
 
 ---
 
@@ -2028,15 +2031,20 @@ own edit to that file (confirmed against the pre-Task-1 revision), and
 pattern every already-released sibling module's own `manifest.ts`/
 `README.md` already exhibits -- e.g. `rack-pinion-motor-sizing@0.1.0`,
 `direct-drive-conveyor-motor-sizing@0.1.0`, confirmed directly); the full
-suite is 2074/2080 passing (`DATABASE_URL`/`NODE_EXTRA_CA_CERTS` set,
-`--testTimeout=30000`) -- the 6 failures are all in
-`components/engineering/workspace-shell.test.tsx`, a real, pre-existing
-gap from the prior module-instance-management release (its own `vi.mock`
-of `@/app/(workspace)/workspace/actions` was never updated with
-`renameModuleInstanceAction`), confirmed unmodified by and unrelated to
-this plan -- last touched by commit `a10c777`, predating this plan's own
-Task 1 (`ba8845b`); not fixed here (out of scope for this release), a real
-follow-up item; `npm run build` succeeds. Changed-file scope confirmed by
+suite was 2074/2080 passing at the time (`DATABASE_URL`/`NODE_EXTRA_CA_CERTS`
+set, `--testTimeout=30000`) -- the 6 failures were all in
+`components/engineering/workspace-shell.test.tsx`, a real, pre-existing gap
+from the prior module-instance-management release (its own `vi.mock` of
+`@/app/(workspace)/workspace/actions` was never updated with
+`renameModuleInstanceAction`, `archiveModuleInstanceAction`, or
+`previewArchiveModuleInstanceImpactAction` -- all three now referenced by
+`machine-navigator.tsx`/`archive-module-instance-dialog.tsx`), confirmed
+unmodified by and unrelated to this plan -- last touched by commit
+`a10c777`, predating this plan's own Task 1 (`ba8845b`); not fixed at the
+time (out of scope for that release). **Fixed 2026-08-18** (a standalone
+follow-up unit, test-only): the mock now declares all three actions
+alongside the others; non-DB suite is 2080/2080 passing, lint/typecheck/
+build all clean. `npm run build` succeeds. Changed-file scope confirmed by
 `git diff --stat` against the commit before this plan's own Task 1
 (`e2527d0`): exactly the 30 files this plan's own scope names, nothing
 under `lib/modules/belt-pulley-drive-motor-sizing/0.1.0/`, any other
