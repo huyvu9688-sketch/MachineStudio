@@ -253,23 +253,29 @@ function ModuleInputFieldRow({
               ) : null}
               <input type="hidden" name="valueKind" value={field.field.kind} />
 
-              <FieldControl field={field} inputId={inputId} />
+              <FieldControl
+                field={field}
+                inputId={inputId}
+                disabled={field.disabled ?? false}
+              />
 
               <Button
                 type="submit"
                 size="sm"
                 variant="outline"
-                disabled={isPending}
+                disabled={isPending || (field.disabled ?? false)}
               >
                 {isPending ? "Saving…" : "Save"}
               </Button>
             </form>
           )}
-          <LinkSuggestionPanel
-            field={field}
-            configurationId={configurationId}
-            targetModuleInstanceId={moduleInstanceId}
-          />
+          {field.disabled ? null : (
+            <LinkSuggestionPanel
+              field={field}
+              configurationId={configurationId}
+              targetModuleInstanceId={moduleInstanceId}
+            />
+          )}
         </>
       )}
 
@@ -289,9 +295,11 @@ function ModuleInputFieldRow({
 function FieldControl({
   field,
   inputId,
+  disabled,
 }: {
   readonly field: ModuleInputFieldView;
   readonly inputId: string;
+  readonly disabled: boolean;
 }) {
   const descriptor = field.field;
   const resolved = field.resolved;
@@ -318,12 +326,14 @@ function FieldControl({
           name="magnitude"
           defaultValue={defaultMagnitude}
           required={field.required}
+          disabled={disabled}
           className={cn(CONTROL_CLASS, "w-36 font-mono tabular-nums")}
         />
         <select
           name="unit"
           defaultValue={defaultUnit}
           aria-label={`${field.label} unit`}
+          disabled={disabled}
           className={cn(CONTROL_CLASS, "w-24")}
         >
           {descriptor.displayUnits.map((unit) => (
@@ -359,6 +369,7 @@ function FieldControl({
               defaultValue={defaultComponents?.[index]}
               aria-label={`${field.label} ${axisLabel}`}
               required={field.required}
+              disabled={disabled}
               className={cn(CONTROL_CLASS, "w-24 font-mono tabular-nums")}
             />
           </div>
@@ -367,6 +378,7 @@ function FieldControl({
           name="unit"
           defaultValue={defaultUnit}
           aria-label={`${field.label} unit`}
+          disabled={disabled}
           className={cn(CONTROL_CLASS, "w-24")}
         >
           {descriptor.displayUnits.map((unit) => (
@@ -388,6 +400,7 @@ function FieldControl({
         name="option"
         defaultValue={current ?? ""}
         required={field.required}
+        disabled={disabled}
         className={cn(CONTROL_CLASS, "w-48")}
       >
         {current === undefined ? (
@@ -414,6 +427,7 @@ function FieldControl({
         name="checked"
         value="true"
         defaultChecked={current}
+        disabled={disabled}
         className="h-4 w-4 rounded border-border-default"
       />
       Yes

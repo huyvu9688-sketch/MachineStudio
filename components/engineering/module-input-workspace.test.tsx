@@ -255,6 +255,11 @@ const fieldWithSuggestion: ModuleInputFieldView = {
   suggestions: [requirementSuggestion],
 };
 
+const disabledFieldWithSuggestion: ModuleInputFieldView = {
+  ...fieldWithSuggestion,
+  disabled: true,
+};
+
 function view(fields: readonly ModuleInputFieldView[]): ModuleWorkspaceView {
   return {
     moduleInstance: {
@@ -493,5 +498,21 @@ describe("ModuleInputWorkspace", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(setModuleInputValueAction).not.toHaveBeenCalled();
+  });
+
+  it("renders a disabled field's control and Save button non-interactive, and omits its link-suggestion panel", () => {
+    render(<ModuleInputWorkspace view={view([disabledFieldWithSuggestion])} />);
+
+    expect(screen.getByRole("spinbutton")).toBeDisabled();
+    expect(screen.getByRole("combobox")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.queryByText("Suggested source")).not.toBeInTheDocument();
+  });
+
+  it("renders a non-disabled field's control and Save button interactive", () => {
+    render(<ModuleInputWorkspace view={view([enumManualField])} />);
+
+    expect(screen.getByRole("combobox")).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
   });
 });
