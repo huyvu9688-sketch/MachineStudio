@@ -2051,6 +2051,24 @@ under `lib/modules/belt-pulley-drive-motor-sizing/0.1.0/`, any other
 module's own directory, `lib/modules/motion-profile/`, or
 `lib/modules/drive-train/`.
 
+**Motor Sizing shared infrastructure shipped 2026-08-18**, per
+`docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md`
+and `docs/superpowers/plans/2026-08-18-motor-sizing-shared-infrastructure.md`
+-- the prerequisite for a founder-directed consistency pass across all five
+Motor Sizing Tool modules (gravity, motion-mode UI, inertia-ratio
+defaults). Two additive pieces, neither touching any released module:
+`disabledWhen` (`lib/engine/module-sdk` -- lets a UI field disable itself
+when a named enum port matches a value, resolved server-side with no
+client reactivity needed) and parameter registry `1.15.0` (five new
+`*.inertia_ratio_recommended_maximum` parameters, one per mechanism, each
+with a disclosed founder-directed default of 10 -- every existing
+`*.inertia_ratio_maximum` stays required-no-default and untouched). Five
+follow-on plans -- one per Motor Sizing module version bump -- consume
+this: `ball-screw-motor-sizing`, `direct-drive-conveyor-motor-sizing`,
+`rack-pinion-motor-sizing`, and `index-table-motor-sizing` each to
+`0.2.0`, and `belt-pulley-drive-motor-sizing` (already at `0.2.0`) to
+`0.3.0` -- not yet started.
+
 **A real, non-blocking finding from this plan's own Task 13 review, not
 fixed here:** `belt-pulley-drive-motor-sizing@0.2.0` is now visible in the
 real "Add module instance" UI picker alongside `0.1.0`, with zero visual
