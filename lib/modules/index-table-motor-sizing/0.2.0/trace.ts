@@ -223,7 +223,11 @@ export function buildTrace(input: TraceInput): CalculationTrace {
       {
         label: "R_Jmax",
         value: input.inertiaRatioMaximum,
-        ref: "motor_sizing.index_table.inertia_ratio_maximum",
+        // 0.2.0: this trace row's value now resolves from the recommended-
+        // maximum parameter (manifest.ts), so its own ref must cite that
+        // same parameter id -- otherwise the trace would cite a parameter
+        // the value did not actually come from.
+        ref: "motor_sizing.index_table.inertia_ratio_recommended_maximum",
       },
     ],
     outputs: [
