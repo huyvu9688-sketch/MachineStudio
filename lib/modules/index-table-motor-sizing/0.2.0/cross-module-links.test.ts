@@ -91,7 +91,7 @@ const UPSTREAM_MODULES: ReadonlyArray<{
   },
 ];
 
-describe("index-table-motor-sizing 0.1.0 cross-module links: exhaustively confirmed absent (no motion.axis.* reuse at all)", () => {
+describe("index-table-motor-sizing 0.2.0 cross-module links: exhaustively confirmed absent (no motion.axis.* reuse at all)", () => {
   for (const upstream of UPSTREAM_MODULES) {
     it(`no ${upstream.label} 0.1.0 output is link-compatible with any index-table-motor-sizing input`, () => {
       const sources = upstream.outputs.map((port) =>
@@ -114,7 +114,7 @@ describe("index-table-motor-sizing 0.1.0 cross-module links: exhaustively confir
   }
 });
 
-describe("index-table-motor-sizing 0.1.0 workflow role: deliberately none", () => {
+describe("index-table-motor-sizing 0.2.0 workflow role: deliberately none", () => {
   it("declares no workflowRoles -- this module is not part of the linear-axis@1 workflow, and no other guided workflow exists for the motor-sizing.* family yet (ADR-0011)", () => {
     expect(manifest.workflowRoles).toEqual([]);
   });
