@@ -65,7 +65,7 @@ function gearedInput(): RawInput {
 // deliberate change to this directory's .ts files; an unreviewed change
 // leaves it stale and the check below fails. Placeholder until the real
 // hash is computed.
-const EXPECTED_SOURCE_HASH = "PLACEHOLDER_UNTIL_HASH_COMPUTED";
+const EXPECTED_SOURCE_HASH = "e5232e550b02d523";
 
 describe("rack-pinion-motor-sizing 0.2.0 module conformance", () => {
   const report = runModuleConformance(rackPinionMotorSizingModule, {

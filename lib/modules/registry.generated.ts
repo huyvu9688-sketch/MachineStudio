@@ -19,6 +19,7 @@ import mod_index_table_motor_sizing_0_1_0 from "./index-table-motor-sizing/0.1.0
 import mod_linear_guide_0_1_0 from "./linear-guide/0.1.0";
 import mod_motion_profile_0_1_0 from "./motion-profile/0.1.0";
 import mod_rack_pinion_motor_sizing_0_1_0 from "./rack-pinion-motor-sizing/0.1.0";
+import mod_rack_pinion_motor_sizing_0_2_0 from "./rack-pinion-motor-sizing/0.2.0";
 import mod_support_bearing_0_1_0 from "./support-bearing/0.1.0";
 
 /** Every registered module package, keyed by "<moduleId>@<version>". */
@@ -43,5 +44,6 @@ export const MODULE_REGISTRY: Readonly<Record<string, ModulePackage>> = {
   "linear-guide@0.1.0": mod_linear_guide_0_1_0,
   "motion-profile@0.1.0": mod_motion_profile_0_1_0,
   "rack-pinion-motor-sizing@0.1.0": mod_rack_pinion_motor_sizing_0_1_0,
+  "rack-pinion-motor-sizing@0.2.0": mod_rack_pinion_motor_sizing_0_2_0,
   "support-bearing@0.1.0": mod_support_bearing_0_1_0,
 };
