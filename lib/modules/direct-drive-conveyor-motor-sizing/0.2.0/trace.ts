@@ -44,7 +44,6 @@ export interface TraceInput {
   readonly carriedLoadMass: Quantity;
   readonly beltFrictionCoefficient: Quantity;
   readonly mechanicalEfficiency: Quantity;
-  readonly gravity: Quantity;
   readonly targetBeltSpeed: Quantity;
   readonly accelerationTime: Quantity;
   readonly motorRotorInertia: Quantity;
@@ -135,14 +134,15 @@ export function buildTrace(input: TraceInput): CalculationTrace {
     id: "drive-force-and-load-torque",
     title: "Friction-driven drive force and load torque",
     methodId: "motor_sizing.direct_drive_conveyor.load_torque",
-    expression: "F = mu*(M4+M3)*g; T_L = F*D1/(2*eta)",
+    // 0.2.0: g = 9.80665 m/s^2, hardcoded (no longer an input) -- see
+    // math.ts's own STANDARD_GRAVITY_M_PER_S2.
+    expression: "F = mu*(M4+M3)*g; T_L = F*D1/(2*eta), g=9.80665",
     inputs: [
       {
         label: "mu",
         value: input.beltFrictionCoefficient,
         ref: "motor_sizing.direct_drive_conveyor.belt_friction_coefficient",
       },
-      { label: "g", value: input.gravity, ref: "motion.axis.gravity" },
       {
         label: "eta",
         value: input.mechanicalEfficiency,

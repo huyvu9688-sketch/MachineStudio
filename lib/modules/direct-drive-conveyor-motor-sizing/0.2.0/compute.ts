@@ -44,7 +44,6 @@ export function compute(input: ModuleInput): ModuleComputation {
     "belt_friction_coefficient",
   );
   const mechanicalEfficiency = quantityAt(values, "mechanical_efficiency");
-  const gravity = quantityAt(values, "gravity");
   const targetBeltSpeed = quantityAt(values, "target_belt_speed");
   const accelerationTime = quantityAt(values, "acceleration_time");
   const motorRotorInertia = quantityAt(values, "motor_rotor_inertia");
@@ -71,15 +70,6 @@ export function compute(input: ModuleInput): ModuleComputation {
   ) {
     throw new Error(
       "direct-drive-conveyor-motor-sizing requires its full set of geometry, motion, motor, and safety-factor inputs.",
-    );
-  }
-  // gravity has a registry constant default (9.80665 m/s^2), auto-filled by
-  // the module SDK when absent, so it should never reach compute() as
-  // undefined. Guarded anyway as a defense-in-depth measure, the same
-  // treatment ball-screw-motor-sizing@0.1.0's own compute.ts gives gravity.
-  if (gravity === undefined) {
-    throw new Error(
-      "direct-drive-conveyor-motor-sizing requires gravity to resolve (the registry default should have filled this).",
     );
   }
 
@@ -127,7 +117,6 @@ export function compute(input: ModuleInput): ModuleComputation {
     beltFrictionCoefficient: beltFrictionCoefficient.value,
     beltMassKg: beltMass.value,
     carriedLoadMassKg: carriedLoadMass.value,
-    gravityMps2: gravity.value,
   });
   const { loadTorqueNm } = resolveLoadTorque({
     forceN,
@@ -188,7 +177,6 @@ export function compute(input: ModuleInput): ModuleComputation {
       carriedLoadMass,
       beltFrictionCoefficient,
       mechanicalEfficiency,
-      gravity,
       targetBeltSpeed,
       accelerationTime,
       motorRotorInertia,
