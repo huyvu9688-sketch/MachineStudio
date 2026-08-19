@@ -2152,9 +2152,52 @@ vitest run` (non-DB) confirmed 2080/2080 passing (one
 run was the same pre-existing test-order flakiness pattern already
 documented elsewhere in this file, not a regression — it passed in
 isolation and on a clean re-run of the full suite), `npm run
-typecheck`/`build` both clean. One more follow-on plan remains, not yet
-started: `belt-pulley-drive-motor-sizing` `0.2.0` -> `0.3.0` (the only one
-of the five also wiring `disabledWhen`).
+typecheck`/`build` both clean.
+
+**`belt-pulley-drive-motor-sizing@0.3.0` shipped 2026-08-19** — the fifth
+and last of the five module-version bumps, and the only one carrying all
+three consistency-pass changes at once: gravity is now hardcoded
+(`STANDARD_GRAVITY_M_PER_S2 = 9.80665` in `math.ts`), `inertia_ratio_maximum`
+repoints at `motor_sizing.belt_pulley.inertia_ratio_recommended_maximum`
+(registry `1.15.0`, default `10`, check downgraded `fail` -> `warning`),
+and `ui.ts` wires the shared `disabledWhen` UI capability on the four
+motion-mode-dependent fields (`target_velocity`/`constant_velocity_time`
+disable when `motion_mode` is `"distance"`; `travel_distance`/`cycle_time`
+disable when `motion_mode` is `"velocity"`) — this module is the design's
+own only `disabledWhen` consumer. A real, session-specific finding not
+present in any of the four prior module-version bumps:
+`independent-benchmark.test.ts` calls this module's own `resolveDriveForce`
+directly (not just through `executeModule`), so it needed the same
+`gravityMps2` field drop `math.test.ts` needed — caught by reading the
+file directly, not assumed from the sibling plans' own pattern. A second
+real finding, not anticipated by the implementation plan itself: adding
+`0.2.0` as an upstream candidate in `cross-module-links.test.ts` (the same
+treatment `0.2.0`'s own file already gave `0.1.0`) surfaced four genuinely
+new compatible pairs — `0.2.0`'s own dual-role motion outputs
+(`target_velocity`, `travel_distance`, `constant_velocity_time`,
+`cycle_time`, added by `0.2.0`'s own motion-cycle work, untouched here)
+share identical parameter IDs with `0.3.0`'s own same-named inputs, the
+same category of real incidental compatibility as the pre-existing
+`axis-load-cases.total_moving_mass` pair — disclosed in
+`KNOWN_COMPATIBLE_PAIRS` with a confirming test, not suppressed. Every
+`0.2.0` reference example (AutomationDirect pulley-inertia, load/reflected
+-inertia with its own disclosed 1/e adjustment, symmetric-deceleration-
+torque internal-consistency check) re-passes unchanged under `0.3.0` — the
+regression proof; none ever set `gravity` explicitly or exceeded the
+inertia ratio. `0.1.0` and `0.2.0` both stay released, registered, and
+untouched (`validation/belt-pulley-drive-motor-sizing/0.1.0.md`,
+`validation/belt-pulley-drive-motor-sizing/0.2.0.md`); `0.3.0`'s own
+addendum record is `validation/belt-pulley-drive-motor-sizing/0.3.0.md`.
+Full `npx vitest run` (non-DB) confirmed 2151/2151 passing, `npm run
+typecheck`/`build` both clean; a bare repo-root `npm run lint` still flags
+only the already-documented, pre-existing stale
+`.worktrees/unit-4-1-release/.next/dev/types/` artifact (confirmed
+unrelated by linting the files this release touched directly — 0
+problems). **This completes the five-module Motor Sizing Tool consistency
+pass** (`docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md`)
+— every mechanism module now consumes parameter registry `1.15.0`'s own
+recommended inertia-ratio default, and the shared `disabledWhen` UI
+capability has its one real consumer wired end to end.
 
 **A real, non-blocking finding from this plan's own Task 13 review, not
 fixed here:** `belt-pulley-drive-motor-sizing@0.2.0` is now visible in the
