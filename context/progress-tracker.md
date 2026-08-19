@@ -2132,6 +2132,30 @@ change only — it has no `gravity` port to drop), and
 `belt-pulley-drive-motor-sizing` `0.2.0` -> `0.3.0` (the only one of the
 five also wiring `disabledWhen`).
 
+**`index-table-motor-sizing@0.2.0` shipped 2026-08-19** — the fourth of
+the five module-version bumps, and the simplest: this mechanism has no
+`gravity` port to begin with (zero `motion.axis.*` reuse, this project's
+only Motor Sizing module with that property), so the only change is
+`inertia_ratio_maximum` repointed at `motor_sizing.index_table.
+inertia_ratio_recommended_maximum` (registry `1.15.0`, default `10`), with
+the check's exceeded-case status downgraded from `fail` to `warning`. The
+`R_Jmax` trace row's own `ref` is repointed at the same new parameter, so
+the trace's source citation still matches what the value actually resolves
+from. Every `0.1.0` reference example (AutomationDirect inertia/speed and
+its own disclosed torque deviation, Oriental Motor partial inertia/speed)
+re-passes unchanged under `0.2.0` — the regression proof. `0.1.0` stays
+released, registered, and untouched
+(`validation/index-table-motor-sizing/0.1.0.md`); `0.2.0`'s own addendum
+record is `validation/index-table-motor-sizing/0.2.0.md`. Full `npx
+vitest run` (non-DB) confirmed 2080/2080 passing (one
+`add-module-instance-dialog.test.tsx` failure seen on the first full-suite
+run was the same pre-existing test-order flakiness pattern already
+documented elsewhere in this file, not a regression — it passed in
+isolation and on a clean re-run of the full suite), `npm run
+typecheck`/`build` both clean. One more follow-on plan remains, not yet
+started: `belt-pulley-drive-motor-sizing` `0.2.0` -> `0.3.0` (the only one
+of the five also wiring `disabledWhen`).
+
 **A real, non-blocking finding from this plan's own Task 13 review, not
 fixed here:** `belt-pulley-drive-motor-sizing@0.2.0` is now visible in the
 real "Add module instance" UI picker alongside `0.1.0`, with zero visual
