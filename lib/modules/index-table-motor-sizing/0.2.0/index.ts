@@ -1,12 +1,13 @@
-// The index-table-motor-sizing module package (Unit 6.6). Assembles the
-// manifest, ports, compute, UI, report, and validation record into a
-// single `ModulePackage` and seals it (the content hash is stamped here).
+// The index-table-motor-sizing module package, 0.2.0 (the consistency-pass
+// follow-on to 0.1.0). Assembles the manifest, ports, compute, UI, report,
+// and validation record into a single `ModulePackage` and seals it (the
+// content hash is stamped here).
 //
-// Named `index.ts` so `npm run registry:generate` discovers this package
-// -- the fifth and last mechanism module in the Motor Sizing Tool family
-// (ADR-0011), after ball-screw-motor-sizing@0.1.0,
-// direct-drive-conveyor-motor-sizing@0.1.0,
-// rack-pinion-motor-sizing@0.1.0, and belt-pulley-drive-motor-sizing@0.1.0.
+// Named `index.ts` so `npm run registry:generate`
+// (scripts/generate-registry.mts) discovers this package. Released and
+// registered 2026-08-19 (lib/modules/registry.generated.ts,
+// validation/index-table-motor-sizing/0.2.0.md). 0.1.0 stays released,
+// registered, and untouched (its own index.ts is unaffected by this file).
 //
 // No custom input-schema.ts: every input port in this module's own 0.1.0
 // scope is either unconditionally required or has a registry-level

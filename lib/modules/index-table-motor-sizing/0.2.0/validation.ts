@@ -7,7 +7,7 @@ import type { ValidationRecord } from "@/lib/engine";
 
 export const validation: ValidationRecord = {
   moduleId: "index-table-motor-sizing",
-  moduleVersion: "0.1.0",
+  moduleVersion: "0.2.0",
   methods: [
     "Oriental Motor Co., Ltd.'s and AutomationDirect's own index-table sizing methods (moment of inertia of the table plus any mounted load, operating/indexing speed from a single index move, acceleration torque, required torque with a safety factor; load torque engineer-supplied, defaulting to zero per both sources)",
   ],
@@ -56,5 +56,6 @@ export const validation: ValidationRecord = {
   deviations: [
     "AutomationDirect's own worked example computes acceleration torque with a rounded 0.1 constant standing in for the exact 2*pi/60=0.10472 (confirmed against the same document's own Example 7, which uses the unrounded form and reproduces its own printed figure exactly only that way). This module's own kernel uses exact physics throughout, consistent with every other module in this codebase, so its own torque outputs are systematically ~4.7% higher than this source's own printed figures from the constant alone, compounding with the source's own further intermediate rounding (121 rpm, 0.13 s vs. this module's own precisely-computed values) to a total ~8% difference -- fully explained and reapplied exactly at the test level (validation.ts referenceExamples, `automationdirect-index-table-torque-disclosed-deviation`), not an unexplained residual.",
     "A genuine unit-convention difference between the two primary sources, disclosed rather than silently reconciled: Oriental Motor's own printed 'oz-in^2' inertia figures are mass-based (oz used as a mass unit, confirmed by cross-checking the source's own printed oz-in^2-to-kg*m^2 conversion on the same page), while AutomationDirect's own 'lb-in-sec^2' figures are weight-based, requiring the explicit /g division its own formula shows. Both are legitimate, internally consistent conventions within their own documents; this module's own kernel works entirely in SI mass-based units throughout, so no ambiguity reaches the kernel itself -- the distinction only matters when hand-deriving each source's own fixture inputs, and is recorded here for anyone re-deriving those fixtures in the future.",
+    "0.2.0 addendum, not a re-validation of the underlying physics (unchanged): inertia_ratio_maximum now resolves to motor_sizing.index_table.inertia_ratio_recommended_maximum (registry 1.15.0), a founder-directed default of 10:1 -- NOT a manufacturer-sourced value; neither of this module's own two primary sources (Oriental Motor, AutomationDirect) states a recommended inertia-ratio figure for an index table specifically. The check's own exceeded-case status changed from 'fail' to 'warning' to match: exceeding a recommended (not required) default is advisory, never blocking. Per docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md. This module has no gravity port to begin with (zero motion.axis.* reuse), so that section of the design doc does not apply here.",
   ],
 };

@@ -60,7 +60,7 @@ function noOptionalPortsInput(): RawInput {
 // deliberate change to this directory's .ts files; an unreviewed change
 // leaves it stale and the check below fails. Placeholder until Task 8
 // computes the real hash.
-const EXPECTED_SOURCE_HASH = "PLACEHOLDER_UNTIL_TASK_8";
+const EXPECTED_SOURCE_HASH = "705c9d5f92828e35";
 
 describe("index-table-motor-sizing 0.2.0 module conformance", () => {
   const report = runModuleConformance(indexTableMotorSizingModule, {
