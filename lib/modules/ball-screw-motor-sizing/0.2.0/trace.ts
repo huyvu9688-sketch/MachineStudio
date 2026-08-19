@@ -224,12 +224,14 @@ export function buildTrace(input: TraceInput): CalculationTrace {
         },
       ],
       sources: [...FORCE_TORQUE_SOURCE, ...MECHANICS_SOURCE],
-      notes:
-        direction === "return" && !input.hasReturn
+      notes: [
+        "g = 9.80665 m/s^2 (standard gravity), hardcoded as of 0.2.0 -- no longer an engineer-editable input (see math.ts's own STANDARD_GRAVITY_M_PER_S2).",
+        ...(direction === "return" && !input.hasReturn
           ? [
               "No return move is declared this cycle: T_L is still reported (pure statics, no move needed), but T_A is 0 and no return-direction phase contributes to momentary or effective torque.",
             ]
-          : undefined,
+          : []),
+      ],
     };
   });
 
