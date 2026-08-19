@@ -157,7 +157,6 @@ describe("resolveFrictionForce", () => {
       beltFrictionCoefficient: 0.3,
       beltMassKg: 2,
       carriedLoadMassKg: 8,
-      gravityMps2: G,
     });
     expect(forceN).toBeCloseTo(0.3 * 10 * G, 9);
   });
@@ -167,7 +166,6 @@ describe("resolveFrictionForce", () => {
       beltFrictionCoefficient: 0.3,
       beltMassKg: 0,
       carriedLoadMassKg: 0,
-      gravityMps2: G,
     });
     expect(forceN).toBe(0);
   });
@@ -177,7 +175,6 @@ describe("resolveFrictionForce", () => {
       beltFrictionCoefficient: 1.5,
       beltMassKg: 1,
       carriedLoadMassKg: 0,
-      gravityMps2: G,
     });
     expect(forceN).toBeCloseTo(1.5 * G, 9);
   });
@@ -188,7 +185,6 @@ describe("resolveFrictionForce", () => {
         beltFrictionCoefficient: -0.1,
         beltMassKg: 1,
         carriedLoadMassKg: 0,
-        gravityMps2: G,
       }),
     ).toThrow(DirectDriveConveyorMotorSizingInputError);
   });
@@ -201,7 +197,6 @@ describe("resolveLoadTorque", () => {
       beltFrictionCoefficient: 0.3,
       beltMassKg: 0,
       carriedLoadMassKg: 30 * LB_TO_KG,
-      gravityMps2: G,
     });
     const { loadTorqueNm } = resolveLoadTorque({
       forceN,
@@ -218,7 +213,6 @@ describe("resolveLoadTorque", () => {
       beltFrictionCoefficient: 0.3,
       beltMassKg: 0,
       carriedLoadMassKg: 33 * LB_TO_KG,
-      gravityMps2: G,
     });
     const { loadTorqueNm } = resolveLoadTorque({
       forceN,
@@ -385,7 +379,6 @@ describe("end-to-end: Oriental Motor Co., Ltd.'s own 'Belt and Pully' worked exa
       beltFrictionCoefficient: 0.3,
       beltMassKg: 0,
       carriedLoadMassKg: 30 * LB_TO_KG,
-      gravityMps2: G,
     });
     const { loadTorqueNm } = resolveLoadTorque({
       forceN,
