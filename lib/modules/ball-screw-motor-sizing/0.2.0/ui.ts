@@ -12,7 +12,6 @@ export const uiSchema: ModuleUiSchema = {
       fields: [
         { portKey: "orientation" },
         { portKey: "incline_angle" },
-        { portKey: "gravity" },
         { portKey: "friction_coefficient" },
         { portKey: "total_moving_mass" },
       ],
@@ -57,7 +56,11 @@ export const uiSchema: ModuleUiSchema = {
         { portKey: "motor_rotor_inertia" },
         { portKey: "effective_torque_safety_factor" },
         { portKey: "momentary_torque_safety_factor" },
-        { portKey: "inertia_ratio_maximum" },
+        {
+          portKey: "inertia_ratio_maximum",
+          label: "Recommended maximum inertia ratio",
+          help: "Use the motor manufacturer's limit when available.",
+        },
       ],
     },
   ],
