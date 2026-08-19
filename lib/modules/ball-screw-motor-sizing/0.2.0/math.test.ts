@@ -123,10 +123,12 @@ describe("resolveDriveForce", () => {
   it("reproduces Omron's own horizontal friction-torque force (TW input)", () => {
     // Servo Selection.pdf p. 12: TW = mu*M*g*(P/2pi)*10^-3 = 7.8e-3 N*m at
     // P=10mm -- the force term alone (before the lead/2pi conversion) is
-    // mu*M*g ~= 0.1*5*9.80665 ~= 4.903 N (Omron's own printed g=9.8
-    // rounding; this module's own g=9.80665 is close enough that Omron's
-    // 3-significant-figure result is unaffected -- see the loosened
-    // tolerance below).
+    // mu*M*g = 0.1*5*9.8 = 4.9 N in Omron's own printed g=9.8 rounding.
+    // This module's own g=9.80665 (STANDARD_GRAVITY_M_PER_S2) is close
+    // enough that Omron's own 3-significant-figure result is unaffected --
+    // checked below both against Omron's own printed figure (loosened to 2
+    // decimal places to absorb the g=9.8-vs-9.80665 gap) and, at full
+    // precision, against this module's own actual constant.
     const { forceN } = resolveDriveForce({
       externalForceN: 0,
       totalMovingMassKg: 5,
@@ -134,6 +136,7 @@ describe("resolveDriveForce", () => {
       frictionCoefficient: 0.1,
       direction: "forward",
     });
+    expect(forceN).toBeCloseTo(4.9, 2);
     expect(forceN).toBeCloseTo(0.1 * 5 * STANDARD_GRAVITY_M_PER_S2, 9);
   });
 
