@@ -1,5 +1,34 @@
 # Ball-Screw Motor Sizing Module (`ball-screw-motor-sizing`)
 
+## 0.2.0 — Consistency-Pass Addendum (Gravity, Recommended Inertia-Ratio Default)
+
+Follow-on to `0.1.0`, per
+`docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md`
+and `docs/superpowers/plans/2026-08-19-ball-screw-motor-sizing-0.2.0.md`.
+Two changes, neither touching the underlying physics (every reference
+example below still passes unchanged):
+
+1. **Gravity is no longer an editable input.** `math.ts`'s own
+   `resolveDriveForce` hardcodes `STANDARD_GRAVITY_M_PER_S2 = 9.80665`
+   instead of reading a `gravity` port — the exact value
+   `motion.axis.gravity`'s own registry constant default already supplied
+   everywhere this module used it, so this is behavior-neutral, not a
+   physics change.
+2. **`inertia_ratio_maximum` now resolves to a founder-directed recommended
+   default of 10:1** (`motor_sizing.ball_screw.
+   inertia_ratio_recommended_maximum`, parameter registry `1.15.0`),
+   editable, rather than `0.1.0`'s own required-no-default value. The
+   inertia-ratio check's own exceeded-case status changed from `fail` to
+   `warning` to match — exceeding a recommendation is advisory, never
+   blocking.
+
+`0.1.0` stays released, registered, and byte-for-byte untouched
+(`lib/modules/ball-screw-motor-sizing/0.1.0/`) — an engineer who wants
+`0.2.0`'s behavior on an existing instance archives it and adds a fresh
+`0.2.0` instance, the same migration story `belt-pulley-drive-motor-sizing@
+0.2.0` already established. Full record:
+`validation/ball-screw-motor-sizing/0.2.0.md`.
+
 Milestone 6, Unit 6.2 — the first module in the Motor Sizing Tool family
 (`context/adr/0011-motor-sizing-tool-architecture.md`). Given a ball-screw
 axis's own geometry, mass, friction, orientation, and one full
