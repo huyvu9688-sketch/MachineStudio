@@ -58,7 +58,6 @@ const RMS_SOURCE = [
 export interface TraceInput {
   readonly orientation: EnumValue;
   readonly inclineAngle: Quantity;
-  readonly gravity: Quantity;
   readonly frictionCoefficient: Quantity;
   readonly totalMovingMass: Quantity;
   readonly lead: Quantity;
@@ -173,10 +172,12 @@ export function buildTrace(input: TraceInput): CalculationTrace {
       id: `${direction}-force-and-torque`,
       title: `${direction === "forward" ? "Forward" : "Return"}-direction drive force, load torque, and acceleration torque`,
       methodId: `motor_sizing.ball_screw.${direction}_load_torque`,
+      // 0.2.0: g = 9.80665 m/s^2, hardcoded (no longer an input) — see
+      // math.ts's own STANDARD_GRAVITY_M_PER_S2.
       expression:
         direction === "forward"
-          ? "F = F_A + m*g*(sin(theta)+mu*cos(theta))"
-          : "F = F_A + m*g*(mu*cos(theta)-sin(theta))",
+          ? "F = F_A + m*g*(sin(theta)+mu*cos(theta)), g=9.80665"
+          : "F = F_A + m*g*(mu*cos(theta)-sin(theta)), g=9.80665",
       inputs: [
         {
           label: "F_A",
@@ -188,7 +189,6 @@ export function buildTrace(input: TraceInput): CalculationTrace {
           value: input.totalMovingMass,
           ref: "motion.axis.total_moving_mass",
         },
-        { label: "g", value: input.gravity, ref: "motion.axis.gravity" },
         {
           label: "theta",
           value: input.inclineAngle,
