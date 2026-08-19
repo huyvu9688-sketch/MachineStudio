@@ -2085,10 +2085,27 @@ example (Omron, THK horizontal, THK vertical) re-passes unchanged under
 `0.2.0` — the regression proof the gravity hardcode is behavior-neutral.
 `0.1.0` stays released, registered, and untouched
 (`validation/ball-screw-motor-sizing/0.1.0.md`); `0.2.0`'s own addendum
-record is `validation/ball-screw-motor-sizing/0.2.0.md`. Four more
-follow-on plans remain, not yet started:
-`direct-drive-conveyor-motor-sizing` and `rack-pinion-motor-sizing` and
-`index-table-motor-sizing` each `0.1.0` -> `0.2.0`, and
+record is `validation/ball-screw-motor-sizing/0.2.0.md`.
+
+**`direct-drive-conveyor-motor-sizing@0.2.0` shipped 2026-08-19** — the
+second of the five module-version bumps, same two changes, same pattern:
+gravity hardcoded (`STANDARD_GRAVITY_M_PER_S2 = 9.80665` in `math.ts`,
+`resolveFrictionForce`'s own former `gravityMps2` input), and
+`inertia_ratio_maximum` repointed at `motor_sizing.direct_drive_conveyor.
+inertia_ratio_recommended_maximum` (registry `1.15.0`, default `10`),
+with the check's exceeded-case status downgraded from `fail` to
+`warning`. Every `0.1.0` reference example (both Oriental Motor Co., Ltd.
+worked examples, the Omron Corporation independent-benchmark property
+sweep) re-passes unchanged under `0.2.0` — the regression proof. `0.1.0`
+stays released, registered, and untouched
+(`validation/direct-drive-conveyor-motor-sizing/0.1.0.md`); `0.2.0`'s own
+addendum record is
+`validation/direct-drive-conveyor-motor-sizing/0.2.0.md`. Full
+`npx vitest run` (non-DB) confirmed 1961/1961 passing, `npm run
+typecheck`/`build` both clean. Three more follow-on plans remain, not yet
+started: `rack-pinion-motor-sizing` `0.1.0` -> `0.2.0`,
+`index-table-motor-sizing` `0.1.0` -> `0.2.0` (inertia-ratio change
+only — it has no `gravity` port to drop), and
 `belt-pulley-drive-motor-sizing` `0.2.0` -> `0.3.0` (the only one of the
 five also wiring `disabledWhen`).
 
