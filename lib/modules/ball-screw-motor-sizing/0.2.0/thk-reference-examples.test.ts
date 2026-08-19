@@ -27,7 +27,7 @@ import { asQuantity } from "./test-helpers";
 // THK's own printed 743 N*mm, and why that is a disclosed scope gap, not a
 // defect).
 
-describe("ball-screw-motor-sizing 0.1.0 THK horizontal reference example (High-speed Transfer Equipment)", () => {
+describe("ball-screw-motor-sizing 0.2.0 THK horizontal reference example (High-speed Transfer Equipment)", () => {
   it("reproduces THK's own screw+load inertia (J=3.39e-3 kg*m^2) within 0.5%", () => {
     const result = executeModule(
       ballScrewMotorSizingModule,
@@ -86,7 +86,7 @@ describe("ball-screw-motor-sizing 0.1.0 THK horizontal reference example (High-s
   });
 });
 
-describe("ball-screw-motor-sizing 0.1.0 THK vertical reference example (Vertical Conveyance System)", () => {
+describe("ball-screw-motor-sizing 0.2.0 THK vertical reference example (Vertical Conveyance System)", () => {
   it("reproduces THK's own upward and downward friction (load) torque magnitudes within 1% (T1=900 N*mm, T2=830 N*mm)", () => {
     const result = executeModule(
       ballScrewMotorSizingModule,
@@ -173,7 +173,7 @@ describe("ball-screw-motor-sizing 0.1.0 THK vertical reference example (Vertical
   });
 });
 
-describe("ball-screw-motor-sizing 0.1.0: the N-phase Trms formula itself, fed THK's own seven printed vertical phases directly (the key Stage 4 validation target)", () => {
+describe("ball-screw-motor-sizing 0.2.0: the N-phase Trms formula itself, fed THK's own seven printed vertical phases directly (the key Stage 4 validation target)", () => {
   it("reproduces THK's own printed 743 N*mm within 0.5% when given the same seven phases THK itself used, including the 658 N*mm holding torque this module's own executeModule path does not model", () => {
     // This is the direct test of ADR-0011's own structural fix (a genuine
     // N-phase RMS computation replacing drive-train@0.1.0's own closed-form

@@ -38,7 +38,7 @@ import { asQuantity as asDriveTrainQuantity } from "../../drive-train/0.1.0/test
 // where expected and diverge exactly where expected, not merely computing a
 // number and hoping it looks right.
 
-describe("ball-screw-motor-sizing 0.1.0 independent benchmark: this module's own N-phase Trms vs. drive-train@0.1.0's own closed-form approximation", () => {
+describe("ball-screw-motor-sizing 0.2.0 independent benchmark: this module's own N-phase Trms vs. drive-train@0.1.0's own closed-form approximation", () => {
   it("agree closely on the horizontal case (closed-cycle precondition holds)", () => {
     const driveTrainResult = executeModule(
       driveTrainModule,
