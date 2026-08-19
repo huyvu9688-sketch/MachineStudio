@@ -33,7 +33,6 @@ describe("independent benchmark: force/load-torque (carried over from 0.1.0)", (
                     const { forceN } = resolveDriveForce({
                       externalForceN: externalForce,
                       totalMovingMassKg: mass,
-                      gravityMps2: G,
                       inclineAngleRad: incline,
                       frictionCoefficient: friction,
                     });
@@ -44,6 +43,12 @@ describe("independent benchmark: force/load-torque (carried over from 0.1.0)", (
                       gearRatio,
                     }).loadTorqueNm;
                   })();
+                  // resolveOrientalMotorLoadTorque (./independent-benchmark)
+                  // is a deliberately separate reimplementation with its own
+                  // gravityMps2 input -- unaffected by 0.3.0's gravity
+                  // hardcode in ./math.ts, and kept at exactly G=9.80665
+                  // here so this property sweep still compares like for
+                  // like against the kernel's own (now-hardcoded) value.
                   const benchmark = resolveOrientalMotorLoadTorque({
                     totalMovingMassKg: mass,
                     gravityMps2: G,
