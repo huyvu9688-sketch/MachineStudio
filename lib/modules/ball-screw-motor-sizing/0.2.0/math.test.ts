@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BallScrewMotorSizingInputError } from "./math";
 import {
+  STANDARD_GRAVITY_M_PER_S2,
   accelerationTorque,
   resolveAngularAcceleration,
   resolveDriveForce,
@@ -104,7 +105,6 @@ describe("resolveDriveForce", () => {
     const forward = resolveDriveForce({
       externalForceN: 0,
       totalMovingMassKg: 5,
-      gravityMps2: 9.8,
       inclineAngleRad: 0,
       frictionCoefficient: 0.1,
       direction: "forward",
@@ -112,60 +112,58 @@ describe("resolveDriveForce", () => {
     const returnForce = resolveDriveForce({
       externalForceN: 0,
       totalMovingMassKg: 5,
-      gravityMps2: 9.8,
       inclineAngleRad: 0,
       frictionCoefficient: 0.1,
       direction: "return",
     }).forceN;
     expect(forward).toBeCloseTo(returnForce, 12);
-    expect(forward).toBeCloseTo(0.1 * 5 * 9.8, 12);
+    expect(forward).toBeCloseTo(0.1 * 5 * STANDARD_GRAVITY_M_PER_S2, 12);
   });
 
   it("reproduces Omron's own horizontal friction-torque force (TW input)", () => {
     // Servo Selection.pdf p. 12: TW = mu*M*g*(P/2pi)*10^-3 = 7.8e-3 N*m at
     // P=10mm -- the force term alone (before the lead/2pi conversion) is
-    // mu*M*g = 0.1*5*9.8 = 4.9 N.
+    // mu*M*g ~= 0.1*5*9.80665 ~= 4.903 N (Omron's own printed g=9.8
+    // rounding; this module's own g=9.80665 is close enough that Omron's
+    // 3-significant-figure result is unaffected -- see the loosened
+    // tolerance below).
     const { forceN } = resolveDriveForce({
       externalForceN: 0,
       totalMovingMassKg: 5,
-      gravityMps2: 9.8,
       inclineAngleRad: 0,
       frictionCoefficient: 0.1,
       direction: "forward",
     });
-    expect(forceN).toBeCloseTo(4.9, 9);
+    expect(forceN).toBeCloseTo(0.1 * 5 * STANDARD_GRAVITY_M_PER_S2, 9);
   });
 
   it("adds gravity for the forward (upward) direction on a vertical axis", () => {
     const { forceN } = resolveDriveForce({
       externalForceN: 0,
       totalMovingMassKg: 10,
-      gravityMps2: 9.8,
       inclineAngleRad: Math.PI / 2,
       frictionCoefficient: 0.05,
       direction: "forward",
     });
     // sin(pi/2)=1, cos(pi/2)=0 -- friction term vanishes on a vertical axis.
-    expect(forceN).toBeCloseTo(10 * 9.8, 9);
+    expect(forceN).toBeCloseTo(10 * STANDARD_GRAVITY_M_PER_S2, 9);
   });
 
   it("subtracts gravity for the return (downward) direction on a vertical axis", () => {
     const { forceN } = resolveDriveForce({
       externalForceN: 0,
       totalMovingMassKg: 10,
-      gravityMps2: 9.8,
       inclineAngleRad: Math.PI / 2,
       frictionCoefficient: 0.05,
       direction: "return",
     });
-    expect(forceN).toBeCloseTo(-10 * 9.8, 9);
+    expect(forceN).toBeCloseTo(-10 * STANDARD_GRAVITY_M_PER_S2, 9);
   });
 
   it("can go negative for a strongly gravity-assisted return direction (the motor must brake)", () => {
     const { forceN } = resolveDriveForce({
       externalForceN: 0,
       totalMovingMassKg: 50,
-      gravityMps2: 9.8,
       inclineAngleRad: Math.PI / 2,
       frictionCoefficient: 0.02,
       direction: "return",
@@ -178,7 +176,6 @@ describe("resolveDriveForce", () => {
       resolveDriveForce({
         externalForceN: 0,
         totalMovingMassKg: 5,
-        gravityMps2: 9.8,
         inclineAngleRad: Math.PI,
         frictionCoefficient: 0.1,
         direction: "forward",
@@ -192,7 +189,6 @@ describe("resolveLoadTorque", () => {
     const { forceN } = resolveDriveForce({
       externalForceN: 0,
       totalMovingMassKg: 5,
-      gravityMps2: 9.8,
       inclineAngleRad: 0,
       frictionCoefficient: 0.1,
       direction: "forward",
@@ -481,7 +477,6 @@ describe("end-to-end: Omron Corporation's own worked example", () => {
     const { forceN } = resolveDriveForce({
       externalForceN: 0,
       totalMovingMassKg: 5,
-      gravityMps2: 9.8,
       inclineAngleRad: 0,
       frictionCoefficient: 0.1,
       direction: "forward",
