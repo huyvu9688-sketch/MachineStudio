@@ -1,5 +1,40 @@
 # Rack-and-Pinion Motor Sizing Module (`rack-pinion-motor-sizing`)
 
+## 0.2.0 — Consistency-Pass Addendum (Gravity, Recommended Inertia-Ratio Default)
+
+Follow-on to `0.1.0`, per
+`docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md`.
+Two changes:
+
+1. **Gravity is no longer an editable input.** `math.ts`'s own
+   `resolveDriveForce` hardcodes `STANDARD_GRAVITY_M_PER_S2 = 9.80665`
+   instead of reading a `gravity` port — the exact value
+   `motion.axis.gravity`'s own registry constant default already supplied
+   everywhere this module used it by default. **Unlike the other
+   consistency-pass modules, this is not fully behavior-neutral for this
+   module's own Atlanta Drive Systems benchmark**: `0.1.0`'s own
+   `atlanta-benchmark.test.ts` overrode this module's own gravity port to
+   Atlanta's own `g=9.81` convention specifically to make that comparison
+   exact (0.01% tolerance). `0.2.0` removes that override entirely, so the
+   real, small SI (`9.80665`) vs. Atlanta (`9.81`) gravity-convention gap
+   now shows up: ~0.008% for the horizontal worked example, ~0.02% for the
+   vertical one (weight is a larger fraction of the load-torque force
+   there). Both are measured and disclosed in the test's own titles and in
+   `validation/rack-pinion-motor-sizing/0.2.0.md`; the tolerance is
+   loosened from 0.01% to 0.03% to absorb this, with comfortable margin.
+2. **`inertia_ratio_maximum` now resolves to a founder-directed recommended
+   default of 10:1** (`motor_sizing.rack_pinion.
+   inertia_ratio_recommended_maximum`, parameter registry `1.15.0`),
+   editable, rather than `0.1.0`'s own required-no-default value. The
+   inertia-ratio check's own exceeded-case status changed from `fail` to
+   `warning` to match.
+
+`0.1.0` stays released, registered, and byte-for-byte untouched
+(`lib/modules/rack-pinion-motor-sizing/0.1.0/`) — an engineer who wants
+`0.2.0`'s behavior on an existing instance archives it and adds a fresh
+`0.2.0` instance. Full record:
+`validation/rack-pinion-motor-sizing/0.2.0.md`.
+
 Milestone 6, Unit 6.4 — the third module in the Motor Sizing Tool family
 (`context/adr/0011-motor-sizing-tool-architecture.md`), after
 `ball-screw-motor-sizing@0.1.0` and
