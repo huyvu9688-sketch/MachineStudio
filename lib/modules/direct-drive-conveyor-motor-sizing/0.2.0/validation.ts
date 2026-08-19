@@ -1,16 +1,17 @@
 // Validation record for the direct-drive-conveyor-motor-sizing module.
 // Stage 4 (validation) is done as of 2026-08-13 -- see README.md "Stage 4"
-// for the full narrative. The package stays unregistered (package.ts, not
-// index.ts) regardless of what this record says: registration is a
-// separate Stage 6 action (context/ai-workflow-rules.md "New Module
-// Workflow").
+// for the full narrative. 0.2.0 is a consistency-pass follow-on
+// (docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md)
+// that touches no underlying physics -- see the 0.2.0 addendum entry in
+// "deviations" below and validation/direct-drive-conveyor-motor-sizing/
+// 0.2.0.md.
 
 import { asSourceRevisionId } from "@/lib/standards";
 import type { ValidationRecord } from "@/lib/engine";
 
 export const validation: ValidationRecord = {
   moduleId: "direct-drive-conveyor-motor-sizing",
-  moduleVersion: "0.1.0",
+  moduleVersion: "0.2.0",
   methods: [
     "Omron Corporation and Oriental Motor Co., Ltd. conveyor sizing methods (moment of inertia, friction-driven load torque, operating speed, acceleration torque, required torque with a safety factor)",
   ],
@@ -48,7 +49,6 @@ export const validation: ValidationRecord = {
     "Solo validation -- Omron Corporation independent-benchmark substitute (context/ai-workflow-rules.md Stage 4: 'When no second engineer is available, the documented independent benchmark comparison serves as the review substitute').",
   reviewDate: "2026-08-13",
   supportedUseLimits: [
-    "0.1.0 is not yet released (package.ts, not index.ts) -- Stage 5 (workflow role integration, cross-module link tests) and Stage 6 (release, source-immutability hash, registration) have not started.",
     "acceleration_torque, momentary_torque, and required_torque are NOT validated against either reference example's own printed final figure. Neither of this module's own two fully-verified conveyor worked examples (General Catalog Technical Reference pp. F-8-F-9) computes an acceleration-torque term at all -- both derive their own final required-torque figure from load torque alone, with a safety factor (see 'deviations'). The Ta = J*alpha relationship itself is already validated independently, at the lib/engine/mechanics level (torque.test.ts, against Oriental Motor's own packaged r/min form) and at the ball-screw-motor-sizing@0.1.0 module level (against Omron's and THK's own worked examples that do include a real acceleration phase) -- but this specific pair of conveyor examples cannot confirm it with real conveyor-specific numbers.",
     "p. F-9's own printed belt+work inertia figure (Jm2=132 oz-in^2) is not reproduced -- a genuine, disclosed arithmetic inconsistency internal to the source itself, not a defect in this module's own kernel (see 'deviations').",
     "Horizontal only -- no source found gives an inclined-conveyor formula or worked example.",
@@ -57,5 +57,6 @@ export const validation: ValidationRecord = {
   deviations: [
     "Neither of Oriental Motor Co., Ltd.'s own two conveyor worked examples (General Catalog Technical Reference pp. F-8-F-9) computes an acceleration-torque term. Both derive their own final required-torque figure directly from load torque (friction) alone, with a safety factor -- p. F-8's own text: 'On a belt conveyor, the greatest torque is needed when starting the belt,' referring to static-friction breakaway, not an inertial (J*alpha) acceleration term. This module's own registered parameter contract (registry 1.10.0, already released and immutable) nonetheless defines acceleration_torque, momentary_torque = acceleration_torque+load_torque, and required_torque = momentary_torque*Sf, mirroring the already-registered jp.oriental_motor.motor_sizing_calculations web page's own general TM=(TL+Ta)*Sf shape (the same general method motor_sizing.ball_screw.required_torque and every stepping-motor/index-table example in this same document already use). This module's own kernel therefore computes a real, nonzero acceleration_torque for both reference scenarios above, using an engineer-supplied acceleration_time neither source states -- a real, disclosed evidence gap for those three specific output ports, not a formula this project invented without any source basis.",
     "p. F-9's own printed Jm2=132 oz-in^2 (belt+work inertia) is internally inconsistent with its own Jm1=70.4 oz-in^2 (single-roller inertia) three lines earlier in the same worked example: Jm1 correctly multiplies its own lb input by 16 to convert to oz before squaring the diameter (2.2 lb * 16 = 35.2 oz, matching m2=35.27 oz used identically in the separately-verified p. F-8 example), while Jm2 uses its own 33 lb input directly, without the same *16 conversion (33*(4/2)^2=132, not 528*(4/2)^2=2112). Recorded as a source-internal printing/arithmetic error, not resolved by this module (this environment cannot render a cleaner copy of this specific dense PDF page to double-check by eye) -- this module's own kernel implements the physically correct, internally consistent formula throughout, and does not reproduce the printed 132 figure.",
+    "0.2.0 addendum, not a re-validation of the underlying physics (unchanged): (1) gravity is no longer an editable input -- resolveFrictionForce now hardcodes STANDARD_GRAVITY_M_PER_S2 = 9.80665 m/s^2 (math.ts), the exact value motion.axis.gravity's own registry constant default already supplied everywhere this module used it. Behavior-neutral: every existing reference example above (both Oriental Motor worked examples, the Omron independent benchmark) re-passes unchanged under 0.2.0 -- that unchanged pass is the regression proof, not a new derivation. (2) inertia_ratio_maximum now resolves to motor_sizing.direct_drive_conveyor.inertia_ratio_recommended_maximum (registry 1.15.0), a founder-directed default of 10:1 -- NOT a manufacturer-sourced value. The check's own exceeded-case status changed from 'fail' to 'warning' to match: exceeding a recommended (not required) default is advisory, never blocking. Both changes per docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md.",
   ],
 };
