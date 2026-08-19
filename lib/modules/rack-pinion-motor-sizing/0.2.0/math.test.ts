@@ -86,7 +86,6 @@ describe("resolveDriveForce", () => {
     const { forceN } = resolveDriveForce({
       externalForceN: 10,
       totalMovingMassKg: 50,
-      gravityMps2: G,
       inclineAngleRad: 0,
       frictionCoefficient: 0.15,
     });
@@ -97,7 +96,6 @@ describe("resolveDriveForce", () => {
     const { forceN } = resolveDriveForce({
       externalForceN: 10,
       totalMovingMassKg: 50,
-      gravityMps2: G,
       inclineAngleRad: Math.PI / 2,
       frictionCoefficient: 0.15,
     });
@@ -110,7 +108,6 @@ describe("resolveDriveForce", () => {
     const { forceN } = resolveDriveForce({
       externalForceN: 0,
       totalMovingMassKg: 20,
-      gravityMps2: G,
       inclineAngleRad: theta,
       frictionCoefficient: 0.1,
     });
@@ -119,12 +116,11 @@ describe("resolveDriveForce", () => {
     expect(forceN).toBeCloseTo(expected, 9);
   });
 
-  it("rejects a negative total moving mass or non-positive gravity", () => {
+  it("rejects a negative total moving mass", () => {
     expect(() =>
       resolveDriveForce({
         externalForceN: 0,
         totalMovingMassKg: -1,
-        gravityMps2: G,
         inclineAngleRad: 0,
         frictionCoefficient: 0.1,
       }),
@@ -277,7 +273,6 @@ describe("end-to-end: Andantex USA, Inc.'s own worked-procedure figures", () => 
     const { forceN } = resolveDriveForce({
       externalForceN: F,
       totalMovingMassKg: M,
-      gravityMps2: G,
       inclineAngleRad: 0,
       frictionCoefficient: mu,
     });
