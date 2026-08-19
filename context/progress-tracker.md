@@ -2069,6 +2069,29 @@ this: `ball-screw-motor-sizing`, `direct-drive-conveyor-motor-sizing`,
 `0.2.0`, and `belt-pulley-drive-motor-sizing` (already at `0.2.0`) to
 `0.3.0` -- not yet started.
 
+**`ball-screw-motor-sizing@0.2.0` shipped 2026-08-19** — the first of the
+five Motor Sizing module-version bumps the shared-infrastructure plan
+above named as its own follow-on work
+(`docs/superpowers/plans/2026-08-19-ball-screw-motor-sizing-0.2.0.md`).
+Two changes, neither touching the underlying physics: gravity is no
+longer an editable input (`math.ts` hardcodes `9.80665 m/s^2`, the exact
+value the removed port's own registry default already supplied), and
+`inertia_ratio_maximum` now resolves to the new founder-directed
+recommended default of `10` (`motor_sizing.ball_screw.
+inertia_ratio_recommended_maximum`, registry `1.15.0`) rather than a
+required no-default value, with the check's own exceeded-case status
+downgraded from `fail` to `warning` to match. Every `0.1.0` reference
+example (Omron, THK horizontal, THK vertical) re-passes unchanged under
+`0.2.0` — the regression proof the gravity hardcode is behavior-neutral.
+`0.1.0` stays released, registered, and untouched
+(`validation/ball-screw-motor-sizing/0.1.0.md`); `0.2.0`'s own addendum
+record is `validation/ball-screw-motor-sizing/0.2.0.md`. Four more
+follow-on plans remain, not yet started:
+`direct-drive-conveyor-motor-sizing` and `rack-pinion-motor-sizing` and
+`index-table-motor-sizing` each `0.1.0` -> `0.2.0`, and
+`belt-pulley-drive-motor-sizing` `0.2.0` -> `0.3.0` (the only one of the
+five also wiring `disabledWhen`).
+
 **A real, non-blocking finding from this plan's own Task 13 review, not
 fixed here:** `belt-pulley-drive-motor-sizing@0.2.0` is now visible in the
 real "Add module instance" UI picker alongside `0.1.0`, with zero visual
