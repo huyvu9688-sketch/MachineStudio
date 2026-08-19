@@ -1,8 +1,11 @@
 // Pure, deterministic compute function for belt-pulley-drive-motor-sizing
-// 0.2.0. Branches on motion_mode to resolve the repeating trapezoidal
-// motion cycle (velocity-first or distance-first), then computes
-// everything 0.1.0 already computes plus deceleration_torque and
-// effective_torque -- see
+// 0.3.0 (carried over unchanged from 0.2.0, except the removed gravity
+// lookup/guard/pass-through -- see
+// docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md).
+// Branches on motion_mode to resolve the repeating trapezoidal motion
+// cycle (velocity-first or distance-first), then computes everything
+// 0.1.0 already computes plus deceleration_torque and effective_torque --
+// see
 // docs/superpowers/specs/2026-08-13-belt-pulley-drive-motor-sizing-0.2.0-design.md.
 
 import {

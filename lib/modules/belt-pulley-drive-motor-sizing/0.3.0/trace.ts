@@ -1,9 +1,11 @@
-// Calculation trace for belt-pulley-drive-motor-sizing 0.2.0. Extends
-// 0.1.0's own trace contract shape with a motion-profile-derivation step
-// and an effective-(RMS)-torque step; the inertia and drive-force/
-// load-torque steps are unchanged. Cites
+// Calculation trace for belt-pulley-drive-motor-sizing 0.3.0 (carried over
+// unchanged from 0.2.0, except the removed gravity trace row -- see
+// docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md).
+// Extends 0.1.0's own trace contract shape with a motion-profile-
+// derivation step and an effective-(RMS)-torque step; the inertia and
+// drive-force/load-torque steps are otherwise unchanged. Cites
 // jp.oriental_motor.general_catalog_motor_fan_sizing,
-// us.automationdirect.sureservo_selection_appendix, and (new in 0.2.0)
+// us.automationdirect.sureservo_selection_appendix, and (added in 0.2.0)
 // jp.oriental_motor.motor_sizing_calculations.
 
 import { asSourceRevisionId } from "@/lib/standards";

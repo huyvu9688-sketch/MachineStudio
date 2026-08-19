@@ -1,6 +1,9 @@
 /**
- * Pure SI-number kernel for belt-pulley-drive-motor-sizing 0.2.0. Adds a
- * native repeating trapezoidal motion cycle (resolveMotionFromVelocity /
+ * Pure SI-number kernel for belt-pulley-drive-motor-sizing 0.3.0 (carried
+ * over unchanged from 0.2.0, except gravity is now hardcoded --
+ * STANDARD_GRAVITY_M_PER_S2 below -- rather than an input; see
+ * docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md).
+ * Adds a native repeating trapezoidal motion cycle (resolveMotionFromVelocity /
  * resolveMotionFromDistance) and effective (RMS) torque
  * (resolveEffectiveTorque) on top of everything 0.1.0 already computes --
  * see context/modules/belt-pulley-drive-motor-sizing/stage-2-contract.md
