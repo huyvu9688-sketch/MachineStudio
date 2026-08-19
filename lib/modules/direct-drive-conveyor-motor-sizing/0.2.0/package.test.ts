@@ -55,7 +55,7 @@ function zeroMassInput(): RawInput {
 // Update this value in the same commit as a deliberate change to this
 // directory's .ts files; an unreviewed change leaves it stale and the
 // check below fails. Placeholder until the real hash is computed.
-const EXPECTED_SOURCE_HASH = "PLACEHOLDER_UNTIL_HASH_COMPUTED";
+const EXPECTED_SOURCE_HASH = "3f866c41e1748957";
 
 describe("direct-drive-conveyor-motor-sizing 0.2.0 module conformance", () => {
   const report = runModuleConformance(directDriveConveyorMotorSizingModule, {

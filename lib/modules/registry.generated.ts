@@ -11,6 +11,7 @@ import mod_belt_pulley_drive_motor_sizing_0_1_0 from "./belt-pulley-drive-motor-
 import mod_belt_pulley_drive_motor_sizing_0_2_0 from "./belt-pulley-drive-motor-sizing/0.2.0";
 import mod_coupling_0_1_0 from "./coupling/0.1.0";
 import mod_direct_drive_conveyor_motor_sizing_0_1_0 from "./direct-drive-conveyor-motor-sizing/0.1.0";
+import mod_direct_drive_conveyor_motor_sizing_0_2_0 from "./direct-drive-conveyor-motor-sizing/0.2.0";
 import mod_drive_train_0_1_0 from "./drive-train/0.1.0";
 import mod_example_relay_0_1_0 from "./example-relay/0.1.0";
 import mod_example_scaffold_0_1_0 from "./example-scaffold/0.1.0";
@@ -33,6 +34,8 @@ export const MODULE_REGISTRY: Readonly<Record<string, ModulePackage>> = {
   "coupling@0.1.0": mod_coupling_0_1_0,
   "direct-drive-conveyor-motor-sizing@0.1.0":
     mod_direct_drive_conveyor_motor_sizing_0_1_0,
+  "direct-drive-conveyor-motor-sizing@0.2.0":
+    mod_direct_drive_conveyor_motor_sizing_0_2_0,
   "drive-train@0.1.0": mod_drive_train_0_1_0,
   "example-relay@0.1.0": mod_example_relay_0_1_0,
   "example-scaffold@0.1.0": mod_example_scaffold_0_1_0,
