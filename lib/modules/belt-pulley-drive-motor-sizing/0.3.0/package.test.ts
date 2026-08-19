@@ -6,6 +6,8 @@ import {
 } from "@/lib/engine";
 import { readModuleSources } from "../../test-support";
 import { beltPulleyDriveMotorSizingModule } from "./index";
+import { ports } from "./manifest";
+import { uiSchema } from "./ui";
 import { asQuantity, type RawInput } from "./test-helpers";
 
 /**
@@ -82,11 +84,14 @@ function verticalInput(): RawInput {
 }
 
 // Pinned by `npm run module:source-hash -- belt-pulley-drive-motor-sizing
-// 0.2.0` -- see lib/engine/module-sdk/conformance.ts's
-// "source-immutability" check.
-const EXPECTED_SOURCE_HASH = "9d3676ca93508828";
+// 0.3.0` -- see lib/engine/module-sdk/conformance.ts's
+// "source-immutability" check. Update this value in the same commit as a
+// deliberate change to this directory's .ts files; an unreviewed change
+// leaves it stale and the check below fails. Placeholder until Task 12
+// computes the real hash.
+const EXPECTED_SOURCE_HASH = "PLACEHOLDER_UNTIL_TASK_12";
 
-describe("belt-pulley-drive-motor-sizing 0.2.0 module conformance", () => {
+describe("belt-pulley-drive-motor-sizing 0.3.0 module conformance", () => {
   const report = runModuleConformance(beltPulleyDriveMotorSizingModule, {
     sampleInputs: [baselineInput(), distanceModeInput(), verticalInput()],
     sources: readModuleSources(import.meta.dirname),
@@ -119,7 +124,7 @@ describe("belt-pulley-drive-motor-sizing 0.2.0 module conformance", () => {
   });
 });
 
-describe("belt-pulley-drive-motor-sizing 0.2.0 executeModule", () => {
+describe("belt-pulley-drive-motor-sizing 0.3.0 executeModule", () => {
   it("computes a baseline velocity-mode scenario without error", () => {
     const result = executeModule(
       beltPulleyDriveMotorSizingModule,
@@ -137,6 +142,42 @@ describe("belt-pulley-drive-motor-sizing 0.2.0 executeModule", () => {
     );
     const inertiaCheck = result.checks.find((c) => c.id === "inertia-ratio");
     expect(inertiaCheck?.status).toBe("pass");
+  });
+
+  it("reports a warning (not a failure) on the inertia-ratio check when the load is too large for the motor", () => {
+    const input = baselineInput();
+    input.values.motor_rotor_inertia = makeQuantity(1e-8, "kg*m^2");
+    const result = executeModule(
+      beltPulleyDriveMotorSizingModule,
+      input,
+    );
+    const inertiaCheck = result.checks.find((c) => c.id === "inertia-ratio");
+    expect(inertiaCheck?.status).toBe("warning");
+  });
+
+  it("resolves inertia_ratio_maximum to the recommended default of 10 when unset, and remains overridable", () => {
+    const defaultInput = baselineInput();
+    delete (defaultInput.values as Record<string, unknown>)
+      .inertia_ratio_maximum;
+    const defaultResult = executeModule(
+      beltPulleyDriveMotorSizingModule,
+      defaultInput,
+    );
+    const defaultCheck = defaultResult.checks.find(
+      (c) => c.id === "inertia-ratio",
+    );
+    expect(asQuantity(defaultCheck!.allowable!).value).toBeCloseTo(10, 9);
+
+    const overriddenInput = baselineInput();
+    overriddenInput.values.inertia_ratio_maximum = makeQuantity(5, "ratio");
+    const overriddenResult = executeModule(
+      beltPulleyDriveMotorSizingModule,
+      overriddenInput,
+    );
+    const overriddenCheck = overriddenResult.checks.find(
+      (c) => c.id === "inertia-ratio",
+    );
+    expect(asQuantity(overriddenCheck!.allowable!).value).toBeCloseTo(5, 9);
   });
 
   it("velocity mode derives travel_distance and cycle_time matching the closed form", () => {
@@ -243,5 +284,53 @@ describe("belt-pulley-drive-motor-sizing 0.2.0 executeModule", () => {
     expect(roundTripped.effective_torque.unit).toBe(
       asQuantity(result.outputs.effective_torque).unit,
     );
+  });
+});
+
+describe("belt-pulley-drive-motor-sizing 0.3.0 disabledWhen wiring", () => {
+  it("disables target_velocity and constant_velocity_time when motion_mode is distance, and travel_distance/cycle_time when motion_mode is velocity", () => {
+    const motionGroup = uiSchema.groups.find((g) => g.id === "motion");
+    expect(motionGroup).toBeDefined();
+
+    const byKey = new Map(
+      motionGroup!.fields.map((f) => [f.portKey, f.disabledWhen]),
+    );
+
+    expect(byKey.get("target_velocity")).toEqual({
+      portKey: "motion_mode",
+      equals: "distance",
+    });
+    expect(byKey.get("constant_velocity_time")).toEqual({
+      portKey: "motion_mode",
+      equals: "distance",
+    });
+    expect(byKey.get("travel_distance")).toEqual({
+      portKey: "motion_mode",
+      equals: "velocity",
+    });
+    expect(byKey.get("cycle_time")).toEqual({
+      portKey: "motion_mode",
+      equals: "velocity",
+    });
+    // motion_mode itself, and the two fixed-duration phase times, carry no
+    // disabledWhen -- they're real inputs in both modes.
+    expect(byKey.get("motion_mode")).toBeUndefined();
+    expect(byKey.get("acceleration_time")).toBeUndefined();
+    expect(byKey.get("deceleration_time")).toBeUndefined();
+    expect(byKey.get("dwell_time")).toBeUndefined();
+  });
+
+  it("every disabledWhen.portKey references a declared enum input port (package-validation already asserts this generically; confirmed directly here too)", () => {
+    const motionGroup = uiSchema.groups.find((g) => g.id === "motion");
+    const enumPortKeys = new Set(
+      ports.inputs
+        .filter((p) => p.key === "motion_mode")
+        .map((p) => p.key),
+    );
+    for (const field of motionGroup!.fields) {
+      if (field.disabledWhen !== undefined) {
+        expect(enumPortKeys.has(field.disabledWhen.portKey)).toBe(true);
+      }
+    }
   });
 });
