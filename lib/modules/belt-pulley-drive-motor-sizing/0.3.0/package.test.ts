@@ -89,7 +89,7 @@ function verticalInput(): RawInput {
 // deliberate change to this directory's .ts files; an unreviewed change
 // leaves it stale and the check below fails. Placeholder until Task 12
 // computes the real hash.
-const EXPECTED_SOURCE_HASH = "PLACEHOLDER_UNTIL_TASK_12";
+const EXPECTED_SOURCE_HASH = "ac92b28ec00c7114";
 
 describe("belt-pulley-drive-motor-sizing 0.3.0 module conformance", () => {
   const report = runModuleConformance(beltPulleyDriveMotorSizingModule, {

@@ -5,7 +5,7 @@ import type { ValidationRecord } from "@/lib/engine";
 
 export const validation: ValidationRecord = {
   moduleId: "belt-pulley-drive-motor-sizing",
-  moduleVersion: "0.2.0",
+  moduleVersion: "0.3.0",
   methods: [
     "Oriental Motor Co., Ltd.'s own combined wire-belt/rack-and-pinion sizing method (moment of inertia of two pulleys plus a translating belt, orientation-aware drive force, load torque, operating speed), unchanged from 0.1.0",
     "A native repeating trapezoidal motion cycle (accelerate/run/decelerate/dwell), velocity-first or distance-first, and Oriental Motor's own generic per-phase effective (RMS) torque formula for continuous/thermal motor rating (jp.oriental_motor.motor_sizing_calculations, pp. 5-6) -- new in 0.2.0",
@@ -60,5 +60,6 @@ export const validation: ValidationRecord = {
   deviations: [
     "AutomationDirect's own worked example has a confirmed arithmetic slip, disclosed and not reproduced (carried over unchanged from 0.1.0): its own friction force is computed as 0.05 x 100 = 5.0 lb though the stated table+workpiece weight is 90 lb (correct: 4.5 lb). This module's own kernel computes friction from the actual supplied mass, so it does not reproduce the source's own printed T_run/T_motor totals that follow from it.",
     "The two primary sources place mechanical efficiency on opposite sides of the calculation (carried over unchanged from 0.1.0): Oriental Motor divides load torque by eta; AutomationDirect divides the carriage's own inertia by e. This module follows Oriental Motor's own convention, matching every already-released Motor Sizing Tool sibling.",
+    "0.3.0 addendum, not a re-validation of the underlying physics (unchanged): gravity is now a hardcoded 9.80665 m/s^2 constant (math.ts) rather than an editable input -- behavior-neutral, since the removed motion.axis.gravity port's own registry default was already exactly this value and no reference example or benchmark in this module's own validation record ever overrode it. inertia_ratio_maximum now resolves to motor_sizing.belt_pulley.inertia_ratio_recommended_maximum (registry 1.15.0), a founder-directed default of 10:1 -- NOT a manufacturer-sourced value; neither of this module's own two primary sources (Oriental Motor, AutomationDirect) states a recommended inertia-ratio figure for a belt-and-pulley drive specifically. The check's own exceeded-case status changed from 'fail' to 'warning' to match. ui.ts additionally wires the new disabledWhen UI capability on the four motion-mode-dependent fields -- a presentation hint only, verified structurally in package.test.ts and generically (including against this module's own belt_pulley_motion_mode enum) in lib/application/calculations/resolve-field-disabled.test.ts; input-schema.ts's own required/optional enforcement per mode is unchanged. Per docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md.",
   ],
 };

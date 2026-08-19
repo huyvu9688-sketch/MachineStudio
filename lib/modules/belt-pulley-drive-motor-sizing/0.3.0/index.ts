@@ -1,11 +1,17 @@
-// The belt-pulley-drive-motor-sizing 0.2.0 package (Stage 6 release).
+// The belt-pulley-drive-motor-sizing 0.3.0 package -- the consistency-pass
+// follow-on to 0.2.0, and the last of the five Motor Sizing Tool
+// module-version bumps
+// (docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md).
 // Assembles the manifest, ports, compute, UI, report, and validation
 // record into a single `ModulePackage` and seals it (the content hash is
 // stamped here).
 //
-// Named `index.ts` so `npm run registry:generate` discovers this package
-// -- 0.1.0 stays registered, edited, and immutable exactly as released
-// (CLAUDE.md); this is the first module-version bump in this project.
+// Named `index.ts` so `npm run registry:generate`
+// (scripts/generate-registry.mts) discovers this package. Released and
+// registered 2026-08-19 (lib/modules/registry.generated.ts,
+// validation/belt-pulley-drive-motor-sizing/0.3.0.md). 0.1.0 and 0.2.0
+// stay released, registered, and untouched (their own index.ts files are
+// unaffected by this one).
 
 import { sealModulePackage, type ModulePackage } from "@/lib/engine";
 import { manifest, ports } from "./manifest";

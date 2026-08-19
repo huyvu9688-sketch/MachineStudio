@@ -9,6 +9,7 @@ import mod_ball_screw_motor_sizing_0_1_0 from "./ball-screw-motor-sizing/0.1.0";
 import mod_ball_screw_motor_sizing_0_2_0 from "./ball-screw-motor-sizing/0.2.0";
 import mod_belt_pulley_drive_motor_sizing_0_1_0 from "./belt-pulley-drive-motor-sizing/0.1.0";
 import mod_belt_pulley_drive_motor_sizing_0_2_0 from "./belt-pulley-drive-motor-sizing/0.2.0";
+import mod_belt_pulley_drive_motor_sizing_0_3_0 from "./belt-pulley-drive-motor-sizing/0.3.0";
 import mod_coupling_0_1_0 from "./coupling/0.1.0";
 import mod_direct_drive_conveyor_motor_sizing_0_1_0 from "./direct-drive-conveyor-motor-sizing/0.1.0";
 import mod_direct_drive_conveyor_motor_sizing_0_2_0 from "./direct-drive-conveyor-motor-sizing/0.2.0";
@@ -31,6 +32,7 @@ export const MODULE_REGISTRY: Readonly<Record<string, ModulePackage>> = {
   "ball-screw-motor-sizing@0.2.0": mod_ball_screw_motor_sizing_0_2_0,
   "belt-pulley-drive-motor-sizing@0.1.0": mod_belt_pulley_drive_motor_sizing_0_1_0,
   "belt-pulley-drive-motor-sizing@0.2.0": mod_belt_pulley_drive_motor_sizing_0_2_0,
+  "belt-pulley-drive-motor-sizing@0.3.0": mod_belt_pulley_drive_motor_sizing_0_3_0,
   "coupling@0.1.0": mod_coupling_0_1_0,
   "direct-drive-conveyor-motor-sizing@0.1.0": mod_direct_drive_conveyor_motor_sizing_0_1_0,
   "direct-drive-conveyor-motor-sizing@0.2.0": mod_direct_drive_conveyor_motor_sizing_0_2_0,
