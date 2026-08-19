@@ -102,7 +102,7 @@ const KNOWN_COMPATIBLE_PAIRS: ReadonlySet<string> = new Set([
   "axis-load-cases.total_moving_mass->total_moving_mass",
 ]);
 
-describe("ball-screw-motor-sizing 0.1.0 cross-module links: exhaustively confirmed absent, except one documented pair", () => {
+describe("ball-screw-motor-sizing 0.2.0 cross-module links: exhaustively confirmed absent, except one documented pair", () => {
   for (const upstream of UPSTREAM_MODULES) {
     it(`no ${upstream.label} 0.1.0 output is link-compatible with any ball-screw-motor-sizing input, other than the one documented exception`, () => {
       const sources = upstream.outputs.map((port) =>
@@ -144,7 +144,7 @@ describe("ball-screw-motor-sizing 0.1.0 cross-module links: exhaustively confirm
   });
 });
 
-describe("ball-screw-motor-sizing 0.1.0 workflow role: deliberately none", () => {
+describe("ball-screw-motor-sizing 0.2.0 workflow role: deliberately none", () => {
   it("declares no workflowRoles — this module is not part of the linear-axis@1 workflow (ADR-0011 hides the seven discipline categories from the default picker but does not add this family to that workflow)", () => {
     expect(manifest.workflowRoles).toEqual([]);
   });
