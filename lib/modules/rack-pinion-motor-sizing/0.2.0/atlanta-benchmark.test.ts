@@ -37,9 +37,16 @@ import { rackPinionMotorSizingModule } from "./index";
 import { asQuantity, type RawInput } from "./test-helpers";
 
 // Atlanta's own printed examples use g=9.81 m/s^2 (not this project's own
-// registry default of 9.80665) -- overridden explicitly here so the
-// comparison is exact, not diluted by a standard-gravity convention
-// difference neither worked example itself makes.
+// standard-gravity constant, 9.80665). Still used below to compute
+// expectedFuN via axis-load-cases@0.1.0's own resolveAtlantaHorizontalForce/
+// resolveAtlantaVerticalForce (an unrelated module's own kernel helper,
+// unaffected by this module's own 0.2.0 changes). 0.1.0 could override this
+// module's own gravity port to 9.81 as well, making the executeModule
+// comparison exact; 0.2.0 hardcodes STANDARD_GRAVITY_M_PER_S2 = 9.80665 in
+// math.ts with no override possible, so the two tolerances below are
+// loosened from 0.1.0's own 0.01% to absorb the real (small) SI-vs-Atlanta
+// gravity-convention gap this introduces -- see the two "matches Fu*D/2"
+// tests below for the measured effect.
 const ATLANTA_GRAVITY_MPS2 = 9.81;
 // Arbitrary pinion pitch diameter: Atlanta's own Fu is independent of
 // pinion size (a pure tangential force), and this module's own
@@ -54,7 +61,6 @@ const NEGLIGIBLE_PINION_MASS_KG = 0.001;
 function baseInput(): RawInput {
   return {
     values: {
-      gravity: makeQuantity(ATLANTA_GRAVITY_MPS2, "m/s^2"),
       pinion_pitch_diameter: makeQuantity(PINION_PITCH_DIAMETER_M, "m"),
       pinion_mass: makeQuantity(NEGLIGIBLE_PINION_MASS_KG, "kg"),
       gear_ratio: makeQuantity(1, "ratio"),
@@ -67,7 +73,7 @@ function baseInput(): RawInput {
   };
 }
 
-describe("rack-pinion-motor-sizing 0.1.0 vs. Atlanta Drive Systems' own 'travelling operation' worked example (p. C-54), through executeModule", () => {
+describe("rack-pinion-motor-sizing 0.2.0 vs. Atlanta Drive Systems' own 'travelling operation' worked example (p. C-54), through executeModule", () => {
   const movingMassKg = 820;
   const velocityMps = 2;
   const accelerationTimeS = 1;
@@ -85,7 +91,7 @@ describe("rack-pinion-motor-sizing 0.1.0 vs. Atlanta Drive Systems' own 'travell
     expect(expectedFuN).toBeCloseTo(2444.42, 2);
   });
 
-  it("momentary_torque (load_torque+acceleration_torque) matches Fu*D/2 within 0.01%", () => {
+  it("momentary_torque (load_torque+acceleration_torque) matches Fu*D/2 within 0.03% -- 0.2.0's own hardcoded g=9.80665 vs. Atlanta's own g=9.81 convention (measured ~0.008%, well under 0.1.0's own tighter 0.01% bound, which relied on an override no longer possible)", () => {
     const input = baseInput();
     input.values.orientation = {
       v: 1,
@@ -108,11 +114,11 @@ describe("rack-pinion-motor-sizing 0.1.0 vs. Atlanta Drive Systems' own 'travell
     const expectedTorqueNm = (expectedFuN * PINION_PITCH_DIAMETER_M) / 2;
     const relativeDifference =
       Math.abs(momentaryTorqueNm - expectedTorqueNm) / expectedTorqueNm;
-    expect(relativeDifference).toBeLessThan(1e-4);
+    expect(relativeDifference).toBeLessThan(3e-4);
   });
 });
 
-describe("rack-pinion-motor-sizing 0.1.0 vs. Atlanta Drive Systems' own 'lifting operation' worked example (p. C-55), through executeModule", () => {
+describe("rack-pinion-motor-sizing 0.2.0 vs. Atlanta Drive Systems' own 'lifting operation' worked example (p. C-55), through executeModule", () => {
   const movingMassKg = 300;
   const velocityMps = 1.08;
   const accelerationTimeS = 0.27;
@@ -128,7 +134,7 @@ describe("rack-pinion-motor-sizing 0.1.0 vs. Atlanta Drive Systems' own 'lifting
     expect(expectedFuN).toBeCloseTo(4143, 0);
   });
 
-  it("momentary_torque matches Fu*D/2 within 0.01% -- friction_coefficient is immaterial in a pure vertical lift (cos(90deg)=0), matching Atlanta's own lifting formula having no friction term at all", () => {
+  it("momentary_torque matches Fu*D/2 within 0.03% -- friction_coefficient is immaterial in a pure vertical lift (cos(90deg)=0), matching Atlanta's own lifting formula having no friction term at all; the vertical case's weight term is 100% gravity-dependent, so 0.2.0's own hardcoded g=9.80665 vs. Atlanta's own g=9.81 shows up more here than in the horizontal case above (measured ~0.02%, well under 0.1.0's own tighter 0.01% bound, which relied on an override no longer possible)", () => {
     const input = baseInput();
     input.values.orientation = {
       v: 1,
@@ -148,6 +154,6 @@ describe("rack-pinion-motor-sizing 0.1.0 vs. Atlanta Drive Systems' own 'lifting
     const expectedTorqueNm = (expectedFuN * PINION_PITCH_DIAMETER_M) / 2;
     const relativeDifference =
       Math.abs(momentaryTorqueNm - expectedTorqueNm) / expectedTorqueNm;
-    expect(relativeDifference).toBeLessThan(1e-4);
+    expect(relativeDifference).toBeLessThan(3e-4);
   });
 });
