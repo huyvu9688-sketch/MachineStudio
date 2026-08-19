@@ -102,10 +102,11 @@ describe("resolveDriveForce / resolveLoadTorque", () => {
     const { forceN } = resolveDriveForce({
       externalForceN: 10,
       totalMovingMassKg: 50,
-      gravityMps2: G,
       inclineAngleRad: 0,
       frictionCoefficient: 0.15,
     });
+    // G (local, 9.80665) matches math.ts's own STANDARD_GRAVITY_M_PER_S2
+    // exactly -- no assertion value changes, only the removed field above.
     expect(forceN).toBeCloseTo(10 + 50 * G * 0.15, 9);
 
     const { loadTorqueNm } = resolveLoadTorque({
