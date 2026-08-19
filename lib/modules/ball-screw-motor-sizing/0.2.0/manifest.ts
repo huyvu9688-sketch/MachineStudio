@@ -12,7 +12,15 @@
 // (forward/return) is encoded in the port key itself, not the registry's
 // `LoadCaseCategory` axis (stage-2-contract.md "Decisions" item 2).
 //
-// Registered 2026-08-13 as `ball-screw-motor-sizing@0.1.0`
+// 0.2.0: consistency-pass follow-on
+// (docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md)
+// -- drops the `gravity` port (hardcoded 9.80665 m/s^2 in ./math.ts
+// instead) and repoints `inertia_ratio_maximum` at the new
+// `motor_sizing.ball_screw.inertia_ratio_recommended_maximum` parameter
+// (registry 1.15.0), which carries a founder-directed default of 10.
+// 0.1.0 stays released, registered, and untouched.
+//
+// Registered 2026-08-19 as `ball-screw-motor-sizing@0.2.0`
 // (lib/modules/registry.generated.ts) -- imported by ./index.ts, which
 // `npm run registry:generate` discovers.
 
@@ -27,11 +35,11 @@ import { asSourceRevisionId } from "@/lib/standards";
 
 export const manifest: Omit<ModuleManifest, "contentHash"> = {
   id: "ball-screw-motor-sizing",
-  version: "0.1.0",
+  version: "0.2.0",
   sdkRange: { min: "1.0.0" },
-  // Draft-authored against registry 1.9.0. Keep this literal — never import
-  // the mutable current-version constant (context/ai-workflow-rules.md).
-  parameterRegistryVersion: "1.9.0",
+  // Authored against registry 1.15.0. Keep this literal — never import the
+  // mutable current-version constant (context/ai-workflow-rules.md).
+  parameterRegistryVersion: "1.15.0",
   category: "motor-sizing.ball-screw",
   tags: ["motor-sizing", "ball-screw", "servo-motor"],
   // No linear-axis@1 role: this module is not part of that workflow
@@ -60,13 +68,6 @@ export const ports: ModulePorts = {
       key: "incline_angle",
       parameterId: asParameterId("motion.axis.incline_angle"),
       required: true,
-    },
-    {
-      key: "gravity",
-      parameterId: asParameterId("motion.axis.gravity"),
-      // Optional: the registry's own constant default (9.80665 m/s^2)
-      // auto-fills an absent value.
-      required: false,
     },
     {
       key: "friction_coefficient",
@@ -201,8 +202,14 @@ export const ports: ModulePorts = {
     },
     {
       key: "inertia_ratio_maximum",
+      // 0.2.0: repointed at the new recommended-maximum parameter (registry
+      // 1.15.0) -- a founder-directed default of 10, still overridable. The
+      // port key stays "inertia_ratio_maximum" for compute/UI stability;
+      // only the parameterId it maps to changes. 0.1.0's own port still
+      // points at the original required-no-default
+      // motor_sizing.ball_screw.inertia_ratio_maximum, untouched.
       parameterId: asParameterId(
-        "motor_sizing.ball_screw.inertia_ratio_maximum",
+        "motor_sizing.ball_screw.inertia_ratio_recommended_maximum",
       ),
       required: true,
     },
