@@ -1,5 +1,30 @@
 # Index-Table Motor Sizing Module (`index-table-motor-sizing`)
 
+## 0.2.0 — Consistency-Pass Addendum (Recommended Inertia-Ratio Default)
+
+Follow-on to `0.1.0`, per
+`docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md`
+and `docs/superpowers/plans/2026-08-19-index-table-motor-sizing-0.2.0.md`.
+One change, not touching the underlying physics (every reference example
+below still passes unchanged): `inertia_ratio_maximum` now resolves to a
+founder-directed recommended default of 10:1 (`motor_sizing.index_table.
+inertia_ratio_recommended_maximum`, parameter registry `1.15.0`), editable,
+rather than `0.1.0`'s own required-no-default value. The inertia-ratio
+check's own exceeded-case status changed from `fail` to `warning` to
+match — exceeding a recommendation is advisory, never blocking.
+
+Unlike its four sibling Motor Sizing modules, `index-table-motor-sizing`
+has no `gravity` port to begin with — it is this project's only mechanism
+module with zero `motion.axis.*` reuse — so the design doc's own "Gravity"
+section does not apply here, and this is the only change in `0.2.0`.
+
+`0.1.0` stays released, registered, and byte-for-byte untouched
+(`lib/modules/index-table-motor-sizing/0.1.0/`) — an engineer who wants
+`0.2.0`'s behavior on an existing instance archives it and adds a fresh
+`0.2.0` instance, the same migration story every prior Motor Sizing
+`0.2.0` release already established. Full record:
+`validation/index-table-motor-sizing/0.2.0.md`.
+
 Milestone 6, Unit 6.6 — the fifth and last mechanism module in the Motor
 Sizing Tool family (`context/adr/0011-motor-sizing-tool-architecture.md`),
 after `ball-screw-motor-sizing@0.1.0`,
