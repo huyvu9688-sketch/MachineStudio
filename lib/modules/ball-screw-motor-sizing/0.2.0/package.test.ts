@@ -72,8 +72,8 @@ function verticalInput(): RawInput {
 // -- see lib/engine/module-sdk/conformance.ts's "source-immutability"
 // check. Update this value in the same commit as a deliberate change to
 // this directory's .ts files; an unreviewed change leaves it stale and the
-// check below fails. Placeholder until a later task computes the real hash.
-const EXPECTED_SOURCE_HASH = "PLACEHOLDER_UNTIL_TASK_12";
+// check below fails.
+const EXPECTED_SOURCE_HASH = "cff2416baa8505c9";
 
 describe("ball-screw-motor-sizing 0.2.0 module conformance", () => {
   const report = runModuleConformance(ballScrewMotorSizingModule, {

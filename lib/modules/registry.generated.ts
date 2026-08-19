@@ -6,6 +6,7 @@ import type { ModulePackage } from "@/lib/engine";
 import mod_axis_load_cases_0_1_0 from "./axis-load-cases/0.1.0";
 import mod_ball_screw_0_1_0 from "./ball-screw/0.1.0";
 import mod_ball_screw_motor_sizing_0_1_0 from "./ball-screw-motor-sizing/0.1.0";
+import mod_ball_screw_motor_sizing_0_2_0 from "./ball-screw-motor-sizing/0.2.0";
 import mod_belt_pulley_drive_motor_sizing_0_1_0 from "./belt-pulley-drive-motor-sizing/0.1.0";
 import mod_belt_pulley_drive_motor_sizing_0_2_0 from "./belt-pulley-drive-motor-sizing/0.2.0";
 import mod_coupling_0_1_0 from "./coupling/0.1.0";
@@ -24,6 +25,7 @@ export const MODULE_REGISTRY: Readonly<Record<string, ModulePackage>> = {
   "axis-load-cases@0.1.0": mod_axis_load_cases_0_1_0,
   "ball-screw@0.1.0": mod_ball_screw_0_1_0,
   "ball-screw-motor-sizing@0.1.0": mod_ball_screw_motor_sizing_0_1_0,
+  "ball-screw-motor-sizing@0.2.0": mod_ball_screw_motor_sizing_0_2_0,
   "belt-pulley-drive-motor-sizing@0.1.0":
     mod_belt_pulley_drive_motor_sizing_0_1_0,
   "belt-pulley-drive-motor-sizing@0.2.0":
