@@ -1,19 +1,23 @@
-// Manifest and ports for belt-pulley-drive-motor-sizing 0.2.0 -- the first
-// module-version bump in this project. Adds a native repeating
-// trapezoidal motion cycle (accelerate/run/decelerate/dwell), velocity-
-// first or distance-first input, and deceleration/effective (RMS) torque
-// outputs, on top of everything 0.1.0 already computes (inertia, drive
-// force, load torque, momentary/required torque) -- see
-// docs/superpowers/specs/2026-08-13-belt-pulley-drive-motor-sizing-0.2.0-design.md
-// and context/modules/belt-pulley-drive-motor-sizing/stage-2-contract.md
-// "0.2.0 Addendum". Self-contained: duplicates rather than imports 0.1.0's
-// own unchanged kernel functions (stage-2-contract.md "cross-version reuse
-// policy").
+// Manifest and ports for belt-pulley-drive-motor-sizing 0.3.0 -- the
+// consistency-pass follow-on to 0.2.0
+// (docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md),
+// and the only module in this project consuming the shared `disabledWhen`
+// UI capability. Three changes on top of everything 0.2.0 already computes:
+// the `gravity` port is dropped (hardcoded 9.80665 m/s^2 in ./math.ts
+// instead), `inertia_ratio_maximum` repoints at the new
+// `motor_sizing.belt_pulley.inertia_ratio_recommended_maximum` parameter
+// (registry 1.15.0, founder-directed default of 10), and `./ui.ts` wires
+// `disabledWhen` on the four motion-mode-dependent fields
+// (target_velocity/constant_velocity_time disable when motion_mode is
+// "distance"; travel_distance/cycle_time disable when motion_mode is
+// "velocity"). Self-contained: duplicates rather than imports 0.1.0's/
+// 0.2.0's own unchanged kernel functions (stage-2-contract.md
+// "cross-version reuse policy").
 //
-// Registered as `belt-pulley-drive-motor-sizing@0.2.0`
+// Registered 2026-08-19 as `belt-pulley-drive-motor-sizing@0.3.0`
 // (lib/modules/registry.generated.ts) -- imported by ./index.ts, which
-// `npm run registry:generate` discovers. 0.1.0 stays registered, edited,
-// and immutable exactly as released (CLAUDE.md).
+// `npm run registry:generate` discovers. 0.1.0 and 0.2.0 stay registered,
+// edited, and immutable exactly as released (CLAUDE.md).
 
 import {
   asParameterId,
@@ -26,13 +30,11 @@ import { asSourceRevisionId } from "@/lib/standards";
 
 export const manifest: Omit<ModuleManifest, "contentHash"> = {
   id: "belt-pulley-drive-motor-sizing",
-  version: "0.2.0",
+  version: "0.3.0",
   sdkRange: { min: "1.0.0" },
-  // Draft-authored against registry 1.14.0, the version that released this
-  // module's own 8 new motor_sizing.belt_pulley.* parameters
-  // (stage-2-contract.md "0.2.0 Addendum"). Keep this literal -- never
-  // import the mutable current-version constant (context/ai-workflow-rules.md).
-  parameterRegistryVersion: "1.14.0",
+  // Authored against registry 1.15.0. Keep this literal -- never import
+  // the mutable current-version constant (context/ai-workflow-rules.md).
+  parameterRegistryVersion: "1.15.0",
   category: "motor-sizing.belt-pulley-drive",
   tags: ["motor-sizing", "belt-drive", "pulley", "servo-motor", "duty-cycle"],
   workflowRoles: [],
@@ -61,11 +63,6 @@ export const ports: ModulePorts = {
       key: "incline_angle",
       parameterId: asParameterId("motion.axis.incline_angle"),
       required: true,
-    },
-    {
-      key: "gravity",
-      parameterId: asParameterId("motion.axis.gravity"),
-      required: false,
     },
     {
       key: "friction_coefficient",
@@ -189,8 +186,14 @@ export const ports: ModulePorts = {
     },
     {
       key: "inertia_ratio_maximum",
+      // 0.3.0: repointed at the new recommended-maximum parameter (registry
+      // 1.15.0) -- a founder-directed default of 10, still overridable. The
+      // port key stays "inertia_ratio_maximum" for compute/UI stability;
+      // only the parameterId it maps to changes. 0.1.0's and 0.2.0's own
+      // ports still point at the original required-no-default
+      // motor_sizing.belt_pulley.inertia_ratio_maximum, untouched.
       parameterId: asParameterId(
-        "motor_sizing.belt_pulley.inertia_ratio_maximum",
+        "motor_sizing.belt_pulley.inertia_ratio_recommended_maximum",
       ),
       required: true,
     },
