@@ -9,7 +9,17 @@
 // "The central finding"). No calculation-level dependency on any other
 // module (ADR-0011 "Reuse policy").
 //
-// Registered as `index-table-motor-sizing@0.1.0`
+// 0.2.0: consistency-pass follow-on
+// (docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md)
+// -- repoints inertia_ratio_maximum at the new
+// motor_sizing.index_table.inertia_ratio_recommended_maximum parameter
+// (registry 1.15.0), which carries a founder-directed default of 10. This
+// is the ONLY change: unlike its four siblings, this module has no
+// gravity port to begin with (zero motion.axis.* reuse, confirmed in the
+// design doc's own "Gravity" section), so there is nothing to drop there.
+// 0.1.0 stays released, registered, and untouched.
+//
+// Registered 2026-08-19 as `index-table-motor-sizing@0.2.0`
 // (lib/modules/registry.generated.ts) -- imported by ./index.ts, which
 // `npm run registry:generate` discovers.
 
@@ -24,13 +34,11 @@ import { asSourceRevisionId } from "@/lib/standards";
 
 export const manifest: Omit<ModuleManifest, "contentHash"> = {
   id: "index-table-motor-sizing",
-  version: "0.1.0",
+  version: "0.2.0",
   sdkRange: { min: "1.0.0" },
-  // Draft-authored against registry 1.13.0, the version that released this
-  // module's own motor_sizing.index_table.* group (stage-2-contract.md).
-  // Keep this literal -- never import the mutable current-version constant
-  // (context/ai-workflow-rules.md).
-  parameterRegistryVersion: "1.13.0",
+  // Authored against registry 1.15.0. Keep this literal -- never import
+  // the mutable current-version constant (context/ai-workflow-rules.md).
+  parameterRegistryVersion: "1.15.0",
   category: "motor-sizing.index-table",
   tags: ["motor-sizing", "index-table", "rotary", "servo-motor"],
   // No linear-axis@1 role: this module is not part of that workflow, the
@@ -123,8 +131,14 @@ export const ports: ModulePorts = {
     },
     {
       key: "inertia_ratio_maximum",
+      // 0.2.0: repointed at the new recommended-maximum parameter (registry
+      // 1.15.0) -- a founder-directed default of 10, still overridable. The
+      // port key stays "inertia_ratio_maximum" for compute/UI stability;
+      // only the parameterId it maps to changes. 0.1.0's own port still
+      // points at the original required-no-default
+      // motor_sizing.index_table.inertia_ratio_maximum, untouched.
       parameterId: asParameterId(
-        "motor_sizing.index_table.inertia_ratio_maximum",
+        "motor_sizing.index_table.inertia_ratio_recommended_maximum",
       ),
       required: true,
     },
