@@ -68,14 +68,14 @@ function verticalInput(): RawInput {
   return input;
 }
 
-// Pinned by `npm run module:source-hash -- ball-screw-motor-sizing 0.1.0`
+// Pinned by `npm run module:source-hash -- ball-screw-motor-sizing 0.2.0`
 // -- see lib/engine/module-sdk/conformance.ts's "source-immutability"
 // check. Update this value in the same commit as a deliberate change to
 // this directory's .ts files; an unreviewed change leaves it stale and the
-// check below fails.
-const EXPECTED_SOURCE_HASH = "18c8f078d2b91c8a";
+// check below fails. Placeholder until a later task computes the real hash.
+const EXPECTED_SOURCE_HASH = "PLACEHOLDER_UNTIL_TASK_12";
 
-describe("ball-screw-motor-sizing 0.1.0 module conformance", () => {
+describe("ball-screw-motor-sizing 0.2.0 module conformance", () => {
   const report = runModuleConformance(ballScrewMotorSizingModule, {
     sampleInputs: [baselineInput(), roundTripInput(), verticalInput()],
     sources: readModuleSources(import.meta.dirname),
@@ -108,7 +108,7 @@ describe("ball-screw-motor-sizing 0.1.0 module conformance", () => {
   });
 });
 
-describe("ball-screw-motor-sizing 0.1.0 executeModule", () => {
+describe("ball-screw-motor-sizing 0.2.0 executeModule", () => {
   it("computes a horizontal, forward-only baseline without error", () => {
     const result = executeModule(ballScrewMotorSizingModule, baselineInput());
     expect(asQuantity(result.outputs.momentary_torque).value).toBeGreaterThan(
@@ -159,12 +159,36 @@ describe("ball-screw-motor-sizing 0.1.0 executeModule", () => {
     expect(() => executeModule(ballScrewMotorSizingModule, input)).toThrow();
   });
 
-  it("fails the inertia-ratio check when the load is too large for the motor", () => {
+  it("reports a warning (not a failure) on the inertia-ratio check when the load is too large for the motor", () => {
     const input = baselineInput();
     input.values.motor_rotor_inertia = makeQuantity(1e-8, "kg*m^2");
     const result = executeModule(ballScrewMotorSizingModule, input);
     const inertiaCheck = result.checks.find((c) => c.id === "inertia-ratio");
-    expect(inertiaCheck?.status).toBe("fail");
+    expect(inertiaCheck?.status).toBe("warning");
+  });
+
+  it("resolves inertia_ratio_maximum to the recommended default of 10 when unset, and remains overridable", () => {
+    const defaultInput = baselineInput();
+    delete defaultInput.values.inertia_ratio_maximum;
+    const defaultResult = executeModule(
+      ballScrewMotorSizingModule,
+      defaultInput,
+    );
+    const defaultCheck = defaultResult.checks.find(
+      (c) => c.id === "inertia-ratio",
+    );
+    expect(asQuantity(defaultCheck!.allowable!).value).toBeCloseTo(10, 9);
+
+    const overriddenInput = baselineInput();
+    overriddenInput.values.inertia_ratio_maximum = makeQuantity(5, "ratio");
+    const overriddenResult = executeModule(
+      ballScrewMotorSizingModule,
+      overriddenInput,
+    );
+    const overriddenCheck = overriddenResult.checks.find(
+      (c) => c.id === "inertia-ratio",
+    );
+    expect(asQuantity(overriddenCheck!.allowable!).value).toBeCloseTo(5, 9);
   });
 
   it("required_motor_rated_torque scales linearly with effective_torque_safety_factor", () => {
@@ -187,7 +211,7 @@ describe("ball-screw-motor-sizing 0.1.0 executeModule", () => {
 // --- Reproduces Omron Corporation's own worked example through the real
 // compute path (executeModule), not just math.ts's kernel level --------------
 
-describe("ball-screw-motor-sizing 0.1.0: Omron Corporation's own worked example, through executeModule", () => {
+describe("ball-screw-motor-sizing 0.2.0: Omron Corporation's own worked example, through executeModule", () => {
   it("reproduces every printed figure within the source's own rounding", () => {
     const input: RawInput = {
       values: {
