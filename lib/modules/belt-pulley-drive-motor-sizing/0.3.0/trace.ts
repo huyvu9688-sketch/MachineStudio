@@ -51,7 +51,6 @@ const ORIENTAL_MOTOR_SIZING_CALCULATIONS_SOURCE = [
 export interface TraceInput {
   readonly orientation: EnumValue;
   readonly inclineAngle: Quantity;
-  readonly gravity: Quantity;
   readonly frictionCoefficient: Quantity;
   readonly totalMovingMass: Quantity;
   readonly pulleyPitchDiameter: Quantity;
@@ -178,14 +177,16 @@ export function buildTrace(input: TraceInput): CalculationTrace {
     id: "drive-force-and-load-torque",
     title: "Orientation-aware drive force and load torque",
     methodId: "motor_sizing.belt_pulley.load_torque",
-    expression: "F = F_A + M*g*(sin(theta)+mu*cos(theta)); T_L = F*D/(2*eta*i)",
+    // 0.3.0: g = 9.80665 m/s^2, hardcoded (no longer an input) -- see
+    // math.ts's own STANDARD_GRAVITY_M_PER_S2.
+    expression:
+      "F = F_A + M*g*(sin(theta)+mu*cos(theta)), g=9.80665; T_L = F*D/(2*eta*i)",
     inputs: [
       {
         label: "theta",
         value: input.inclineAngle,
         ref: "motion.axis.incline_angle",
       },
-      { label: "g", value: input.gravity, ref: "motion.axis.gravity" },
       {
         label: "mu",
         value: input.frictionCoefficient,
