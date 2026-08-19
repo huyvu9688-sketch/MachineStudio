@@ -109,7 +109,7 @@ const KNOWN_COMPATIBLE_PAIRS: ReadonlySet<string> = new Set([
   "axis-load-cases.total_moving_mass->total_moving_mass",
 ]);
 
-describe("rack-pinion-motor-sizing 0.1.0 cross-module links: exhaustively confirmed absent, except one documented pair", () => {
+describe("rack-pinion-motor-sizing 0.2.0 cross-module links: exhaustively confirmed absent, except one documented pair", () => {
   for (const upstream of UPSTREAM_MODULES) {
     it(`no ${upstream.label} 0.1.0 output is link-compatible with any rack-pinion-motor-sizing input, other than the one documented exception`, () => {
       const sources = upstream.outputs.map((port) =>
@@ -151,7 +151,7 @@ describe("rack-pinion-motor-sizing 0.1.0 cross-module links: exhaustively confir
   });
 });
 
-describe("rack-pinion-motor-sizing 0.1.0 workflow role: deliberately none", () => {
+describe("rack-pinion-motor-sizing 0.2.0 workflow role: deliberately none", () => {
   it("declares no workflowRoles -- this module is not part of the linear-axis@1 workflow, and no other guided workflow exists for the motor-sizing.* family yet (ADR-0011)", () => {
     expect(manifest.workflowRoles).toEqual([]);
   });
