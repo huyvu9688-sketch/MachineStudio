@@ -1,4 +1,52 @@
-# Belt-Pulley Drive Motor Sizing Module `0.2.0` (`belt-pulley-drive-motor-sizing`)
+# Belt-Pulley Drive Motor Sizing Module `0.3.0` (`belt-pulley-drive-motor-sizing`)
+
+## 0.3.0 — Consistency-Pass Addendum (Gravity, disabledWhen, Recommended Inertia-Ratio Default)
+
+Follow-on to `0.2.0`, per
+`docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md`
+and `docs/superpowers/plans/2026-08-19-belt-pulley-drive-motor-sizing-0.3.0.md`
+-- the last of the five Motor Sizing Tool module-version bumps, and the
+only one carrying all three consistency-pass changes at once, since this
+is the design's own only `disabledWhen` consumer. None of the three
+changes touches the underlying physics (every reference example below
+still passes unchanged):
+
+1. **Gravity is no longer an input.** `math.ts` hardcodes
+   `STANDARD_GRAVITY_M_PER_S2 = 9.80665` where the removed `gravity` port
+   used to flow in. Behavior-neutral: the removed port's own registry
+   constant default was already exactly this value, and no reference
+   example or benchmark in this module's own validation record ever
+   overrode it.
+2. **`inertia_ratio_maximum` now resolves to a founder-directed recommended
+   default of 10:1** (`motor_sizing.belt_pulley.
+   inertia_ratio_recommended_maximum`, parameter registry `1.15.0`),
+   editable, rather than `0.2.0`'s own required-no-default value. The
+   inertia-ratio check's own exceeded-case status changed from `fail` to
+   `warning` to match.
+3. **`ui.ts` wires the new `disabledWhen` UI capability** -- this module is
+   the only consumer of it in this project. `target_velocity`/
+   `constant_velocity_time` render disabled whenever `motion_mode` is
+   `"distance"`; `travel_distance`/`cycle_time` render disabled whenever
+   `motion_mode` is `"velocity"`. Presentation only --
+   `input-schema.ts`'s own required/optional enforcement per mode is
+   unchanged.
+
+`0.1.0` and `0.2.0` both stay released, registered, and byte-for-byte
+untouched (`lib/modules/belt-pulley-drive-motor-sizing/0.1.0/`,
+`lib/modules/belt-pulley-drive-motor-sizing/0.2.0/`) -- an engineer who
+wants `0.3.0`'s behavior on an existing instance archives it and adds a
+fresh `0.3.0` instance, the same migration story every prior Motor Sizing
+`0.2.0` release already established. Full record:
+`validation/belt-pulley-drive-motor-sizing/0.3.0.md`.
+
+Completes ADR-0011's own Motor Sizing Tool consistency pass: all five
+mechanism modules (`ball-screw-motor-sizing@0.2.0`,
+`direct-drive-conveyor-motor-sizing@0.2.0`,
+`rack-pinion-motor-sizing@0.2.0`, `index-table-motor-sizing@0.2.0`, and
+this module at `0.3.0`) now consume the shared parameter-registry `1.15.0`
+recommended inertia-ratio default.
+
+## 0.2.0 — First Module-Version Bump
 
 The first module-version bump in this project, following
 `docs/superpowers/specs/2026-08-13-belt-pulley-drive-motor-sizing-0.2.0-design.md`
