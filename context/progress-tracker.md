@@ -2102,10 +2102,33 @@ stays released, registered, and untouched
 addendum record is
 `validation/direct-drive-conveyor-motor-sizing/0.2.0.md`. Full
 `npx vitest run` (non-DB) confirmed 1961/1961 passing, `npm run
-typecheck`/`build` both clean. Three more follow-on plans remain, not yet
-started: `rack-pinion-motor-sizing` `0.1.0` -> `0.2.0`,
-`index-table-motor-sizing` `0.1.0` -> `0.2.0` (inertia-ratio change
-only — it has no `gravity` port to drop), and
+typecheck`/`build` both clean.
+
+**`rack-pinion-motor-sizing@0.2.0` shipped 2026-08-19** — the third of the
+five module-version bumps. Same two changes as the prior two, but this one
+found a real, measured (not just theoretical) precision regression: unlike
+every other consistency-pass module, `0.1.0`'s own
+`atlanta-benchmark.test.ts` explicitly overrode this module's own
+`gravity` port to Atlanta Drive Systems' own printed `g=9.81` convention
+so its comparison against Atlanta's two worked examples would be exact
+(0.01% tolerance). `0.2.0` removes the `gravity` port entirely (no
+override possible), so the real SI (`9.80665`) vs. Atlanta (`9.81`) gap
+now shows up in that comparison -- measured directly at ~0.0079%
+(horizontal example) and ~0.0203% (vertical example, where weight is
+100% of the load-torque force since friction vanishes). Both are
+disclosed by exact measured value in the test's own titles and in
+`validation/rack-pinion-motor-sizing/0.2.0.md`; tolerance loosened from
+0.01% to 0.03% with margin, not silently widened without explanation.
+`inertia_ratio_maximum` repointed at `motor_sizing.rack_pinion.
+inertia_ratio_recommended_maximum` (registry `1.15.0`, default `10`), check
+downgraded `fail` -> `warning`, same as the other modules. `0.1.0` stays
+released, registered, and untouched
+(`validation/rack-pinion-motor-sizing/0.1.0.md`); `0.2.0`'s own addendum
+record is `validation/rack-pinion-motor-sizing/0.2.0.md`. Full `npx
+vitest run` (non-DB) confirmed 2015/2015 passing, `npm run
+typecheck`/`build` both clean. Two more follow-on plans remain, not yet
+started: `index-table-motor-sizing` `0.1.0` -> `0.2.0` (inertia-ratio
+change only — it has no `gravity` port to drop), and
 `belt-pulley-drive-motor-sizing` `0.2.0` -> `0.3.0` (the only one of the
 five also wiring `disabledWhen`).
 
