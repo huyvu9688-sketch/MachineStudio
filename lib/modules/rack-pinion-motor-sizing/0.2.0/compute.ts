@@ -33,7 +33,6 @@ export function compute(input: ModuleInput): ModuleComputation {
   const values = input.values;
 
   const inclineAngle = quantityAt(values, "incline_angle");
-  const gravity = quantityAt(values, "gravity");
   const frictionCoefficient = quantityAt(values, "friction_coefficient");
   const totalMovingMass = quantityAt(values, "total_moving_mass");
   const pinionPitchDiameter = quantityAt(values, "pinion_pitch_diameter");
@@ -69,15 +68,16 @@ export function compute(input: ModuleInput): ModuleComputation {
       "rack-pinion-motor-sizing requires its full set of geometry, motion, motor, and safety-factor inputs.",
     );
   }
-  // gravity has a registry constant default (9.80665 m/s^2); gear_ratio
-  // defaults to 1; external_force defaults to 0 N -- all auto-filled by
-  // the module SDK when absent, so none should reach compute() as
-  // undefined. Guarded anyway as a defense-in-depth measure, the same
-  // treatment every other Motor Sizing Tool module already gives its own
-  // constant-default ports.
-  if (gravity === undefined || gearRatio === undefined || externalForce === undefined) {
+  // gear_ratio defaults to 1; external_force defaults to 0 N -- both
+  // auto-filled by the module SDK when absent, so neither should reach
+  // compute() as undefined. Guarded anyway as a defense-in-depth measure,
+  // the same treatment every other Motor Sizing Tool module already gives
+  // its own constant-default ports. gravity is no longer an input in
+  // 0.2.0 (math.ts hardcodes STANDARD_GRAVITY_M_PER_S2) -- nothing to
+  // guard here anymore.
+  if (gearRatio === undefined || externalForce === undefined) {
     throw new Error(
-      "rack-pinion-motor-sizing requires gravity, gear_ratio, and external_force to resolve (the registry defaults should have filled these).",
+      "rack-pinion-motor-sizing requires gear_ratio and external_force to resolve (the registry defaults should have filled these).",
     );
   }
 
@@ -110,7 +110,6 @@ export function compute(input: ModuleInput): ModuleComputation {
   const { forceN } = resolveDriveForce({
     externalForceN: externalForce.value,
     totalMovingMassKg: totalMovingMass.value,
-    gravityMps2: gravity.value,
     inclineAngleRad: inclineAngle.value,
     frictionCoefficient: frictionCoefficient.value,
   });
@@ -171,7 +170,6 @@ export function compute(input: ModuleInput): ModuleComputation {
     trace: buildTrace({
       orientation,
       inclineAngle,
-      gravity,
       frictionCoefficient,
       totalMovingMass,
       pinionPitchDiameter,
