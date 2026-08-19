@@ -10,7 +10,7 @@ import type { ValidationRecord } from "@/lib/engine";
 
 export const validation: ValidationRecord = {
   moduleId: "ball-screw-motor-sizing",
-  moduleVersion: "0.1.0",
+  moduleVersion: "0.2.0",
   methods: [
     "Oriental Motor Motor Sizing Calculations (moment of inertia, forces, ball-screw load torque, acceleration torque, required torque, effective/RMS torque)",
   ],
@@ -72,5 +72,6 @@ export const validation: ValidationRecord = {
   deviations: [
     "effective_torque understates THK Co., Ltd.'s own printed vertical-example figure (743 N*mm) by ~29% through the real executeModule compute path, because the dwell phase always contributes 0 torque rather than THK's own real 658 N*mm stationary holding torque (see 'thk-vertical-executemodule' above). The N-phase Trms FORMULA itself is not at fault -- fed THK's own seven printed phases directly (including the 658 N*mm term), it reproduces 743 N*mm within 0.5% (see 'thk-vertical-n-phase-formula-kernel-level'). Recorded as a real, sourced, quantified deviation from an already-documented scope gap, not a defect discovered here for the first time.",
     "A finding recorded, not a deviation requiring a fix: this module's own resolveDriveForce (math.ts) flips gravity's own sign between the 'forward' and 'return' directions, producing a NEGATIVE signed return_load_torque on THK's own vertical example (-0.83 N*m, versus THK's own printed unsigned 830 N*mm). Verified by hand this session that this is the mathematically correct transform of a fixed-frame force-balance model (the same one lib/modules/axis-load-cases/0.1.0/math.ts's own resolveAxisLoadPhase already uses, where gravity is a fixed vector and only friction/guide-resistance flip) projected onto a single travel-direction-relative scalar -- and that resolveMomentaryTorque (Math.abs) and resolveEffectiveTorque (squares every term) are already sign-agnostic, so the sign difference has zero effect on any reported output. Not a bug; no code change was needed.",
+    "0.2.0 addendum, not a re-validation of the underlying physics (unchanged): (1) gravity is no longer an editable input -- resolveDriveForce now hardcodes STANDARD_GRAVITY_M_PER_S2 = 9.80665 m/s^2 (math.ts), the exact value motion.axis.gravity's own registry constant default already supplied everywhere this module used it. Behavior-neutral: every existing reference example above (Omron kernel-level/executeModule, THK horizontal/vertical) re-passes unchanged under 0.2.0 -- that unchanged pass is the regression proof, not a new derivation. (2) inertia_ratio_maximum now resolves to motor_sizing.ball_screw.inertia_ratio_recommended_maximum (registry 1.15.0), a founder-directed default of 10:1 -- NOT a manufacturer-sourced value; drive-train/stage-1-spec.md item 5's own five-source survey (2:1 to 100:1) is the closest sourced context and does not itself endorse 10 specifically. The check's own exceeded-case status changed from 'fail' to 'warning' to match: exceeding a recommended (not required) default is advisory, never blocking. Both changes per docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md.",
   ],
 };
