@@ -34,6 +34,17 @@ import {
   solidCylinderInertia,
 } from "@/lib/engine";
 
+/**
+ * Standard gravitational acceleration, m/s^2. 0.2.0 hardcodes this rather
+ * than taking it as an input — no scenario in this product's scope needs a
+ * different value, and `motion.axis.gravity`'s own registry constant
+ * default was already exactly this figure everywhere it was used
+ * (docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md
+ * "Gravity"). Exported so ./math.test.ts can reference the exact same value
+ * instead of repeating the literal.
+ */
+export const STANDARD_GRAVITY_M_PER_S2 = 9.80665;
+
 export class BallScrewMotorSizingInputError extends Error {
   constructor(message: string) {
     super(message);
@@ -206,8 +217,6 @@ export interface DriveForceInput {
   readonly externalForceN: number;
   /** Total moving mass, in kg. Must be > 0. */
   readonly totalMovingMassKg: number;
-  /** Gravitational acceleration, in m/s^2. Must be > 0. */
-  readonly gravityMps2: number;
   /** Incline angle above horizontal, in rad. Must be in [0, pi/2]. */
   readonly inclineAngleRad: number;
   /** Sliding-surface friction coefficient, `>= 0`. */
@@ -249,14 +258,13 @@ export interface DriveForceResult {
 export function resolveDriveForce(input: DriveForceInput): DriveForceResult {
   assertFinite("externalForceN", input.externalForceN);
   assertPositive("totalMovingMassKg", input.totalMovingMassKg);
-  assertPositive("gravityMps2", input.gravityMps2);
   assertFinite("inclineAngleRad", input.inclineAngleRad);
   if (input.inclineAngleRad < 0 || input.inclineAngleRad > Math.PI / 2) {
     fail("inclineAngleRad must be between 0 and pi/2.");
   }
   assertNonNegative("frictionCoefficient", input.frictionCoefficient);
 
-  const weightN = input.totalMovingMassKg * input.gravityMps2;
+  const weightN = input.totalMovingMassKg * STANDARD_GRAVITY_M_PER_S2;
   const gravityTermN = weightN * Math.sin(input.inclineAngleRad);
   const frictionTermN =
     weightN * input.frictionCoefficient * Math.cos(input.inclineAngleRad);
