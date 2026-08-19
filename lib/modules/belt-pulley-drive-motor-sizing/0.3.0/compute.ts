@@ -38,7 +38,6 @@ export function compute(input: ModuleInput): ModuleComputation {
   const values = input.values;
 
   const inclineAngle = quantityAt(values, "incline_angle");
-  const gravity = quantityAt(values, "gravity");
   const frictionCoefficient = quantityAt(values, "friction_coefficient");
   const totalMovingMass = quantityAt(values, "total_moving_mass");
   const pulleyPitchDiameter = quantityAt(values, "pulley_pitch_diameter");
@@ -80,20 +79,21 @@ export function compute(input: ModuleInput): ModuleComputation {
       "belt-pulley-drive-motor-sizing requires its full set of geometry, motion, motor, and safety-factor inputs.",
     );
   }
-  // gravity/gear_ratio/belt_mass/external_force/dwell_time all have
-  // registry constant defaults -- auto-filled by the module SDK when
-  // absent, so none should reach compute() as undefined. Guarded anyway
-  // as a defense-in-depth measure, the same treatment 0.1.0 already gives
-  // its own constant-default ports.
+  // gear_ratio/belt_mass/external_force/dwell_time all have registry
+  // constant defaults -- auto-filled by the module SDK when absent, so none
+  // should reach compute() as undefined. Guarded anyway as a
+  // defense-in-depth measure, the same treatment 0.1.0 already gives its
+  // own constant-default ports. gravity is no longer an input in 0.3.0
+  // (math.ts hardcodes STANDARD_GRAVITY_M_PER_S2) -- nothing to guard here
+  // anymore.
   if (
-    gravity === undefined ||
     gearRatio === undefined ||
     beltMass === undefined ||
     externalForce === undefined ||
     dwellTime === undefined
   ) {
     throw new Error(
-      "belt-pulley-drive-motor-sizing requires gravity, gear_ratio, belt_mass, external_force, and dwell_time to resolve (the registry defaults should have filled these).",
+      "belt-pulley-drive-motor-sizing requires gear_ratio, belt_mass, external_force, and dwell_time to resolve (the registry defaults should have filled these).",
     );
   }
 
@@ -179,7 +179,6 @@ export function compute(input: ModuleInput): ModuleComputation {
   const { forceN } = resolveDriveForce({
     externalForceN: externalForce.value,
     totalMovingMassKg: totalMovingMass.value,
-    gravityMps2: gravity.value,
     inclineAngleRad: inclineAngle.value,
     frictionCoefficient: frictionCoefficient.value,
   });
@@ -272,7 +271,6 @@ export function compute(input: ModuleInput): ModuleComputation {
     trace: buildTrace({
       orientation,
       inclineAngle,
-      gravity,
       frictionCoefficient,
       totalMovingMass,
       pulleyPitchDiameter,
