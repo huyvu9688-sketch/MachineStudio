@@ -78,12 +78,41 @@ also filters by a new `HIDDEN_MODULE_IDS` set (`example-relay`,
 `category` because `example-scaffold`'s own category is still its unfilled
 `npm run module:new` placeholder (`"TODO"`), not the `"development-fixture"`
 value `example-relay` actually declares. Both fixtures stay registered
-(integration tests depend on them); neither manifest was edited. Not yet
-addressed from that same audit (see the audit itself, not repeated here):
-concurrent link-creation cycle detection, the nullable `targetLoadCase`
-unique-index gap, cross-project deep-link mixing, Playwright trace/
-credential-retention policy, "permanent" account deletion not clearing the
-Clerk identity, and the UX/tooling-debt items.
+(integration tests depend on them); neither manifest was edited.
+**2026-08-24: two more audit items closed.** Concurrent link-creation cycle
+detection: `confirmParameterLink`'s transaction now runs at `Serializable`
+isolation (previously the Prisma default, effectively READ COMMITTED), so
+Postgres detects the write-skew case where two concurrent confirmations each
+see an acyclic graph and would together close a cycle neither alone would —
+confirmed with a new regression test that races two closing links and
+asserts at most one can ever succeed. A spurious serialization failure
+between logically unrelated transactions is expected under concurrent load
+per Postgres's own documented contract for this isolation level, so the call
+now retries up to 5 times before surfacing a new `"conflict"` error code;
+without the retry, running the new regression test alongside the rest of the
+DB-gated suite produced real spurious failures in unrelated tests, confirmed
+directly. `isSerializationConflict` (`lib/db/repositories/db-client.ts`)
+recognizes both the `PrismaClientKnownRequestError` `P2034` shape and the
+untranslated `DriverAdapterError`/`TransactionWriteConflict` shape
+`@prisma/adapter-neon` raises for the same underlying SQLSTATE `40001`,
+confirmed both occur depending on when in the transaction the conflict
+fires. The nullable `targetLoadCase` unique-index gap: Postgres unique
+constraints treat every NULL as distinct, so `ParameterLink`'s own
+`@@unique([targetModuleInstanceId, targetParameterId, targetLoadCase])`
+never actually fired for the common case (a load-case-agnostic input port,
+`targetLoadCase` null) — closed with a hand-authored partial unique index
+(`prisma/migrations/20260824120000_parameter_link_null_load_case_unique`),
+applied directly to the live Neon database and recorded in
+`_prisma_migrations` (`prisma migrate deploy` itself is blocked by the same
+group-policy restriction documented below for Playwright), proven by a new
+test that inserts through the raw Prisma client directly, bypassing
+`createParameterLink`'s own application-level duplicate check entirely.
+Full DB-gated suite green (2720/2720, confirmed twice) after both fixes,
+typecheck and lint clean. Not yet addressed from that same audit (see the
+audit itself, not repeated here): cross-project deep-link mixing, Playwright
+trace/credential-retention policy (blocked by group policy — see the
+Playwright note below), "permanent" account deletion not clearing the Clerk
+identity, and the UX/tooling-debt items.
 
 ---
 

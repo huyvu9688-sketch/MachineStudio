@@ -22,7 +22,7 @@
 // read in the group the same MVCC snapshot as of the transaction's start.
 
 import "server-only";
-import type { Prisma, PrismaClient } from "../generated/prisma/client";
+import { Prisma, type PrismaClient } from "../generated/prisma/client";
 
 /**
  * Either the top-level {@link PrismaClient} singleton or the interactive
@@ -30,3 +30,39 @@ import type { Prisma, PrismaClient } from "../generated/prisma/client";
  * write functions default their `client` parameter to the singleton.
  */
 export type DbClient = PrismaClient | Prisma.TransactionClient;
+
+/**
+ * True when `error` is Postgres's serialization-failure error (SQLSTATE
+ * `40001`) raised by a `Serializable`-isolation transaction. The application
+ * layer needs this to translate a caught write-skew conflict into a typed
+ * "retry" outcome without importing the Prisma client directly (lib/db is
+ * the only boundary allowed to — context/architecture.md "lib/db/").
+ *
+ * Checks two distinct shapes, confirmed both occur for the same underlying
+ * Postgres error depending on exactly when in the transaction it fires:
+ * Prisma's own translated `PrismaClientKnownRequestError` code `P2034`
+ * (documented in Prisma's own error reference), and — seen directly running
+ * this project's own DB-gated suite under concurrent load — an untranslated
+ * `DriverAdapterError` from `@prisma/adapter-neon` with
+ * `cause.kind === "TransactionWriteConflict"` (that adapter's own mapping of
+ * SQLSTATE `40001`), which reaches the caller as-is rather than as a
+ * `PrismaClientKnownRequestError` when the conflict surfaces at COMMIT
+ * rather than during a query.
+ */
+export function isSerializationConflict(error: unknown): boolean {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2034"
+  ) {
+    return true;
+  }
+  return (
+    error instanceof Error &&
+    error.name === "DriverAdapterError" &&
+    "cause" in error &&
+    typeof error.cause === "object" &&
+    error.cause !== null &&
+    "kind" in error.cause &&
+    error.cause.kind === "TransactionWriteConflict"
+  );
+}

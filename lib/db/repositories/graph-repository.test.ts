@@ -418,6 +418,32 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
     });
 
+    it("rejects a duplicate confirmed link to a null-load-case port at the database level, even bypassing the repository's own duplicate check (2026-08-20 release audit)", async () => {
+      // Postgres unique constraints treat every NULL as distinct, so
+      // parameter_links' own @@unique([targetModuleInstanceId,
+      // targetParameterId, targetLoadCase]) alone never fires when
+      // targetLoadCase is null — the common case, since most module input
+      // ports carry no load case. createParameterLink's own in-application
+      // duplicate check (asserted above) already covers any caller going
+      // through it; this proves the DB-level partial unique index
+      // (prisma/migrations/20260824120000_parameter_link_null_load_case_unique)
+      // closes the gap even for a write that skips that check entirely, by
+      // inserting through the raw Prisma client directly.
+      const s = await scaffold();
+      const moduleId = await newModule(s, "Thrust");
+      const row = {
+        configurationId: s.configId,
+        targetModuleInstanceId: moduleId,
+        targetParameterId: "p.linked",
+        sourceKind: "machine_requirement" as const,
+        sourceParameterId: "p.provider",
+      };
+      await client.prisma.parameterLink.create({ data: row });
+      await expect(
+        client.prisma.parameterLink.create({ data: row }),
+      ).rejects.toMatchObject({ code: "P2002" });
+    });
+
     it("enforces ownership isolation on resolveModuleInputs", async () => {
       const s = await scaffold();
       const moduleId = await newModule(s, "Thrust");
