@@ -125,6 +125,21 @@ describe("resolvePistonAreas", () => {
       resolvePistonAreas({ boreDiameterMm: 50, rodDiameterMm: 50 }),
     ).toThrow(PneumaticCylinderSizingInputError);
   });
+
+  it("rejects non-positive geometry", () => {
+    expect(() =>
+      resolvePistonAreas({ boreDiameterMm: 0, rodDiameterMm: 0 }),
+    ).toThrow(PneumaticCylinderSizingInputError);
+    expect(() =>
+      resolvePistonAreas({ boreDiameterMm: -50, rodDiameterMm: 16 }),
+    ).toThrow(PneumaticCylinderSizingInputError);
+    expect(() =>
+      resolvePistonAreas({ boreDiameterMm: 50, rodDiameterMm: 0 }),
+    ).toThrow(PneumaticCylinderSizingInputError);
+    expect(() =>
+      resolvePistonAreas({ boreDiameterMm: 50, rodDiameterMm: -16 }),
+    ).toThrow(PneumaticCylinderSizingInputError);
+  });
 });
 
 describe("resolveTheoreticalForce", () => {
@@ -142,6 +157,15 @@ describe("resolveTheoreticalForce", () => {
       resolveTheoreticalForce({ areaMm2: 100, pressureMPa: 0.5, loadFactor: 1.5 }),
     ).toThrow(PneumaticCylinderSizingInputError);
   });
+
+  it("rejects non-positive area or pressure", () => {
+    expect(() =>
+      resolveTheoreticalForce({ areaMm2: 0, pressureMPa: 0.5, loadFactor: 0.7 }),
+    ).toThrow(PneumaticCylinderSizingInputError);
+    expect(() =>
+      resolveTheoreticalForce({ areaMm2: 100, pressureMPa: 0, loadFactor: 0.7 }),
+    ).toThrow(PneumaticCylinderSizingInputError);
+  });
 });
 
 describe("resolveCushionKineticEnergy", () => {
@@ -151,6 +175,15 @@ describe("resolveCushionKineticEnergy", () => {
       maxPistonSpeedMps: 0.3,
     });
     expect(kineticEnergyJ).toBeCloseTo(2.25, 6);
+  });
+
+  it("rejects non-positive mass or speed", () => {
+    expect(() =>
+      resolveCushionKineticEnergy({ loadMassKg: 0, maxPistonSpeedMps: 1 }),
+    ).toThrow(PneumaticCylinderSizingInputError);
+    expect(() =>
+      resolveCushionKineticEnergy({ loadMassKg: 10, maxPistonSpeedMps: 0 }),
+    ).toThrow(PneumaticCylinderSizingInputError);
   });
 });
 
@@ -167,6 +200,23 @@ describe("resolveBucklingLoad / resolvePermissibleCompressiveLoad", () => {
       mountingStyle: "fixed-supported",
     });
     expect(long.bucklingLoadN).toBeLessThan(short.bucklingLoadN);
+  });
+
+  it("rejects non-positive geometry", () => {
+    expect(() =>
+      resolveBucklingLoad({
+        rodDiameterMm: 0,
+        columnLengthMm: 400,
+        mountingStyle: "fixed-supported",
+      }),
+    ).toThrow(PneumaticCylinderSizingInputError);
+    expect(() =>
+      resolveBucklingLoad({
+        rodDiameterMm: 16,
+        columnLengthMm: 0,
+        mountingStyle: "fixed-supported",
+      }),
+    ).toThrow(PneumaticCylinderSizingInputError);
   });
 
   it("computes permissible load as buckling load / safety factor", () => {
