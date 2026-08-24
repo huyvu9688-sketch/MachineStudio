@@ -6,6 +6,10 @@
 //  - the raw input passes the module's input schema
 //  - required inputs are present (constant parameter defaults are auto-filled)
 //    and every input value matches its parameter's kind and unit dimension
+//  - every input value's magnitude falls within its parameter's declared range,
+//    when one is declared (added in SDK 1.1.0 — a release audit found ranges
+//    like buckling_safety_margin's [0, 1] were declared but never enforced,
+//    letting an out-of-range input compute through and false-pass a check)
 //  - the computation is well-formed; every declared output is produced with the
 //    right kind/dimension and no undeclared outputs are returned
 //  - the trace is structurally valid and every cited source is declared in the
@@ -13,7 +17,7 @@
 //
 // `computeIsDeterministic` supports the conformance suite's nondeterminism check.
 
-import { dimensionsEqual, getUnit, hasUnit } from "../units";
+import { convert, dimensionsEqual, getUnit, hasUnit } from "../units";
 import { engineeringValuesEqual, type EngineeringValue } from "../values";
 import type { ParameterDefinition, ParameterRegistry } from "../parameters";
 import { PARAMETER_REGISTRY } from "../parameters";
@@ -125,6 +129,41 @@ function assertValueMatchesParameter(
   }
 }
 
+/**
+ * Asserts a quantity input's magnitude falls within its parameter's declared
+ * {@link ParameterDefinition.range}, when one is declared. Input-only: an
+ * out-of-range output would misreport a formula defect as an SDK contract
+ * violation instead of surfacing the real bug, and some released modules
+ * intentionally produce a signed output a one-sided range would reject (see
+ * `screw.drive_torque`). Ranges are declared engineer-facing constraints
+ * (e.g. `buckling_safety_margin` in `[0, 1]`); an out-of-range input was
+ * previously silently accepted and computed through — see the release audit
+ * this closes.
+ */
+function assertValueInRange(
+  value: EngineeringValue,
+  def: ParameterDefinition,
+  key: string,
+): void {
+  if (value.kind !== "quantity" || def.range === undefined) return;
+  const { min, max, unit: rangeUnit } = def.range;
+  const magnitude = convert(value.value, value.unit, rangeUnit);
+  if (min !== undefined && magnitude < min) {
+    fail(
+      "input_value_out_of_range",
+      `Port "${key}" value ${magnitude} ${rangeUnit} is below the parameter's minimum of ${min} ${rangeUnit}.`,
+      key,
+    );
+  }
+  if (max !== undefined && magnitude > max) {
+    fail(
+      "input_value_out_of_range",
+      `Port "${key}" value ${magnitude} ${rangeUnit} is above the parameter's maximum of ${max} ${rangeUnit}.`,
+      key,
+    );
+  }
+}
+
 /** Collects the source-revision IDs cited anywhere in a computation. */
 function citedRevisions(computation: ModuleComputation): Set<string> {
   const cited = new Set<string>();
@@ -185,6 +224,7 @@ export function resolveModuleInput(
     }
     if (def !== undefined) {
       assertValueMatchesParameter(value, def, port.key, "input_value_mismatch");
+      assertValueInRange(value, def, port.key);
     }
   }
 

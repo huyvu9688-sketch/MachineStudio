@@ -45,7 +45,37 @@ everything `0.1.0` already computes -- shipped 2026-08-18, `0.1.0` staying
 released, registered, and untouched** -- see "Active work" below; **and the
 6 pre-existing `workspace-shell.test.tsx` failures that release's own
 verification disclosed (a stale `vi.mock` missing three module-instance-
-management actions) are fixed the same day** -- non-DB suite is 2080/2080)
+management actions) are fixed the same day** -- non-DB suite is 2080/2080).
+**2026-08-20: a release-readiness audit found six release-blocking
+calculation defects and several application-layer gaps; all are now fixed.**
+Engine-level: `executeModule`/`resolveModuleInput` now enforce a
+parameter's declared `range` against input magnitudes, previously declared
+but never checked (`ENGINE_SDK_VERSION` bumped to `1.1.0`,
+`lib/engine/module-sdk/execute.ts`). Four new patch module versions, each
+0.1.0/0.2.0/0.3.0 staying released/registered/untouched: `ball-screw@0.1.1`
+(drive torque now reports a magnitude, not a signed value, matching its own
+`range: { min: 0 }`), `direct-drive-conveyor-motor-sizing@0.2.1` (inertia
+ratio now includes the drive roller's own inertia), `belt-pulley-drive-motor-sizing@0.3.1`
+(momentary torque now considers both ramp phases; effective/RMS torque now
+includes a dwell holding term), `index-table-motor-sizing@0.2.1` (rejects a
+motion profile where `2*acceleration_time > index_time`). Application-layer:
+a workflow-level failing check now blocks `"completed"` status
+(`lib/workflows/workflow-sdk/completion.ts`'s new `workflowChecks` input,
+wired from `load-workflow-instance-view.ts`); `confirmParameterLink` now
+validates every `sourceKind`/`sourceModuleInstanceId`/`sourceAssemblyId`
+combination instead of silently skipping validation for a mismatched one;
+`setModuleInputValueAction`'s boolean branch now checks
+`definition.valueType`; `assignComponent` now rejects a stale
+`calculationRunId`; `listModuleInstancesForWorkflowInstance` now excludes
+archived instances; the CI E2E step now sets `pipefail`; BOM CSV export now
+neutralizes a formula-injection prefix (`=+-@`) in manual fields. Full
+non-DB suite green (2456/2456), DB-gated suite green, typecheck/lint/build
+clean. Not yet addressed from that same audit (see the audit itself, not
+repeated here): concurrent link-creation cycle detection, the nullable
+`targetLoadCase` unique-index gap, cross-project deep-link mixing, dev
+fixtures (`example-relay`/`example-scaffold`) visible in the module picker,
+Playwright trace/credential-retention policy, "permanent" account deletion
+not clearing the Clerk identity, and the UX/tooling-debt items.
 
 ---
 

@@ -125,7 +125,13 @@ jobs:
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
           E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-        run: npm run test:e2e 2>&1 | tee /tmp/e2e-output.log
+        # `set -o pipefail`: without it, `bash -e {0}` (this runner's default
+        # shell) only inspects the pipeline's last command (`tee`, which
+        # itself always succeeds), so a failing `npm run test:e2e` could not
+        # fail this step at all — a release audit found this exact gap.
+        run: |
+          set -o pipefail
+          npm run test:e2e 2>&1 | tee /tmp/e2e-output.log
 
       - name: Upload E2E diagnostics
         if: always()

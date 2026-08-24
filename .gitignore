@@ -53,3 +53,6 @@ next-env.d.ts
 # agent worktrees / local Claude Code state
 /.worktrees/
 /.claude/worktrees/
+
+# local dev-server runtime logs (a release audit found these unignored)
+.next-dev*.log

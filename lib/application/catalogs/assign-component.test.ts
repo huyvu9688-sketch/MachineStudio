@@ -386,6 +386,43 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(result.error.code).toBe("invalid_input");
     });
 
+    it("reports invalid_input for a stale calculation run", async () => {
+      const f = await fixture();
+      const stale = await import("../parameters/stale-propagation");
+      const propagated = await stale.setParameterValue(
+        {
+          configurationId: f.configId,
+          moduleInstanceId: f.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: PAYLOAD_MASS,
+          source: "manual",
+          value: makeQuantity(20, "kg"),
+        },
+        f.ownerId,
+      );
+      if (!propagated.ok) {
+        throw new Error("seed stale-propagation edit failed");
+      }
+      expect(propagated.staleModuleInstanceIds).toContain(f.moduleInstanceId);
+
+      const result = await assignComponent(
+        {
+          configurationId: f.configId,
+          target: {
+            kind: "module_instance",
+            moduleInstanceId: f.moduleInstanceId,
+          },
+          partSource: "catalog",
+          manufacturerPartRevisionId: f.partRevisionId,
+          calculationRunId: f.runId,
+        },
+        f.ownerId,
+      );
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe("invalid_input");
+    });
+
     it("reports invalid_input when calculationRunId is given for an assembly target", async () => {
       const f = await fixture();
       const result = await assignComponent(

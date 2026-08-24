@@ -153,4 +153,41 @@ describe("buildBomCsv", () => {
     const lines = csv.split("\r\n");
     expect(lines[1]).toContain('"Bracket, 3"" long ""special"""');
   });
+
+  it.each([
+    ["=", "=cmd|'/c calc'!A1"],
+    ["+", "+1+1"],
+    ["-", "-2+3"],
+    ["@", "@SUM(1+1)"],
+  ])(
+    "neutralizes a formula-injection prefix (%s) in a manual field with a leading apostrophe",
+    (_label, payload) => {
+      const view: BomView = {
+        configurationId: "c1",
+        configurationName: "Baseline",
+        machineLevelItems: [item({ manufacturerName: payload })],
+        assemblies: [],
+        totalLineCount: 1,
+        staleLineCount: 0,
+      };
+      const csv = buildBomCsv(view);
+      const lines = csv.split("\r\n");
+      expect(lines[1]).toContain(`,'${payload},`);
+      expect(lines[1]).not.toContain(`,${payload},`);
+    },
+  );
+
+  it("does not alter a manual field that does not begin with a formula-injection character", () => {
+    const view: BomView = {
+      configurationId: "c1",
+      configurationName: "Baseline",
+      machineLevelItems: [item({ manufacturerName: "Acme Co." })],
+      assemblies: [],
+      totalLineCount: 1,
+      staleLineCount: 0,
+    };
+    const csv = buildBomCsv(view);
+    const lines = csv.split("\r\n");
+    expect(lines[1]).toContain(",Acme Co.,");
+  });
 });

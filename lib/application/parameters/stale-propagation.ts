@@ -440,11 +440,23 @@ export async function confirmParameterLink(
     loadCase: input.sourceLoadCase ?? null,
   };
 
+  // Every sourceKind has exactly one legitimate combination of
+  // sourceModuleInstanceId/sourceAssemblyId; a mismatched combination (a
+  // tampered sourceKind paired with a real sourceModuleInstanceId, e.g.)
+  // previously fell through every branch below with no ownership or
+  // port-membership check at all before the link was written — see the
+  // release audit this closes.
   if (input.sourceKind === "module_output") {
     if (input.sourceModuleInstanceId === undefined) {
       return failure(
         "invalid_input",
         "A module-output source requires sourceModuleInstanceId.",
+      );
+    }
+    if (input.sourceAssemblyId !== undefined) {
+      return failure(
+        "invalid_input",
+        "A module-output source must not also carry sourceAssemblyId.",
       );
     }
     const sourceContext = await loadModuleInstanceForOwner(
@@ -483,7 +495,19 @@ export async function confirmParameterLink(
         `Module "${sourcePkg.manifest.id}@${sourcePkg.manifest.version}" declares no output port for ${input.sourceParameterId}.`,
       );
     }
-  } else if (input.sourceAssemblyId !== undefined) {
+  } else if (input.sourceKind === "assembly_parameter") {
+    if (input.sourceModuleInstanceId !== undefined) {
+      return failure(
+        "invalid_input",
+        "An assembly-parameter source must not also carry sourceModuleInstanceId.",
+      );
+    }
+    if (input.sourceAssemblyId === undefined) {
+      return failure(
+        "invalid_input",
+        "An assembly-parameter source requires sourceAssemblyId.",
+      );
+    }
     const assembly = await loadAssemblyForOwner(
       input.sourceAssemblyId,
       ownerId,
@@ -496,6 +520,18 @@ export async function confirmParameterLink(
     if (assembly.configurationId !== input.configurationId) {
       return unauthorized(
         "Source assembly does not belong to the given configuration.",
+      );
+    }
+  } else {
+    // machine_requirement / workflow_parameter: configuration-scoped, no
+    // module instance or assembly of their own.
+    if (
+      input.sourceModuleInstanceId !== undefined ||
+      input.sourceAssemblyId !== undefined
+    ) {
+      return failure(
+        "invalid_input",
+        `A ${input.sourceKind} source must not carry sourceModuleInstanceId or sourceAssemblyId.`,
       );
     }
   }

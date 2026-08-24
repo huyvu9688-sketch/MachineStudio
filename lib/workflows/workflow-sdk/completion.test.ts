@@ -255,6 +255,73 @@ describe("evaluateCompletion — no_failing_checks", () => {
   });
 });
 
+describe("evaluateCompletion — workflowChecks", () => {
+  // A release audit found workflow-level checks (evaluateWorkflowChecks) were
+  // computed and shown in the UI but never gated `satisfied`/"completed"
+  // status — only per-module checks did, via the no_failing_checks rule
+  // above. These cases prove a failing workflow-level check now blocks
+  // completion even when every completionRule itself is satisfied.
+  it("is satisfied when workflowChecks is omitted (opt-out, not a silent default)", () => {
+    const definition = { ...baseDefinition(), completionRules: [] };
+    const result = evaluateCompletion({
+      definition,
+      instances: [],
+      proposals: [],
+      confirmedLinkKeys: new Set(),
+    });
+    expect(result.satisfied).toBe(true);
+  });
+
+  it("is satisfied when workflowChecks is empty or all-passing, with no other completion rules", () => {
+    const definition = { ...baseDefinition(), completionRules: [] };
+    const result = evaluateCompletion({
+      definition,
+      instances: [],
+      proposals: [],
+      confirmedLinkKeys: new Set(),
+      workflowChecks: [passCheck("shared-lead")],
+    });
+    expect(result.satisfied).toBe(true);
+  });
+
+  it("is NOT satisfied when a workflow-level check has failed, even with no other completion rules", () => {
+    const definition = { ...baseDefinition(), completionRules: [] };
+    const result = evaluateCompletion({
+      definition,
+      instances: [],
+      proposals: [],
+      confirmedLinkKeys: new Set(),
+      workflowChecks: [failCheck("shared-lead")],
+    });
+    expect(result.satisfied).toBe(false);
+    const workflowResult = result.results.find(
+      (r) => r.ruleId === "workflow-checks",
+    );
+    expect(workflowResult?.satisfied).toBe(false);
+  });
+
+  it("blocks completion even when every other completion rule is satisfied", () => {
+    const rule = {
+      kind: "no_failing_checks",
+      id: "axis-clean",
+      roleIds: ["axis"],
+    } as const;
+    const definition = { ...baseDefinition(), completionRules: [rule] };
+    const result = evaluateCompletion({
+      definition,
+      instances: [
+        instance({
+          computation: fixtureComputation({ checks: [passCheck("x")] }),
+        }),
+      ],
+      proposals: [],
+      confirmedLinkKeys: new Set(),
+      workflowChecks: [failCheck("shared-lead")],
+    });
+    expect(result.satisfied).toBe(false);
+  });
+});
+
 describe("evaluateCompletion — conditional_acknowledgment", () => {
   const rule = {
     kind: "conditional_acknowledgment",
