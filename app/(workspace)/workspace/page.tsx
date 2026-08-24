@@ -141,37 +141,64 @@ export default async function WorkspacePage({
     view.selectedProject.configurations[0] ??
     null;
 
-  const moduleWorkspace = params.module
+  const moduleWorkspaceRaw = params.module
     ? await loadModuleWorkspaceView(
         asModuleInstanceId(params.module),
         asUserId(userId),
       )
     : null;
-  const moduleResult = params.module
-    ? await loadModuleResultView(
-        asModuleInstanceId(params.module),
-        asUserId(userId),
-      )
-    : null;
-  const componentAssignment = params.module
-    ? await loadComponentAssignmentView(
-        asModuleInstanceId(params.module),
-        asUserId(userId),
-      )
-    : null;
+  // Every in-app link that carries `?module=` also carries a `?project=`/
+  // `?configuration=` pair read from that same module instance's own real
+  // configuration (components/engineering/machine-navigator.tsx), so the
+  // two never legitimately disagree. `loadModuleWorkspaceView` only checks
+  // *ownership*, not which configuration `?configuration=` names — nothing
+  // previously rejected a hand-edited or stale `?module=` naming a module
+  // instance in a *different, same-owner* project than `?project=`/
+  // `?configuration=`, which rendered that module's real data inside the
+  // unrelated selected project's own sidebar/header chrome (2026-08-20
+  // release-readiness audit, "cross-project deep-link mixing"). Falls back
+  // to "nothing selected" on a mismatch, the same treatment every other
+  // nullable deep-link view in this file already gets for an unauthorized
+  // or not-found id.
+  const moduleWorkspace =
+    moduleWorkspaceRaw !== null &&
+    moduleWorkspaceRaw.moduleInstance.configurationId ===
+      selectedConfiguration?.id
+      ? moduleWorkspaceRaw
+      : null;
+  const moduleResult =
+    moduleWorkspace !== null
+      ? await loadModuleResultView(
+          moduleWorkspace.moduleInstance.id,
+          asUserId(userId),
+        )
+      : null;
+  const componentAssignment =
+    moduleWorkspace !== null
+      ? await loadComponentAssignmentView(
+          moduleWorkspace.moduleInstance.id,
+          asUserId(userId),
+        )
+      : null;
   const workflowInstanceResult = params.workflow
     ? await loadWorkflowInstanceView(
         asWorkflowInstanceId(params.workflow),
         asUserId(userId),
       )
     : null;
-  // `unauthorized` (not found, or owned by someone else) and
-  // `workflow_not_found` (its definition was since unregistered) both fall
-  // back to "nothing selected" here, the same treatment every other nullable
-  // deep-link view in this file already gets — no distinct error UI exists
-  // for a deep link a user could only reach by guessing or a stale bookmark.
+  // `unauthorized` (not found, or owned by someone else),
+  // `workflow_not_found` (its definition was since unregistered), and a
+  // configuration mismatch (the same cross-project deep-link check as
+  // `moduleWorkspace` above) all fall back to "nothing selected" here, the
+  // same treatment every other nullable deep-link view in this file already
+  // gets — no distinct error UI exists for a deep link a user could only
+  // reach by guessing or a stale bookmark.
   const workflowInstance =
-    workflowInstanceResult?.ok === true ? workflowInstanceResult.view : null;
+    workflowInstanceResult?.ok === true &&
+    workflowInstanceResult.view.workflowInstance.configurationId ===
+      selectedConfiguration?.id
+      ? workflowInstanceResult.view
+      : null;
   // A module deep link owns the main canvas over a workflow deep link, which
   // itself owns the canvas over a static panel — `WorkspaceShell` applies the
   // same precedence when choosing what to render.

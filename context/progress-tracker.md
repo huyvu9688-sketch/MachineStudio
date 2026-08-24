@@ -108,11 +108,33 @@ group-policy restriction documented below for Playwright), proven by a new
 test that inserts through the raw Prisma client directly, bypassing
 `createParameterLink`'s own application-level duplicate check entirely.
 Full DB-gated suite green (2720/2720, confirmed twice) after both fixes,
-typecheck and lint clean. Not yet addressed from that same audit (see the
-audit itself, not repeated here): cross-project deep-link mixing, Playwright
-trace/credential-retention policy (blocked by group policy — see the
-Playwright note below), "permanent" account deletion not clearing the Clerk
-identity, and the UX/tooling-debt items.
+typecheck and lint clean. **2026-08-24 (same day): two more items closed.**
+"Permanent" account deletion not clearing the Clerk identity:
+`deleteAccount` (`lib/application/account/delete-account.ts`) previously
+only deleted the local `User` row; it now also calls
+`clerkClient().users.deleteUser` after the local deletion succeeds. A failed
+Clerk call does not fail the whole use case (the local data is already
+irreversibly gone, the more important half for privacy) — it logs instead,
+for an operator to clean up an orphaned Clerk identity. New unit tests
+(`delete-account.test.ts`, mocked — no live Clerk credentials in this
+environment) cover both the success path and the Clerk-call-fails path.
+Cross-project deep-link mixing: every in-app link carrying `?module=` also
+carries a `?project=`/`?configuration=` pair read from that same module
+instance's own real configuration
+(`components/engineering/machine-navigator.tsx`), so the two never
+legitimately disagree — but nothing previously rejected a hand-edited or
+stale `?module=`/`?workflow=` naming an instance in a *different,
+same-owner* project than `?project=`/`?configuration=` named, which
+rendered that instance's real data inside the unrelated selected project's
+own sidebar/header chrome. `app/(workspace)/workspace/page.tsx` now nulls
+out `moduleWorkspace`/`workflowInstance` (and everything derived from them)
+on a configuration mismatch, falling back to "nothing selected" — the same
+treatment every other nullable deep-link view in that file already gets for
+an unauthorized or not-found id. Full non-DB and DB-gated suite green
+(2725/2725), typecheck/lint clean. Not yet addressed from that same audit
+(see the audit itself, not repeated here): Playwright trace/
+credential-retention policy (blocked by group policy — see the Playwright
+note below) and the UX/tooling-debt items.
 
 ---
 
