@@ -112,3 +112,28 @@ expected update on every registry version bump, not a defect.
    `resolvePermissibleCompressiveLoad`, plus a new
    `resolveRequiredForce` implementing the forward/return convention
    (Decision 1).
+
+## Addendum (Task 14): Catalog seed data disclosure
+
+`reference/catalog-seed/smc-cm2-ca2.csv` (Unit 7.2, Task 14) is a
+representative seed dataset for the `pneumatic_cylinder` `ComponentType`
+schema released alongside it (seeded by
+`scripts/seed-pneumatic-cylinder-catalog.mts`) — 36 rows (9 SMC CM2/CA2
+bore/series combinations x 4 mounting styles), built from Task 13's own
+fetched-and-verified SMC catalog figures (see `stage-1-spec.md`'s "Task 13
+fetch record"). It is for the founder to review and trim to their real
+working set after this module ships — **not** a claim that every row is a
+part the founder actually stocks or specifies, matching the design doc's
+own explicit MVP decision: no self-serve catalog upload UI, a one-time
+seed import instead.
+
+The mounting-suffix model-number labels (`-basic`/`-foot`/`-flange`/
+`-clevis`) are descriptive placeholders, **not** SMC's own real
+model-number suffix convention — Task 13's fetch did not confirm the real
+suffix letters SMC uses per mount type, so none is fabricated here.
+
+`Cushion Energy Rubber Bumper (J)` is left blank for every CA2 row: CA2
+does not offer a rubber-bumper cushion option at all (a real, confirmed
+catalog fact, not a data gap) — the schema's
+`allowable_kinetic_energy_rubber_bumper` field is `required: false`, so an
+empty CSV cell there is valid.
