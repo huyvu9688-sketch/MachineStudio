@@ -1,7 +1,6 @@
 // The pneumatic-cylinder-sizing module package (Unit 7.2). Assembles the
-// manifest, ports, compute, UI, report, and validation record into a
-// single ModulePackage and seals it. catalogAdapter is added by a later
-// task, once the catalog schema and matcher exist.
+// manifest, ports, compute, UI, report, validation record, and catalog
+// adapter into a single ModulePackage and seals it.
 //
 // Named `index.ts` so `npm run registry:generate` discovers this
 // package, matching every other released module's own convention.
@@ -32,6 +31,20 @@ export const pneumaticCylinderSizingModule: ModulePackage = sealModulePackage({
   uiSchema,
   reportSchema,
   validation,
+  catalogAdapter: {
+    componentType: "pneumatic_cylinder",
+    requiredSpec: (computation) => ({
+      required_extend_force: computation.outputs.required_extend_force,
+      required_retract_force: computation.outputs.required_retract_force,
+      kinetic_energy: computation.outputs.kinetic_energy,
+      required_stroke: computation.outputs.required_stroke_out,
+      operating_pressure: computation.outputs.operating_pressure_out,
+      load_factor: computation.outputs.load_factor_out,
+      buckling_safety_factor: computation.outputs.buckling_safety_factor_out,
+      mounting_style: computation.outputs.mounting_style_out,
+      cushion_type: computation.outputs.cushion_type_out,
+    }),
+  },
 });
 
 export default pneumaticCylinderSizingModule;
