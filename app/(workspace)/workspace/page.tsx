@@ -64,8 +64,23 @@ const HIDDEN_MODULE_CATEGORIES: ReadonlySet<string> = new Set([
 /** `linear-axis@1`'s own workflow id, hidden from "Start workflow" the same way. */
 const HIDDEN_WORKFLOW_IDS: ReadonlySet<string> = new Set(["linear-axis"]);
 
+/**
+ * `example-relay`/`example-scaffold` are development fixtures used by
+ * integration tests, not real engineering modules — see each one's own
+ * manifest comment. They must stay registered (tests depend on them) but
+ * were never meant to appear in the real "Add module" picker. Filtered by
+ * id, not `category`, since `example-scaffold`'s own category is still its
+ * unfilled `npm run module:new` scaffold placeholder ("TODO"), not the
+ * `"development-fixture"` value `example-relay` actually declares.
+ */
+const HIDDEN_MODULE_IDS: ReadonlySet<string> = new Set([
+  "example-relay",
+  "example-scaffold",
+]);
+
 function modulePackageOptions(): readonly ModulePackageOption[] {
   return listModulePackages()
+    .filter((pkg) => !HIDDEN_MODULE_IDS.has(pkg.manifest.id))
     .filter((pkg) => !HIDDEN_MODULE_CATEGORIES.has(pkg.manifest.category))
     .map((pkg) => ({
       modulePackageId: pkg.manifest.id,

@@ -70,12 +70,20 @@ combination instead of silently skipping validation for a mismatched one;
 archived instances; the CI E2E step now sets `pipefail`; BOM CSV export now
 neutralizes a formula-injection prefix (`=+-@`) in manual fields. Full
 non-DB suite green (2456/2456), DB-gated suite green, typecheck/lint/build
-clean. Not yet addressed from that same audit (see the audit itself, not
-repeated here): concurrent link-creation cycle detection, the nullable
-`targetLoadCase` unique-index gap, cross-project deep-link mixing, dev
-fixtures (`example-relay`/`example-scaffold`) visible in the module picker,
-Playwright trace/credential-retention policy, "permanent" account deletion
-not clearing the Clerk identity, and the UX/tooling-debt items.
+clean. **2026-08-24: the dev-fixtures-visible-in-module-picker item is
+fixed** — `app/(workspace)/workspace/page.tsx`'s `modulePackageOptions()` now
+also filters by a new `HIDDEN_MODULE_IDS` set (`example-relay`,
+`example-scaffold`), the same route-level-filter pattern
+`HIDDEN_MODULE_CATEGORIES` already uses; filtered by id rather than
+`category` because `example-scaffold`'s own category is still its unfilled
+`npm run module:new` placeholder (`"TODO"`), not the `"development-fixture"`
+value `example-relay` actually declares. Both fixtures stay registered
+(integration tests depend on them); neither manifest was edited. Not yet
+addressed from that same audit (see the audit itself, not repeated here):
+concurrent link-creation cycle detection, the nullable `targetLoadCase`
+unique-index gap, cross-project deep-link mixing, Playwright trace/
+credential-retention policy, "permanent" account deletion not clearing the
+Clerk identity, and the UX/tooling-debt items.
 
 ---
 
