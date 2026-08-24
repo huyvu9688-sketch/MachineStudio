@@ -9,10 +9,13 @@ const eslintConfig = defineConfig([
   prettierConfig,
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
+    // Default ignores of eslint-config-next. "**/" prefixes so these also
+    // match nested build output under e.g. .worktrees/*/.next/** — a bare
+    // ".next/**" only matches at the config root in flat-config glob
+    // semantics.
+    "**/.next/**",
+    "**/out/**",
+    "**/build/**",
     "next-env.d.ts",
     "lib/db/generated/**",
   ]),

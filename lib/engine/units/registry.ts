@@ -43,6 +43,8 @@ export const Dimensions = {
   angularAcceleration: dimension({ angle: 1, time: -2 }),
   power: dimension({ mass: 1, length: 2, time: -3 }),
   pressure: dimension({ mass: 1, length: -1, time: -2 }),
+  volume: dimension({ length: 3 }),
+  volumetricFlowRate: dimension({ length: 3, time: -1 }),
   inertia: dimension({ mass: 1, length: 2 }),
   frequency: dimension({ time: -1 }),
   torsionalStiffness: dimension({ mass: 1, length: 2, time: -2, angle: -1 }),
@@ -145,6 +147,15 @@ const UNIT_LIST: readonly UnitDefinition[] = [
   def("MPa", Dimensions.pressure, 1e6),
   def("bar", Dimensions.pressure, 1e5),
   def("psi", Dimensions.pressure, PSI_TO_PA),
+  // Volume. Added for the pneumatic-cylinder module (Unit 7.1): SMC's own
+  // air-consumption formulas are expressed in dm^3 (ANR) -- identical to
+  // the liter -- not a new dimension any prior module needed.
+  def("m^3", Dimensions.volume, 1, { siCoherent: true }),
+  def("L", Dimensions.volume, 1e-3),
+  // Volumetric flow rate. Added for the same module: SMC's own required-
+  // air-volume formulas are expressed in dm^3/min (ANR), i.e. L/min.
+  def("m^3/s", Dimensions.volumetricFlowRate, 1, { siCoherent: true }),
+  def("L/min", Dimensions.volumetricFlowRate, 1e-3 / 60),
   // Mass moment of inertia
   def("kg*m^2", Dimensions.inertia, 1, { siCoherent: true }),
   def("kg*cm^2", Dimensions.inertia, 1e-4),

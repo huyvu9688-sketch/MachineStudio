@@ -306,9 +306,16 @@ Gate:
 
 ## Phase 2 — Common Automation Modules
 
-Candidates, subject to prioritization score:
+Candidates, subject to prioritization score. Pneumatic cylinder families
+was chosen first by explicit founder direction (2026-08-24), ahead of a
+formal score across the other eight candidates — see
+`context/modules/pneumatic-cylinder/stage-1-spec.md` "Status"; this is not
+a precedent that prioritization scoring is skipped for the remaining
+candidates.
 
-- Pneumatic cylinder families
+- **Pneumatic cylinder families — done.** `pneumatic-cylinder@0.1.0`
+  released and registered 2026-08-24
+  (`validation/pneumatic-cylinder/0.1.0.md`).
 - Timing belts
 - Chain and sprocket
 - Bushings and plain bearings
