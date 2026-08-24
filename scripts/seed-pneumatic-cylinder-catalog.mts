@@ -157,7 +157,18 @@ const {
   asManufacturerId,
   asUserId,
 } = await import("../lib/db/index.ts");
-const { importCatalog } = await import("../lib/application/index.ts");
+// Imports the specific submodule, not the lib/application barrel: the
+// barrel also re-exports deleteAccount (lib/application/account/
+// delete-account.ts), which pulls in @clerk/nextjs -- and Clerk's own
+// published ESM dist uses extensionless relative imports (e.g.
+// "./routeMatcher") that resolveTsFile() above cannot resolve (it only
+// probes .ts/.tsx/.mts variants, never .js/.mjs/.cjs, since every
+// first-party file in this repo is source .ts). Importing the barrel
+// crashes with ERR_MODULE_NOT_FOUND on a Clerk dist file before main()
+// ever runs -- verified directly. Depending on only the one real export
+// this script needs sidesteps that third-party import entirely.
+const { importCatalog } =
+  await import("../lib/application/catalogs/import-catalog.ts");
 
 // --- Component schema (Task 14 Step 1) ------------------------------------
 
