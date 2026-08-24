@@ -309,14 +309,26 @@ identical between the two independent real primary sources):
   63 -> 7.8 J; 80 -> 16 J; 100 -> 29 J. No rubber-bumper figure exists to
   record for CA2 — a real catalog gap, not an omission.
 
-**Mounting styles (directly read**, both series' own catalogs): CM2 and CA2
-both offer the same 7-way taxonomy — Basic, Axial Foot, Front Flange, Rear
-Flange, Single Clevis, Double Clevis, (Front/Centre) Trunnion — of which
-this project's own 4-case `pneumatic_mounting_style` enum uses: Basic ->
-`fixed-free`, Axial Foot -> `fixed-supported`, Front/Rear Flange ->
-`fixed-fixed`, Single Clevis -> `supported-supported` (trunnion and double
-clevis are catalog options this project's own enum does not model, matching
-`pneumatic-cylinder@0.1.0`'s own existing scope).
+**Mounting styles (directly read**, both series' own catalogs; corrected
+2026-08-24 after a spec-compliance review found the original wording
+overstated CM2's own taxonomy as matching CA2's): CM2 and CA2 do **not**
+offer the same taxonomy. `content.smcetech.com/pdf/CM2_EU.pdf` lists 10
+mounting options for CM2 — Basic, Axial foot, Front flange, Rear flange,
+Single clevis, Double clevis, Front trunnion, Rear trunnion, Integrated
+clevis, Boss-cut (the last two are construction/style variants specific to
+CM2's own "Series Variations" page, not offered on CA2).
+`content.smcetech.com/pdf/CA2_EU.pdf`'s own "How to Order" page lists 7 —
+Basic, Axial Foot, Front Flange, Rear Flange, Single Clevis, Double Clevis,
+Centre Trunnion. Of the 7 both series share, this project's own 4-case
+`pneumatic_mounting_style` enum uses: Basic -> `fixed-free`, Axial Foot ->
+`fixed-supported`, Front/Rear Flange -> `fixed-fixed`, Single Clevis ->
+`supported-supported` (trunnion, double clevis, and CM2's own two
+extra construction variants are catalog options this project's own enum
+does not model, matching `pneumatic-cylinder@0.1.0`'s own existing scope).
+This correction changes only the reported mounting-taxonomy count for
+CM2 — it does not change the four-case mounting-to-end-fixity mapping
+above, which was already correctly scoped to the 4 shared, enum-relevant
+styles.
 
 **Final table for Task 14's own seed CSV** (bore mm / rod mm / cushion
 energy J `rubber_bumper` / `air_cushion` / min-max standard stroke mm; a
