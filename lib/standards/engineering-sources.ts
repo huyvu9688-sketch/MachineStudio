@@ -276,7 +276,8 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     authority: "Oriental Motor Co., Ltd.",
     market: "JP",
     access: "public",
-    officialUrl: "https://www.orientalmotor.com/products/pdfs/F_TecRef/TecMtrSiz.pdf",
+    officialUrl:
+      "https://www.orientalmotor.com/products/pdfs/F_TecRef/TecMtrSiz.pdf",
     note: "A different document from the already-registered jp.oriental_motor.motor_sizing_calculations (a current web page): this is a printed General Catalog technical-reference chapter (imperial units throughout — oz, oz-in, oz-in^2 — with its own explicit weight-based-vs-mass-based inertia convention requiring division by g=386 in/s^2, pp. F-2 through F-10), found investigating candidate sources for the direct-drive-conveyor-motor-sizing module (Unit 6.3). Gives the same ball-screw/pulley/wire-belt/rack-and-pinion load-torque and inertia formula shapes already registered elsewhere in this file, plus two items no other registered source covers: a full worked numerical example selecting a standard AC motor for a geared belt conveyor (p. F-8, 'Belt and Pully') and a second, independent worked example selecting a brushless DC motor for a geared belt conveyor using a simpler single-roller inertia model (p. F-9, 'Conveyor').",
   },
   {
@@ -323,6 +324,37 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     officialUrl:
       "https://redexusa.com/wp-content/uploads/2016/06/RackSelectionsRatings.pdf",
     note: "Found researching the rack-pinion-motor-sizing module (Unit 6.4): a full, publicly citable HORIZONTAL-translation/VERTICAL-lifting selection procedure (application force Fr = mu*M*g+M*a+F horizontal / M*g+M*a+F vertical; pinion torque Tp=Fr*d/2; design torque Td=Tp*S.F.; max pinion speed Np=V/(pi*d)) -- the same force/torque shape the already-registered us.atlanta_drive_systems.rack_pinion_calculations uses (verified algebraically identical this session), but public and redistributable, unlike Atlanta's own unresolved-licensing status. No worked numerical example with printed intermediate results; the torque-rating tables (by module/tooth-count) are catalog-selection data, not a sizing worked example.",
+  },
+  {
+    id: asSourceDocumentId("us.milwaukee_cylinder.design_engineering_guide"),
+    classification: "manufacturer_method",
+    title: "Design Engineering Guide",
+    authority: "Milwaukee Cylinder (an Actuant Corp brand)",
+    market: "US",
+    access: "public",
+    officialUrl: "https://www.milwaukeecylinder.com",
+    note: "Design-guide chapter (pages 177-196) of Milwaukee Cylinder's own full product catalog, (c) 2012 Actuant Corp, read via krwest.com's own hosted copy (a distributor mirror; milwaukeecylinder.com's own domain was not independently attempted this session, so no direct-domain block is claimed the way tech.thk.com or nbk1560.com are elsewhere in this project). Covers basic thrust/pull force (F=PA), load-type sizing percentages (sliding, rolling, vertical-lift -- a load-side required-force estimation heuristic, documented as upstream engineering guidance, never implemented as a pneumatic-cylinder module formula, context/modules/pneumatic-cylinder/stage-2-contract.md 'Decisions' item 1), NFPA standard mounting styles, and piston-rod buckling via an 8-case mounting-style K-factor diagram and a stop-tube screening rule -- the concept only; the closed-form load-vs-diameter formula itself lives in each product series' own catalog Table 1 (pages 31/67/97), not fetched this or any session, so this module's own kernel does not reproduce Milwaukee's specific coefficients (context/modules/pneumatic-cylinder/stage-1-spec.md item 4).",
+  },
+  {
+    id: asSourceDocumentId("jp.smc.air_cylinders_model_selection"),
+    classification: "manufacturer_method",
+    title: "Air Cylinders Model Selection (BEST AUTOMATION Technical Data 1-4)",
+    authority: "SMC Corporation",
+    market: "JP",
+    access: "public",
+    officialUrl:
+      "https://www.smcworld.com/catalog/BEST-technical-data-en/pdf/6-2-1-m21-43-tech_en.pdf",
+    note: "SMC's own BEST AUTOMATION catalog, 'Technical Data 1-4' chapter (printed pages 1569-1576), read directly from smcworld.com's own domain this session after a browser User-Agent/local-TLS-workaround (see context/progress-tracker.md 'Environment notes'; not an SMC-side block). A complete, self-contained engineering handbook for this module's own scope: theoretical force with a load-factor (eta) table (formulas (1)-(2)), single-acting spring-force catalog data, cushion kinetic-energy formula E=(m/2)*V^2 (formula (7)) with per-series allowable-energy tables, air consumption and required-air-volume formulas (formulas (8)-(16)), a piston-area table (Table (1)), piston-rod/cylinder-tube buckling as a per-mounting-type maximum-stroke lookup table (not a closed-form formula), and lateral-rod-load-vs-stroke graphs (out of scope, context/modules/pneumatic-cylinder/stage-1-spec.md item 5). Milwaukeecylinder.com/smcpneumatics.com mirrors of the same or an overlapping document returned HTTP 403 to this project's automated fetch tooling; direct smcworld.com access (browser UA + local TLS workaround) succeeded.",
+  },
+  {
+    id: asSourceDocumentId("us.norgren.m1000_heavy_duty_cylinders"),
+    classification: "manufacturer_method",
+    title: "M/1000 Heavy Duty Cylinders, Double Acting — Technical Data Sheet",
+    authority: "Norgren (IMI Precision Engineering)",
+    market: "US",
+    access: "public",
+    officialUrl: "https://cdn.norgren.com/pdf/en_1_5_171_M1000.pdf",
+    note: "Found researching pneumatic-cylinder's own still-open independent-benchmark item (stage-2-contract.md 'Decisions' item 4) after Parker Hannifin's own literature (parker.com) again returned HTTP 403 this session, the same block recorded in the Stage 1/Stage 3 sessions. Norgren/IMI is a UK-headquartered group (document copyright 'Norgren GmbH'); classified US here because this specific product line (NFPA-interchangeable dimensions, inch bore sizes 2in-12in, model numbers quoted 'M/1060/350' style) targets the same NFPA-cylinder market segment this project's other US sources (Milwaukee Cylinder) serve -- not a claim about the document's own market label. Gives no methodology formula of its own (a pure dimensional/ratings data sheet), so it cannot resolve the buckling or cushion-kinetic-energy independent-benchmark gaps -- but its own printed 'Theoretical forces (N) at 6 bar' and 'Air consumption (l/cm) per stroke at 6 bar' table (9 bore sizes, 50mm-305mm, both outstroke and instroke) is real third-manufacturer published numeric data, independent of both SMC and Milwaukee, that this module's own resolveTheoreticalForce/resolveAirDemand formulas were never calibrated to. See lib/modules/pneumatic-cylinder/0.1.0/norgren-benchmark.ts.",
   },
 ];
 
@@ -643,5 +675,36 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     officialUrl:
       "https://redexusa.com/wp-content/uploads/2016/06/RackSelectionsRatings.pdf",
     note: "Read directly this session (full PDF, not a text summarization). Public, redistributable second-manufacturer corroboration of us.atlanta_drive_systems.rack_pinion_calculations' own force/torque shape, and the source cited in rack-pinion-motor-sizing@0.1.0's own manifest and trace (Atlanta stays internal-only per the precedent axis-load-cases@0.1.0 already set).",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.milwaukee_cylinder.design_engineering_guide@web-2026-08-24",
+    ),
+    documentId: asSourceDocumentId(
+      "us.milwaukee_cylinder.design_engineering_guide",
+    ),
+    edition:
+      "Design Engineering Guide chapter (printed pages 177-196) of the full Milwaukee Cylinder product catalog, (c) 2012 Actuant Corp",
+    note: "Read directly by the Stage 1 session, 2026-08-24, via krwest.com's own hosted copy of Milwaukee Cylinder's catalog (a distributor mirror; the exact hosted-PDF URL was not recorded, only the domain -- context/modules/pneumatic-cylinder/stage-1-spec.md 'Candidate Sources' item 1). Pages 177-193 read in full. Per-series Table 1 (buckling load-vs-diameter data, pages 31/67/97 of the same catalog) was not fetched -- this module's own kernel does not depend on it (context/modules/pneumatic-cylinder/stage-2-contract.md 'Decisions' item 3 implements a generic Euler formula instead).",
+  },
+  {
+    id: asSourceRevisionId(
+      "jp.smc.air_cylinders_model_selection@web-2026-08-24",
+    ),
+    documentId: asSourceDocumentId("jp.smc.air_cylinders_model_selection"),
+    edition:
+      "BEST AUTOMATION catalog, 'Technical Data 1-4' chapter (printed pages 1569-1576, fetched as pages 8-19 of the catalog's own '3 BEST AUTOMATION' section)",
+    officialUrl:
+      "https://www.smcworld.com/catalog/BEST-technical-data-en/pdf/6-2-1-m21-43-tech_en.pdf",
+    note: "Read directly by the Stage 1 session, 2026-08-24, from smcworld.com's own domain (formulas (1)-(16) and their variable tables read directly, not paraphrased). The Stage 3 session (also 2026-08-24) could not repeat that direct read -- smcworld.com and the smcpneumatics.com mirror both returned HTTP 403 to this project's own automated fetch tooling on this attempt -- and instead independently re-confirmed the same officialUrl via a text-extraction proxy (r.jina.ai). That pass recovered a worked air-consumption/required-air-volume example (bore 50 mm, stroke 600 mm, 0.5 MPa, 2 m/6 mm piping) whose printed cylinder-side total (~13 L) and piping-side total (~0.56 L) are reproduced exactly by lib/modules/pneumatic-cylinder/0.1.0/smc-reference-examples.ts when a 20 mm rod is assumed -- a rod size not stated in the recovered text but inferred as the value that makes both printed sub-totals match, and a real, standard SMC rod size for a 50 mm bore. Treated as real corroborating evidence, not a fully pinned reproduction, given the inferred rod diameter and the OCR-mediated fetch path -- see that file's own doc comment.",
+  },
+  {
+    id: asSourceRevisionId(
+      "us.norgren.m1000_heavy_duty_cylinders@web-2026-08-24",
+    ),
+    documentId: asSourceDocumentId("us.norgren.m1000_heavy_duty_cylinders"),
+    edition: "en 1.5.171.1-8, dated 08/22, (c) 2024 Norgren GmbH",
+    officialUrl: "https://cdn.norgren.com/pdf/en_1_5_171_M1000.pdf",
+    note: "Read directly this Stage 4 session, 2026-08-24 (full 8-page PDF, image-based -- read via the Read tool's own PDF-page rendering after WebFetch's text extraction could not parse it, not a text summarization). Page 2's own 'Cushioning, Theoretical Forces, Air Consumption' table (9 base models, 2in-12in bore) is reproduced through this module's own real compute path in lib/modules/pneumatic-cylinder/0.1.0/norgren-benchmark.ts/.test.ts -- see that file for the full comparison and lib/modules/pneumatic-cylinder/0.1.0/validation.ts 'independentBenchmark' for what this does and does not resolve.",
   },
 ];

@@ -312,6 +312,17 @@ export async function setModuleInputValueAction(
       value: option,
     };
   } else if (valueKind === "boolean") {
+    // Never trust a client-supplied valueKind alone (the same discipline
+    // the vector_quantity branch above already applies): a tampered
+    // request could otherwise submit a boolean value for a parameter the
+    // registry declares as a quantity/vector/enum, bypassing every kind
+    // and unit check those branches perform.
+    if (definition.valueType !== "boolean") {
+      return {
+        status: "error",
+        message: "This parameter is not a boolean.",
+      };
+    }
     value = {
       v: SERIALIZATION_FORMAT_VERSION,
       kind: "boolean",

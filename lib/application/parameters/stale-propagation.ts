@@ -44,6 +44,7 @@ import {
   deleteParameterLink,
   findCurrentParameterValueForNode,
   isConfigurationOwnedBy,
+  isSerializationConflict,
   loadAssemblyForOwner,
   loadConfigurationGraph,
   loadModuleInstanceForOwner,
@@ -70,7 +71,8 @@ export type StalePropagationErrorCode =
   | "cycle"
   | "duplicate_link"
   | "module_not_found"
-  | "incompatible";
+  | "incompatible"
+  | "conflict";
 
 /** A failed stale-propagation use-case outcome. */
 export interface StalePropagationError {
@@ -440,11 +442,23 @@ export async function confirmParameterLink(
     loadCase: input.sourceLoadCase ?? null,
   };
 
+  // Every sourceKind has exactly one legitimate combination of
+  // sourceModuleInstanceId/sourceAssemblyId; a mismatched combination (a
+  // tampered sourceKind paired with a real sourceModuleInstanceId, e.g.)
+  // previously fell through every branch below with no ownership or
+  // port-membership check at all before the link was written — see the
+  // release audit this closes.
   if (input.sourceKind === "module_output") {
     if (input.sourceModuleInstanceId === undefined) {
       return failure(
         "invalid_input",
         "A module-output source requires sourceModuleInstanceId.",
+      );
+    }
+    if (input.sourceAssemblyId !== undefined) {
+      return failure(
+        "invalid_input",
+        "A module-output source must not also carry sourceAssemblyId.",
       );
     }
     const sourceContext = await loadModuleInstanceForOwner(
@@ -483,7 +497,19 @@ export async function confirmParameterLink(
         `Module "${sourcePkg.manifest.id}@${sourcePkg.manifest.version}" declares no output port for ${input.sourceParameterId}.`,
       );
     }
-  } else if (input.sourceAssemblyId !== undefined) {
+  } else if (input.sourceKind === "assembly_parameter") {
+    if (input.sourceModuleInstanceId !== undefined) {
+      return failure(
+        "invalid_input",
+        "An assembly-parameter source must not also carry sourceModuleInstanceId.",
+      );
+    }
+    if (input.sourceAssemblyId === undefined) {
+      return failure(
+        "invalid_input",
+        "An assembly-parameter source requires sourceAssemblyId.",
+      );
+    }
     const assembly = await loadAssemblyForOwner(
       input.sourceAssemblyId,
       ownerId,
@@ -496,6 +522,18 @@ export async function confirmParameterLink(
     if (assembly.configurationId !== input.configurationId) {
       return unauthorized(
         "Source assembly does not belong to the given configuration.",
+      );
+    }
+  } else {
+    // machine_requirement / workflow_parameter: configuration-scoped, no
+    // module instance or assembly of their own.
+    if (
+      input.sourceModuleInstanceId !== undefined ||
+      input.sourceAssemblyId !== undefined
+    ) {
+      return failure(
+        "invalid_input",
+        `A ${input.sourceKind} source must not carry sourceModuleInstanceId or sourceAssemblyId.`,
       );
     }
   }
@@ -517,38 +555,73 @@ export async function confirmParameterLink(
     context.moduleInstance.moduleVersion,
   );
 
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      const staleModuleInstanceIds = await computeImpact(
-        input.configurationId,
-        targetDescriptor,
-        extraNodes,
-        tx,
+  // Two concurrent confirmParameterLink calls (anywhere — Postgres
+  // Serializable's predicate locking is not scoped to one configuration) can
+  // each read the link graph before the other's link is committed, both see
+  // no cycle, and both commit — together closing a cycle neither one alone
+  // would have (write skew, not a row-level conflict the default READ
+  // COMMITTED isolation would ever catch — see the release audit this
+  // closes). `Serializable` makes Postgres detect that overlap and abort one
+  // of the two transactions with a serialization failure. Per Postgres's own
+  // documented contract for Serializable ("applications using this level
+  // must be prepared to retry transactions due to serialization failures"),
+  // a spurious abort is expected even between transactions with no real
+  // conflict once there is enough concurrent load, so this retries a few
+  // times before surfacing `conflict` — confirmed necessary: without the
+  // retry, running this suite's own concurrency regression test alongside
+  // the rest of the DB-gated suite produced real, unrelated
+  // `confirmParameterLink` calls failing with `conflict`.
+  const MAX_ATTEMPTS = 5;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const result = await prisma.$transaction(
+        async (tx) => {
+          const staleModuleInstanceIds = await computeImpact(
+            input.configurationId,
+            targetDescriptor,
+            extraNodes,
+            tx,
+          );
+          await markRunsStaleForModuleInstances(
+            staleModuleInstanceIds,
+            "A parameter link was confirmed.",
+            tx,
+          );
+          await markComponentAssignmentsStaleForModuleInstances(
+            staleModuleInstanceIds,
+            "A parameter link was confirmed.",
+            tx,
+          );
+          const link = await createParameterLink(input, tx);
+          return { link, staleModuleInstanceIds };
+        },
+        { isolationLevel: "Serializable" },
       );
-      await markRunsStaleForModuleInstances(
-        staleModuleInstanceIds,
-        "A parameter link was confirmed.",
-        tx,
-      );
-      await markComponentAssignmentsStaleForModuleInstances(
-        staleModuleInstanceIds,
-        "A parameter link was confirmed.",
-        tx,
-      );
-      const link = await createParameterLink(input, tx);
-      return { link, staleModuleInstanceIds };
-    });
-    return { ok: true, ...result };
-  } catch (error) {
-    if (error instanceof GraphRepositoryError) {
-      const code =
-        error.code === "cycle" || error.code === "duplicate_link"
-          ? error.code
-          : "invalid_input";
-      return { ok: false, error: { code, message: error.message } };
+      return { ok: true, ...result };
+    } catch (error) {
+      if (error instanceof GraphRepositoryError) {
+        const code =
+          error.code === "cycle" || error.code === "duplicate_link"
+            ? error.code
+            : "invalid_input";
+        return { ok: false, error: { code, message: error.message } };
+      }
+      if (isSerializationConflict(error)) {
+        if (attempt < MAX_ATTEMPTS) continue;
+        return {
+          ok: false,
+          error: {
+            code: "conflict",
+            message:
+              "Another link was confirmed at the same time. Please try again.",
+          },
+        };
+      }
+      throw error;
     }
-    throw error;
   }
+  // Unreachable: the loop above always returns or throws.
+  throw new Error("confirmParameterLink: retry loop exited without a result");
 }
 
 /** Result of {@link previewRemoveParameterLinkImpact}. */

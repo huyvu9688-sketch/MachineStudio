@@ -45,7 +45,138 @@ everything `0.1.0` already computes -- shipped 2026-08-18, `0.1.0` staying
 released, registered, and untouched** -- see "Active work" below; **and the
 6 pre-existing `workspace-shell.test.tsx` failures that release's own
 verification disclosed (a stale `vi.mock` missing three module-instance-
-management actions) are fixed the same day** -- non-DB suite is 2080/2080)
+management actions) are fixed the same day** -- non-DB suite is 2080/2080).
+**2026-08-20: a release-readiness audit found six release-blocking
+calculation defects and several application-layer gaps; all are now fixed.**
+Engine-level: `executeModule`/`resolveModuleInput` now enforce a
+parameter's declared `range` against input magnitudes, previously declared
+but never checked (`ENGINE_SDK_VERSION` bumped to `1.1.0`,
+`lib/engine/module-sdk/execute.ts`). Four new patch module versions, each
+0.1.0/0.2.0/0.3.0 staying released/registered/untouched: `ball-screw@0.1.1`
+(drive torque now reports a magnitude, not a signed value, matching its own
+`range: { min: 0 }`), `direct-drive-conveyor-motor-sizing@0.2.1` (inertia
+ratio now includes the drive roller's own inertia), `belt-pulley-drive-motor-sizing@0.3.1`
+(momentary torque now considers both ramp phases; effective/RMS torque now
+includes a dwell holding term), `index-table-motor-sizing@0.2.1` (rejects a
+motion profile where `2*acceleration_time > index_time`). Application-layer:
+a workflow-level failing check now blocks `"completed"` status
+(`lib/workflows/workflow-sdk/completion.ts`'s new `workflowChecks` input,
+wired from `load-workflow-instance-view.ts`); `confirmParameterLink` now
+validates every `sourceKind`/`sourceModuleInstanceId`/`sourceAssemblyId`
+combination instead of silently skipping validation for a mismatched one;
+`setModuleInputValueAction`'s boolean branch now checks
+`definition.valueType`; `assignComponent` now rejects a stale
+`calculationRunId`; `listModuleInstancesForWorkflowInstance` now excludes
+archived instances; the CI E2E step now sets `pipefail`; BOM CSV export now
+neutralizes a formula-injection prefix (`=+-@`) in manual fields. Full
+non-DB suite green (2456/2456), DB-gated suite green, typecheck/lint/build
+clean. **2026-08-24: the dev-fixtures-visible-in-module-picker item is
+fixed** — `app/(workspace)/workspace/page.tsx`'s `modulePackageOptions()` now
+also filters by a new `HIDDEN_MODULE_IDS` set (`example-relay`,
+`example-scaffold`), the same route-level-filter pattern
+`HIDDEN_MODULE_CATEGORIES` already uses; filtered by id rather than
+`category` because `example-scaffold`'s own category is still its unfilled
+`npm run module:new` placeholder (`"TODO"`), not the `"development-fixture"`
+value `example-relay` actually declares. Both fixtures stay registered
+(integration tests depend on them); neither manifest was edited.
+**2026-08-24: two more audit items closed.** Concurrent link-creation cycle
+detection: `confirmParameterLink`'s transaction now runs at `Serializable`
+isolation (previously the Prisma default, effectively READ COMMITTED), so
+Postgres detects the write-skew case where two concurrent confirmations each
+see an acyclic graph and would together close a cycle neither alone would —
+confirmed with a new regression test that races two closing links and
+asserts at most one can ever succeed. A spurious serialization failure
+between logically unrelated transactions is expected under concurrent load
+per Postgres's own documented contract for this isolation level, so the call
+now retries up to 5 times before surfacing a new `"conflict"` error code;
+without the retry, running the new regression test alongside the rest of the
+DB-gated suite produced real spurious failures in unrelated tests, confirmed
+directly. `isSerializationConflict` (`lib/db/repositories/db-client.ts`)
+recognizes both the `PrismaClientKnownRequestError` `P2034` shape and the
+untranslated `DriverAdapterError`/`TransactionWriteConflict` shape
+`@prisma/adapter-neon` raises for the same underlying SQLSTATE `40001`,
+confirmed both occur depending on when in the transaction the conflict
+fires. The nullable `targetLoadCase` unique-index gap: Postgres unique
+constraints treat every NULL as distinct, so `ParameterLink`'s own
+`@@unique([targetModuleInstanceId, targetParameterId, targetLoadCase])`
+never actually fired for the common case (a load-case-agnostic input port,
+`targetLoadCase` null) — closed with a hand-authored partial unique index
+(`prisma/migrations/20260824120000_parameter_link_null_load_case_unique`),
+applied directly to the live Neon database and recorded in
+`_prisma_migrations` (`prisma migrate deploy` itself is blocked by the same
+group-policy restriction documented below for Playwright), proven by a new
+test that inserts through the raw Prisma client directly, bypassing
+`createParameterLink`'s own application-level duplicate check entirely.
+Full DB-gated suite green (2720/2720, confirmed twice) after both fixes,
+typecheck and lint clean. **2026-08-24 (same day): two more items closed.**
+"Permanent" account deletion not clearing the Clerk identity:
+`deleteAccount` (`lib/application/account/delete-account.ts`) previously
+only deleted the local `User` row; it now also calls
+`clerkClient().users.deleteUser` after the local deletion succeeds. A failed
+Clerk call does not fail the whole use case (the local data is already
+irreversibly gone, the more important half for privacy) — it logs instead,
+for an operator to clean up an orphaned Clerk identity. New unit tests
+(`delete-account.test.ts`, mocked — no live Clerk credentials in this
+environment) cover both the success path and the Clerk-call-fails path.
+Cross-project deep-link mixing: every in-app link carrying `?module=` also
+carries a `?project=`/`?configuration=` pair read from that same module
+instance's own real configuration
+(`components/engineering/machine-navigator.tsx`), so the two never
+legitimately disagree — but nothing previously rejected a hand-edited or
+stale `?module=`/`?workflow=` naming an instance in a *different,
+same-owner* project than `?project=`/`?configuration=` named, which
+rendered that instance's real data inside the unrelated selected project's
+own sidebar/header chrome. `app/(workspace)/workspace/page.tsx` now nulls
+out `moduleWorkspace`/`workflowInstance` (and everything derived from them)
+on a configuration mismatch, falling back to "nothing selected" — the same
+treatment every other nullable deep-link view in that file already gets for
+an unauthorized or not-found id. Full non-DB and DB-gated suite green
+(2725/2725), typecheck/lint clean. Not yet addressed from that same audit
+(see the audit itself, not repeated here): Playwright trace/
+credential-retention policy (blocked by group policy — see the Playwright
+note below) and the UX/tooling-debt items.
+**2026-08-24 (same day): Unit 7.1 (`pneumatic-cylinder`) Stage 3 (compute
+and trace) is done** — `lib/modules/pneumatic-cylinder/0.1.0/` now has a
+full package (manifest, `math.ts` kernel, input schema, compute, checks,
+trace, generic UI/report schema, a draft `validation.ts`), reference
+examples reproduced through the real compute path against SMC Corporation's
+own worked examples, and 93/93 module tests passing — see
+`context/implementation-map.md` Milestone 7 Unit 7.1 "Stage 3" for the full
+account, including the buckling formula's own independent reproduction of
+`ball-screw@0.1.0`'s established Euler end-fixity constants and a real,
+disclosed registry gap (Milwaukee/SMC source revisions, never actually
+registered at Stage 2 despite that stage's own "to be added" note) closed
+in the same session. Full non-DB suite green (2520/2520), typecheck/lint/
+build clean. The module is built and tested but not yet registered —
+Stage 4 (validation review) through Stage 6 (release, including `npm run
+registry:generate`) remain; see "Next up" item 0.
+**2026-08-24 (same day): Unit 7.1 Stages 4-6 are done — `pneumatic-
+cylinder@0.1.0` is released and registered, Milestone 7's first module.**
+Stage 4's own still-open independent-benchmark question (Parker Hannifin's
+own literature returned HTTP 403 again this session, the same block Stage
+1/Stage 3 already recorded) is **partially resolved, not fully closed**:
+Norgren (IMI Precision Engineering)'s own M/1000 catalog data sheet — a
+third manufacturer, independent of both SMC and Milwaukee — supplies real
+published per-model theoretical-force and air-consumption ratings this
+module's kernel was never calibrated to; reproduced through the real
+compute path (`lib/modules/pneumatic-cylinder/0.1.0/norgren-benchmark.ts`/
+`.test.ts`) across 7 bore sizes, agreement is within 2% on all 21 figures
+(mean under 1%). This closes the independent-benchmark item for 2 of the
+module's 4 formula areas (theoretical force, air consumption) — the cushion
+kinetic-energy-allowable and buckling formulas still have no second
+independent source of any kind, an explicit, disclosed `0.1.0` limitation
+carried into release, not silently dropped. `reviewer`/`reviewDate` are
+honestly scoped to what the substitute evidence actually covers. Stage 5
+(generic surfaces) was already effectively complete at Stage 3 — this
+module has no cross-module link and no workflow role, confirmed rather
+than assumed. Stage 6: source-immutability hash pinned
+(`9700fdc94f2a344f`), registered via `npm run registry:generate`
+(`pneumatic-cylinder@0.1.0` in `lib/modules/registry.generated.ts`, 25
+modules total), sealed content hash `739621ff948938a9`. Full validation
+record: `validation/pneumatic-cylinder/0.1.0.md`; three new
+`validation/source-index.md` rows. Full non-DB suite green (2546/2546),
+typecheck/lint/build clean. See `context/implementation-map.md` Milestone 7
+Unit 7.1 "Stage 4"/"Stage 5"/"Stage 6" for the full account.
 
 ---
 
@@ -60,6 +191,7 @@ management actions) are fixed the same day** -- non-DB suite is 2080/2080)
 | 4 | Linear-axis engineering modules | **Done** |
 | 5 | BOM, reports, MVP release | **In progress** |
 | 6 | Motor Sizing Tool family (ADR-0011) | **Done** |
+| 7 | Common automation modules | **In progress** |
 
 Roadmap phases map onto these milestones as follows (the roadmap uses phase
 letters, the implementation map and this tracker use milestone numbers —
@@ -70,7 +202,8 @@ same work, two labels):
 - Phase 1B / 1C → Milestone 4 (later units)
 - Phase 1D → Milestone 5
 - Phase 1E → Milestone 6
-- Phase 2+ → after MVP
+- Phase 2 → Milestone 7
+- Phase 3+ → after MVP
 
 Milestone 5 work started ahead of Milestone 4's own Unit 4.1 release gate
 clearing, per explicit founder direction -- the same kind of scope
@@ -121,16 +254,19 @@ still matches the moved file byte for byte — a **pure move**, no evidence
 was modified — and updated each fixture's own `rawMaterialPath` to the new
 location. The evidence-integrity guarantee itself is unchanged and the
 test passes again (13/13).
-**A pre-existing, unrelated `.worktrees/unit-4-1-release/` checkout** (a
-superseded branch from the 2026-08-11 Unit 4.1 release session, already
-fully incorporated into `main` and not an ancestor of it) **has a stale
-`.next/dev/types/` build artifact that a bare `npm run lint` from the repo
-root walks into**, since `eslint.config.mjs`'s own `.next/**` global-ignore
-pattern does not match nested `.worktrees/*/.next/**` paths — a real gap in
-that ignore list, not a new defect. Confirmed unrelated to any change in
-this session by linting the changed files directly. Not fixed here (out of
-scope for Unit 5.5's own logging work); either broaden the ignore glob or
-remove the stale worktree in a separate small unit.
+**2026-08-24: the stale `.worktrees/unit-4-1-release/` checkout and its
+lint-ignore gap are both closed.** The worktree (a superseded branch from
+the 2026-08-11 Unit 4.1 release session; confirmed this session, again,
+still fully incorporated into `main` and not an ancestor of it, and clean
+of any uncommitted work) is removed via `git worktree remove`, and its now-
+orphaned local branch deleted. `eslint.config.mjs`'s own global-ignore
+patterns (`.next/**`, `out/**`, `build/**`) are now `**/.next/**`,
+`**/out/**`, `**/build/**` — flat-config glob semantics only match a bare
+`".next/**"` at the config root, not nested under e.g.
+`.worktrees/*/.next/**` or `.claude/worktrees/*/.next/**`, which is why a
+bare `npm run lint` from the repo root previously walked into that stale
+worktree's own build artifact. `npm run lint` (0 errors) and `tsc --noEmit`
+(clean) both confirm the fix from the repo root.
 (`/workspace/bom` and `/workspace/report` -- this codebase's first two
 Route Handlers, both still present). `format:check` flags ~212
 pre-existing files repo-wide on this machine (CRLF line endings from a
@@ -2211,6 +2347,95 @@ established convention yet for surfacing or hiding an in-progress or
 superseding module version from the picker -- a real gap, not this
 release's own scope to close.
 
+Unit 7.1 — `pneumatic-cylinder`, the first Milestone 7 (Phase 2) module.
+**Released and complete (2026-08-24).**
+
+- Stage 1 (spec): **done as a draft (2026-08-24).**
+  `context/modules/pneumatic-cylinder/stage-1-spec.md` — two sources read
+  directly, Milwaukee Cylinder (US) and SMC Corporation (JP, via a local
+  TLS/User-Agent fetch workaround, not a source-side block). Covers
+  theoretical force, cushion kinetic energy (SMC's own formula and
+  per-series allowable-energy tables), air consumption/required air
+  volume, and piston-rod buckling. Two real, disclosed evidence gaps
+  carried into Stage 2: the two sources disagree in formula *shape* (not
+  just coefficients) on the force-sizing-margin method (SMC's `eta`
+  load-factor multiplier vs. Milwaukee's load-type percentage method); and
+  no source read this session gives a complete, pneumatic-manufacturer-
+  sourced closed-form buckling formula.
+- Stage 2 (parameter contract): **done (2026-08-24).**
+  `context/modules/pneumatic-cylinder/stage-2-contract.md` — registry
+  `1.16.0` releases the full `pneumatic.*` group (22 parameters) plus two
+  new unit-registry dimensions (`volume`, `volumetricFlowRate`, needed for
+  the reported air-consumption/required-air-volume outputs — a real gap in
+  Stage 1's own "no unit-registry work expected" estimate). Both open Stage
+  1 items resolved: the force-sizing-margin "disagreement" turns out to be
+  two methods answering different questions, not one contested registry
+  slot — SMC's `eta` becomes this module's own required-no-default sizing
+  margin, while Milwaukee's load-type percentages are documented as
+  upstream engineering guidance for arriving at the required-force inputs
+  in the first place, never implemented as a module formula (the same
+  "engineer already knows the load" treatment `coupling 0.1.0` gives
+  `screw.drive_torque`). Buckling ships as a real `0.1.0` check: `pneumatic.
+  mounting_style` reuses the identical four-case Euler end-fixity enum
+  shape `screw.end_support_arrangement` already established (same textbook
+  physics) but deliberately as a *distinct* parameter ID, not a reuse —
+  this registry's own namespacing exists so a resolved value on one
+  component is never mistaken for a compatible source on an unrelated one,
+  the same reasoning `motor_sizing.rack_pinion.gear_ratio` already gives
+  for not reusing `screw.gear_ratio`. `pneumatic.buckling_safety_factor` is
+  required with no default — an even clearer case than `screw.
+  buckling_safety_margin`'s own two-source disagreement, since no
+  pneumatic-manufacturer source gives any number at all. **This session
+  also caught and fixed a real, pre-existing gap unrelated to this
+  module's own scope:** registry `1.15.0` (released 2026-08-18, pinned by
+  six already-released module manifests) had never been added to
+  `PARAMETER_REGISTRY_SUPPORTED_VERSIONS` explicitly — the same stranding
+  risk `linear-guide`'s and `drive-train`'s own sessions each caught once
+  before for `1.4.0`/`1.7.0`. Fixed in the same edit that adds `1.16.0`.
+  `npx tsc --noEmit`, the full non-DB test suite (2462/2462), and `npm run
+  lint` (0 errors) all pass; the two pinned registry-version/hash fixtures
+  were updated to match, the expected update on every version bump.
+- Stage 3 (compute and trace): **done (2026-08-24).**
+  `lib/modules/pneumatic-cylinder/0.1.0/` — full `ModulePackage` (manifest,
+  `math.ts` kernel, input schema, compute, checks, trace, generic UI/report
+  schema, a draft `validation.ts`); SMC's own worked examples reproduced
+  through the real compute path (`smc-reference-examples.ts`/`.test.ts`).
+  The buckling kernel reproduces `ball-screw@0.1.0`'s own Euler end-fixity
+  constants independently, not by import. A real registry gap found and
+  closed the same session: the Milwaukee/SMC source revisions Stage 1
+  flagged "to be added at Stage 2" were never actually registered — both
+  added to `lib/standards/engineering-sources.ts` this stage.
+- Stage 4 (validation): **done (2026-08-24).** Reference examples already
+  met at Stage 3. The independent-benchmark question
+  (`stage-2-contract.md` "Decisions" item 4) is **partially resolved, not
+  fully closed** — Parker Hannifin's own literature returned HTTP 403 again
+  this session, the same block Stage 1/Stage 3 already recorded. Norgren
+  (IMI Precision Engineering)'s own M/1000 catalog data sheet — a third
+  manufacturer, independent of both SMC and Milwaukee — supplies real
+  published per-model theoretical-force/air-consumption ratings this
+  module's own kernel was never calibrated to; reproduced through the real
+  compute path (`norgren-benchmark.ts`/`.test.ts`) across 7 bore sizes,
+  agreement within 2% on all 21 figures (mean under 1%). This closes the
+  independent-benchmark item for 2 of the module's 4 formula areas
+  (theoretical force, air consumption); the cushion kinetic-energy-
+  allowable and buckling formulas still have no second independent source
+  of any kind, an explicit, disclosed `0.1.0` limitation carried into
+  release, not silently dropped. `reviewer`/`reviewDate` are honestly
+  scoped to what the substitute evidence actually covers. Full validation
+  record: `validation/pneumatic-cylinder/0.1.0.md`; three new
+  `validation/source-index.md` rows.
+- Stage 5 (generic surfaces): **done (2026-08-24), effectively already
+  complete at Stage 3.** This module has no cross-module link and no
+  guided-workflow role — confirmed (zero `pneumatic.*` overlap with any
+  released parameter group, `manifest.ts`'s own `workflowRoles: []`), not
+  merely assumed. Generic UI/report schema already passed conformance.
+- Stage 6 (release): **done (2026-08-24).** Source-immutability hash pinned
+  (`npm run module:source-hash -- pneumatic-cylinder 0.1.0` →
+  `9700fdc94f2a344f`); registered via `npm run registry:generate`
+  (`pneumatic-cylinder@0.1.0` in `lib/modules/registry.generated.ts`, 25
+  modules total); sealed package content hash `739621ff948938a9`. Full
+  non-DB suite green (2546/2546), typecheck/lint/build clean.
+
 ---
 
 ## Blocked — needs evidence, not code
@@ -2263,6 +2488,24 @@ variable names.
 
 ## Next up
 
+0. **Unit 7.1 (`pneumatic-cylinder`) is fully released and complete
+   (2026-08-24)** — Stages 1 through 6 all done; see "Active work" above
+   and `context/implementation-map.md` Milestone 7 Unit 7.1 for the full
+   account. `pneumatic-cylinder@0.1.0` is registered
+   (`lib/modules/registry.generated.ts`), with a completed validation
+   record (`validation/pneumatic-cylinder/0.1.0.md`) that honestly
+   discloses a partial (2-of-4-formula-area) independent-benchmark
+   resolution rather than overclaiming full closure. Nothing left to do
+   for this unit. **Next: Unit 7.2 — the second Milestone 7 (Phase 2)
+   module.** `context/roadmap.md` "Phase 2" lists eight remaining
+   candidates (timing belts; chain and sprocket; bushings and plain
+   bearings; cable carriers; mechanical stops and energy absorption; basic
+   shaft/key/bolted-joint checks; a tolerance and fit reference module; PDF
+   generation and improved catalog import) with no priority-score pass or
+   founder direction yet picking which goes next — Unit 7.1 itself was a
+   founder-directed exception to `context/roadmap.md`'s own "Module
+   Prioritization" scoring order (see Unit 7.1's own Stage 1 spec
+   "Status"), not a precedent that scoring is skipped going forward.
 1. **All five Motor Sizing Tool family mechanism modules are fully released
    (2026-08-13), and Phase 1E's own last open deliverable — the
    `AddModuleInstanceDialog` category step/mechanism picker and the

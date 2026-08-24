@@ -1975,6 +1975,242 @@ manifests' own `category` values; `linear-axis` is the only registered
 workflow id besides the `example-workflow` dev fixture, which stays
 visible — out of this ADR's stated scope).
 
+# Milestone 7 — Common Automation Modules
+
+Maps onto roadmap Phase 2. Candidates are scored by
+`priority = usage frequency x manual pain x workflow leverage / data cost`
+(`context/roadmap.md` "Module Prioritization"); pneumatic cylinders were
+chosen as the first module ahead of a formal score across all nine Phase 2
+candidates — the founder's own direct call (2026-08-24), since every
+candidate is expected to be built eventually, so starting order matters
+less than starting. Each module in this milestone is a new, standalone
+family with no `linear-axis@1` role and no Motor Sizing Tool family
+relationship (ADR-0011's own family is closed at five ball-screw/conveyor/
+rack-pinion/belt-pulley/index-table mechanisms).
+
+## Unit 7.1 — Pneumatic cylinder module
+
+### Stage 1 — Engineering specification
+
+**Done (2026-08-24).** `context/modules/pneumatic-cylinder/
+stage-1-spec.md` — proposed module ID `pneumatic-cylinder`. Two sources
+read directly: Milwaukee Cylinder's own *Design Engineering Guide* (US) and
+SMC Corporation's own *Air Cylinders Model Selection* technical data (JP,
+`smcworld.com`'s own domain, reached after a local corporate-TLS/User-Agent
+fetch workaround — not a source-side block). Covers theoretical extend/
+retract force, cushion kinetic-energy absorption (`E = mV^2/2`, SMC formula
+7, with real per-series allowable-energy tables), air consumption/required
+air volume (SMC formulas 8-16), and piston-rod buckling. Two real,
+disclosed gaps carried into Stage 2, not glossed over: the two sources
+disagree in *formula shape* (not just coefficients) on how a force-sizing
+margin is applied — SMC's `eta` load-factor multiplier vs. Milwaukee's
+load-type percentage-of-actual-load method; and no source read this session
+gives a complete, directly citable, pneumatic-manufacturer-sourced
+closed-form buckling formula (Milwaukee references but does not include its
+own per-series Table 1; SMC gives only a pre-computed maximum-stroke lookup
+table; a general hydraulic-industry source, Hänchen, confirms the generic
+Euler formula shape but is not a pneumatic-specific citation) — structurally
+the same kind of open item `ball-screw@0.1.0`'s own buckling-safety-margin
+discrepancy (Steinmeyer `0.5` vs. Rockford `0.8`) already models, except
+here no source yet supplies the constant to disagree over. Piston speed is
+explicitly out of scope as a computed value — both sources state directly
+that it cannot be calculated from a formula. No `pneumatic.*` registry
+parameter exists yet (confirmed by `grep`); `MPa`, `N`, and `J` (reused from
+`drive-train@0.1.0`'s own energy/torque-dimension addition) cover every
+force/pressure/energy unit this module's own formulas need — Stage 2 found
+one gap this estimate missed: the reported air-consumption/required-air-
+volume outputs need a volume and a volumetric-flow-rate unit, neither of
+which existed yet.
+
+### Stage 2 — Parameter contract
+
+**Done (2026-08-24).** `context/modules/pneumatic-cylinder/
+stage-2-contract.md` — registry `1.16.0` releases the full `pneumatic.*`
+group (22 parameters) plus two new unit-registry dimensions (`volume`,
+`volumetricFlowRate`). Resolves both open Stage 1 items: the force-sizing-
+margin disagreement turns out to be two methods answering different
+questions, not one registry slot — SMC's own `eta` becomes this module's
+required-no-default sizing-margin input, while Milwaukee's own load-type
+percentages are documented as upstream engineering guidance for arriving
+at `required_extend_force`/`required_retract_force` in the first place,
+never implemented as a module formula (matching how `coupling 0.1.0`
+already treats `screw.drive_torque` as an already-resolved upstream
+value). Buckling ships as a real `0.1.0` check, mirroring `ball-screw`'s
+own precedent: `pneumatic.mounting_style` reuses the identical four-case
+Euler end-fixity enum shape `screw.end_support_arrangement` already
+established (same textbook physics, deliberately *not* the same parameter
+ID — this registry's own namespacing exists precisely so a resolved value
+on one component is never mistaken for a compatible source on an
+unrelated one, the same reasoning `motor_sizing.rack_pinion.gear_ratio`
+already gives for not reusing `screw.gear_ratio`), and
+`pneumatic.buckling_safety_factor` is required with no default — an even
+clearer case than `screw.buckling_safety_margin`'s own two-source
+disagreement, since no pneumatic-manufacturer source gives any number at
+all. This session also caught and fixed a real, pre-existing gap
+unrelated to this module's own scope: registry `1.15.0` (released
+2026-08-18, pinned by six already-released module manifests) had never
+been added to `PARAMETER_REGISTRY_SUPPORTED_VERSIONS` explicitly — the
+same stranding risk `linear-guide`'s and `drive-train`'s own sessions each
+caught once before for `1.4.0` and `1.7.0`. Fixed in the same edit that
+adds `1.16.0`. `npx tsc --noEmit`, the full non-DB test suite (2462/2462),
+and `npm run lint` (0 errors) all pass; the two pinned registry-version/
+hash fixtures (`lib/engine/parameters/registry.test.ts`, `hash.test.ts`)
+were updated to match, the expected update on every version bump. No
+kernel or package exists yet — Stage 3 (compute and trace) is next.
+
+### Stage 3 — Compute and trace
+
+**Done (2026-08-24).** `lib/modules/pneumatic-cylinder/0.1.0/` — a full
+package (manifest, ports, `math.ts` kernel, `input-schema.ts`, `compute.ts`,
+`checks.ts`, `trace.ts`, generic UI/report schema, a draft `validation.ts`)
+scaffolded via `npm run module:new` and built out with the real engineering
+from stage-2-contract.md. `math.ts` implements piston areas (`A1=pi*D^2/4`,
+`A2=pi*(D^2-d^2)/4`), theoretical force (`F=eta*A*P`), cushion kinetic
+energy (`E=(m/2)*V^2`), a generic Euler column buckling formula
+(`Fk=factor*pi^2*E_steel*J/L^2`, `J=pi*d^4/64`, steel `E=210,000 N/mm^2`),
+and air consumption/required air volume (SMC's own formulas (8)-(16)) —
+all in the mm/MPa/N unit system `pneumatic.*`'s own canonical units use
+directly (1 MPa = 1 N/mm^2 exactly, so no conversion constant is needed,
+unlike `screw.*`'s own m/Pa/N choice). The buckling formula reuses the
+identical four end-fixity cases and `1/K^2` effective-length-factor values
+(`0.25/1.0/2.0/4.0`) `ball-screw@0.1.0`'s own kernel already established,
+reproduced independently per stage-2-contract.md "Decisions" item 3 (not
+imported); `pneumatic.buckling_safety_factor` is applied as a divisor
+(`F_perm = Fk / S`), not a multiplier like `screw.buckling_safety_margin` —
+a deliberate difference, since Hänchen's own source (the only one with a
+number) states it that way. The piston rod is assumed to be in axial
+compression only on the extend (thrust) stroke — a new, explicit modeling
+assumption this stage introduced (recorded in the trace, checks, and
+`compute.ts`'s own assumptions list), since neither candidate source states
+this directly. Two real, disclosed simplifications close gaps
+stage-2-contract.md left open (no stroke-time or per-side-piping port was
+released): `resolveAirDemand` assumes symmetric extend/retract piping (one
+`piping_length`/`piping_bore` pair applied to both legs) and approximates
+stroke time as `stroke / max_piston_speed` — both affect only the reported
+(not evaluated) air-consumption/required-air-volume outputs, never a
+pass/fail check.
+
+**A real registry gap found and closed this stage, not carried over
+silently:** `stage-1-spec.md`'s own "to be added at Stage 2" note for the
+Milwaukee Cylinder and SMC source revisions was never actually done —
+`lib/standards/engineering-sources.ts` had zero `pneumatic`/`milwaukee`
+entries before this stage, confirmed by grep. Both are now registered
+(`us.milwaukee_cylinder.design_engineering_guide@web-2026-08-24`,
+`jp.smc.air_cylinders_model_selection@web-2026-08-24`), a prerequisite for
+this module's own trace to cite SMC's formulas at all (`lib/standards/
+registry.ts` validates every cited source resolves to a registered
+revision).
+
+**Reference-example reproduction (stage-2-contract.md "Stage 3 Entry
+Criteria" item 5) done through the real compute path, not just
+`math.ts`**, in `smc-reference-examples.ts`/`.test.ts`: SMC's own
+bore-selection Example 1 (63 mm bore, eta=0.7, P=0.5 MPa, 1000 N required)
+reproduces a theoretical force of 1091.0 N, clearing SMC's own selection
+decision; an SMC air-consumption worked example (50 mm bore, 600 mm
+stroke, 0.5 MPa, 2 m/6 mm piping) reproduces the source's own printed
+sub-totals (~13 L cylinder, ~0.56 L piping) to within 0.1 L — recovered via
+a text-extraction proxy this session after `smcworld.com`/
+`smcpneumatics.com` both returned HTTP 403 to this session's own direct
+fetch, and reproduced with a 20 mm rod diameter inferred (not stated in
+the recovered text) as the value that makes both printed sub-totals match;
+and an SMC cushion-capacity graph example (50 kg load, CM2-40, air
+cushion, "300 mm/s or less") is cross-checked against an inferred
+allowable-energy figure (2.35 J), disclosed as not independently confirmed
+against a per-model table. `math.ts`'s own piston-area formula is also
+spot-checked against six of SMC's own printed piston-area table entries
+(6-100 mm bores), matching to within 0.3% (catalog-rounding) — confirmed,
+not assumed. No worked buckling example exists in either source (a
+disclosed gap `stage-1-spec.md` already recorded, not newly found).
+`math.test.ts` (property/boundary tests: end-fixity ratio scaling,
+`1/L^2` and `d^4` proportionality, non-positive-input rejection) and
+`package.test.ts` (conformance, the four input-schema cross-field rules,
+dimensional-unit assertions, per-check pass/fail/not_applicable behavior)
+round out the suite — 93/93 tests pass. `npx tsc --noEmit`, `npm run lint`
+(0 errors), the full non-DB test suite (2520/2520, confirmed twice — one
+run's own `add-module-instance-dialog.test.tsx` failure, a file this stage
+never touched, passed 13/13 in isolation and did not reproduce on rerun,
+a pre-existing flake, not a regression), and `npm run build` all pass. The
+module is built and tested but **not yet registered** — `npm run
+registry:generate` and the module's own source-immutability hash are Stage
+6 (release) work, not done here; `validation.ts` is an honest Stage 3
+draft (real reference examples, but `reviewer`/`reviewDate` explicitly
+state Stage 4 has not yet been performed, and `independentBenchmark`
+records the open item stage-2-contract.md's own "Decisions" item 4 already
+flagged, still unresolved). Stage 4 (validation: reviewer sign-off, and
+resolving the still-open independent-benchmark question) is next.
+
+### Stage 4 — Validation
+
+**Done (2026-08-24).** Reference examples were already met at Stage 3 (see
+above). The independent-benchmark question
+(stage-2-contract.md "Decisions" item 4) is **partially resolved, not fully
+closed -- recorded honestly as a split, not overclaimed**. Parker Hannifin's
+own literature returned HTTP 403 again this session, the same block the
+Stage 1 and Stage 3 sessions already recorded; no genuine second,
+structurally distinct *method* (the KTR-DIN-740-vs-`coupling` or
+IKO-vs-`linear-guide` kind of independent benchmark) exists for any of this
+module's four formula areas. What was found instead: Norgren (IMI Precision
+Engineering)'s own M/1000 "Heavy Duty Cylinders" technical data sheet
+(`us.norgren.m1000_heavy_duty_cylinders@web-2026-08-24`) -- a third
+manufacturer, independent of both SMC and Milwaukee, whose own printed
+per-model theoretical-force and air-consumption ratings
+(`lib/modules/pneumatic-cylinder/0.1.0/norgren-benchmark.ts`/`.test.ts`)
+this module's own kernel was never calibrated to. Reproduced through
+`resolveTheoreticalForce`/`resolveAirDemand` (at `loadFactor = 1.0` --
+Norgren's own printed force carries no derating of its own, matching
+Milwaukee Cylinder's own unfactored `F = P*A` convention directly) across 7
+of Norgren's own 9 printed base bore sizes (76mm-305mm; 2 excluded and
+disclosed -- one has a real, unresolved ~14% rod-diameter inconsistency
+against the same data sheet's own dimension table), agreement is within 2%
+on every one of 21 individual figures (mean absolute deviation under 1%)
+for both extend/retract theoretical force and combined air consumption.
+This closes the independent-benchmark item for **2 of the module's 4
+formula areas** (theoretical force, air consumption) with real third-party
+numeric corroboration -- not a second competing methodology, since
+Norgren's own data sheet states no formula of its own, only pre-computed
+ratings. **The cushion kinetic-energy-allowable and buckling formulas
+still have no second independent source of any kind** -- carried forward as
+an explicit, disclosed `0.1.0` limitation, the same "a real gap stays open
+at release" treatment `ball-screw@0.1.0`'s own two unresolved
+buckling/equivalent-load discrepancies received. `validation.ts`'s
+`reviewer`/`reviewDate` are finalized ("Solo validation -- Norgren M/1000
+independent-benchmark substitute (theoretical-force and air-consumption
+formulas only...)", `2026-08-24`), honestly scoped to what the substitute
+evidence actually covers rather than implying full coverage. Full
+validation record: `validation/pneumatic-cylinder/0.1.0.md`.
+`lib/standards/engineering-sources.ts` gained one new source
+(`us.norgren.m1000_heavy_duty_cylinders`); `validation/source-index.md`
+gained three rows (SMC, Milwaukee, Norgren) for this module.
+
+### Stage 5 — Generic surfaces
+
+**Done (2026-08-24), effectively already complete at Stage 3.** This
+module has no upstream or downstream cross-module link and no
+guided-workflow role -- `manifest.ts`'s own `workflowRoles: []` and
+stage-1-spec.md's own "Existing Parameter Review" already confirmed zero
+`pneumatic.*`/`load.*`/`force.*`/`mass.*` overlap with any released
+parameter group, so there is no `cross-module-links.test.ts` for this
+module (unlike every Milestone 4/6 module) -- confirmed, not merely
+assumed. Generic UI and report schema (`ui.ts`/`report.ts`, drafted at
+Stage 3) already passed conformance validation through `package.test.ts`'s
+`runModuleConformance` `package-validation` check.
+
+### Stage 6 — Release
+
+**Done (2026-08-24).** `npm run module:source-hash -- pneumatic-cylinder
+0.1.0` computed `9700fdc94f2a344f`, pinned in `package.test.ts` as
+`expectedSourceHash` -- both `import-boundary` and `source-immutability`
+now pass as real checks, not skipped. `npm run registry:generate`
+registered the module: `pneumatic-cylinder@0.1.0` in
+`lib/modules/registry.generated.ts` (25 modules total). Sealed package
+content hash: `739621ff948938a9`. Full non-DB suite green (2546/2546),
+`npx tsc --noEmit` clean, `npm run lint` clean (0 errors -- the one
+warning `npm run lint` reports is in the pre-existing generated
+`coverage/` artifact, untouched by this unit), `npm run build` clean. Unit
+7.1 is now fully released -- the first Milestone 7 module, and this
+project's first module with no `linear-axis@1` role and no Motor Sizing
+Tool family relationship, released, registered, and validated end to end.
+
 # Initial Two-Week Start Sequence
 
 This is the recommended exact starting order. It is not a promise of

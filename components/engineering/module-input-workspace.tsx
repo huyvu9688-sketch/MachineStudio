@@ -90,9 +90,36 @@ const AXIS_COMPONENT_CAPTIONS = ["X", "Y", "Z"] as const;
  * `ui-context.md`'s Generic Module Workspace section assigns that to the
  * Result pane (Unit 3.5), a later unit.
  */
+/**
+ * Bento grid-cell placement for a module whose declared `ModuleUiSchema`
+ * groups happen to match this exact 4-group id set — currently only
+ * belt-pulley-drive-motor-sizing@0.3.x. Keyed by group id (not module id),
+ * so this stays a generic "layout follows declared structure" rule rather
+ * than a module-specific form: any module that declares these same four
+ * group ids gets the same 2-column x 3-row bento automatically, and any
+ * module whose groups don't match this set falls back to the plain stacked
+ * layout below unchanged.
+ */
+const BENTO_CELL_CLASS: Record<string, string> = {
+  "geometry-and-environment": "lg:col-start-1 lg:row-start-1",
+  "motor-and-safety-factors": "lg:col-start-1 lg:row-start-2",
+  "pulleys-and-belt": "lg:col-start-2 lg:row-start-1 lg:row-span-2",
+  motion: "lg:col-start-1 lg:col-span-2 lg:row-start-3",
+};
+const BENTO_GROUP_IDS = Object.keys(BENTO_CELL_CLASS);
+
 export function ModuleInputWorkspace({ view }: ModuleInputWorkspaceProps) {
+  const isBentoLayout =
+    view.groups.length === BENTO_GROUP_IDS.length &&
+    view.groups.every((group) => group.id in BENTO_CELL_CLASS);
+
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-6">
+    <div
+      className={cn(
+        "mx-auto flex w-full flex-col gap-6 px-6 py-6",
+        isBentoLayout ? "max-w-6xl" : "max-w-3xl",
+      )}
+    >
       <header className="flex items-center gap-3 border-b border-border-default pb-4">
         <Boxes
           aria-hidden="true"
@@ -117,15 +144,30 @@ export function ModuleInputWorkspace({ view }: ModuleInputWorkspaceProps) {
         <p className="text-[13px] text-text-muted">
           This module declares no input fields.
         </p>
+      ) : isBentoLayout ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:grid-rows-[auto_auto_auto]">
+          {view.groups.map((group) => (
+            <FieldGroup
+              key={group.id}
+              group={group}
+              configurationId={view.moduleInstance.configurationId}
+              moduleInstanceId={view.moduleInstance.id}
+              className={cn("h-full", BENTO_CELL_CLASS[group.id])}
+              showMotionProfilePlaceholder={group.id === "motion"}
+            />
+          ))}
+        </div>
       ) : (
-        view.groups.map((group) => (
-          <FieldGroup
-            key={group.id}
-            group={group}
-            configurationId={view.moduleInstance.configurationId}
-            moduleInstanceId={view.moduleInstance.id}
-          />
-        ))
+        <div className="flex flex-col gap-6">
+          {view.groups.map((group) => (
+            <FieldGroup
+              key={group.id}
+              group={group}
+              configurationId={view.moduleInstance.configurationId}
+              moduleInstanceId={view.moduleInstance.id}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
@@ -135,26 +177,70 @@ function FieldGroup({
   group,
   configurationId,
   moduleInstanceId,
+  className,
+  showMotionProfilePlaceholder = false,
 }: {
   readonly group: ModuleInputGroupView;
   readonly configurationId: string;
   readonly moduleInstanceId: string;
+  readonly className?: string;
+  readonly showMotionProfilePlaceholder?: boolean;
 }) {
+  const fields = (
+    <div className="flex flex-col gap-5">
+      {group.fields.map((field) => (
+        <ModuleInputFieldRow
+          key={field.portKey}
+          field={field}
+          configurationId={configurationId}
+          moduleInstanceId={moduleInstanceId}
+        />
+      ))}
+    </div>
+  );
+
+  if (showMotionProfilePlaceholder) {
+    return (
+      <section
+        className={cn(
+          "flex flex-col gap-5 rounded-lg border border-border-default bg-bg-surface p-4",
+          className,
+        )}
+      >
+        <h2 className="text-[14px] font-semibold text-text-primary">
+          {group.title}
+        </h2>
+        <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
+          {group.fields.map((field) => (
+            <ModuleInputFieldRow
+              key={field.portKey}
+              field={field}
+              configurationId={configurationId}
+              moduleInstanceId={moduleInstanceId}
+            />
+          ))}
+        </div>
+        <div className="flex min-h-40 flex-1 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border-default text-center">
+          <p className="text-[12px] font-medium text-text-muted">
+            Motion profile chart
+          </p>
+          <p className="text-[11px] text-text-muted">Coming soon</p>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="flex flex-col gap-5 rounded-lg border border-border-default bg-bg-surface p-4">
+    <section
+      className={cn(
+        "flex flex-col gap-5 rounded-lg border border-border-default bg-bg-surface p-4",
+        className,
+      )}
+    >
       <h2 className="text-[14px] font-semibold text-text-primary">
         {group.title}
       </h2>
-      <div className="flex flex-col gap-5">
-        {group.fields.map((field) => (
-          <ModuleInputFieldRow
-            key={field.portKey}
-            field={field}
-            configurationId={configurationId}
-            moduleInstanceId={moduleInstanceId}
-          />
-        ))}
-      </div>
+      {fields}
     </section>
   );
 }

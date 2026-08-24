@@ -515,4 +515,66 @@ describe("ModuleInputWorkspace", () => {
     expect(screen.getByRole("combobox")).not.toBeDisabled();
     expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
   });
+
+  it("renders the bento grid when the module declares belt-pulley's exact four group ids, including a reserved motion-profile-chart placeholder", () => {
+    const bentoView: ModuleWorkspaceView = {
+      moduleInstance: {
+        id: "m1" as never,
+        assemblyId: "a1" as never,
+        configurationId: "c1" as never,
+        label: "Belt drive",
+        modulePackageId: "belt-pulley-drive-motor-sizing",
+        moduleVersion: "0.3.1",
+        category: "motor-sizing.belt-pulley-drive",
+        lastRunStatus: "pass",
+      },
+      groups: [
+        {
+          id: "geometry-and-environment",
+          title: "Geometry and environment",
+          fields: [quantityDefaultField],
+        },
+        {
+          id: "pulleys-and-belt",
+          title: "Pulleys, belt, and drive",
+          fields: [lengthManualField],
+        },
+        { id: "motion", title: "Motion cycle", fields: [enumManualField] },
+        {
+          id: "motor-and-safety-factors",
+          title: "Candidate motor and safety factors",
+          fields: [booleanWorkflowField],
+        },
+      ],
+    };
+
+    render(<ModuleInputWorkspace view={bentoView} />);
+
+    expect(
+      screen.getByRole("heading", { name: "Geometry and environment" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Pulleys, belt, and drive" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Motion cycle" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Candidate motor and safety factors",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Motion profile chart")).toBeInTheDocument();
+    expect(screen.getByText("Coming soon")).toBeInTheDocument();
+  });
+
+  it("falls back to the plain stacked layout when a module's groups don't match belt-pulley's exact four ids", () => {
+    render(
+      <ModuleInputWorkspace
+        view={view([quantityDefaultField, enumManualField])}
+      />,
+    );
+
+    expect(screen.queryByText("Motion profile chart")).not.toBeInTheDocument();
+  });
 });

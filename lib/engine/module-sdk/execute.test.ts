@@ -99,6 +99,44 @@ describe("executeModule — input contract", () => {
       "input_value_mismatch",
     );
   });
+
+  it("rejects an input value above its parameter's declared range maximum", () => {
+    // motion.axis.friction_coefficient declares range [0, 1] (a release audit
+    // found this was declared but never enforced — see ENGINE_SDK_VERSION 1.1.0).
+    expectExecError(
+      () =>
+        executeModule(exampleThrustModule, {
+          values: {
+            payload_mass: makeQuantity(12, "kg"),
+            friction_coefficient: makeQuantity(1.5, "ratio"),
+          },
+        }),
+      "input_value_out_of_range",
+    );
+  });
+
+  it("rejects an input value below its parameter's declared range minimum", () => {
+    expectExecError(
+      () =>
+        executeModule(exampleThrustModule, {
+          values: {
+            payload_mass: makeQuantity(12, "kg"),
+            friction_coefficient: makeQuantity(-0.1, "ratio"),
+          },
+        }),
+      "input_value_out_of_range",
+    );
+  });
+
+  it("accepts an input value at the exact range boundary", () => {
+    const result = executeModule(exampleThrustModule, {
+      values: {
+        payload_mass: makeQuantity(12, "kg"),
+        friction_coefficient: makeQuantity(1, "ratio"),
+      },
+    });
+    expect(result.outputs.thrust).toBeDefined();
+  });
 });
 
 describe("executeModule — SDK compatibility", () => {

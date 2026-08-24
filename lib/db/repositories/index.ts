@@ -5,6 +5,7 @@
 
 export * from "./types";
 export type { DbClient } from "./db-client";
+export { isSerializationConflict } from "./db-client";
 export {
   ProjectRepositoryError,
   upsertUser,

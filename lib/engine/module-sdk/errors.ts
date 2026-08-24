@@ -35,6 +35,8 @@ export type ModuleSdkErrorCode =
   | "missing_required_input"
   /** An input value's kind or unit dimension does not match its parameter. */
   | "input_value_mismatch"
+  /** An input value's magnitude falls outside its parameter's declared valid range. */
+  | "input_value_out_of_range"
   /** Outputs are missing, undeclared, or of the wrong kind/dimension. */
   | "output_schema_mismatch"
   /** The computation's trace/checks/warnings/validity failed shape validation. */

@@ -479,6 +479,57 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(await isRunStale(b.runId)).toBe(true);
     });
 
+    it("never lets two concurrently confirmed links close a cycle together (2026-08-20 release audit)", async () => {
+      // A -> B is confirmed first and settles, so this reproduces a genuine
+      // race only on the second pair: B -> C and C -> A are launched
+      // concurrently. Each alone is acyclic against the graph as committed
+      // when it started; if both were allowed to commit, A -> B -> C -> A
+      // would close a cycle neither transaction alone would have seen. The
+      // Serializable isolation confirmParameterLink now runs under must make
+      // Postgres abort one of the two with a "conflict" outcome instead of
+      // silently allowing both — this is the write-skew case READ COMMITTED
+      // (the previous default) could never catch, since the two writes touch
+      // different ParameterLink rows.
+      const s = await scaffold();
+      const a = await newModuleWithRun(s, "A");
+      const b = await newModuleWithRun(s, "B");
+      const c = await newModuleWithRun(s, "C");
+
+      const ab = await stalePropagation.confirmParameterLink(
+        linkInput(s, a.moduleInstanceId, b.moduleInstanceId),
+        s.ownerId,
+      );
+      expect(ab.ok).toBe(true);
+
+      const [bc, ca] = await Promise.all([
+        stalePropagation.confirmParameterLink(
+          linkInput(s, b.moduleInstanceId, c.moduleInstanceId),
+          s.ownerId,
+        ),
+        stalePropagation.confirmParameterLink(
+          linkInput(s, c.moduleInstanceId, a.moduleInstanceId),
+          s.ownerId,
+        ),
+      ]);
+
+      // At most one of the two racing confirmations may have succeeded.
+      const outcomes = [bc, ca];
+      const succeeded = outcomes.filter((r) => r.ok);
+      expect(succeeded.length).toBeLessThanOrEqual(1);
+      // Whichever failed did so for a reason that is actually about the
+      // race, not an unrelated bug swallowing the assertion above.
+      for (const r of outcomes) {
+        if (!r.ok) {
+          expect(["cycle", "conflict"]).toContain(r.error.code);
+        }
+      }
+
+      const links = await client.prisma.parameterLink.findMany({
+        where: { configurationId: s.configId },
+      });
+      expect(links.length).toBeLessThanOrEqual(2);
+    });
+
     it("removing a link marks the target module's run stale and deletes the link", async () => {
       const s = await scaffold();
       const a = await newModuleWithRun(s, "A");

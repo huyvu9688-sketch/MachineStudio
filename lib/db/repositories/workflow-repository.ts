@@ -193,6 +193,13 @@ export async function listModuleInstancesForWorkflowInstance(
     where: {
       workflowInstanceId: id,
       assembly: { configuration: { project: { ownerId: owner } } },
+      // An archived instance disappears from navigation
+      // (suggest-link-sources.ts's own `.filter((mi) => mi.archivedAt ===
+      // null)` establishes the same convention) but a release audit found
+      // this query had no equivalent filter — an archived instance could
+      // still satisfy a role's cardinality and affect workflow status even
+      // though the engineer can no longer see or edit it.
+      archivedAt: null,
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });

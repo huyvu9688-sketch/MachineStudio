@@ -10,8 +10,15 @@
  * Semantic version of the module SDK the engine currently implements. Bumped
  * when the {@link import("./types").ModulePackage} contract or execution
  * semantics change in a way modules can observe.
+ *
+ * 1.1.0: `executeModule`/`resolveModuleInput` now enforce a parameter's
+ * declared `range` against submitted input magnitudes (previously declared
+ * but never checked). Every released module declares `sdkRange: { min:
+ * "1.0.0" }` with no `maxExclusive`, so this remains compatible; a module
+ * whose own reference/boundary tests supplied an in-range value is
+ * unaffected.
  */
-export const ENGINE_SDK_VERSION = "1.0.0";
+export const ENGINE_SDK_VERSION = "1.1.0";
 
 /**
  * An engine SDK compatibility range: modules validated against `min` (inclusive)

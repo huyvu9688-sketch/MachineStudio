@@ -64,12 +64,26 @@ export function flattenBomView(view: BomView): readonly BomCsvRow[] {
   return rows;
 }
 
+/**
+ * Neutralizes spreadsheet formula injection (OWASP CSV Injection): a field
+ * beginning with `=`, `+`, `-`, `@`, tab, or CR is prefixed with a leading
+ * `'` so Excel/Sheets/LibreOffice render it as literal text instead of
+ * evaluating it as a formula when the CSV is opened. Manual BOM fields
+ * (manufacturer name, part number, revision/notes) are free text an
+ * engineer or a catalog import can set to anything — a release audit found
+ * none of them were neutralized before this fix.
+ */
+function neutralizeFormulaPrefix(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
 /** RFC 4180 field escaping: quote a field containing a comma, quote, or newline, doubling embedded quotes. */
 function escapeCsvField(value: string): string {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const neutralized = neutralizeFormulaPrefix(value);
+  if (/[",\n\r]/.test(neutralized)) {
+    return `"${neutralized.replace(/"/g, '""')}"`;
   }
-  return value;
+  return neutralized;
 }
 
 const CSV_HEADER = [

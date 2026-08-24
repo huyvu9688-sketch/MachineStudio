@@ -139,6 +139,40 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(attachedInstances.map((i) => i.id)).toEqual([attached.id]);
     });
 
+    it("excludes an archived module instance even though it is still attached to the workflow instance", async () => {
+      const { ownerId, configurationId, assemblyId } = await fixture();
+      const workflow = await repo.createWorkflowInstance({
+        configurationId,
+        workflowId: "linear-axis",
+        workflowVersion: "1.0.0",
+      });
+      const kept = await projects.createModuleInstance({
+        assemblyId,
+        configurationId,
+        workflowInstanceId: workflow.id,
+        modulePackageId: "example-scaffold",
+        moduleVersion: "0.1.0",
+        label: "Kept",
+      });
+      const archived = await projects.createModuleInstance({
+        assemblyId,
+        configurationId,
+        workflowInstanceId: workflow.id,
+        modulePackageId: "example-scaffold",
+        moduleVersion: "0.1.0",
+        label: "Archived",
+      });
+      const didArchive = await projects.archiveModuleInstance(
+        archived.id,
+        ownerId,
+      );
+      expect(didArchive).toBe(true);
+
+      const attachedInstances =
+        await repo.listModuleInstancesForWorkflowInstance(workflow.id, ownerId);
+      expect(attachedInstances.map((i) => i.id)).toEqual([kept.id]);
+    });
+
     it("returns an empty list for a non-owner", async () => {
       const { configurationId, assemblyId } = await fixture();
       const stranger = await newUser();

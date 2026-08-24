@@ -277,12 +277,25 @@ export async function loadWorkflowInstanceView(
     statement: a.statement,
   }));
 
+  // Computed before completion (not after, as a prior release had it): a
+  // failing workflow-level check must gate "completed" status, not just be
+  // displayed alongside it — a release audit found completion/status only
+  // ever considered per-module checks, so a workflow with a failing
+  // structural check (e.g. two roles linking a shared parameter to
+  // different sources) could still report complete.
+  const checks = evaluateWorkflowChecks({
+    definition,
+    instances: roleInstances,
+    graph: buildConfirmedLinkGraph(roleInstances, confirmedLinks),
+  });
+
   const completion = evaluateCompletion({
     definition,
     instances: contexts,
     proposals,
     confirmedLinkKeys,
     assumptions,
+    workflowChecks: checks,
   });
   const status = evaluateWorkflowStatus({ instances: contexts, completion });
 
@@ -298,12 +311,6 @@ export async function loadWorkflowInstanceView(
     await updateWorkflowInstanceStatus(workflowInstanceId, status);
     persistedInstance = { ...workflowInstance, status };
   }
-
-  const checks = evaluateWorkflowChecks({
-    definition,
-    instances: roleInstances,
-    graph: buildConfirmedLinkGraph(roleInstances, confirmedLinks),
-  });
 
   return {
     ok: true,

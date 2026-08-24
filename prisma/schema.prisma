@@ -399,6 +399,18 @@ model ParameterLink {
   sourceModuleInstance ModuleInstance?      @relation("ParameterLinkSource", fields: [sourceModuleInstanceId, configurationId], references: [id, configurationId], onDelete: Cascade)
   sourceAssembly       Assembly?            @relation(fields: [sourceAssemblyId, configurationId], references: [id, configurationId], onDelete: Cascade)
 
+  // Postgres unique constraints treat every NULL as distinct, so this alone
+  // only rejects a duplicate confirmed source when targetLoadCase is a real
+  // enum value — a load-case-agnostic input port (targetLoadCase null, the
+  // common case) can still receive two confirmed links at the DB level. A
+  // hand-authored partial unique index closes that gap
+  // (prisma/migrations/20260824120000_parameter_link_null_load_case_unique/
+  // migration.sql) — Prisma's schema DSL cannot express a filtered/partial
+  // unique index, so it exists only in the migration, not as an `@@unique`
+  // here (2026-08-20 release-readiness audit; the application layer's own
+  // `createParameterLink` duplicate check already covers this case for any
+  // caller going through it, this is defense in depth for the same reason
+  // the composite FKs above are).
   @@unique([targetModuleInstanceId, targetParameterId, targetLoadCase])
   @@index([configurationId])
   @@index([targetModuleInstanceId])

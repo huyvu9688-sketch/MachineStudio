@@ -78,13 +78,22 @@
 // to 100:1). See docs/superpowers/specs/
 // 2026-08-18-motor-sizing-consistency-pass-design.md "Inertia-ratio
 // recommended default" for the full account.
+//
+// v1.16 adds the full pneumatic.* group (22 parameters) for the
+// pneumatic-cylinder module (context/modules/pneumatic-cylinder/
+// stage-2-contract.md), Milestone 7's first module -- a new, standalone
+// family, not part of linear-axis@1 or the Motor Sizing Tool family. Adds
+// two new unit-registry dimensions (volume, volumetricFlowRate;
+// lib/engine/units/registry.ts) for the reported (not evaluated) air-
+// consumption/required-air-volume outputs -- no prior module needed
+// either.
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.15.0";
+export const PARAMETER_REGISTRY_VERSION = "1.16.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -3377,7 +3386,300 @@ const motorSizingIndexTable: readonly ParameterDefinition[] = [
   }),
 ];
 
-/** All released parameter definitions for registry v1.13, in authored order. */
+// --- Pneumatic cylinder (Unit 7.1 Stage 2) ----------------------------------
+// See context/modules/pneumatic-cylinder/stage-2-contract.md. The first
+// Milestone 7 (Phase 2) module -- a new, standalone family with no
+// linear-axis@1 role and no Motor Sizing Tool family relationship. `grep`
+// confirmed zero pre-existing "pneumatic.*"/"load.*"/"force.*"/"mass.*"
+// entries before this release (stage-1-spec.md "Existing Parameter
+// Review") -- nothing here is a reuse. mounting_style deliberately does not
+// reuse screw.end_support_arrangement even though both express the same
+// Euler end-fixity physics: this registry's own precedent
+// (motor_sizing.rack_pinion.gear_ratio choosing not to reuse screw.gear_ratio,
+// "different physical interface... no established shared typical-value
+// precedent") treats a shared value *shape* on a different component
+// instance as a new parameter, not a cross-domain reuse -- and this
+// registry's own namespacing exists precisely so a resolved
+// screw.end_support_arrangement can never be mistaken for a compatible
+// upstream source for a pneumatic.mounting_style input.
+// buckling_safety_factor is required with no built-in default: unlike
+// ball-screw's own screw.buckling_safety_margin (a real 0.5-vs-0.8
+// disagreement between two named manufacturer sources), no source read for
+// this module gives a pneumatic-manufacturer-sourced value at all -- only
+// Hänchen's generic, non-pneumatic "S = 3...5" range (stage-1-spec.md item
+// 4) -- so the case for "required, no default" is even clearer here.
+// air_consumption_per_cycle and required_air_volume are reported outputs,
+// not evaluated checks (stage-1-spec.md "Validity Envelope") -- added for
+// this module's own scope, the same "informational, for equipment sizing
+// outside this module" treatment linear-guide gives its own preload grade.
+
+const pneumaticCylinder: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "pneumatic.bore_diameter",
+    displayName: "Cylinder bore diameter",
+    symbol: "D",
+    definition:
+      "Candidate cylinder's own catalog bore (piston) diameter. A catalog identity value, not derived (stage-1-spec.md 'Purpose' -- this module checks a cylinder the engineer has already identified by bore/rod/stroke, it does not search a catalog).",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.rod_diameter",
+    displayName: "Piston rod diameter",
+    symbol: "d",
+    definition:
+      "Candidate cylinder's own catalog piston rod diameter. Must be smaller than pneumatic.bore_diameter -- enforced by this module's own input schema (Stage 3), not by this registry-level range.",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.operating_pressure",
+    displayName: "Operating pressure",
+    symbol: "P",
+    definition:
+      "Gauge air supply pressure at the cylinder, after the regulator (SMC's own Air Cylinders Model Selection recommends setting the regulator to 85% of source pressure -- a system-design note, not a value this module derives).",
+    valueType: "quantity",
+    canonicalUnit: "MPa",
+    displayUnits: ["MPa", "bar", "psi"],
+    range: { min: 0, unit: "MPa" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.load_factor",
+    displayName: "Force sizing load factor",
+    symbol: "eta",
+    definition:
+      "SMC's own load factor (eta), multiplied onto theoretical force (P*A) to obtain the usable cylinder force this module checks against the required force. Required, no built-in default: SMC's own table keys it to operation type (0.7 static/clamping, 1.0 horizontal-guided dynamic, 0.5 vertical/horizontal dynamic, lower still for high speed) and no second source gives a comparable table to cross-check against (stage-2-contract.md 'Decisions' item 1) -- the same 'required input, only one source's own numbers exist to record' treatment bearing.static_safety_factor_minimum already established.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, max: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.required_extend_force",
+    displayName: "Required extend-side force",
+    symbol: "F_req,ext",
+    definition:
+      "Engineer-supplied required force on the extend (thrust) stroke, already resolved upstream (this module does not re-derive it from a load mass and an assumed friction coefficient -- Milwaukee Cylinder's own load-type percentage method is documented in stage-1-spec.md as upstream engineering guidance, not a formula this module implements, the same 'engineer already knows the load' treatment coupling 0.1.0 gives screw.drive_torque). Optional at the registry level; this module's own input schema (Stage 3) requires at least one of required_extend_force/required_retract_force.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.required_retract_force",
+    displayName: "Required retract-side force",
+    symbol: "F_req,ret",
+    definition:
+      "Engineer-supplied required force on the retract (pull) stroke -- see pneumatic.required_extend_force.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.load_mass",
+    displayName: "Moved load mass",
+    symbol: "m",
+    definition:
+      "Mass of the load the piston moves, for the cushion kinetic-energy check (SMC's own E = (m/2)*V^2).",
+    valueType: "quantity",
+    canonicalUnit: "kg",
+    displayUnits: [...massDisplay],
+    range: { min: 0, unit: "kg" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.max_piston_speed",
+    displayName: "Maximum piston speed",
+    symbol: "V",
+    definition:
+      "Piston speed at end of stroke, for the cushion kinetic-energy check. A required engineer-supplied input, never a computed value: both sources read for this module state directly that piston speed cannot be calculated from a formula (stage-1-spec.md 'Purpose') -- Milwaukee Cylinder's own words, 'the exact speed of an air cylinder cannot be calculated,' and SMC's own maximum-speed data is an empirical per-model chart, not a formula.",
+    valueType: "quantity",
+    canonicalUnit: "m/s",
+    displayUnits: ["m/s", "mm/s", "in/s"],
+    range: { min: 0, unit: "m/s" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.cushion_type",
+    displayName: "End-of-stroke cushion type",
+    symbol: "-",
+    definition:
+      "Which cushion mechanism (if any) the candidate cylinder uses at end of stroke, selecting which catalog allowable-kinetic-energy figure the cushion check reads (SMC's own catalog tables give separate rubber-bumper and air-cushion figures per model).",
+    valueType: "enum",
+    enumId: "pneumatic_cushion_type",
+    enumOptions: ["none", "rubber_bumper", "air_cushion"],
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.allowable_kinetic_energy",
+    displayName: "Allowable cushion kinetic energy",
+    symbol: "E_allow",
+    definition:
+      "Candidate cylinder's own catalog kinetic-energy absorption capacity for the selected pneumatic.cushion_type (SMC's own per-series, per-bore tables). Required together with a cushion_type other than 'none' -- enforced by this module's own input schema (Stage 3), not this registry-level definition.",
+    valueType: "quantity",
+    canonicalUnit: "J",
+    displayUnits: ["J"],
+    range: { min: 0, unit: "J" },
+    qualifiers: { bound: "allowable" },
+  }),
+  defineParameter({
+    id: "pneumatic.stroke",
+    displayName: "Cylinder stroke",
+    symbol: "L",
+    definition:
+      "Candidate cylinder's own catalog stroke length. Used by the buckling check (unsupported column length) and by the air-consumption/required-air-volume formulas.",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.mounting_style",
+    displayName: "Cylinder mounting / rod end-fixity style",
+    symbol: "fix",
+    definition:
+      "Euler column end-fixity arrangement of the piston rod under compressive (buckling) load. Textbook physics, not a manufacturer-proprietary fit -- the same 'classic Euler effective-length-factor values' status ball-screw's own screw.end_support_arrangement already established for the identical column-buckling physics on a different component (stage-2-contract.md 'Decisions' item 3) -- but kept as a distinct parameter rather than a reuse of that ID: this registry's own namespacing exists so a resolved value for one physical component (a ball-screw shaft) is never mistaken for a compatible source on an unrelated one (a cylinder's piston rod), the same reasoning motor_sizing.rack_pinion.gear_ratio already gives for not reusing screw.gear_ratio.",
+    valueType: "enum",
+    enumId: "pneumatic_mounting_style",
+    enumOptions: [
+      "fixed-fixed",
+      "fixed-supported",
+      "supported-supported",
+      "fixed-free",
+    ],
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.buckling_safety_factor",
+    displayName: "Buckling safety factor",
+    symbol: "S",
+    definition:
+      "Divisor applied to the theoretical (Euler column) buckling load to obtain the permissible compressive load. Required, no built-in default: no pneumatic-cylinder-manufacturer source read for this module gives a specific value -- only Hänchen's generic, non-pneumatic 'S = 3...5' range (stage-1-spec.md item 4, stage-2-contract.md 'Decisions' item 4) -- so a released run always records which value was actually used, rather than leaving that choice implicit.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.piping_length",
+    displayName: "Piping length between cylinder and switching valve",
+    symbol: "l",
+    definition:
+      "Length of tubing/steel pipe between the cylinder and its switching valve, for the reported air-consumption figure (SMC's own qp term). Zero (the default) is a structural 'no piping term modeled' statement, not a guessed physical value -- the same category as screw.gear_ratio = 1.",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "m"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "mm") },
+  }),
+  defineParameter({
+    id: "pneumatic.piping_bore",
+    displayName: "Piping internal bore",
+    symbol: "a",
+    definition:
+      "Internal bore of the tubing/steel pipe between the cylinder and its switching valve. Required together with a nonzero pneumatic.piping_length -- enforced by this module's own input schema (Stage 3).",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm"],
+    range: { min: 0, unit: "mm" },
+  }),
+  defineParameter({
+    id: "pneumatic.theoretical_extend_force",
+    displayName: "Theoretical extend-side force",
+    symbol: "F1",
+    definition:
+      "pneumatic.load_factor * piston area (extend side) * pneumatic.operating_pressure (SMC's own formula (1), F1 = eta*A1*P). Checked against pneumatic.required_extend_force when supplied.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    qualifiers: { bound: "allowable" },
+  }),
+  defineParameter({
+    id: "pneumatic.theoretical_retract_force",
+    displayName: "Theoretical retract-side force",
+    symbol: "F2",
+    definition:
+      "pneumatic.load_factor * piston area (retract side, bore area minus rod area) * pneumatic.operating_pressure (SMC's own formula (2), F2 = eta*A2*P). Checked against pneumatic.required_retract_force when supplied.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    qualifiers: { bound: "allowable" },
+  }),
+  defineParameter({
+    id: "pneumatic.kinetic_energy",
+    displayName: "End-of-stroke kinetic energy",
+    symbol: "E",
+    definition:
+      "(pneumatic.load_mass / 2) * pneumatic.max_piston_speed^2 (SMC's own formula (7)). Checked against pneumatic.allowable_kinetic_energy when pneumatic.cushion_type is not 'none'.",
+    valueType: "quantity",
+    canonicalUnit: "J",
+    displayUnits: ["J"],
+    range: { min: 0, unit: "J" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic.buckling_load",
+    displayName: "Theoretical buckling load",
+    symbol: "Fk",
+    definition:
+      "Unfactored theoretical Euler column buckling load of the piston rod, before pneumatic.buckling_safety_factor is applied.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+  }),
+  defineParameter({
+    id: "pneumatic.permissible_compressive_load",
+    displayName: "Permissible compressive load",
+    symbol: "F_perm",
+    definition:
+      "pneumatic.buckling_load divided by pneumatic.buckling_safety_factor. Checked against the governing theoretical extend/retract force (whichever side loads the rod in compression).",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    qualifiers: { bound: "allowable" },
+  }),
+  defineParameter({
+    id: "pneumatic.air_consumption_per_cycle",
+    displayName: "Air consumption per cycle",
+    symbol: "q",
+    definition:
+      "Free-air-equivalent volume consumed by the cylinder and its piping over one full stroke cycle (SMC's own formulas (8)-(14)). Reported, not evaluated -- informational for compressor/FRL-equipment sizing outside this module's own scope (stage-1-spec.md 'Validity Envelope').",
+    valueType: "quantity",
+    canonicalUnit: "L",
+    displayUnits: ["L"],
+    range: { min: 0, unit: "L" },
+  }),
+  defineParameter({
+    id: "pneumatic.required_air_volume",
+    displayName: "Required air volume",
+    symbol: "Q",
+    definition:
+      "Free-air-equivalent volumetric flow rate required to run the cylinder at pneumatic.max_piston_speed (SMC's own formulas (15)-(16), the larger of the extend- and retract-side figures). Reported, not evaluated -- see pneumatic.air_consumption_per_cycle.",
+    valueType: "quantity",
+    canonicalUnit: "L/min",
+    displayUnits: ["L/min"],
+    range: { min: 0, unit: "L/min" },
+  }),
+];
+
+/** All released parameter definitions for registry v1.16, in authored order. */
 export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...projectAndEnvironment,
   ...axisApplication,
@@ -3392,4 +3694,5 @@ export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...motorSizingRackPinion,
   ...motorSizingBeltPulley,
   ...motorSizingIndexTable,
+  ...pneumaticCylinder,
 ];

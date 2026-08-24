@@ -102,9 +102,9 @@ function invalid(message: string): AssignComponentResult {
  *    or (for a configuration-root target) the configuration itself — and
  *    confirms the target really belongs to `input.configurationId`.
  * 2. When `calculationRunId` is given, verifies it exists, is owned by
- *    `ownerId`, and actually belongs to the target module instance —
- *    "Exact part revision retained" only means something if the justifying
- *    run is real and relevant.
+ *    `ownerId`, actually belongs to the target module instance, and is not
+ *    stale — "Exact part revision retained" only means something if the
+ *    justifying run is real, relevant, and still current.
  * 3. When `partSource` is `"catalog"`, verifies the manufacturer part
  *    revision exists (shared reference data — no owner check, per Unit 2.6).
  * 4. Persists the `ComponentAssignment`.
@@ -166,6 +166,11 @@ export async function assignComponent(
     if (run.moduleInstanceId !== input.target.moduleInstanceId) {
       return invalid(
         "calculationRunId does not belong to the target module instance.",
+      );
+    }
+    if (run.stale) {
+      return invalid(
+        `Calculation run is stale${run.staleReason === null ? "" : ` (${run.staleReason})`} — re-run the module before assigning a component against it.`,
       );
     }
   }

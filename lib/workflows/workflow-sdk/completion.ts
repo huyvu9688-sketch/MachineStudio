@@ -6,7 +6,7 @@
 // link counts as confirmed only because the caller says so).
 
 import { isEnumValue } from "@/lib/engine";
-import type { Assumption } from "@/lib/engine";
+import type { Assumption, CheckResult } from "@/lib/engine";
 import { linkProposalKey } from "./links";
 import { findValueForParameter } from "./instance-values";
 import type {
@@ -26,6 +26,19 @@ export interface EvaluateCompletionInput {
   readonly confirmedLinkKeys: ReadonlySet<string>;
   /** Recorded design assumptions, for `conditional_acknowledgment` rules. */
   readonly assumptions?: readonly Assumption[];
+  /**
+   * The result of `evaluateWorkflowChecks` (`./checks`) for the same
+   * instances — workflow-level structural checks (e.g. "these roles must
+   * link a shared parameter to the same source"), distinct from any single
+   * module's own checks. A release audit found these were computed and
+   * shown in the UI but never gated `satisfied`/`"completed"` status at
+   * all: a workflow with a failing structural check could still report
+   * complete. Optional only so a caller mid-migration (or a unit test
+   * exercising completion rules in isolation) is not forced to thread a
+   * graph/`evaluateWorkflowChecks` call through — omitting it is a
+   * deliberate opt-out, not a silent default.
+   */
+  readonly workflowChecks?: readonly CheckResult[];
 }
 
 /** The outcome of evaluating one {@link CompletionRule}. */
@@ -188,6 +201,19 @@ export function evaluateCompletion(
       }
     }
   });
+
+  if (input.workflowChecks !== undefined) {
+    const failing = input.workflowChecks.filter((c) => c.status === "fail");
+    results.push({
+      ruleId: "workflow-checks",
+      kind: "no_failing_checks",
+      satisfied: failing.length === 0,
+      message:
+        failing.length === 0
+          ? `No failing workflow-level checks (${input.workflowChecks.length} evaluated).`
+          : `${failing.length} of ${input.workflowChecks.length} workflow-level check(s) are failing: ${failing.map((c) => c.id).join(", ")}.`,
+    });
+  }
 
   return {
     satisfied: results.every((r) => r.satisfied),
