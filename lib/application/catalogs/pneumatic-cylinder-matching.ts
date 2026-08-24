@@ -28,6 +28,7 @@ import {
   type Quantity,
 } from "@/lib/engine";
 import {
+  PneumaticCylinderSizingInputError,
   resolveBucklingLoad,
   resolvePermissibleCompressiveLoad,
   resolvePistonAreas,
@@ -263,10 +264,15 @@ export function evaluatePneumaticCylinderCandidates(
       );
       forceRodBucklingPassed = forceRodBucklingPassed && bucklingOk;
     } catch (err) {
+      // Only the math kernel's own declared validity-envelope error (e.g.
+      // rod diameter >= bore diameter) is an expected per-candidate data
+      // problem, reportable as a rejection reason. Anything else -- a
+      // typo, a null-deref, a genuine bug in this block -- must fail loud
+      // rather than being silently absorbed into a rejection-reason string
+      // indistinguishable from a legitimate data issue.
+      if (!(err instanceof PneumaticCylinderSizingInputError)) throw err;
       forceRodBucklingPassed = false;
-      forceRodBucklingReasons = [
-        err instanceof Error ? err.message : "Force/buckling evaluation failed.",
-      ];
+      forceRodBucklingReasons = [err.message];
     }
 
     const passed = genericPassed && forceRodBucklingPassed;

@@ -127,4 +127,15 @@ describe("evaluatePneumaticCylinderCandidates", () => {
     );
     expect(result.accepted).toHaveLength(1);
   });
+
+  it("gracefully rejects (not throws) a candidate whose rod diameter is not smaller than its bore", () => {
+    const result = evaluatePneumaticCylinderCandidates(fixtureComputation(), [
+      candidate("CM2B20-invalid-rod", { bore: 20, rod: 25 }),
+    ]);
+    expect(result.accepted).toHaveLength(0);
+    expect(result.rejected).toHaveLength(1);
+    expect(
+      result.rejected[0]?.reasons.some((r) => r.includes("rodDiameterMm must be less than boreDiameterMm")),
+    ).toBe(true);
+  });
 });
