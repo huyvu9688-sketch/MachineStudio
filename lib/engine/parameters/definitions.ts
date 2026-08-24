@@ -87,13 +87,25 @@
 // lib/engine/units/registry.ts) for the reported (not evaluated) air-
 // consumption/required-air-volume outputs -- no prior module needed
 // either.
+//
+// v1.17 adds the full pneumatic_sizing.* group (4 new parameters) for the
+// pneumatic-cylinder-sizing module (context/modules/pneumatic-cylinder-
+// sizing/stage-2-contract.md), Milestone 7's second module. Reuses ten
+// existing parameters directly (motion.axis.incline_angle,
+// motion.axis.friction_coefficient, motion.axis.total_moving_mass,
+// pneumatic.operating_pressure, pneumatic.load_factor,
+// pneumatic.cushion_type, pneumatic.mounting_style,
+// pneumatic.buckling_safety_factor, pneumatic.max_piston_speed,
+// pneumatic.kinetic_energy) rather than minting duplicates -- see
+// stage-2-contract.md "Existing Parameter Review". No new unit-registry
+// dimension or unit is needed.
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.16.0";
+export const PARAMETER_REGISTRY_VERSION = "1.17.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -3679,7 +3691,57 @@ const pneumaticCylinder: readonly ParameterDefinition[] = [
   }),
 ];
 
-/** All released parameter definitions for registry v1.16, in authored order. */
+const pneumaticCylinderSizing: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "pneumatic_sizing.process_force",
+    displayName: "Process force (extend stroke)",
+    symbol: "F_proc",
+    definition:
+      "Additive working force the cylinder must supply on top of the mass-derived load, on the extend (working) stroke only -- e.g. a clamping or pressing force. Zero (the default) is a structural 'no process force' statement, not a guessed physical value -- the same category as pneumatic.piping_length = 0.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "N") },
+  }),
+  defineParameter({
+    id: "pneumatic_sizing.required_stroke",
+    displayName: "Required stroke",
+    symbol: "L_req",
+    definition:
+      "Travel distance the application needs. An application requirement the catalog-matched candidate's own stroke range must cover -- not a catalog identity value the way pneumatic.stroke is in pneumatic-cylinder@0.1.0 (an already-selected cylinder's own printed stroke).",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic_sizing.required_extend_force",
+    displayName: "Required extend-side force (computed)",
+    symbol: "F_req,ext",
+    definition:
+      "process_force + load_mass*g*sin(incline_angle) + load_mass*g*friction_coefficient*cos(incline_angle) (this module's own forward-direction convention, reproducing ball-screw-motor-sizing@0.2.0's own resolveDriveForce sign pattern -- stage-2-contract.md Decision 1). Always non-negative by construction, unlike its retract-side counterpart.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic_sizing.required_retract_force",
+    displayName: "Required retract-side force (computed)",
+    symbol: "F_req,ret",
+    definition:
+      "load_mass*g*friction_coefficient*cos(incline_angle) - load_mass*g*sin(incline_angle) (this module's own return-direction convention -- stage-2-contract.md Decision 1). May be negative for a strongly gravity-assisted return stroke on a heavy unbalanced load, meaning the actuator must resist/brake rather than drive -- reported as computed, never floored here (the catalog matcher floors it at 0 N only when building its own force-capacity criterion, since a negative requirement is not itself a catalog filter).",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    qualifiers: { bound: "required" },
+  }),
+];
+
+/** All released parameter definitions for registry v1.17, in authored order. */
 export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...projectAndEnvironment,
   ...axisApplication,
@@ -3695,4 +3757,5 @@ export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...motorSizingBeltPulley,
   ...motorSizingIndexTable,
   ...pneumaticCylinder,
+  ...pneumaticCylinderSizing,
 ];
