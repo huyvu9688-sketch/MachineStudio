@@ -347,6 +347,18 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     note: "SMC's own BEST AUTOMATION catalog, 'Technical Data 1-4' chapter (printed pages 1569-1576), read directly from smcworld.com's own domain this session after a browser User-Agent/local-TLS-workaround (see context/progress-tracker.md 'Environment notes'; not an SMC-side block). A complete, self-contained engineering handbook for this module's own scope: theoretical force with a load-factor (eta) table (formulas (1)-(2)), single-acting spring-force catalog data, cushion kinetic-energy formula E=(m/2)*V^2 (formula (7)) with per-series allowable-energy tables, air consumption and required-air-volume formulas (formulas (8)-(16)), a piston-area table (Table (1)), piston-rod/cylinder-tube buckling as a per-mounting-type maximum-stroke lookup table (not a closed-form formula), and lateral-rod-load-vs-stroke graphs (out of scope, context/modules/pneumatic-cylinder/stage-1-spec.md item 5). Milwaukeecylinder.com/smcpneumatics.com mirrors of the same or an overlapping document returned HTTP 403 to this project's automated fetch tooling; direct smcworld.com access (browser UA + local TLS workaround) succeeded.",
   },
   {
+    id: asSourceDocumentId("jp.smc.cm2_ca2_catalog"),
+    classification: "manufacturer_method",
+    title:
+      "CM2/CA2 Series Air Cylinders: Standard Type, Double Acting, ISO 6431/VDMA Compatible",
+    authority: "SMC Corporation",
+    market: "JP",
+    access: "public",
+    officialUrl:
+      "https://www.smcworld.com/catalog/en/actuator/CM2-CDM2-Z-E/6-2-1-p0167-0267-cm2_en/data/6-2-1-p0167-0267-cm2_en.pdf",
+    note: "Found researching pneumatic-cylinder-sizing's own Task 13 catalog-seed fetch: CM2's own dimensional/cushion catalog chapter (bore 20/25/32/40 mm) and CA2's own dimensional/cushion catalog chapter (bore 40/50/63/80/100 mm, ISO 6431/VDMA-compatible tie-rod cylinder) -- two distinct series, not one bore-continuous line, confirmed directly from both series' own catalogs (context/modules/pneumatic-cylinder-sizing/stage-1-spec.md 'Task 13 fetch record'). The official smcworld.com dimensional PDFs (this URL and CA2's own equivalent, .../CA2-CDA2-Z-E/6-2-1-p0465-0525-ca2_en/data/6-2-1-p0465-0525-ca2_en.pdf) exceeded this project's automated fetch tooling's own 10 MB size limit; the real catalog text actually read this session came from content.smcetech.com's own CM2_EU.pdf/CA2_EU.pdf mirrors (real, current SMC-published catalog chapters, not the superseded discon/-old- editions) plus a re-read of the already-registered jp.smc.air_cylinders_model_selection revision's own bore/rod/cushion-energy tables. Corrects two rod-diameter figures this project had assumed from the generic ISO 6431 pairing: CM2 bore 40 is 14 mm, not 16 mm (CM2 is not itself ISO 6431-compliant); CA2/CG1/MB/CS1/CS2 bore 100 is 30 mm, not 25 mm (both directly read; see the stage-1-spec.md fetch record for the full corrected table and the one still-inferred figure, CA2's own bore-40 rod diameter).",
+  },
+  {
     id: asSourceDocumentId("us.norgren.m1000_heavy_duty_cylinders"),
     classification: "manufacturer_method",
     title: "M/1000 Heavy Duty Cylinders, Double Acting — Technical Data Sheet",
@@ -697,6 +709,15 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     officialUrl:
       "https://www.smcworld.com/catalog/BEST-technical-data-en/pdf/6-2-1-m21-43-tech_en.pdf",
     note: "Read directly by the Stage 1 session, 2026-08-24, from smcworld.com's own domain (formulas (1)-(16) and their variable tables read directly, not paraphrased). The Stage 3 session (also 2026-08-24) could not repeat that direct read -- smcworld.com and the smcpneumatics.com mirror both returned HTTP 403 to this project's own automated fetch tooling on this attempt -- and instead independently re-confirmed the same officialUrl via a text-extraction proxy (r.jina.ai). That pass recovered a worked air-consumption/required-air-volume example (bore 50 mm, stroke 600 mm, 0.5 MPa, 2 m/6 mm piping) whose printed cylinder-side total (~13 L) and piping-side total (~0.56 L) are reproduced exactly by lib/modules/pneumatic-cylinder/0.1.0/smc-reference-examples.ts when a 20 mm rod is assumed -- a rod size not stated in the recovered text but inferred as the value that makes both printed sub-totals match, and a real, standard SMC rod size for a 50 mm bore. Treated as real corroborating evidence, not a fully pinned reproduction, given the inferred rod diameter and the OCR-mediated fetch path -- see that file's own doc comment.",
+  },
+  {
+    id: asSourceRevisionId("jp.smc.cm2_ca2_catalog@web-2026-08-24"),
+    documentId: asSourceDocumentId("jp.smc.cm2_ca2_catalog"),
+    edition:
+      "CM2 series catalog chapter (page codes 1.4-1 onward) and CA2 series catalog chapter, web PDF chapters accessed 2026-08-24 via content.smcetech.com's own mirror (the official smcworld.com dimensional-catalog URLs exceeded this project's automated fetch tooling's own size limit at fetch time)",
+    officialUrl:
+      "https://www.smcworld.com/catalog/en/actuator/CM2-CDM2-Z-E/6-2-1-p0167-0267-cm2_en/data/6-2-1-p0167-0267-cm2_en.pdf",
+    note: "Read this session via content.smcetech.com/pdf/CM2_EU.pdf and content.smcetech.com/pdf/CA2_EU.pdf (both real, current SMC catalog chapters; PDF bytes fetched successfully but WebFetch's own text-extraction model could not parse them, so this project's own locally available pdftotext (poppler-utils) extracted the real text from the saved bytes -- not a further network fetch, and not a summarization). Also re-reads jp.smc.air_cylinders_model_selection@web-2026-08-24's own 'Table (1) Cylinder Piston Area' and 'Kinetic Energy Absorbable by the Cushion Mechanism' tables for the CA2/CG1/MB/CS1/CS2 shared bore-100 rod diameter and CA2's own air-cushion energy figures. Full fetched bore/rod/stroke/cushion-energy table, with directly-read-vs-inferred labeling, recorded in context/modules/pneumatic-cylinder-sizing/stage-1-spec.md 'Task 13 fetch record' -- CA2's own bore-40 rod diameter (16 mm) is the one inferred, not directly confirmed, figure in that table.",
   },
   {
     id: asSourceRevisionId(
