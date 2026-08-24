@@ -60,7 +60,7 @@ describe("pneumatic-cylinder-sizing 0.1.0 module conformance", () => {
   });
 
   for (const check of report.checks) {
-    if (check.id === "source-immutability") continue; // asserted separately below, expected to fail until the hash-pinning task runs
+    if (check.id === "source-immutability") continue; // deliberately excluded from the loop below: this check is expected to fail against the placeholder hash until a later Stage 6 task pins the real one
     it(`${check.id} (${check.status})`, () => {
       expect(check.status, check.detail).toBe("pass");
     });
@@ -83,7 +83,14 @@ describe("pneumatic-cylinder-sizing 0.1.0 boundary and invalid input", () => {
   it("defaults an absent process_force to 0 N", () => {
     const input = baselineInput();
     delete input.values.process_force;
-    expect(() => executeModule(pneumaticCylinderSizingModule, input)).not.toThrow();
+    const withoutProcessForce = executeModule(pneumaticCylinderSizingModule, input);
+    const withZeroProcessForce = executeModule(pneumaticCylinderSizingModule, baselineInput());
+    expect(
+      asQuantity(withoutProcessForce.outputs.required_extend_force).value,
+    ).toBeCloseTo(
+      asQuantity(withZeroProcessForce.outputs.required_extend_force).value,
+      9,
+    );
   });
 
   it("rejects an incline angle above 90 degrees via the registry's own declared range", () => {
