@@ -39,7 +39,9 @@ import type { RequiredSpecEntry } from "@/lib/catalog";
 import type { CheckStatus } from "@/lib/engine";
 import { getModulePackage } from "@/lib/modules";
 import {
+  asComponentTypeId,
   listComponentAssignmentsForModuleInstance,
+  listManufacturerPartRevisionsByComponentType,
   listRunsForModuleInstance,
   loadCalculationRun,
   loadManufacturer,
@@ -53,6 +55,10 @@ import {
   type ModuleInstanceId,
   type UserId,
 } from "@/lib/db";
+import {
+  evaluatePneumaticCylinderCandidates,
+  type PneumaticCylinderMatchCandidate,
+} from "./pneumatic-cylinder-matching";
 
 /** One candidate manufacturer part, described for the candidate table. */
 export interface CandidatePartView {
@@ -284,13 +290,73 @@ export async function loadComponentAssignmentView(
     };
   }
 
-  // An adapter exists and the module has run: the required specification is
-  // real and is displayed. Filtering/ranking still needs the operator mapping
-  // Milestone 4 owns (see this file's header), so the candidate tables stay
-  // empty and the panel says why.
+  // An adapter exists and the module has run. For "pneumatic_cylinder"
+  // (Unit 7.2), the requiredSpec -> MatchCriterion mapping now has a real
+  // implementation (lib/application/catalogs/pneumatic-cylinder-matching.ts)
+  // -- see this file's own header for why every other component type
+  // still reports matchingAvailable: false (Milestone 4's own still-open
+  // deferral, not touched by this change).
+  if (adapter.componentType !== "pneumatic_cylinder") {
+    return {
+      ...base,
+      componentType: adapter.componentType,
+      matchingUnavailableReason: NO_CRITERIA_REASON,
+    };
+  }
+
+  const run = await loadCalculationRun(latestRunId, ownerId);
+  if (run === null) {
+    return {
+      ...base,
+      componentType: adapter.componentType,
+      matchingUnavailableReason: NO_RUN_REASON,
+    };
+  }
+
+  const revisions = await listManufacturerPartRevisionsByComponentType(
+    asComponentTypeId("pneumatic_cylinder"),
+  );
+  const matchCandidates: PneumaticCylinderMatchCandidate[] = revisions.map(
+    (revision) => ({ id: revision.id, attributes: revision.attributes }),
+  );
+
+  const outcome = evaluatePneumaticCylinderCandidates(
+    run.snapshot.computation,
+    matchCandidates,
+  );
+
+  const revisionById = new Map(revisions.map((r) => [r.id, r]));
+  const accepted: RankedCandidateView[] = [];
+  for (const rankedCandidate of outcome.accepted) {
+    const revision = revisionById.get(
+      rankedCandidate.candidate.id as ManufacturerPartRevisionId,
+    );
+    if (revision === undefined) continue;
+    accepted.push({
+      part: await describePart(revision, manufacturerNames),
+      score: rankedCandidate.score,
+      rankingReasons: rankedCandidate.reasons,
+    });
+  }
+  const rejected: RejectedCandidateView[] = [];
+  for (const rejectedCandidate of outcome.rejected) {
+    const revision = revisionById.get(
+      rejectedCandidate.candidate.id as ManufacturerPartRevisionId,
+    );
+    if (revision === undefined) continue;
+    rejected.push({
+      part: await describePart(revision, manufacturerNames),
+      rejectionReasons: rejectedCandidate.reasons,
+    });
+  }
+
   return {
     ...base,
     componentType: adapter.componentType,
-    matchingUnavailableReason: NO_CRITERIA_REASON,
+    matchingUnavailableReason: null,
+    requiredSpec: outcome.requiredSpec,
+    matchingAvailable: true,
+    accepted,
+    rejected,
   };
 }
