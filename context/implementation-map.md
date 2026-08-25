@@ -2211,6 +2211,182 @@ warning `npm run lint` reports is in the pre-existing generated
 project's first module with no `linear-axis@1` role and no Motor Sizing
 Tool family relationship, released, registered, and validated end to end.
 
+## Unit 7.2 — Pneumatic cylinder sizing module
+
+Founder-directed (2026-08-24, same day as Unit 7.1's own release): change
+the pneumatic-cylinder module so the engineer enters *application* specs
+(load, travel speed) instead of *cylinder* specs, mirroring how the Motor
+Sizing Tool family (ADR-0011) already takes load/motion inputs and outputs
+required specs. `pneumatic-cylinder@0.1.0` cannot be edited toward this in
+place (released and immutable) and ADR-0011 already rejected combining
+"verify a given part" and "size from load" into one module via an enum, so
+this is a new, separate, self-contained module. Design record:
+`docs/superpowers/specs/2026-08-24-pneumatic-cylinder-sizing-design.md`.
+Full implementation plan (all six stages, task-by-task):
+`docs/superpowers/plans/2026-08-24-pneumatic-cylinder-sizing-
+implementation.md`.
+
+### Stage 1 — Engineering specification
+
+**Done (2026-08-24).** `context/modules/pneumatic-cylinder-sizing/
+stage-1-spec.md` — proposed module ID `pneumatic-cylinder-sizing`.
+Implementation research found and recorded three real corrections to the
+founder's own design doc before building anything: (1) the design doc's
+own forward/return sign-convention precedent (`rack-pinion-motor-sizing`/
+`belt-pulley-drive-motor-sizing`) was wrong — neither module has a
+directional split at all; the real precedent, confirmed by reading the
+actual source, is `ball-screw-motor-sizing@0.2.0`'s own `resolveDriveForce`
+(`MoveDirection = "forward" | "return"`: forward adds the gravity term,
+return subtracts it, friction is direction-symmetric, and the result may
+legitimately go negative); (2) the design doc undersold parameter reuse —
+ten existing parameters (`motion.axis.incline_angle`,
+`motion.axis.friction_coefficient`, `motion.axis.total_moving_mass`, and
+seven `pneumatic.*` engineer-supplied/computed values) reuse unchanged,
+not seven; (3) the generic `MatchCriterion` engine cannot express the
+force-capacity or buckling checks as flat single-attribute comparisons —
+both need a real formula over the *same candidate's own* bore/rod
+diameter plus this run's own pressure/safety-factor, a genuine
+architecture finding requiring a dedicated application-layer evaluator
+(Stage 5) rather than a `lib/catalog` engine change. One new source is
+needed for the catalog seed data itself (Task 13, Stage 5).
+
+### Stage 2 — Parameter contract
+
+**Done (2026-08-24).** `context/modules/pneumatic-cylinder-sizing/
+stage-2-contract.md` — registry `1.17.0` releases four new
+`pneumatic_sizing.*` parameters (`process_force`, `required_stroke`,
+`required_extend_force`, `required_retract_force`) additively; every
+other input/output reuses an existing `motion.axis.*`/`pneumatic.*`
+parameter ID unchanged, following the same "deliberately not the same
+parameter ID even for the same physical quantity" convention every Motor
+Sizing module already follows where the direction genuinely differs (new
+IDs only where `0.1.0`'s own direction is the opposite one — e.g.
+`pneumatic.required_extend_force` is engineer-supplied there, computed
+here). No new unit-registry dimension or unit needed (mm, MPa, N, J, kg,
+m/s, deg/rad, ratio all already exist). `required_extend_force` ships
+with `range: { min: 0, unit: "N" }` (algebraically always non-negative
+given the formula); `required_retract_force` ships with no `range` at all
+— it can legitimately go negative, and the registry-level bound is
+omitted rather than forcing an artificial floor.
+
+### Stage 3 — Compute and trace
+
+**Done (2026-08-24).** `lib/modules/pneumatic-cylinder-sizing/0.1.0/` — a
+full package (manifest, ports, `math.ts` kernel, `compute.ts`,
+`checks.ts`, `trace.ts`, generic UI/report schema, `validation.ts`,
+`test-helpers.ts`, `index.ts`) built out with the corrected Stage 1/2
+design. `math.ts` reproduces `pneumatic-cylinder@0.1.0`'s own
+`resolvePistonAreas`/`resolveTheoreticalForce`/`resolveBucklingLoad`/
+`resolvePermissibleCompressiveLoad` independently (not imported, per
+ADR-0011's reuse policy — confirmed byte-for-byte identical against that
+module's own `math.test.ts` fixtures) and adds the new required-force
+resolution: `required_extend_force = process_force + weight*sin(theta) +
+weight*friction*cos(theta)`, `required_retract_force =
+-weight*sin(theta) + weight*friction*cos(theta)` (`weight =
+load_mass*9.80665`), reproducing `ball-screw-motor-sizing@0.2.0`'s own
+sign convention exactly. `compute()` reports one informational check
+(`required-specification-computed`) — this module produces a required
+spec, not a pass/fail against one candidate; per-candidate checks run
+later, once catalog candidates exist (Stage 5). 39 tests pass across
+`math.test.ts` and `package.test.ts` (boundary/invalid-input, dimensional
+correctness, sign-convention property tests, echoed-output tests).
+
+### Stage 4 — Validation
+
+**Done (2026-08-24).** `smc-reference-example.ts`/`.test.ts` reproduces
+the same SMC "bore-size-selection Example 1" scenario
+`pneumatic-cylinder@0.1.0`'s own validation record cites (1000 N
+extend-side force, eta=0.7, P=0.5 MPa, SMC's own 63 mm bore selection) —
+but reached here through this module's own compute path from a load (a
+vertical lift, zero friction, zero process force, `load_mass = 1000/g`)
+rather than a directly-supplied force. The independent-benchmark item is
+satisfied by reference, not re-derived: since the force/cushion/buckling
+formula bodies are confirmed byte-for-byte identical to
+`pneumatic-cylinder@0.1.0`'s own kernel, that module's own completed
+Norgren M/1000 benchmark (2 of 4 formula areas closed; cushion-allowable
+and buckling remain open, a disclosed carried-forward gap) serves as the
+substitute here too — recorded honestly, not re-run under a new module ID.
+The new required-force resolution has no manufacturer source to benchmark
+against; verified by sign-convention property tests in `math.test.ts`
+instead (`ball-screw-motor-sizing@0.2.0`'s own established convention as
+the cross-check). Full validation record:
+`validation/pneumatic-cylinder-sizing/0.1.0.md` — a standalone record this
+plan's own task list never explicitly scheduled as its own task (Task 12
+only finalized the in-code `validation.ts`); written directly against
+`validation/module-validation-template.md` before Task 21 (documentation
+sync) could honestly reference its path. `validation/source-index.md`
+gained four rows (three reused sources now also backing this module, plus
+the new `jp.smc.cm2_ca2_catalog` catalog-seed source).
+
+### Stage 5 — Generic surfaces and catalog integration
+
+**Done (2026-08-24).** This is the project's first module to wire a real
+`CatalogAdapter` end to end. `lib/application/catalogs/
+pneumatic-cylinder-matching.ts` implements the hybrid matcher Stage 1's
+own architecture finding required: the generic `rankCandidates`/
+`MatchCriterion` engine (`lib/catalog`) handles stroke range, mounting
+style, and cushion energy (true single-attribute comparisons); a custom
+per-candidate evaluator handles force capacity and buckling, reusing this
+module's own `math.ts` functions against each real catalog candidate's
+own bore/rod diameter. Catalog schema and seed data (Task 13/14):
+`jp.smc.cm2_ca2_catalog@web-2026-08-24` registered as a new source after
+fetching SMC's own CM2/CA2 catalog chapters directly (`smcworld.com`
+reached without the HTTP 403 that blocked `pneumatic-cylinder@0.1.0`'s
+own session, but two full catalog PDFs exceeded `WebFetch`'s own 10 MB
+read limit — a tool-side limit, not a source block — worked around by
+downloading smaller catalog-chapter mirrors and extracting text locally
+with `pdftotext`); two real rod-diameter corrections to the assumed ISO
+6431 pairing were found and disclosed (CM2 bore 40 is 14 mm not 16 mm;
+the shared bore-100 table is 30 mm not 25 mm), plus one inferred, not
+directly confirmed value (CA2 bore-40 rod, 16 mm) — see
+`stage-1-spec.md` "Task 13 fetch record" for the full account.
+`reference/catalog-seed/smc-cm2-ca2.csv` (36 rows, representative,
+founder review/trim pending) imports via the existing generic CSV
+pipeline (`scripts/seed-pneumatic-cylinder-catalog.mts`, idempotent, no
+new catalog-engine code). `index.ts` adds a `catalogAdapter` declaring
+`componentType: "pneumatic_cylinder"` with a `requiredSpec()` mapping
+every output the matcher needs. `lib/application/catalogs/
+load-component-assignment-view.ts` is wired so `pneumatic_cylinder` is
+the first component type to report real ranked/rejected candidates
+(`matchingAvailable: true`) instead of the generic
+`matchingUnavailableReason` every other registered module still reports —
+Milestone 4's own `requiredSpec -> MatchCriterion` deferral (Unit 2.8)
+remains unresolved for every other component type, unchanged by this
+unit. A new DB-gated fixture test in `load-component-assignment-view.
+test.ts` reproduces the SMC bore-selection scenario end to end (a 63 mm
+bore accepts, a deliberately undersized 10 mm bore is rejected on
+theoretical force) through the real `loadComponentAssignmentView` path
+against two seeded `pneumatic_cylinder` catalog rows. `pneumatic-
+cylinder@0.1.0`'s own category (`"pneumatic-cylinder"`) is added to
+`app/(workspace)/workspace/page.tsx`'s `HIDDEN_MODULE_CATEGORIES` set —
+released, immutable, and reachable by direct link, the same treatment the
+seven Milestone 4 discipline modules already received under ADR-0011;
+`pneumatic-cylinder-sizing`'s own category (`"cylinder-sizing.pneumatic"`)
+stays visible in the default "Add module" picker.
+
+### Stage 6 — Release
+
+**Done (2026-08-24).** `npm run module:source-hash -- pneumatic-cylinder-
+sizing 0.1.0` computed `d0c4e13009ed9eba`, pinned in `package.test.ts` as
+`expectedSourceHash` — both `import-boundary` and `source-immutability`
+now pass as real checks, not skipped, and the `catalog-adapter`
+conformance check reports `pass`. `npm run registry:generate` registered
+the module: `pneumatic-cylinder-sizing@0.1.0` in
+`lib/modules/registry.generated.ts` (26 modules total, up from 25).
+Sealed package content hash: `a7e7167ae9a79a0c`. Full non-DB suite green,
+DB-gated suite green (including the new catalog-matching fixture test),
+`npx tsc --noEmit` clean, `npm run lint` clean (0 errors), `npm run build`
+clean. Unit 7.2 is now fully released — this project's first module with
+a real `CatalogAdapter` wired end to end to `lib/catalog`'s generic
+matching engine, and the second Milestone 7 module.
+
+**What still needs the founder's own action, not further implementation
+work:** running `scripts/seed-pneumatic-cylinder-catalog.mts` against the
+live database (a one-time, manually-triggered operation, not part of this
+release), then reviewing/trimming the seeded 36-row CM2/CA2 catalog set to
+the founder's own real working models — the design doc's own explicit
+decision, not a self-serve upload UI.
+
 # Initial Two-Week Start Sequence
 
 This is the recommended exact starting order. It is not a promise of

@@ -177,6 +177,46 @@ record: `validation/pneumatic-cylinder/0.1.0.md`; three new
 `validation/source-index.md` rows. Full non-DB suite green (2546/2546),
 typecheck/lint/build clean. See `context/implementation-map.md` Milestone 7
 Unit 7.1 "Stage 4"/"Stage 5"/"Stage 6" for the full account.
+**2026-08-24 (same day): Unit 7.2 (`pneumatic-cylinder-sizing`) is fully
+released and registered — the second Milestone 7 module.** Founder-directed
+follow-on to Unit 7.1: a new, self-contained, load-in/catalog-match-out
+sibling to `pneumatic-cylinder@0.1.0` (released, immutable, untouched;
+hidden from the default "Add module" picker the same way the seven
+Milestone 4 discipline modules already are). Implementation research found
+and recorded three real corrections to the founder's own design doc before
+building: the real forward/return sign-convention precedent is
+`ball-screw-motor-sizing@0.2.0` (not rack-pinion/belt-pulley, which have no
+directional split); ten existing parameters reuse unchanged, not seven the
+design doc named; and the generic `MatchCriterion` engine cannot express
+the force/buckling checks as flat attribute comparisons, requiring a
+dedicated application-layer evaluator
+(`lib/application/catalogs/pneumatic-cylinder-matching.ts`) alongside the
+generic hard filters — this is the project's first module with a real
+`CatalogAdapter` wired end to end, closing the `requiredSpec ->
+MatchCriterion` gap `load-component-assignment-view.ts` deferred since
+Unit 2.8 for one component type (`pneumatic_cylinder`); every other
+component type still reports `matchingUnavailableReason`, unchanged.
+Registry `1.17.0` (four new `pneumatic_sizing.*` parameters, additive).
+SMC's own CM2/CA2 catalog dimensions were fetched and seeded
+(`reference/catalog-seed/smc-cm2-ca2.csv`, 36 representative rows, founder
+review/trim pending) via the existing generic CSV import pipeline — two
+real rod-diameter corrections to the assumed ISO 6431 pairing were found
+and disclosed in the process. Source-immutability hash pinned
+(`d0c4e13009ed9eba`), registered via `npm run registry:generate`
+(`pneumatic-cylinder-sizing@0.1.0` in `lib/modules/registry.generated.ts`,
+26 modules total), sealed content hash `a7e7167ae9a79a0c`. A standalone
+validation record was written (`validation/pneumatic-cylinder-sizing/
+0.1.0.md`) — a real gap in the implementation plan's own task list, which
+finalized the in-code `validation.ts` but never scheduled the standalone
+`validation/<module-id>/<version>.md` record the roadmap's own Module
+Definition of Done item 10 requires; closed before referencing that path
+in this same documentation-sync pass. Full non-DB and DB-gated suites
+green (including a new catalog-matching fixture test in
+`load-component-assignment-view.test.ts`), typecheck/lint/build clean. See
+`context/implementation-map.md` Milestone 7 Unit 7.2 for the full account.
+What still needs the founder's own action: running the seed script against
+the live database (one-time, manual) and reviewing/trimming the seeded
+catalog rows.
 
 ---
 
@@ -2488,24 +2528,29 @@ variable names.
 
 ## Next up
 
-0. **Unit 7.1 (`pneumatic-cylinder`) is fully released and complete
-   (2026-08-24)** — Stages 1 through 6 all done; see "Active work" above
-   and `context/implementation-map.md` Milestone 7 Unit 7.1 for the full
-   account. `pneumatic-cylinder@0.1.0` is registered
-   (`lib/modules/registry.generated.ts`), with a completed validation
-   record (`validation/pneumatic-cylinder/0.1.0.md`) that honestly
-   discloses a partial (2-of-4-formula-area) independent-benchmark
-   resolution rather than overclaiming full closure. Nothing left to do
-   for this unit. **Next: Unit 7.2 — the second Milestone 7 (Phase 2)
-   module.** `context/roadmap.md` "Phase 2" lists eight remaining
-   candidates (timing belts; chain and sprocket; bushings and plain
-   bearings; cable carriers; mechanical stops and energy absorption; basic
-   shaft/key/bolted-joint checks; a tolerance and fit reference module; PDF
-   generation and improved catalog import) with no priority-score pass or
-   founder direction yet picking which goes next — Unit 7.1 itself was a
-   founder-directed exception to `context/roadmap.md`'s own "Module
-   Prioritization" scoring order (see Unit 7.1's own Stage 1 spec
-   "Status"), not a precedent that scoring is skipped going forward.
+0. **Units 7.1 (`pneumatic-cylinder`) and 7.2 (`pneumatic-cylinder-sizing`)
+   are both fully released and complete (2026-08-24)** — Stages 1 through 6
+   all done for each; see "Active work" above and
+   `context/implementation-map.md` Milestone 7 Units 7.1/7.2 for the full
+   account. Both are registered (`lib/modules/registry.generated.ts`, 26
+   modules total), each with a completed validation record
+   (`validation/pneumatic-cylinder/0.1.0.md`,
+   `validation/pneumatic-cylinder-sizing/0.1.0.md`) that honestly discloses
+   its own open evidence gaps rather than overclaiming full closure.
+   Nothing left to do for either unit — except the founder's own pending
+   action for Unit 7.2 (running `scripts/seed-pneumatic-cylinder-catalog.mts`
+   against the live database, then reviewing/trimming the seeded CM2/CA2
+   catalog rows), which is not implementation work. **Next: Unit 7.3 — the
+   third Milestone 7 (Phase 2) module.** `context/roadmap.md` "Phase 2"
+   lists eight remaining candidates (timing belts; chain and sprocket;
+   bushings and plain bearings; cable carriers; mechanical stops and energy
+   absorption; basic shaft/key/bolted-joint checks; a tolerance and fit
+   reference module; PDF generation and improved catalog import) with no
+   priority-score pass or founder direction yet picking which goes next —
+   Units 7.1 and 7.2 were each a founder-directed exception to
+   `context/roadmap.md`'s own "Module Prioritization" scoring order (see
+   Unit 7.1's own Stage 1 spec "Status"), not a precedent that scoring is
+   skipped going forward.
 1. **All five Motor Sizing Tool family mechanism modules are fully released
    (2026-08-13), and Phase 1E's own last open deliverable — the
    `AddModuleInstanceDialog` category step/mechanism picker and the

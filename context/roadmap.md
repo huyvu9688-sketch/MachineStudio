@@ -311,11 +311,17 @@ was chosen first by explicit founder direction (2026-08-24), ahead of a
 formal score across the other eight candidates — see
 `context/modules/pneumatic-cylinder/stage-1-spec.md` "Status"; this is not
 a precedent that prioritization scoring is skipped for the remaining
-candidates.
+candidates. Pneumatic cylinder sizing (Unit 7.2, below) was likewise
+founder-directed the same day, as a follow-on to the pneumatic cylinder
+work rather than a new scored candidate.
 
 - **Pneumatic cylinder families — done.** `pneumatic-cylinder@0.1.0`
   released and registered 2026-08-24
   (`validation/pneumatic-cylinder/0.1.0.md`).
+- **Pneumatic cylinder sizing (load-in, catalog-match-out) — done.**
+  `pneumatic-cylinder-sizing@0.1.0` released and registered 2026-08-24
+  (`validation/pneumatic-cylinder-sizing/0.1.0.md`) — the project's first
+  module with a real `CatalogAdapter` wired end to end.
 - Timing belts
 - Chain and sprocket
 - Bushings and plain bearings
