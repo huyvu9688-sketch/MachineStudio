@@ -59,6 +59,7 @@ const HIDDEN_MODULE_CATEGORIES: ReadonlySet<string> = new Set([
   "coupling",
   "bearing",
   "drive",
+  "pneumatic-cylinder",
 ]);
 
 /** `linear-axis@1`'s own workflow id, hidden from "Start workflow" the same way. */
