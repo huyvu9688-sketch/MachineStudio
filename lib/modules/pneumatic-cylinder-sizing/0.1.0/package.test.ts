@@ -48,9 +48,7 @@ function baselineInput(): RawInput {
   };
 }
 
-// Placeholder -- a later Stage 6 task replaces this with the real value
-// from `npm run module:source-hash -- pneumatic-cylinder-sizing 0.1.0`.
-const EXPECTED_SOURCE_HASH = "0000000000000000";
+const EXPECTED_SOURCE_HASH = "d0c4e13009ed9eba";
 
 describe("pneumatic-cylinder-sizing 0.1.0 module conformance", () => {
   const report = runModuleConformance(pneumaticCylinderSizingModule, {
@@ -60,7 +58,6 @@ describe("pneumatic-cylinder-sizing 0.1.0 module conformance", () => {
   });
 
   for (const check of report.checks) {
-    if (check.id === "source-immutability") continue; // deliberately excluded from the loop below: this check is expected to fail against the placeholder hash until a later Stage 6 task pins the real one
     it(`${check.id} (${check.status})`, () => {
       expect(check.status, check.detail).toBe("pass");
     });
@@ -68,6 +65,12 @@ describe("pneumatic-cylinder-sizing 0.1.0 module conformance", () => {
 
   it("runs the import-boundary check and it passes (not skipped)", () => {
     const check = report.checks.find((c) => c.id === "import-boundary");
+    expect(check).toBeDefined();
+    expect(check?.status, check?.detail).toBe("pass");
+  });
+
+  it("runs the source-immutability check and it passes (not skipped)", () => {
+    const check = report.checks.find((c) => c.id === "source-immutability");
     expect(check).toBeDefined();
     expect(check?.status, check?.detail).toBe("pass");
   });
