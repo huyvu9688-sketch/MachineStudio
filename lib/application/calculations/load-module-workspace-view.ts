@@ -50,6 +50,7 @@ import { getModulePackage } from "@/lib/modules";
 import {
   loadModuleInstanceForOwner,
   parameterGraphNodeId,
+  prisma,
   resolveModuleInputs,
   type AssemblyId,
   type MachineConfigurationId,
@@ -67,6 +68,7 @@ import {
   describeField,
   type ModuleInputFieldDescriptor,
 } from "./describe-field";
+import { resolveModuleOutputValue } from "./resolve-module-output-value";
 import { resolveFieldDisabled } from "./resolve-field-disabled";
 
 export { describeField };
@@ -82,6 +84,26 @@ export interface ModuleInputFieldView {
   readonly loadCase: LoadCaseCategory | null;
   readonly field: ModuleInputFieldDescriptor;
   readonly resolved: ResolvedInputSource;
+  /**
+   * True when this parameter's canonical registry definition declares a real
+   * `defaultPolicy: { kind: "constant" }` fallback (e.g. standard gravity).
+   * `resolved.source === "default"` on its own only means "no manual value,
+   * link, or workflow value was ever supplied" — it says nothing about
+   * whether a real value is actually behind that state. A field with
+   * `hasBuiltInDefault: false` and `resolved.source === "default"` is
+   * genuinely empty, not pre-filled; the renderer uses this to distinguish
+   * "Default" (a real constant is in effect) from "Not set" (nothing is,
+   * and the field must be filled in manually before a required check can
+   * pass) — this distinction was previously missing, which let a required
+   * field with no built-in default (e.g. `motion.axis.incline_angle`) show
+   * the same "Default" badge as an actually-populated one like
+   * `motion.axis.gravity`. Optional (rather than always required) so the
+   * dozens of existing `ModuleInputFieldView` test fixtures across this
+   * codebase compile unchanged, the same precedent `disabled` below
+   * established; `undefined` renders identically to `false` (the common
+   * case — most parameters have no registry-level constant).
+   */
+  readonly hasBuiltInDefault?: boolean;
   /**
    * Ranked link suggestions for this port (Unit 3.4), nearest scope first.
    * Always `[]` when `resolved.source === "linked"` — a field with a
@@ -105,6 +127,30 @@ export interface ModuleInputFieldView {
    * to `false`.
    */
   readonly disabled?: boolean;
+  /**
+   * Set only when `resolved.source === "linked"` and the link's source is
+   * another module's output (never for a requirement/assembly-level link,
+   * which always has a real `resolved.value` already). This preview never
+   * has a fresh value to show here — `resolveModuleInputs`
+   * (`lib/db/repositories/graph-repository.ts`) deliberately leaves a
+   * module-output link's `value` `null`, since only `executeModuleInstance`
+   * actually pulls it, at Run time — but it does tell the founder up front
+   * whether Run is even going to succeed for this field:
+   *
+   * - `"ready"` — the source module's latest run is fresh; Run should
+   *   resolve this field from it.
+   * - `"stale"` — the source module's latest run is stale (an upstream input
+   *   changed since); Run will refuse with `stale_upstream` until the source
+   *   is re-run.
+   * - `"not_run"` — the source module has never been run (or isn't
+   *   resolvable at all), so Run will report this field as a missing
+   *   required input even though it displays as "Linked" — the exact
+   *   confusion this status exists to prevent.
+   *
+   * `undefined` for every other field (not linked, or linked to a
+   * requirement/assembly value instead of a module output).
+   */
+  readonly linkedSourceStatus?: "ready" | "stale" | "not_run";
 }
 
 /** A titled group of resolved input fields, in the module's declared UI order. */
@@ -208,6 +254,36 @@ export async function loadModuleWorkspaceView(
     );
   }
 
+  // Previews, for every port linked to another module's output, whether Run
+  // will actually be able to resolve it — using the exact same resolution
+  // `executeModuleInstance` uses (`resolveModuleOutputValue`), so this can
+  // never disagree with what Run itself does. A link to a requirement/
+  // assembly value is skipped: `resolved.value` is already populated for
+  // that case, so there is nothing to preview.
+  const linkedSourceStatusByPortKey = new Map<
+    string,
+    "ready" | "stale" | "not_run"
+  >();
+  for (const [portKey, resolved] of resolvedByPortKey) {
+    if (resolved.source !== "linked") continue;
+    if (resolved.link.sourceModuleInstanceId === null) continue;
+    const upstream = await resolveModuleOutputValue(
+      resolved.link.sourceModuleInstanceId,
+      resolved.link.sourceParameterId,
+      resolved.link.sourceLoadCase,
+      ownerId,
+      prisma,
+    );
+    linkedSourceStatusByPortKey.set(
+      portKey,
+      upstream.kind === "value"
+        ? "ready"
+        : upstream.kind === "stale"
+          ? "stale"
+          : "not_run",
+    );
+  }
+
   const groups: ModuleInputGroupView[] = pkg.uiSchema.groups.map((group) => ({
     id: group.id,
     title: group.title,
@@ -250,11 +326,13 @@ export async function loadModuleWorkspaceView(
         loadCase: port.loadCase ?? null,
         field: describeField(definition.valueType, definition),
         resolved,
+        hasBuiltInDefault: definition.defaultPolicy.kind === "constant",
         suggestions,
         linkRemovalImpact:
           resolved.source === "linked"
             ? (removalImpactByPortKey.get(field.portKey) ?? 0)
             : null,
+        linkedSourceStatus: linkedSourceStatusByPortKey.get(field.portKey),
         disabled: resolveFieldDisabled(field.disabledWhen, resolvedByPortKey),
       };
     }),

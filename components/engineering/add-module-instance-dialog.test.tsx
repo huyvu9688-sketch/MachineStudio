@@ -44,6 +44,34 @@ describe("AddModuleInstanceDialog", () => {
     ).toBeInTheDocument();
   });
 
+  it("labels pneumatic-cylinder-sizing with a friendly name in the flat picker", async () => {
+    const user = userEvent.setup();
+    const packages: ModulePackageOption[] = [
+      ...MODULE_PACKAGES,
+      {
+        modulePackageId: "pneumatic-cylinder-sizing",
+        moduleVersion: "0.1.0",
+        category: "cylinder-sizing.pneumatic",
+      },
+    ];
+    render(
+      <AddModuleInstanceDialog
+        assemblyId="a1"
+        configurationId="c1"
+        modulePackages={packages}
+        trigger={<button type="button">{TRIGGER_LABEL}</button>}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+
+    expect(
+      screen.getByRole("option", {
+        name: "Pneumatic Cylinder Sizing (load-in, catalog match) (pneumatic-cylinder-sizing@0.1.0)",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("disables submission when no module packages are registered", async () => {
     const user = userEvent.setup();
     render(
@@ -157,8 +185,8 @@ describe("AddModuleInstanceDialog", () => {
       }),
     ).not.toBeInTheDocument();
 
-    // Switching to "Other modules" swaps in the original flat picker.
-    await user.click(screen.getByRole("button", { name: "Other modules" }));
+    // Switching to "Pneumatic Selection" swaps in the original flat picker.
+    await user.click(screen.getByRole("button", { name: "Pneumatic Selection" }));
 
     expect(screen.getByLabelText("Module package")).toBeInTheDocument();
     expect(
@@ -403,8 +431,8 @@ describe("AddModuleInstanceDialog", () => {
     await user.clear(screen.getByLabelText("Instance label"));
     await user.type(screen.getByLabelText("Instance label"), "My custom label");
 
-    // Switch to "Other modules" tab
-    await user.click(screen.getByRole("button", { name: "Other modules" }));
+    // Switch to "Pneumatic Selection" tab
+    await user.click(screen.getByRole("button", { name: "Pneumatic Selection" }));
 
     // Label should be cleared when switching tabs
     expect(screen.getByLabelText("Instance label")).toHaveValue("");
@@ -430,7 +458,7 @@ describe("AddModuleInstanceDialog", () => {
     );
 
     await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
-    await user.click(screen.getByRole("button", { name: "Other modules" }));
+    await user.click(screen.getByRole("button", { name: "Pneumatic Selection" }));
     await user.selectOptions(
       screen.getByLabelText("Module package"),
       "example-scaffold@0.1.0",
@@ -439,5 +467,131 @@ describe("AddModuleInstanceDialog", () => {
     expect(screen.getByLabelText("Instance label")).toHaveValue(
       "example-scaffold",
     );
+  });
+
+  describe("pneumatic cylinder card picker", () => {
+    const PNEUMATIC_PACKAGES: ModulePackageOption[] = [
+      {
+        modulePackageId: "pneumatic-cylinder-sizing",
+        moduleVersion: "0.1.0",
+        category: "cylinder-sizing.pneumatic",
+      },
+      {
+        modulePackageId: "guided-cylinder-sizing",
+        moduleVersion: "0.1.0",
+        category: "cylinder-sizing.pneumatic-guided",
+      },
+    ];
+
+    it("renders cylinder-sizing modules as cards, not a dropdown, when nothing else is registered under Pneumatic Selection", async () => {
+      const user = userEvent.setup();
+      render(
+        <AddModuleInstanceDialog
+          assemblyId="a1"
+          configurationId="c1"
+          modulePackages={PNEUMATIC_PACKAGES}
+          trigger={<button type="button">{TRIGGER_LABEL}</button>}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+
+      expect(screen.queryByLabelText("Module package")).not.toBeInTheDocument();
+      expect(screen.getByRole("radiogroup", { name: "Cylinder type" })).toBeInTheDocument();
+      const standardCard = screen.getByRole("radio", { name: /Standard Cylinder/ });
+      const guidedCard = screen.getByRole("radio", { name: /Guided Cylinder/ });
+      expect(standardCard).toHaveTextContent("SMC CM2 / CA2");
+      expect(guidedCard).toHaveTextContent("SMC MGQ / MGP");
+      expect(standardCard).toHaveAttribute("aria-checked", "false");
+      expect(guidedCard).toHaveAttribute("aria-checked", "false");
+    });
+
+    it("selects a card, prefills the label, and submits the right modulePackageKey", async () => {
+      vi.mocked(addModuleInstanceAction).mockResolvedValue({ status: "success" });
+      const user = userEvent.setup();
+      render(
+        <AddModuleInstanceDialog
+          assemblyId="a1"
+          configurationId="c1"
+          modulePackages={PNEUMATIC_PACKAGES}
+          trigger={<button type="button">{TRIGGER_LABEL}</button>}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+      const guidedCard = screen.getByRole("radio", { name: /Guided Cylinder/ });
+      await user.click(guidedCard);
+
+      expect(guidedCard).toHaveAttribute("aria-checked", "true");
+      expect(screen.getByLabelText("Instance label")).toHaveValue("Guided Cylinder");
+
+      await user.click(screen.getByRole("button", { name: "Add module" }));
+
+      expect(addModuleInstanceAction).toHaveBeenCalled();
+      const formData = vi
+        .mocked(addModuleInstanceAction)
+        .mock.calls.at(-1)?.[1] as FormData;
+      expect(formData.get("modulePackageKey")).toBe(
+        "guided-cylinder-sizing@0.1.0",
+      );
+    });
+
+    it("clears the card selection when the dialog closes and reopens", async () => {
+      vi.mocked(addModuleInstanceAction).mockResolvedValue({ status: "success" });
+      const user = userEvent.setup();
+      render(
+        <AddModuleInstanceDialog
+          assemblyId="a1"
+          configurationId="c1"
+          modulePackages={PNEUMATIC_PACKAGES}
+          trigger={<button type="button">{TRIGGER_LABEL}</button>}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+      await user.click(screen.getByRole("radio", { name: /Standard Cylinder/ }));
+      await user.click(screen.getByRole("button", { name: "Add module" }));
+
+      await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+
+      expect(
+        screen.getByRole("radio", { name: /Standard Cylinder/ }),
+      ).toHaveAttribute("aria-checked", "false");
+      expect(screen.getByLabelText("Instance label")).toHaveValue("");
+    });
+
+    it("falls back to the flat dropdown when Pneumatic Selection also has a non-cylinder-sizing module", async () => {
+      const user = userEvent.setup();
+      const packages: ModulePackageOption[] = [
+        ...PNEUMATIC_PACKAGES,
+        {
+          modulePackageId: "example-scaffold",
+          moduleVersion: "0.1.0",
+          category: "example",
+        },
+        // A motor-sizing package too, so the "Pneumatic Selection" category
+        // step actually renders — showCategoryStep requires both a
+        // motor-sizing and a non-motor-sizing package to be present.
+        {
+          modulePackageId: "ball-screw-motor-sizing",
+          moduleVersion: "0.1.0",
+          category: "motor-sizing.ball-screw",
+        },
+      ];
+      render(
+        <AddModuleInstanceDialog
+          assemblyId="a1"
+          configurationId="c1"
+          modulePackages={packages}
+          trigger={<button type="button">{TRIGGER_LABEL}</button>}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+      await user.click(screen.getByRole("button", { name: "Pneumatic Selection" }));
+
+      expect(screen.getByLabelText("Module package")).toBeInTheDocument();
+      expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
+    });
   });
 });

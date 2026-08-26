@@ -23,8 +23,10 @@ describe.skipIf(!liveDatabaseAvailable)(
   "loadModuleWorkspaceView (live database)",
   () => {
     let loadModuleWorkspaceView: typeof import("./load-module-workspace-view").loadModuleWorkspaceView;
+    let executeModuleInstance: typeof import("./execute-module-instance").executeModuleInstance;
     let projects: typeof import("../../db/repositories/project-repository");
     let graph: typeof import("../../db/repositories/graph-repository");
+    let runs: typeof import("../../db/repositories/run-repository");
     let client: typeof import("../../db/client");
     const createdUserIds: string[] = [];
 
@@ -73,8 +75,10 @@ describe.skipIf(!liveDatabaseAvailable)(
     beforeAll(async () => {
       ({ loadModuleWorkspaceView } =
         await import("./load-module-workspace-view"));
+      ({ executeModuleInstance } = await import("./execute-module-instance"));
       projects = await import("../../db/repositories/project-repository");
       graph = await import("../../db/repositories/graph-repository");
+      runs = await import("../../db/repositories/run-repository");
       client = await import("../../db/client");
     });
 
@@ -115,6 +119,10 @@ describe.skipIf(!liveDatabaseAvailable)(
         displayUnits: ["kg", "g", "lbm"],
       });
       expect(field?.resolved).toEqual({ source: "default" });
+      // motion.axis.payload_mass has no registry-level constant default
+      // (defaultPolicy: { kind: "required" }) — an unset "default"-source
+      // field here is genuinely empty, not pre-filled.
+      expect(field?.hasBuiltInDefault).toBe(false);
     });
 
     it("resolves a manually authored value as source 'manual' with its magnitude", async () => {
@@ -150,6 +158,113 @@ describe.skipIf(!liveDatabaseAvailable)(
       if (field?.field.kind === "quantity") {
         expect(field.field.canonicalUnit).toBe("N");
       }
+    });
+
+    it("reports linkedSourceStatus 'not_run' when the linked module-output source has never been run", async () => {
+      const upstream = await scaffold("example-relay", "0.1.0", "Upstream");
+      const downstream = await projects.createModuleInstance({
+        assemblyId: upstream.assemblyId,
+        configurationId: upstream.configId,
+        modulePackageId: "example-relay",
+        moduleVersion: "0.1.0",
+        label: "Downstream",
+      });
+      await graph.createParameterLink({
+        configurationId: upstream.configId,
+        targetModuleInstanceId: downstream.id,
+        targetParameterId: "motion.axis.thrust_force",
+        sourceKind: "module_output",
+        sourceModuleInstanceId: upstream.moduleInstanceId,
+        sourceParameterId: "motion.axis.thrust_force",
+      });
+
+      const view = await loadModuleWorkspaceView(downstream.id, upstream.ownerId);
+
+      const field = view?.groups[0].fields[0];
+      expect(field?.resolved.source).toBe("linked");
+      expect(field?.linkedSourceStatus).toBe("not_run");
+    });
+
+    it("reports linkedSourceStatus 'ready' once the linked module-output source has a fresh run", async () => {
+      const upstream = await scaffold("example-relay", "0.1.0", "Upstream");
+      await graph.createParameterValue({
+        configurationId: upstream.configId,
+        moduleInstanceId: upstream.moduleInstanceId,
+        nodeKind: "module_input",
+        parameterId: "motion.axis.thrust_force",
+        source: "manual",
+        value: makeQuantity(274, "N"),
+      });
+      const upstreamRun = await executeModuleInstance({
+        moduleInstanceId: upstream.moduleInstanceId,
+        ownerId: upstream.ownerId,
+      });
+      expect(upstreamRun.ok).toBe(true);
+
+      const downstream = await projects.createModuleInstance({
+        assemblyId: upstream.assemblyId,
+        configurationId: upstream.configId,
+        modulePackageId: "example-relay",
+        moduleVersion: "0.1.0",
+        label: "Downstream",
+      });
+      await graph.createParameterLink({
+        configurationId: upstream.configId,
+        targetModuleInstanceId: downstream.id,
+        targetParameterId: "motion.axis.thrust_force",
+        sourceKind: "module_output",
+        sourceModuleInstanceId: upstream.moduleInstanceId,
+        sourceParameterId: "motion.axis.thrust_force",
+      });
+
+      const view = await loadModuleWorkspaceView(downstream.id, upstream.ownerId);
+
+      const field = view?.groups[0].fields[0];
+      expect(field?.linkedSourceStatus).toBe("ready");
+    });
+
+    it("reports linkedSourceStatus 'stale' once the linked module-output source's latest run is marked stale", async () => {
+      const upstream = await scaffold("example-relay", "0.1.0", "Upstream");
+      await graph.createParameterValue({
+        configurationId: upstream.configId,
+        moduleInstanceId: upstream.moduleInstanceId,
+        nodeKind: "module_input",
+        parameterId: "motion.axis.thrust_force",
+        source: "manual",
+        value: makeQuantity(274, "N"),
+      });
+      const upstreamRun = await executeModuleInstance({
+        moduleInstanceId: upstream.moduleInstanceId,
+        ownerId: upstream.ownerId,
+      });
+      expect(upstreamRun.ok).toBe(true);
+      if (!upstreamRun.ok) return;
+      await runs.markRunStale(
+        upstreamRun.run.id,
+        true,
+        "An upstream value changed.",
+      );
+
+      const downstream = await projects.createModuleInstance({
+        assemblyId: upstream.assemblyId,
+        configurationId: upstream.configId,
+        modulePackageId: "example-relay",
+        moduleVersion: "0.1.0",
+        label: "Downstream",
+      });
+      await graph.createParameterLink({
+        configurationId: upstream.configId,
+        targetModuleInstanceId: downstream.id,
+        targetParameterId: "motion.axis.thrust_force",
+        sourceKind: "module_output",
+        sourceModuleInstanceId: upstream.moduleInstanceId,
+        sourceParameterId: "motion.axis.thrust_force",
+      });
+
+      const view = await loadModuleWorkspaceView(downstream.id, upstream.ownerId);
+
+      const field = view?.groups[0].fields[0];
+      expect(field?.linkedSourceStatus).toBe("stale");
     });
   },
 );

@@ -2,26 +2,26 @@
 import { describe, expect, vi, it } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ArchiveModuleInstanceDialog } from "./archive-module-instance-dialog";
-import { previewArchiveModuleInstanceImpactAction } from "@/app/(workspace)/workspace/actions";
+import { DeleteModuleInstanceDialog } from "./delete-module-instance-dialog";
+import { previewDeleteModuleInstanceImpactAction } from "@/app/(workspace)/workspace/actions";
 
 vi.mock("@/app/(workspace)/workspace/actions", () => ({
-  archiveModuleInstanceAction: vi.fn(),
-  previewArchiveModuleInstanceImpactAction: vi.fn(),
+  deleteModuleInstanceAction: vi.fn(),
+  previewDeleteModuleInstanceImpactAction: vi.fn(),
 }));
 
-const TRIGGER_LABEL = "Open archive dialog";
+const TRIGGER_LABEL = "Open delete dialog";
 
-describe("ArchiveModuleInstanceDialog", () => {
+describe("DeleteModuleInstanceDialog", () => {
   it("loads and shows the impact preview when opened", async () => {
-    vi.mocked(previewArchiveModuleInstanceImpactAction).mockResolvedValueOnce({
+    vi.mocked(previewDeleteModuleInstanceImpactAction).mockResolvedValueOnce({
       ok: true,
       dependentModuleInstanceLabels: ["Index Table"],
       attachedToWorkflow: false,
     });
     const user = userEvent.setup();
     render(
-      <ArchiveModuleInstanceDialog
+      <DeleteModuleInstanceDialog
         moduleInstanceId="mi_1"
         moduleInstanceLabel="Belt & Pulley Drive"
         trigger={<button type="button">{TRIGGER_LABEL}</button>}
@@ -33,20 +33,20 @@ describe("ArchiveModuleInstanceDialog", () => {
     await waitFor(() => {
       expect(screen.getByText(/Index Table/)).toBeInTheDocument();
     });
-    expect(previewArchiveModuleInstanceImpactAction).toHaveBeenCalledWith(
+    expect(previewDeleteModuleInstanceImpactAction).toHaveBeenCalledWith(
       "mi_1",
     );
   });
 
   it("shows no-dependents text when nothing links from this instance", async () => {
-    vi.mocked(previewArchiveModuleInstanceImpactAction).mockResolvedValueOnce({
+    vi.mocked(previewDeleteModuleInstanceImpactAction).mockResolvedValueOnce({
       ok: true,
       dependentModuleInstanceLabels: [],
       attachedToWorkflow: false,
     });
     const user = userEvent.setup();
     render(
-      <ArchiveModuleInstanceDialog
+      <DeleteModuleInstanceDialog
         moduleInstanceId="mi_1"
         moduleInstanceLabel="Belt & Pulley Drive"
         trigger={<button type="button">{TRIGGER_LABEL}</button>}
@@ -59,6 +59,28 @@ describe("ArchiveModuleInstanceDialog", () => {
       expect(
         screen.getByText("No other module links from this one's outputs."),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("warns that links will break when dependents exist", async () => {
+    vi.mocked(previewDeleteModuleInstanceImpactAction).mockResolvedValueOnce({
+      ok: true,
+      dependentModuleInstanceLabels: ["Index Table"],
+      attachedToWorkflow: false,
+    });
+    const user = userEvent.setup();
+    render(
+      <DeleteModuleInstanceDialog
+        moduleInstanceId="mi_1"
+        moduleInstanceLabel="Belt & Pulley Drive"
+        trigger={<button type="button">{TRIGGER_LABEL}</button>}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: TRIGGER_LABEL }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Those links will break\./)).toBeInTheDocument();
     });
   });
 });

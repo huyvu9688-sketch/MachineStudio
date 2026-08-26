@@ -494,6 +494,50 @@ describe.skipIf(!liveDatabaseAvailable)(
         false,
       );
     });
+
+    it("permanently deletes a module instance, and a stranger cannot delete it", async () => {
+      const ownerId = await newUser();
+      const strangerId = await newUser();
+      const project = await repo.createProject({
+        ownerId,
+        name: "Axis",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const config = await repo.createConfiguration({
+        projectId: project.id,
+        name: "Baseline",
+      });
+      const assembly = await repo.createAssembly({
+        configurationId: config.id,
+        name: "X axis",
+      });
+      const moduleInstance = await repo.createModuleInstance({
+        assemblyId: assembly.id,
+        configurationId: config.id,
+        modulePackageId: "example-scaffold",
+        moduleVersion: "0.1.0",
+        label: "Belt drive",
+      });
+
+      expect(
+        await repo.deleteModuleInstance(moduleInstance.id, strangerId),
+      ).toBe(false);
+      expect(
+        await repo.loadModuleInstanceForOwner(moduleInstance.id, ownerId),
+      ).not.toBeNull();
+
+      expect(
+        await repo.deleteModuleInstance(moduleInstance.id, ownerId),
+      ).toBe(true);
+      expect(
+        await repo.loadModuleInstanceForOwner(moduleInstance.id, ownerId),
+      ).toBeNull();
+
+      // Already deleted: deleting again is a no-op, not an error.
+      expect(
+        await repo.deleteModuleInstance(moduleInstance.id, ownerId),
+      ).toBe(false);
+    });
   },
 );
 

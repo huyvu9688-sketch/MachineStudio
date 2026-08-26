@@ -24,8 +24,10 @@ import {
   createMachineRequirement,
   createRequirementAcceptanceCriterion,
   deleteAccount,
+  deleteModuleInstance,
   executeModuleInstance,
   previewArchiveModuleInstanceImpact,
+  previewDeleteModuleInstanceImpact,
   removeParameterLink,
   renameMachineAssembly,
   renameMachineProject,
@@ -159,6 +161,13 @@ export async function renameModuleInstanceAction(
   return { status: "success" };
 }
 
+/**
+ * Kept for the archived-module data model (`archivedAt`,
+ * `listModuleInstancesForWorkflowInstance`'s own exclusion filter) even
+ * though the navigator's own module row no longer offers an "Archive"
+ * action (replaced by permanent delete — see `deleteModuleInstanceAction`
+ * below) — not dead UI plumbing, just currently unreferenced from a form.
+ */
 export async function archiveModuleInstanceAction(
   _prevState: ActionState,
   formData: FormData,
@@ -192,6 +201,52 @@ export async function previewArchiveModuleInstanceImpactAction(
 > {
   const { userId } = await auth.protect();
   const result = await previewArchiveModuleInstanceImpact(
+    asModuleInstanceId(moduleInstanceId),
+    asUserId(userId),
+  );
+  if (!result.ok) {
+    return { ok: false, message: result.error.message };
+  }
+  return {
+    ok: true,
+    dependentModuleInstanceLabels: result.preview.dependentModuleInstanceLabels,
+    attachedToWorkflow: result.preview.attachedToWorkflow,
+  };
+}
+
+export async function deleteModuleInstanceAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { userId } = await auth.protect();
+  const result = await deleteModuleInstance(
+    asModuleInstanceId(fieldValue(formData, "moduleInstanceId")),
+    asUserId(userId),
+  );
+  if (!result.ok) {
+    return { status: "error", message: result.error.message };
+  }
+  revalidatePath("/workspace");
+  return { status: "success" };
+}
+
+/**
+ * Not a `useActionState` form action like the others in this file — called
+ * directly from `DeleteModuleInstanceDialog` as a plain async function when
+ * it opens, since the impact preview is a read, not a form submission.
+ */
+export async function previewDeleteModuleInstanceImpactAction(
+  moduleInstanceId: string,
+): Promise<
+  | {
+      readonly ok: true;
+      readonly dependentModuleInstanceLabels: readonly string[];
+      readonly attachedToWorkflow: boolean;
+    }
+  | { readonly ok: false; readonly message: string }
+> {
+  const { userId } = await auth.protect();
+  const result = await previewDeleteModuleInstanceImpact(
     asModuleInstanceId(moduleInstanceId),
     asUserId(userId),
   );

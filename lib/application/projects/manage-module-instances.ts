@@ -7,6 +7,7 @@ import "server-only";
 import { z } from "zod";
 import {
   archiveModuleInstance as archiveModuleInstanceRow,
+  deleteModuleInstance as deleteModuleInstanceRow,
   listModuleInstancesLinkedFromSource,
   loadModuleInstanceForOwner,
   renameModuleInstance as renameModuleInstanceRow,
@@ -135,4 +136,49 @@ export async function previewArchiveModuleInstanceImpact(
       attachedToWorkflow: context.moduleInstance.workflowInstanceId !== null,
     },
   };
+}
+
+/** Result of {@link deleteModuleInstance}. */
+export type DeleteModuleInstanceResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly error: ManageModuleInstanceError };
+
+/**
+ * Permanently deletes a module instance owned by `ownerId`. Unlike
+ * archiving, this is irreversible: its parameter values, calculation run
+ * history, component assignments, and every parameter link that names it as
+ * source or target are all gone (cascaded at the database level — see
+ * `deleteModuleInstance` in `lib/db/repositories/project-repository.ts`).
+ * Any other module instance still linking from this one's outputs loses
+ * that link outright, unlike archiving, which leaves existing links intact.
+ */
+export async function deleteModuleInstance(
+  moduleInstanceId: ModuleInstanceId,
+  ownerId: UserId,
+): Promise<DeleteModuleInstanceResult> {
+  const deleted = await deleteModuleInstanceRow(moduleInstanceId, ownerId);
+  if (!deleted) {
+    return {
+      ok: false,
+      error: {
+        code: "not_found",
+        message: "Module instance not found or not owned by this user.",
+      },
+    };
+  }
+  return { ok: true };
+}
+
+/**
+ * Read-only preview of what permanently deleting `moduleInstanceId` would
+ * break — shown before the founder confirms. Reuses the same dependent-link
+ * and workflow-role lookups {@link previewArchiveModuleInstanceImpact} uses;
+ * the difference is what the caller does with the answer, since deletion
+ * actually severs those links rather than merely leaving them in place.
+ */
+export async function previewDeleteModuleInstanceImpact(
+  moduleInstanceId: ModuleInstanceId,
+  ownerId: UserId,
+): Promise<PreviewArchiveModuleInstanceImpactResult> {
+  return previewArchiveModuleInstanceImpact(moduleInstanceId, ownerId);
 }

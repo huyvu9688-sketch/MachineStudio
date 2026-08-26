@@ -298,13 +298,15 @@ describe("ModuleInputWorkspace", () => {
 
     // Quantity: label, help text, unit selector, "Default" source badge.
     // (Both the quantity field and the unsupported field resolve to
-    // "default" here, so two badges are expected.)
+    // "default" with no registry-level constant behind them, so both render
+    // "Not set", not "Default" — see hasBuiltInDefault's own doc comment.)
     expect(screen.getByLabelText("Payload mass")).toBeInTheDocument();
     expect(
       screen.getByText("Total moving mass carried by the axis."),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Payload mass unit")).toBeInTheDocument();
-    expect(screen.getAllByText("Default")).toHaveLength(2);
+    expect(screen.getAllByText("Not set")).toHaveLength(2);
+    expect(screen.queryByText("Default")).not.toBeInTheDocument();
 
     // Enum: pre-selected current value, "Manual" badge, load-case chip.
     expect(screen.getByLabelText("Axis orientation")).toHaveValue("vertical");
@@ -324,6 +326,20 @@ describe("ModuleInputWorkspace", () => {
     expect(
       screen.getByText(/Editing vector quantity values is not supported yet/),
     ).toBeInTheDocument();
+  });
+
+  it("renders 'Default' (not 'Not set') for an unset field with a real registry constant", () => {
+    const gravityField: ModuleInputFieldView = {
+      ...quantityDefaultField,
+      portKey: "gravity",
+      parameterId: "motion.axis.gravity",
+      label: "Gravitational acceleration",
+      hasBuiltInDefault: true,
+    };
+    render(<ModuleInputWorkspace view={view([gravityField])} />);
+
+    expect(screen.getByText("Default")).toBeInTheDocument();
+    expect(screen.queryByText("Not set")).not.toBeInTheDocument();
   });
 
   it("renders a structurally different module (different port/parameter/unit) through the same component", () => {
@@ -439,6 +455,46 @@ describe("ModuleInputWorkspace", () => {
 
     await user.click(screen.getByRole("button", { name: "Confirm removal" }));
     expect(removeParameterLinkAction).toHaveBeenCalled();
+  });
+
+  it("warns when a linked field's module-output source has not been run yet", () => {
+    const notRunField: ModuleInputFieldView = {
+      ...linkedField,
+      linkedSourceStatus: "not_run",
+    };
+    render(<ModuleInputWorkspace view={view([notRunField])} />);
+
+    expect(
+      screen.getByText(
+        "Source module has not been run yet — run it, then run this module again.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("warns when a linked field's module-output source's latest run is stale", () => {
+    const staleField: ModuleInputFieldView = {
+      ...linkedField,
+      linkedSourceStatus: "stale",
+    };
+    render(<ModuleInputWorkspace view={view([staleField])} />);
+
+    expect(
+      screen.getByText(
+        "Source module's latest run is stale — re-run it, then run this module again.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no source warning for a linked field whose source is ready", () => {
+    const readyField: ModuleInputFieldView = {
+      ...linkedField,
+      linkedSourceStatus: "ready",
+    };
+    render(<ModuleInputWorkspace view={view([readyField])} />);
+
+    expect(
+      screen.queryByText(/has not been run yet|latest run is stale/),
+    ).not.toBeInTheDocument();
   });
 
   it("renders a stored axis-frame vector in its selected display unit, per component", () => {

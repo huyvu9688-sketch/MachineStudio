@@ -200,5 +200,94 @@ describe.skipIf(!liveDatabaseAvailable)(
         },
       });
     });
+
+    it("permanently deletes a module instance and rejects re-deleting", async () => {
+      const s = await scaffold();
+      const moduleId = await newModule(s, "Belt drive");
+
+      const deleted = await manage.deleteModuleInstance(moduleId, s.ownerId);
+      expect(deleted).toEqual({ ok: true });
+
+      const again = await manage.deleteModuleInstance(moduleId, s.ownerId);
+      expect(again).toEqual({
+        ok: false,
+        error: {
+          code: "not_found",
+          message: "Module instance not found or not owned by this user.",
+        },
+      });
+    });
+
+    it("rejects a stranger deleting a module instance they do not own", async () => {
+      const s = await scaffold();
+      const stranger = await projects.upsertUser(`test-user-${randomUUID()}`);
+      createdUserIds.push(stranger.id);
+      const moduleId = await newModule(s, "Belt drive");
+
+      const hijack = await manage.deleteModuleInstance(moduleId, stranger.id);
+      expect(hijack).toEqual({
+        ok: false,
+        error: {
+          code: "not_found",
+          message: "Module instance not found or not owned by this user.",
+        },
+      });
+
+      const loaded = await projects.loadModuleInstanceForOwner(
+        moduleId,
+        s.ownerId,
+      );
+      expect(loaded).not.toBeNull();
+    });
+
+    it("cascades parameter links pointing at the deleted instance", async () => {
+      const s = await scaffold();
+      const source = await newModule(s, "Source");
+      const target = await newModule(s, "Downstream relay");
+      await graph.createParameterLink({
+        configurationId: s.configId,
+        targetModuleInstanceId: target,
+        targetParameterId: "motion.axis.thrust_force",
+        sourceKind: "module_output",
+        sourceModuleInstanceId: source,
+        sourceParameterId: "motion.axis.thrust_force",
+      });
+
+      const deleted = await manage.deleteModuleInstance(source, s.ownerId);
+      expect(deleted).toEqual({ ok: true });
+
+      const remainingTarget = await projects.loadModuleInstanceForOwner(
+        target,
+        s.ownerId,
+      );
+      expect(remainingTarget).not.toBeNull();
+    });
+
+    it("previews dependents before deleting, same shape as the archive preview", async () => {
+      const s = await scaffold();
+      const source = await newModule(s, "Source");
+      const target = await newModule(s, "Downstream relay");
+      await graph.createParameterLink({
+        configurationId: s.configId,
+        targetModuleInstanceId: target,
+        targetParameterId: "motion.axis.thrust_force",
+        sourceKind: "module_output",
+        sourceModuleInstanceId: source,
+        sourceParameterId: "motion.axis.thrust_force",
+      });
+
+      const preview = await manage.previewDeleteModuleInstanceImpact(
+        source,
+        s.ownerId,
+      );
+
+      expect(preview).toEqual({
+        ok: true,
+        preview: {
+          dependentModuleInstanceLabels: ["Downstream relay"],
+          attachedToWorkflow: false,
+        },
+      });
+    });
   },
 );

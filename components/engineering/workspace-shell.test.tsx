@@ -32,6 +32,8 @@ vi.mock("@/app/(workspace)/workspace/actions", () => ({
   renameModuleInstanceAction: vi.fn(),
   archiveModuleInstanceAction: vi.fn(),
   previewArchiveModuleInstanceImpactAction: vi.fn(),
+  deleteModuleInstanceAction: vi.fn(),
+  previewDeleteModuleInstanceImpactAction: vi.fn(),
   addModuleInstanceAction: vi.fn(),
   setModuleInputValueAction: vi.fn(),
   confirmSuggestedLinkAction: vi.fn(),

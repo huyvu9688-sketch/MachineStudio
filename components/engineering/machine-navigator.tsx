@@ -4,7 +4,6 @@ import { useState, type ComponentProps, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Archive,
   Boxes,
   ChevronRight,
   FileText,
@@ -16,6 +15,7 @@ import {
   PackagePlus,
   Pencil,
   Plus,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -35,7 +35,7 @@ import {
   type WorkflowDefinitionOption,
 } from "./start-workflow-instance-dialog";
 import { RenameDialog } from "./rename-dialog";
-import { ArchiveModuleInstanceDialog } from "./archive-module-instance-dialog";
+import { DeleteModuleInstanceDialog } from "./delete-module-instance-dialog";
 import {
   renameAssemblyAction,
   renameModuleInstanceAction,
@@ -605,13 +605,13 @@ function ModuleRow({
             />
           }
         />
-        <ArchiveModuleInstanceDialog
+        <DeleteModuleInstanceDialog
           moduleInstanceId={moduleInstance.id}
           moduleInstanceLabel={moduleInstance.label}
           trigger={
             <IconButton
-              icon={Archive}
-              label={`Archive ${moduleInstance.label}`}
+              icon={Trash2}
+              label={`Delete ${moduleInstance.label}`}
             />
           }
         />

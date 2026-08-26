@@ -242,7 +242,21 @@ export interface LinkedFieldControlProps {
   readonly resolved: Extract<ResolvedInputSource, { source: "linked" }>;
   /** Module instances that would be marked stale if this link were removed (`ModuleInputFieldView.linkRemovalImpact`). */
   readonly linkRemovalImpact: number;
+  /**
+   * Whether Run will actually be able to resolve this field from its linked
+   * module-output source right now (`ModuleInputFieldView.linkedSourceStatus`).
+   * `undefined` for a link to a requirement/assembly value, which always has
+   * a real value already and needs no such preview.
+   */
+  readonly linkedSourceStatus?: "ready" | "stale" | "not_run";
 }
+
+const LINKED_SOURCE_WARNING: Readonly<Record<"stale" | "not_run", string>> = {
+  not_run:
+    "Source module has not been run yet — run it, then run this module again.",
+  stale:
+    "Source module's latest run is stale — re-run it, then run this module again.",
+};
 
 /**
  * Replaces the plain read-only "Linked from …" notice with the same notice
@@ -254,6 +268,7 @@ export interface LinkedFieldControlProps {
 export function LinkedFieldControl({
   resolved,
   linkRemovalImpact,
+  linkedSourceStatus,
 }: LinkedFieldControlProps) {
   const [state, formAction, isPending] = useActionState(
     removeParameterLinkAction,
@@ -275,6 +290,15 @@ export function LinkedFieldControl({
           : ""}
         .
       </p>
+      {linkedSourceStatus === "stale" || linkedSourceStatus === "not_run" ? (
+        <p
+          role="alert"
+          className="text-[12px]"
+          style={{ color: "var(--state-error)" }}
+        >
+          {LINKED_SOURCE_WARNING[linkedSourceStatus]}
+        </p>
+      ) : null}
       {!confirming ? (
         <Button
           type="button"

@@ -12,12 +12,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
-  archiveModuleInstanceAction,
-  previewArchiveModuleInstanceImpactAction,
+  deleteModuleInstanceAction,
+  previewDeleteModuleInstanceImpactAction,
 } from "@/app/(workspace)/workspace/actions";
 import { IDLE_ACTION_STATE } from "@/app/(workspace)/workspace/action-state";
 
-export interface ArchiveModuleInstanceDialogProps {
+export interface DeleteModuleInstanceDialogProps {
   readonly moduleInstanceId: string;
   readonly moduleInstanceLabel: string;
   readonly trigger: ReactNode;
@@ -33,24 +33,25 @@ type ImpactPreviewState =
   | { readonly status: "error"; readonly message: string };
 
 /**
- * Archives (hides, never deletes) a module instance
- * (docs/superpowers/specs/2026-08-13-module-instance-management-design.md).
- * Shows what still links from this instance's outputs and whether it fills
- * a workflow role before the founder confirms — unlike parameter-link
- * removal's own impact preview, archiving deletes nothing, so this is a
- * "what depends on this" notice, not a stale-impact warning.
+ * Permanently deletes a module instance — its saved values, parameter
+ * links, calculation run history, and component assignments are all gone,
+ * unlike `ArchiveModuleInstanceDialog`'s reversible hide. Shows what would
+ * be broken (dependent links, a filled workflow role) before the founder
+ * confirms, reusing the same impact-preview shape archiving already showed,
+ * since the underlying question — "what else touches this instance?" — is
+ * the same; the difference is what happens to it.
  */
-export function ArchiveModuleInstanceDialog({
+export function DeleteModuleInstanceDialog({
   moduleInstanceId,
   moduleInstanceLabel,
   trigger,
-}: ArchiveModuleInstanceDialogProps) {
+}: DeleteModuleInstanceDialogProps) {
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<ImpactPreviewState>({
     status: "loading",
   });
   const [state, formAction, isPending] = useActionState(
-    archiveModuleInstanceAction,
+    deleteModuleInstanceAction,
     IDLE_ACTION_STATE,
   );
 
@@ -67,7 +68,7 @@ export function ArchiveModuleInstanceDialog({
       return;
     }
     let cancelled = false;
-    void previewArchiveModuleInstanceImpactAction(moduleInstanceId).then(
+    void previewDeleteModuleInstanceImpactAction(moduleInstanceId).then(
       (result) => {
         if (cancelled) {
           return;
@@ -107,11 +108,11 @@ export function ArchiveModuleInstanceDialog({
             value={moduleInstanceId}
           />
           <DialogHeader>
-            <DialogTitle>Archive &quot;{moduleInstanceLabel}&quot;</DialogTitle>
+            <DialogTitle>Delete &quot;{moduleInstanceLabel}&quot;</DialogTitle>
             <DialogDescription>
-              Archiving hides this module from the navigator. Nothing is deleted
-              — its saved values, links, and run history stay exactly as they
-              are.
+              This permanently deletes the module instance — its saved
+              values, links, and calculation run history. This cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -127,8 +128,9 @@ export function ArchiveModuleInstanceDialog({
             ) : (
               <>
                 {preview.dependentModuleInstanceLabels.length > 0 ? (
-                  <p>
-                    {preview.dependentModuleInstanceLabels.length} other module
+                  <p role="alert" style={{ color: "var(--state-error)" }}>
+                    {preview.dependentModuleInstanceLabels.length} other
+                    module
                     {preview.dependentModuleInstanceLabels.length === 1
                       ? ""
                       : "s"}{" "}
@@ -138,8 +140,7 @@ export function ArchiveModuleInstanceDialog({
                       : ""}{" "}
                     from this one&apos;s outputs:{" "}
                     {preview.dependentModuleInstanceLabels.join(", ")}. Those
-                    links keep working; they just won&apos;t offer this module
-                    as a link source for anything new.
+                    links will break.
                   </p>
                 ) : (
                   <p className="text-text-muted">
@@ -147,9 +148,9 @@ export function ArchiveModuleInstanceDialog({
                   </p>
                 )}
                 {preview.attachedToWorkflow ? (
-                  <p>
-                    This module fills a role in an active workflow. Archiving it
-                    leaves that role unfilled.
+                  <p role="alert" style={{ color: "var(--state-error)" }}>
+                    This module fills a role in an active workflow. Deleting
+                    it leaves that role unfilled.
                   </p>
                 ) : null}
               </>
@@ -162,8 +163,13 @@ export function ArchiveModuleInstanceDialog({
           </div>
 
           <DialogFooter>
-            <Button type="submit" variant="outline" disabled={isPending}>
-              {isPending ? "Archiving…" : "Archive"}
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={isPending}
+              style={{ color: "var(--state-error)" }}
+            >
+              {isPending ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
         </form>

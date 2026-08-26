@@ -3,6 +3,7 @@
 import { useActionState, useId } from "react";
 import {
   Boxes,
+  CircleAlert,
   CircleDashed,
   Link2,
   PenLine,
@@ -116,8 +117,7 @@ export function ModuleInputWorkspace({ view }: ModuleInputWorkspaceProps) {
   return (
     <div
       className={cn(
-        "mx-auto flex w-full flex-col gap-6 px-6 py-6",
-        isBentoLayout ? "max-w-6xl" : "max-w-3xl",
+        "mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-6",
       )}
     >
       <header className="flex items-center gap-3 border-b border-border-default pb-4">
@@ -255,12 +255,36 @@ const SOURCE_META: Record<
   default: { label: "Default", icon: CircleDashed },
 };
 
-/** Source badge: manual, linked, default, or workflow (ui-context.md "Generic Module Workspace"). */
+/**
+ * Source badge: manual, linked, default, or workflow (ui-context.md
+ * "Generic Module Workspace"). `source === "default"` on its own only means
+ * "nothing was manually entered, linked, or workflow-supplied" — it does not
+ * mean a real value is behind it. When `hasBuiltInDefault` is false (the
+ * common case: most parameters have no registry-level constant, e.g.
+ * `motion.axis.incline_angle`), this renders "Not set" in the error color
+ * instead of "Default", so an empty required field never looks pre-filled.
+ */
 function SourceBadge({
   source,
+  hasBuiltInDefault,
 }: {
   readonly source: ResolvedInputSource["source"];
+  readonly hasBuiltInDefault: boolean;
 }) {
+  if (source === "default" && !hasBuiltInDefault) {
+    return (
+      <span
+        className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium"
+        style={{
+          borderColor: "var(--state-error)",
+          color: "var(--state-error)",
+        }}
+      >
+        <CircleAlert aria-hidden="true" className="h-3 w-3" />
+        Not set
+      </span>
+    );
+  }
   const meta = SOURCE_META[source];
   const Icon = meta.icon;
   return (
@@ -293,7 +317,10 @@ function ModuleInputFieldRow({
         {field.required ? (
           <span className="text-[11px] text-text-muted">(required)</span>
         ) : null}
-        <SourceBadge source={field.resolved.source} />
+        <SourceBadge
+          source={field.resolved.source}
+          hasBuiltInDefault={field.hasBuiltInDefault ?? false}
+        />
         {field.loadCase !== null ? (
           <LoadCaseChip loadCase={field.loadCase} />
         ) : null}
@@ -306,6 +333,7 @@ function ModuleInputFieldRow({
         <LinkedFieldControl
           resolved={field.resolved}
           linkRemovalImpact={field.linkRemovalImpact ?? 0}
+          linkedSourceStatus={field.linkedSourceStatus}
         />
       ) : (
         <>

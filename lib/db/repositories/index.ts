@@ -23,6 +23,7 @@ export {
   updateModuleInstanceRunStatus,
   renameModuleInstance,
   archiveModuleInstance,
+  deleteModuleInstance,
   isConfigurationOwnedBy,
   loadAssemblyForOwner,
   loadConfigurationForOwner,

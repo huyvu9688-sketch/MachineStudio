@@ -541,6 +541,30 @@ export async function archiveModuleInstance(
   return result.count > 0;
 }
 
+/**
+ * Permanently deletes a module instance owned by `ownerId`, same
+ * ownership-scoped-bulk-write shape as `deleteProject`. Its parameter
+ * values, calculation runs, component assignments, and every parameter
+ * link that names it as source or target all cascade at the database level
+ * (`onDelete: Cascade` on each of those relations in `prisma/schema.prisma`)
+ * — nothing here re-implements that cleanup. Returns `false` when the
+ * instance does not exist or is not owned by `ownerId`.
+ */
+export async function deleteModuleInstance(
+  moduleInstanceId: ModuleInstanceId,
+  ownerId: UserId,
+): Promise<boolean> {
+  const id = parse(nonEmpty, moduleInstanceId);
+  const owner = parse(nonEmpty, ownerId);
+  const result = await prisma.moduleInstance.deleteMany({
+    where: {
+      id,
+      assembly: { configuration: { project: { ownerId: owner } } },
+    },
+  });
+  return result.count > 0;
+}
+
 // --- Module-instance execution support (Unit 2.4) ------------------------
 
 /**

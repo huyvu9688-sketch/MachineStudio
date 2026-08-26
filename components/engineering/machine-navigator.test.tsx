@@ -26,6 +26,8 @@ vi.mock("@/app/(workspace)/workspace/actions", () => ({
   renameModuleInstanceAction: vi.fn(),
   archiveModuleInstanceAction: vi.fn(),
   previewArchiveModuleInstanceImpactAction: vi.fn(),
+  deleteModuleInstanceAction: vi.fn(),
+  previewDeleteModuleInstanceImpactAction: vi.fn(),
 }));
 // Module rows are real `<Link>`s (Unit 3.3) built from `usePathname()`, the
 // same mocking approach app-bar.test.tsx already uses for its project/
@@ -560,7 +562,7 @@ describe("MachineNavigator", () => {
     expect(screen.queryByText("Archived module")).not.toBeInTheDocument();
   });
 
-  it("renders rename and archive actions for a module row", () => {
+  it("renders rename and delete actions for a module row", () => {
     render(
       <MachineNavigator
         projectId="project"
@@ -578,7 +580,7 @@ describe("MachineNavigator", () => {
       screen.getByRole("button", { name: "Rename Thrust check" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Archive Thrust check" }),
+      screen.getByRole("button", { name: "Delete Thrust check" }),
     ).toBeInTheDocument();
   });
 });

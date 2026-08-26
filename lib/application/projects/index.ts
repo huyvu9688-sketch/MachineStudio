@@ -41,10 +41,13 @@ export {
   renameModuleInstanceLabel,
   archiveModuleInstance,
   previewArchiveModuleInstanceImpact,
+  deleteModuleInstance,
+  previewDeleteModuleInstanceImpact,
   type ManageModuleInstanceErrorCode,
   type ManageModuleInstanceError,
   type RenameModuleInstanceResult,
   type ArchiveModuleInstanceResult,
   type ArchiveModuleInstanceImpactPreview,
   type PreviewArchiveModuleInstanceImpactResult,
+  type DeleteModuleInstanceResult,
 } from "./manage-module-instances";

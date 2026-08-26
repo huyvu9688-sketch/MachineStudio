@@ -17,6 +17,7 @@ import {
   asWorkflowInstanceId,
 } from "@/lib/db";
 import { listModulePackages } from "@/lib/modules";
+import { latestVersionOnly } from "./module-package-options";
 import { listWorkflowDefinitions } from "@/lib/workflows";
 import { marketProfileKey, SOURCE_REGISTRY } from "@/lib/standards";
 import { WorkspaceShell } from "@/components/engineering/workspace-shell";
@@ -80,14 +81,16 @@ const HIDDEN_MODULE_IDS: ReadonlySet<string> = new Set([
 ]);
 
 function modulePackageOptions(): readonly ModulePackageOption[] {
-  return listModulePackages()
-    .filter((pkg) => !HIDDEN_MODULE_IDS.has(pkg.manifest.id))
-    .filter((pkg) => !HIDDEN_MODULE_CATEGORIES.has(pkg.manifest.category))
-    .map((pkg) => ({
-      modulePackageId: pkg.manifest.id,
-      moduleVersion: pkg.manifest.version,
-      category: pkg.manifest.category,
-    }));
+  return latestVersionOnly(
+    listModulePackages()
+      .filter((pkg) => !HIDDEN_MODULE_IDS.has(pkg.manifest.id))
+      .filter((pkg) => !HIDDEN_MODULE_CATEGORIES.has(pkg.manifest.category))
+      .map((pkg) => ({
+        modulePackageId: pkg.manifest.id,
+        moduleVersion: pkg.manifest.version,
+        category: pkg.manifest.category,
+      })),
+  );
 }
 
 function workflowDefinitionOptions(): readonly WorkflowDefinitionOption[] {
