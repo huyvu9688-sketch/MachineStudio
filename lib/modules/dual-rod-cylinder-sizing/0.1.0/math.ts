@@ -245,6 +245,12 @@ export type AllowableLoadMassResult =
  * points (design doc "Band selection at compute time"). Reports
  * out-of-envelope, never extrapolating, when no seeded band covers the
  * query or overhang_length exceeds the matched curve's own edge.
+ *
+ * Validates both the caller-supplied scalar inputs AND the matched curve's
+ * own four numeric fields (plateauEndOverhangMm, plateauLoadMassKg,
+ * edgeOverhangMm, edgeLoadMassKg) before using either in a calculation --
+ * a corrupt seeded curve (e.g. a zero load mass from a digitizing typo)
+ * throws rather than silently returning a wrong-but-plausible result.
  */
 export function resolveAllowableLoadMass(
   input: AllowableLoadMassInput,
@@ -302,6 +308,16 @@ export function resolveAllowableLoadMass(
       reason: "No seeded curve matched after band narrowing (unexpected data gap).",
     };
   }
+
+  // Corrupt seed data (e.g. a zero or negative digitized load mass) would
+  // otherwise silently produce a wrong-but-plausible plateau result or a
+  // NaN/Infinity from Math.log in the interpolation branch below, still
+  // reported as a valid inEnvelope: true answer -- so validate the matched
+  // curve's own numeric fields before using any of them.
+  assertPositive("matched.plateauEndOverhangMm", matched.plateauEndOverhangMm);
+  assertPositive("matched.plateauLoadMassKg", matched.plateauLoadMassKg);
+  assertPositive("matched.edgeOverhangMm", matched.edgeOverhangMm);
+  assertPositive("matched.edgeLoadMassKg", matched.edgeLoadMassKg);
 
   if (input.overhangLengthMm <= matched.plateauEndOverhangMm) {
     return {
