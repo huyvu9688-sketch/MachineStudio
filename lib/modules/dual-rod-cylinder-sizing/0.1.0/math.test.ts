@@ -208,6 +208,24 @@ describe("resolveAllowableLoadMass", () => {
     }
   });
 
+  it("at the geometric midpoint of the overhang range, returns the geometric mean of the two anchor load masses (a property unique to log-log interpolation, not linear)", () => {
+    const geometricMidpointOverhangMm = Math.sqrt(8 * 100);
+    const result = resolveAllowableLoadMass({
+      mountingOrientation: "vertical",
+      boreDiameterMm: 16,
+      bearingType: "slide",
+      maxPistonSpeedMps: 0.15,
+      requiredStrokeMm: 0,
+      overhangLengthMm: geometricMidpointOverhangMm,
+      curves,
+    });
+    expect(result.inEnvelope).toBe(true);
+    if (result.inEnvelope) {
+      const expectedGeometricMean = Math.sqrt(5.0 * 0.43);
+      expect(result.allowableLoadMassKg).toBeCloseTo(expectedGeometricMean, 6);
+    }
+  });
+
   it("matches the exact anchor point for a curve with no flat plateau", () => {
     const result = resolveAllowableLoadMass({
       mountingOrientation: "vertical",
@@ -305,6 +323,31 @@ describe("resolveAllowableLoadMass", () => {
         requiredStrokeMm: 0,
         overhangLengthMm: -1,
         curves,
+      }),
+    ).toThrow(DualRodCylinderSizingInputError);
+  });
+
+  it("throws when the matched curve's own load-mass field is corrupt (zero or negative), rather than silently returning a wrong-but-plausible result", () => {
+    const corruptCurve: LoadMassCurve = {
+      mountingOrientation: "vertical",
+      strokeBandMaxMm: null,
+      speedBandMaxMps: 0.5,
+      boreDiameterMm: 25,
+      bearingType: "slide",
+      plateauEndOverhangMm: 10,
+      plateauLoadMassKg: 0,
+      edgeOverhangMm: 100,
+      edgeLoadMassKg: 1.0,
+    };
+    expect(() =>
+      resolveAllowableLoadMass({
+        mountingOrientation: "vertical",
+        boreDiameterMm: 25,
+        bearingType: "slide",
+        maxPistonSpeedMps: 0.15,
+        requiredStrokeMm: 0,
+        overhangLengthMm: 5,
+        curves: [corruptCurve],
       }),
     ).toThrow(DualRodCylinderSizingInputError);
   });
