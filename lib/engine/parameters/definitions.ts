@@ -100,6 +100,19 @@
 // stage-2-contract.md "Existing Parameter Review". No new unit-registry
 // dimension or unit is needed.
 //
+// v1.19 adds the full dual_rod_sizing.* group (6 new parameters) for the
+// dual-rod-cylinder-sizing module (context/modules/
+// dual-rod-cylinder-sizing/stage-2-contract.md), Milestone 7's fourth
+// module and the second of four planned new pneumatic actuator families
+// (dual rod; docs/superpowers/specs/
+// 2026-08-26-dual-rod-cylinder-sizing-design.md). Reuses the same base
+// trio and pneumatic ports pneumatic_sizing.*/pneumatic_guided_sizing.*
+// already reuse; mints new IDs rather than reusing either sibling
+// module's own analogous parameters. No pneumatic.mounting_style or
+// pneumatic.buckling_safety_factor port -- this module has no buckling
+// check, the one genuine port-level scope difference from both sibling
+// modules.
+//
 // v1.18 adds the full pneumatic_guided_sizing.* group (8 new parameters)
 // for the guided-cylinder-sizing module (context/modules/
 // guided-cylinder-sizing/stage-2-contract.md), Milestone 7's third module
@@ -117,19 +130,6 @@
 // assumption, not an SMC-documented combination method). No new
 // unit-registry dimension or unit is needed (N*m/torqueDisplay already
 // exist).
-//
-// v1.19 adds the full dual_rod_sizing.* group (6 new parameters) for the
-// dual-rod-cylinder-sizing module (context/modules/
-// dual-rod-cylinder-sizing/stage-2-contract.md), Milestone 7's fourth
-// module and the second of four planned new pneumatic actuator families
-// (dual rod; docs/superpowers/specs/
-// 2026-08-26-dual-rod-cylinder-sizing-design.md). Reuses the same base
-// trio and pneumatic ports pneumatic_sizing.*/pneumatic_guided_sizing.*
-// already reuse; mints new IDs rather than reusing either sibling
-// module's own analogous parameters. No pneumatic.mounting_style or
-// pneumatic.buckling_safety_factor port -- this module has no buckling
-// check, the one genuine port-level scope difference from both sibling
-// modules.
 //
 
 import { makeQuantity } from "../units";
@@ -3879,11 +3879,10 @@ const pneumaticGuidedCylinderSizing: readonly ParameterDefinition[] = [
 
 // --- Dual rod cylinder sizing (Unit 7.4 Stage 2) ----------------------------
 // See context/modules/dual-rod-cylinder-sizing/stage-2-contract.md. The
-// third of four planned new pneumatic actuator family sizing modules
-// (after pneumatic-cylinder-sizing@0.1.0 round-body, guided-cylinder-
-// sizing@0.1.0 guide plate). Reuses the same base trio and pneumatic ports
-// pneumatic_sizing.*/pneumatic_guided_sizing.* already reuse
-// (motion.axis.incline_angle/friction_coefficient/total_moving_mass,
+// second of four planned new pneumatic actuator families (after guided-
+// cylinder-sizing@0.1.0 guide plate). Reuses the same base trio and
+// pneumatic ports pneumatic_sizing.*/pneumatic_guided_sizing.* already
+// reuse (motion.axis.incline_angle/friction_coefficient/total_moving_mass,
 // pneumatic.operating_pressure/load_factor/cushion_type/max_piston_speed/
 // kinetic_energy). Mints new IDs for process_force/required_stroke/
 // required_extend_force/required_retract_force rather than reusing either
@@ -3928,6 +3927,7 @@ const dualRodSizing: readonly ParameterDefinition[] = [
     canonicalUnit: "N",
     displayUnits: [...forceDisplay],
     range: { min: 0, unit: "N" },
+    qualifiers: { bound: "required" },
   }),
   defineParameter({
     id: "dual_rod_sizing.required_retract_force",
@@ -3938,6 +3938,7 @@ const dualRodSizing: readonly ParameterDefinition[] = [
     valueType: "quantity",
     canonicalUnit: "N",
     displayUnits: [...forceDisplay],
+    qualifiers: { bound: "required" },
   }),
   defineParameter({
     id: "dual_rod_sizing.overhang_length",
