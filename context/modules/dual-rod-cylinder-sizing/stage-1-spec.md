@@ -72,12 +72,12 @@ It will not:
   own application-layer matcher (`lib/application/catalogs/
   dual-rod-cylinder-matching.ts`), the same hybrid-matcher shape
   `guided-cylinder-matching.ts` already established.
-- provide a self-serve catalog upload UI. The SMC CXS2 seed data (Task 14)
+- provide a self-serve catalog upload UI. The SMC CXS2 seed data (Task 22)
   is a one-time import via the existing generic CSV pipeline, for the
   founder to review and trim after this module ships — an explicitly
   heightened review need here, since the seed data is digitized by eye
   from log-log graph images, not transcribed from a printed table (see
-  Task 13's own disclosure).
+  Task 12's own disclosure).
 - touch `pneumatic-cylinder@0.1.0`'s, `pneumatic-cylinder-sizing
   @0.1.0`/`0.1.1`'s, or `guided-cylinder-sizing@0.1.0`'s own formulas,
   ports, or validation records in any way. All three stay released,
@@ -128,7 +128,7 @@ and CXS2L (dashed). The full digitized dataset (3-4 (overhang, load mass)
 points per curve, read directly off the founder-supplied graph images) is
 recorded in `docs/superpowers/specs/
 2026-08-26-dual-rod-cylinder-sizing-design.md` "Digitized dataset" — not
-duplicated here; that document is the authoritative source for Task 13's
+duplicated here; that document is the authoritative source for Task 22's
 own CSV seed data.
 
 Every curve has the same two-segment shape: a flat plateau (constant max
