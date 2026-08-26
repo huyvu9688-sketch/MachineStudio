@@ -359,6 +359,26 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     note: "Found researching pneumatic-cylinder-sizing's own Task 13 catalog-seed fetch: CM2's own dimensional/cushion catalog chapter (bore 20/25/32/40 mm) and CA2's own dimensional/cushion catalog chapter (bore 40/50/63/80/100 mm, ISO 6431/VDMA-compatible tie-rod cylinder) -- two distinct series, not one bore-continuous line, confirmed directly from both series' own catalogs (context/modules/pneumatic-cylinder-sizing/stage-1-spec.md 'Task 13 fetch record'). The official smcworld.com dimensional PDFs (this URL and CA2's own equivalent, .../CA2-CDA2-Z-E/6-2-1-p0465-0525-ca2_en/data/6-2-1-p0465-0525-ca2_en.pdf) exceeded this project's automated fetch tooling's own 10 MB size limit; the real catalog text actually read this session came from content.smcetech.com's own CM2_EU.pdf/CA2_EU.pdf mirrors (real, current SMC-published catalog chapters, not the superseded discon/-old- editions) plus a re-read of the already-registered jp.smc.air_cylinders_model_selection revision's own bore/rod/cushion-energy tables. Corrects two rod-diameter figures this project had assumed from the generic ISO 6431 pairing: CM2 bore 40 is 14 mm, not 16 mm (CM2 is not itself ISO 6431-compliant); CA2/CG1/MB/CS1/CS2 bore 100 is 30 mm, not 25 mm (both directly read; see the stage-1-spec.md fetch record for the full corrected table and the one still-inferred figure, CA2's own bore-40 rod diameter).",
   },
   {
+    id: asSourceDocumentId("jp.smc.mgq_series_catalog"),
+    classification: "manufacturer_method",
+    title: "Compact Guide Cylinder Series MGQ",
+    authority: "SMC Corporation",
+    market: "JP",
+    access: "public",
+    officialUrl: "https://www.smcpneumatics.com/smcdigitalcat3/docs/actuator/guide/mgq.pdf",
+    note: "Found researching guided-cylinder-sizing's own Stage 1 fetch: MGQ's own dimensional/rating catalog chapter (bore 12-100 mm, MGQM slide-bearing and MGQL ball-bushing variants), the same 'catalog curve, no formula to reproduce' situation pneumatic-cylinder@0.1.0's own Stage 1 spec already found for lateral rod-end load on a standard cylinder -- except here it is a real per-candidate catalog rating (Allowable Lateral Load, Allowable Rotational Torque of Plate), not an out-of-scope item. The official smcworld.com/smcpneumatics.com URLs both returned HTTP 403 to this project's automated fetch tooling; the real catalog text actually read this session came from content2.smcetech.com's own mgq.pdf mirror, whose PDF bytes fetched successfully but WebFetch's own text-extraction model could not parse them (a tool-side limit, not a source block) -- this project's own locally available pdftotext (poppler-utils, both -layout and -raw modes) extracted the real text from the saved bytes. Full fetched bore/rod/stroke/lateral-load/torque table recorded in context/modules/guided-cylinder-sizing/stage-1-spec.md 'Fetch record'. Confirmed by full-text search: zero 'roll'/'pitch'/'yaw' terminology anywhere in this catalog -- allowable rotational torque of plate is one single combined figure per bore/bearing-type/stroke cell.",
+  },
+  {
+    id: asSourceDocumentId("jp.smc.mgp_series_catalog"),
+    classification: "manufacturer_method",
+    title: "Compact Guide Cylinder Series MGP (Guided Actuators family catalog)",
+    authority: "SMC Corporation",
+    market: "JP",
+    access: "public",
+    officialUrl: "https://content2.smcetech.com/pdf/MGP.pdf",
+    note: "Found researching guided-cylinder-sizing's own Stage 1 fetch: a broader guided-actuator family catalog chapter bundling MGP alongside several sibling series (MGJ, MGG, MGC, MGF, MGZ, MGT, MGPS, MGPW); only the MGP-specific dimensional/rating pages (bore 12-100 mm, MGPM slide-bearing and MGPL/MGPA ball-bushing variants) were read -- sibling-series pages are out of scope for this module. Fetched via content2.smcetech.com's own MGP.pdf mirror (smcworld.com/smcpneumatics.com both returned HTTP 403); PDF bytes fetched successfully but WebFetch's own text-extraction model could not parse them, extracted locally with pdftotext instead, the same workaround jp.smc.mgq_series_catalog required. A real, confirmed cross-series finding: MGP's own catalog has no 'Allowable Lateral Load' table at all -- its own high-precision ball-bushing (MGPA) variant instead publishes a plate-displacement-vs-load stiffness graph, not a discrete allowable-load rating, for the equivalent data (context/modules/guided-cylinder-sizing/stage-1-spec.md correction 2). Allowable Rotational Torque of Plate is present and, like MGQ, is one single combined figure with zero 'roll'/'pitch'/'yaw' terminology found anywhere in the fetched pages.",
+  },
+  {
     id: asSourceDocumentId("us.norgren.m1000_heavy_duty_cylinders"),
     classification: "manufacturer_method",
     title: "M/1000 Heavy Duty Cylinders, Double Acting — Technical Data Sheet",
@@ -718,6 +738,23 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
     officialUrl:
       "https://www.smcworld.com/catalog/en/actuator/CM2-CDM2-Z-E/6-2-1-p0167-0267-cm2_en/data/6-2-1-p0167-0267-cm2_en.pdf",
     note: "Read this session via content.smcetech.com/pdf/CM2_EU.pdf and content.smcetech.com/pdf/CA2_EU.pdf (both real, current SMC catalog chapters; PDF bytes fetched successfully but WebFetch's own text-extraction model could not parse them, so this project's own locally available pdftotext (poppler-utils) extracted the real text from the saved bytes -- not a further network fetch, and not a summarization). Also re-reads jp.smc.air_cylinders_model_selection@web-2026-08-24's own 'Table (1) Cylinder Piston Area' and 'Kinetic Energy Absorbable by the Cushion Mechanism' tables for the CA2/CG1/MB/CS1/CS2 shared bore-100 rod diameter and CA2's own air-cushion energy figures. Full fetched bore/rod/stroke/cushion-energy table, with directly-read-vs-inferred labeling, recorded in context/modules/pneumatic-cylinder-sizing/stage-1-spec.md 'Task 13 fetch record' -- CA2's own bore-40 rod diameter (16 mm) is the one inferred, not directly confirmed, figure in that table.",
+  },
+  {
+    id: asSourceRevisionId("jp.smc.mgq_series_catalog@web-2026-08-26"),
+    documentId: asSourceDocumentId("jp.smc.mgq_series_catalog"),
+    edition:
+      "MGQ series catalog chapter (printed pages ~519-533 of SMC's Best Pneumatics catalog), web PDF accessed 2026-08-26 via content2.smcetech.com's own mgq.pdf mirror",
+    officialUrl:
+      "https://www.smcpneumatics.com/smcdigitalcat3/docs/actuator/guide/mgq.pdf",
+    note: "Read this session via content2.smcetech.com/pdf/mgq.pdf (a real, current SMC catalog chapter; PDF bytes fetched successfully but WebFetch's own text-extraction model could not parse them, so this project's own locally available pdftotext (poppler-utils) extracted the real text from the saved bytes -- not a further network fetch). Both -layout and -raw pdftotext modes were used and cross-checked against each other for the Allowable Rotational Torque of Plate table, whose complex two-column-group layout -layout mode alone could not linearize correctly; -raw mode's row/column order was independently verified against the Allowable Lateral Load table's own already-correct -layout extraction before being trusted. Full fetched bore/rod/stroke/lateral-load/torque table recorded in context/modules/guided-cylinder-sizing/stage-1-spec.md 'Fetch record'.",
+  },
+  {
+    id: asSourceRevisionId("jp.smc.mgp_series_catalog@web-2026-08-26"),
+    documentId: asSourceDocumentId("jp.smc.mgp_series_catalog"),
+    edition:
+      "MGP-specific dimensional/rating pages of SMC's broader Guided Actuators family catalog chapter, web PDF accessed 2026-08-26 via content2.smcetech.com's own MGP.pdf mirror",
+    officialUrl: "https://content2.smcetech.com/pdf/MGP.pdf",
+    note: "Read this session via content2.smcetech.com/pdf/MGP.pdf (PDF bytes fetched successfully but WebFetch's own text-extraction model could not parse them, extracted locally with pdftotext -raw mode instead -- this table's own layout was clean/single-block, unlike MGQ's own torque table, so no cross-check against a second extraction mode was needed). Full fetched bore/rod/torque table recorded in context/modules/guided-cylinder-sizing/stage-1-spec.md 'Fetch record'. A real, confirmed cross-series finding recorded here: MGP has no equivalent 'Allowable Lateral Load' table to MGQ's own (see jp.smc.mgp_series_catalog's own SourceDocument note).",
   },
   {
     id: asSourceRevisionId(

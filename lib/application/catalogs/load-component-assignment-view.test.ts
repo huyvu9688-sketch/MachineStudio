@@ -436,5 +436,172 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       await client.prisma.manufacturer.delete({ where: { id: manufacturer.id } });
     });
+
+    it("returns real ranked/rejected candidates for a guided-cylinder-sizing module instance with catalog rows", async () => {
+      const user = await projects.upsertUser(`test-user-${randomUUID()}`);
+      createdUserIds.push(user.id);
+      const project = await projects.createProject({
+        ownerId: user.id,
+        name: "Guided lift station",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const config = await projects.createConfiguration({
+        projectId: project.id,
+        name: "Baseline",
+      });
+      const assembly = await projects.createAssembly({
+        configurationId: config.id,
+        name: "Guided cylinder",
+      });
+      const mi = await projects.createModuleInstance({
+        assemblyId: assembly.id,
+        configurationId: config.id,
+        modulePackageId: "guided-cylinder-sizing",
+        moduleVersion: "0.1.0",
+        label: "Guided lift sizing",
+      });
+
+      // Same MGQM40 reference scenario this module's own Stage 4 reference
+      // example reproduces (lib/modules/guided-cylinder-sizing/0.1.0/
+      // smc-reference-example.ts): 10 kg vertical lift, zero friction, zero
+      // process force, 10/5/0 mm roll/pitch/yaw offsets -- required extend
+      // force ~98.07 N, required moment ~1.096 N*m.
+      const inputs: Array<{
+        parameterId: string;
+        value: ReturnType<typeof makeQuantity> | EnumValue;
+      }> = [
+        { parameterId: "motion.axis.incline_angle", value: makeQuantity(Math.PI / 2, "rad") },
+        { parameterId: "motion.axis.friction_coefficient", value: makeQuantity(0, "ratio") },
+        { parameterId: "motion.axis.total_moving_mass", value: makeQuantity(10, "kg") },
+        { parameterId: "pneumatic.operating_pressure", value: makeQuantity(0.5, "MPa") },
+        { parameterId: "pneumatic.load_factor", value: makeQuantity(0.7, "ratio") },
+        { parameterId: "pneumatic.max_piston_speed", value: makeQuantity(0.3, "m/s") },
+        { parameterId: "pneumatic.cushion_type", value: enumValue("pneumatic_cushion_type", "none") },
+        { parameterId: "pneumatic_guided_sizing.required_stroke", value: makeQuantity(50, "mm") },
+        { parameterId: "pneumatic.mounting_style", value: enumValue("pneumatic_mounting_style", "fixed-supported") },
+        { parameterId: "pneumatic.buckling_safety_factor", value: makeQuantity(4, "ratio") },
+        { parameterId: "pneumatic_guided_sizing.roll_offset", value: makeQuantity(10, "mm") },
+        { parameterId: "pneumatic_guided_sizing.pitch_offset", value: makeQuantity(5, "mm") },
+        { parameterId: "pneumatic_guided_sizing.yaw_offset", value: makeQuantity(0, "mm") },
+      ];
+      for (const input of inputs) {
+        await graph.createParameterValue({
+          configurationId: config.id,
+          moduleInstanceId: mi.id,
+          nodeKind: "module_input",
+          parameterId: input.parameterId,
+          source: "manual",
+          value: input.value,
+        });
+      }
+
+      const executed = await executeModuleInstance({
+        moduleInstanceId: mi.id,
+        ownerId: user.id,
+      });
+      if (!executed.ok) {
+        throw new Error(`fixture run failed: ${executed.error.message}`);
+      }
+
+      // Catalog fixture: a real MGQM40 (accepts on every check -- bore 40,
+      // rod 16 mm, 167 N allowable lateral load, 3.43 N*m allowable
+      // torque, all directly read from the fetched MGQ catalog -- see
+      // lib/modules/guided-cylinder-sizing/0.1.0/smc-reference-example.ts)
+      // and a deliberately undersized MGQM12 (rejects on theoretical
+      // force and allowable lateral load/torque). Uses the real
+      // "pneumatic_cylinder_guided" ComponentType id, the same
+      // idempotent load-or-create pattern the pneumatic_cylinder fixture
+      // above uses.
+      const manufacturer = await catalog.createManufacturer({
+        name: `Test SMC ${randomUUID()}`,
+      });
+      const componentTypeId = asComponentTypeId("pneumatic_cylinder_guided");
+      const existingType = await client.prisma.componentType.findUnique({
+        where: { id: componentTypeId },
+      });
+      if (existingType === null) {
+        await catalog.createComponentType({
+          id: componentTypeId,
+          name: "Pneumatic guided cylinder",
+        });
+      }
+      const schemaFields = [
+        { key: "bore_diameter", label: "Bore diameter", valueKind: "quantity" as const, required: true, unit: "mm" },
+        { key: "rod_diameter", label: "Rod diameter", valueKind: "quantity" as const, required: true, unit: "mm" },
+        { key: "stroke_min", label: "Minimum standard stroke", valueKind: "quantity" as const, required: true, unit: "mm" },
+        { key: "stroke_max", label: "Maximum standard stroke", valueKind: "quantity" as const, required: true, unit: "mm" },
+        { key: "allowable_lateral_load", label: "Allowable lateral load", valueKind: "quantity" as const, required: false, unit: "N" },
+        { key: "allowable_torque", label: "Allowable rotational torque of plate", valueKind: "quantity" as const, required: true, unit: "N*m" },
+      ];
+      const schemaVersionString = "1.0.0";
+      const existingSchemaVersion = await client.prisma.componentSchemaVersion.findUnique({
+        where: {
+          componentTypeId_version: {
+            componentTypeId,
+            version: schemaVersionString,
+          },
+        },
+      });
+      const schemaVersion =
+        existingSchemaVersion !== null
+          ? { id: asComponentSchemaVersionId(existingSchemaVersion.id) }
+          : await catalog.createComponentSchemaVersion({
+              componentTypeId,
+              version: schemaVersionString,
+              fields: schemaFields,
+            });
+
+      const passingRevision = await catalog.createManufacturerPartRevision({
+        manufacturerId: manufacturer.id,
+        componentTypeId,
+        componentSchemaVersionId: schemaVersion.id,
+        partNumber: `MGQM40-test-${randomUUID()}`,
+        sourceRevision: "test-fixture",
+        attributes: {
+          bore_diameter: makeQuantity(40, "mm"),
+          rod_diameter: makeQuantity(16, "mm"),
+          stroke_min: makeQuantity(25, "mm"),
+          stroke_max: makeQuantity(125, "mm"),
+          allowable_lateral_load: makeQuantity(167, "N"),
+          allowable_torque: makeQuantity(3.43, "N*m"),
+        },
+      });
+      const rejectedRevision = await catalog.createManufacturerPartRevision({
+        manufacturerId: manufacturer.id,
+        componentTypeId,
+        componentSchemaVersionId: schemaVersion.id,
+        partNumber: `MGQM12-test-${randomUUID()}`,
+        sourceRevision: "test-fixture",
+        attributes: {
+          bore_diameter: makeQuantity(12, "mm"),
+          rod_diameter: makeQuantity(6, "mm"),
+          stroke_min: makeQuantity(10, "mm"),
+          stroke_max: makeQuantity(100, "mm"),
+          allowable_lateral_load: makeQuantity(8, "N"),
+          allowable_torque: makeQuantity(0.1, "N*m"),
+        },
+      });
+
+      const view = await loadComponentAssignmentView(mi.id, user.id);
+
+      expect(view).not.toBeNull();
+      expect(view?.componentType).toBe("pneumatic_cylinder_guided");
+      expect(view?.matchingAvailable).toBe(true);
+      expect(view?.matchingUnavailableReason).toBeNull();
+      expect(view?.requiredSpec.length).toBeGreaterThan(0);
+
+      const acceptedIds = (view?.accepted ?? []).map((c) => c.part.id);
+      const rejectedIds = (view?.rejected ?? []).map((c) => c.part.id);
+      expect(acceptedIds).toContain(passingRevision.id);
+      expect(rejectedIds).toContain(rejectedRevision.id);
+      expect(
+        (view?.accepted.length ?? 0) + (view?.rejected.length ?? 0),
+      ).toBeGreaterThanOrEqual(2);
+
+      await client.prisma.manufacturerPartRevision.deleteMany({
+        where: { id: { in: [passingRevision.id, rejectedRevision.id] } },
+      });
+      await client.prisma.manufacturer.delete({ where: { id: manufacturer.id } });
+    });
   },
 );

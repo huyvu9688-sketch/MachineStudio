@@ -99,13 +99,31 @@
 // pneumatic.kinetic_energy) rather than minting duplicates -- see
 // stage-2-contract.md "Existing Parameter Review". No new unit-registry
 // dimension or unit is needed.
+//
+// v1.18 adds the full pneumatic_guided_sizing.* group (8 new parameters)
+// for the guided-cylinder-sizing module (context/modules/
+// guided-cylinder-sizing/stage-2-contract.md), Milestone 7's third module
+// and the first of four planned new pneumatic actuator families (guided
+// cylinder; docs/superpowers/specs/
+// 2026-08-26-guided-cylinder-sizing-design.md). Reuses the same ten
+// existing parameters pneumatic_sizing.* already reuses; mints new IDs
+// rather than reusing pneumatic_sizing.*'s own four analogous parameters
+// (Decision 1: two different modules, two different catalog targets,
+// this registry's own "never let a resolved value from one module look
+// like a compatible link source for an unrelated one" convention). Adds
+// three new unsigned lever-arm inputs (roll_offset/pitch_offset/
+// yaw_offset) and one new computed output (required_moment, a Euclidean
+// sum of three independently-computed moments -- a disclosed engineering
+// assumption, not an SMC-documented combination method). No new
+// unit-registry dimension or unit is needed (N*m/torqueDisplay already
+// exist).
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.17.0";
+export const PARAMETER_REGISTRY_VERSION = "1.18.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -3741,7 +3759,111 @@ const pneumaticCylinderSizing: readonly ParameterDefinition[] = [
   }),
 ];
 
-/** All released parameter definitions for registry v1.17, in authored order. */
+// --- Pneumatic guided cylinder sizing (Unit 7.3 Stage 2) --------------------
+// See context/modules/guided-cylinder-sizing/stage-2-contract.md. Mirrors
+// pneumaticCylinderSizing's own four force/stroke parameters under a new
+// namespace (Decision 1), plus three new unsigned lever-arm inputs and one
+// new computed resultant-moment output.
+
+const pneumaticGuidedCylinderSizing: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "pneumatic_guided_sizing.process_force",
+    displayName: "Process force (extend stroke)",
+    symbol: "F_proc",
+    definition:
+      "Additive working force the cylinder must supply on top of the mass-derived load, on the extend (working) stroke only -- e.g. a clamping or pressing force. Zero (the default) is a structural 'no process force' statement, not a guessed physical value. Mints a new ID rather than reusing pneumatic_sizing.process_force -- stage-2-contract.md Decision 1.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "N") },
+  }),
+  defineParameter({
+    id: "pneumatic_guided_sizing.required_stroke",
+    displayName: "Required stroke",
+    symbol: "L_req",
+    definition:
+      "Travel distance the application needs. An application requirement the catalog-matched MGQ/MGP candidate's own stroke range must cover.",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic_guided_sizing.required_extend_force",
+    displayName: "Required extend-side force (computed)",
+    symbol: "F_req,ext",
+    definition:
+      "process_force + load_mass*g*sin(incline_angle) + load_mass*g*friction_coefficient*cos(incline_angle) -- identical formula to pneumatic_sizing.required_extend_force, reproduced independently under this module's own namespace (stage-2-contract.md Decision 1). Always non-negative by construction. Also the lateral force this module's own moment resolution converts into roll/pitch/yaw moments (stage-1-spec.md 'Moment Resolution').",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic_guided_sizing.required_retract_force",
+    displayName: "Required retract-side force (computed)",
+    symbol: "F_req,ret",
+    definition:
+      "load_mass*g*friction_coefficient*cos(incline_angle) - load_mass*g*sin(incline_angle) -- identical formula to pneumatic_sizing.required_retract_force, reproduced independently under this module's own namespace. May be negative for a strongly gravity-assisted return stroke, reported as computed, never floored here.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    qualifiers: { bound: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic_guided_sizing.roll_offset",
+    displayName: "Roll-axis load offset",
+    symbol: "d_roll",
+    definition:
+      "Unsigned lever-arm distance from the guide plate's own load-reference point to the load's effective center of application, along the roll axis. Used to resolve required_moment (M_roll = required_extend_force * roll_offset) -- stage-2-contract.md Decision 4.",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic_guided_sizing.pitch_offset",
+    displayName: "Pitch-axis load offset",
+    symbol: "d_pitch",
+    definition:
+      "Unsigned lever-arm distance from the guide plate's own load-reference point to the load's effective center of application, along the pitch axis. See pneumatic_guided_sizing.roll_offset.",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic_guided_sizing.yaw_offset",
+    displayName: "Yaw-axis load offset",
+    symbol: "d_yaw",
+    definition:
+      "Unsigned lever-arm distance from the guide plate's own load-reference point to the load's effective center of application, along the yaw axis. See pneumatic_guided_sizing.roll_offset.",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic_guided_sizing.required_moment",
+    displayName: "Required resultant moment (computed)",
+    symbol: "M_req",
+    definition:
+      "sqrt(M_roll^2 + M_pitch^2 + M_yaw^2), where M_roll = required_extend_force*roll_offset (and similarly for pitch/yaw) -- checked against each MGQ/MGP catalog candidate's own single published allowable-rotational-torque-of-plate rating. The Euclidean-sum combination is this module's own engineering assumption: neither fetched SMC catalog documents how to combine independently-computed moments against its one published figure -- stage-2-contract.md Decision 5, a disclosed assumption, not a sourced formula.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+  }),
+];
+
+/** All released parameter definitions for registry v1.18, in authored order. */
 export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...projectAndEnvironment,
   ...axisApplication,
@@ -3758,4 +3880,5 @@ export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...motorSizingIndexTable,
   ...pneumaticCylinder,
   ...pneumaticCylinderSizing,
+  ...pneumaticGuidedCylinderSizing,
 ];

@@ -67,8 +67,8 @@ describe("parameter registry compatibility", () => {
 });
 
 describe("released registry", () => {
-  it("loads every seed definition and is version 1.17.0", () => {
-    expect(PARAMETER_REGISTRY.version).toBe("1.17.0");
+  it("loads every seed definition and is version 1.18.0", () => {
+    expect(PARAMETER_REGISTRY.version).toBe("1.18.0");
     expect(listParameters().length).toBe(PARAMETER_DEFINITIONS.length);
   });
 
@@ -84,7 +84,9 @@ describe("released registry", () => {
     // version direct-drive-conveyor-motor-sizing@0.1.0's own manifest
     // pins) received the same treatment when 1.11.0 (Unit 6.4) displaced
     // it, and 1.11.0 (the version rack-pinion-motor-sizing@0.1.0's own
-    // manifest pins) in turn when 1.12.0 (Unit 6.5) displaced it.
+    // manifest pins) in turn when 1.12.0 (Unit 6.5) displaced it. 1.17.0
+    // (the version pneumatic-cylinder-sizing@0.1.0's own manifest pins)
+    // received the same treatment when 1.18.0 (Unit 7.3) displaced it.
     for (const target of [
       "1.0.0",
       "1.3.0",
@@ -94,6 +96,7 @@ describe("released registry", () => {
       "1.7.0",
       "1.10.0",
       "1.11.0",
+      "1.17.0",
     ]) {
       expect(PARAMETER_REGISTRY.supportsVersion(target)).toBe(true);
     }

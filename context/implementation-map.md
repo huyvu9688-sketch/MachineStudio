@@ -2387,6 +2387,155 @@ release), then reviewing/trimming the seeded 36-row CM2/CA2 catalog set to
 the founder's own real working models — the design doc's own explicit
 decision, not a self-serve upload UI.
 
+## Unit 7.3 — Guided cylinder sizing module
+
+Founder-directed (2026-08-26): expand pneumatic cylinder sizing beyond the
+standard round-body CM2/CA2 model `pneumatic-cylinder-sizing@0.1.0`
+supports, to also cover Dual Rod, Guided Cylinder, Table Cylinder, and
+Rodless cylinder families — all SMC product lines, each with genuinely
+different physics (not just different catalog dimensions), so each becomes
+one module per family per ADR-0011's own explicitly-rejected
+"mechanism-enum" alternative. Guided Cylinder is first (SMC's MGP/MGQ
+series, the most-requested type for machine-building work). Design record:
+`docs/superpowers/specs/2026-08-26-guided-cylinder-sizing-design.md`.
+
+### Stage 1 — Engineering specification
+
+**Done (2026-08-26).** `context/modules/guided-cylinder-sizing/
+stage-1-spec.md` — proposed module ID `guided-cylinder-sizing`. Both SMC
+MGQ and MGP catalogs were fetched and read directly this session
+(`content2.smcetech.com` mirror, the same workaround
+`pneumatic-cylinder-sizing@0.1.0`'s own Task 13 established for the
+identical WebFetch PDF-parse limitation), finding six real corrections to
+the founder's own design doc: (1) confirmed, not merely assumed, that both
+catalogs' own Theoretical Output tables show `F = P*A` with no separate
+load-factor column — `pneumatic.load_factor` is applied as the engineer's
+own sizing margin, unchanged from `pneumatic-cylinder-sizing@0.1.0`; (2) a
+real cross-series catalog gap the design doc did not anticipate — MGP has
+no "Allowable Lateral Load" table at all (a plate-displacement stiffness
+graph instead), so that check runs for MGQ candidates only in `0.1.0`; (3)
+confirmed for both series (not just MGQ, as the design doc's own research
+found) that allowable rotational torque of the guide plate is one combined
+figure, with zero roll/pitch/yaw terminology found in either catalog; (4)
+MGQ and MGP each have their own bearing-type naming and a genuinely
+different rod-diameter progression at several shared bore sizes; (5) a
+real, previously-undisclosed gap — neither catalog publishes a discrete
+allowable-kinetic-energy figure (both give a load-mass-vs-speed graph), so
+`0.1.0` reports cushion kinetic energy without checking it against a
+candidate at all; (6) no flange/clevis/trunnion mounting-style catalog
+attribute is added — a guided cylinder's guide plate, not its rod end, is
+the primary mount, and neither catalog publishes the rod-end-fixity
+taxonomy `pneumatic-cylinder-sizing@0.1.0`'s own `mounting_style` check
+assumes.
+
+### Stage 2 — Parameter contract
+
+**Done (2026-08-26).** `context/modules/guided-cylinder-sizing/
+stage-2-contract.md` — registry `1.18.0` releases eight new
+`pneumatic_guided_sizing.*` parameters (`process_force`, `required_stroke`,
+`required_extend_force`, `required_retract_force`, `roll_offset`,
+`pitch_offset`, `yaw_offset`, `required_moment`) additively. Mints new IDs
+rather than reusing `pneumatic_sizing.*`'s own four analogous parameters —
+this registry's own "never let a resolved value from one module look like
+a compatible link source for an unrelated one" convention, the same
+reasoning every Motor Sizing module already applies for a shared value
+shape on a different mechanism. `required_moment` ships with
+`range: { min: 0, unit: "N*m" }` (a Euclidean norm is always non-negative
+by construction); its own combination method is disclosed in its
+`definition` text as this module's own engineering assumption, not sourced
+from SMC. No new unit-registry dimension or unit needed (`N*m`/
+`torqueDisplay` already exist).
+
+### Stage 3 — Compute and trace
+
+**Done (2026-08-26).** `lib/modules/guided-cylinder-sizing/0.1.0/` — a
+full package (manifest, ports, `math.ts` kernel, `compute.ts`,
+`checks.ts`, `trace.ts`, generic UI/report schema, `validation.ts`,
+`test-helpers.ts`, `index.ts`). `math.ts` reproduces
+`pneumatic-cylinder-sizing@0.1.0`'s own `resolveRequiredForce`,
+`resolvePistonAreas`, `resolveTheoreticalForce`,
+`resolveCushionKineticEnergy`, `resolveBucklingLoad`,
+`resolvePermissibleCompressiveLoad` independently (not imported, per
+ADR-0011's reuse policy) and adds a new `resolveRequiredMoment`
+(`M_axis = F*d_axis` per roll/pitch/yaw, combined as
+`sqrt(M_roll^2+M_pitch^2+M_yaw^2)`). 49 tests pass across `math.test.ts`
+and `package.test.ts` (boundary/invalid-input, dimensional correctness,
+moment-resolution property tests: linearity, zero cases, monotonicity).
+
+### Stage 4 — Validation
+
+**Done (2026-08-26).** `smc-reference-example.ts`/`.test.ts` reproduces a
+real SMC MGQM40 (40 mm bore, slide bearing, 50 mm stroke) scenario
+directly read from the fetched MGQ catalog: a 10 kg vertical lift with
+10/5/0 mm roll/pitch/yaw offsets resolves a 98.0665 N required extend
+force and a 1.096 N*m required moment, both clearing the MGQM40
+candidate's own real catalog ratings (167 N allowable lateral load, 3.43
+N*m allowable torque, ~439.8 N theoretical force). The independent-
+benchmark item is satisfied by reference for the reused force/buckling
+formula areas (citing `pneumatic-cylinder-sizing@0.1.0`'s own chain back
+to `pneumatic-cylinder@0.1.0`'s Norgren M/1000 benchmark, confirmed
+byte-for-byte identical by `math.test.ts`); the new required-moment
+resolution has no manufacturer method to benchmark against, verified by
+property tests instead. Full validation record:
+`validation/guided-cylinder-sizing/0.1.0.md`; four new
+`validation/source-index.md` rows (two new sources,
+`jp.smc.mgq_series_catalog@web-2026-08-26` and
+`jp.smc.mgp_series_catalog@web-2026-08-26`, registered in
+`lib/standards/engineering-sources.ts`; two reused).
+
+### Stage 5 — Generic surfaces and catalog integration
+
+**Done (2026-08-26).** This project's second module to wire a real
+`CatalogAdapter` end to end. `lib/application/catalogs/
+guided-cylinder-matching.ts` mirrors `pneumatic-cylinder-matching.ts`'s
+own hybrid-matcher shape (generic `MatchCriterion` engine for stroke
+range; a custom per-candidate evaluator for force capacity and buckling,
+reused unchanged) and adds two new per-candidate checks: allowable lateral
+load (checked only when a candidate has a seeded value — MGQ candidates
+only, since MGP has none) and allowable rotational torque (checked for
+every candidate, using this module's own new moment resolution). Catalog
+schema and seed data: `reference/catalog-seed/smc-mgq-mgp.csv` (40 rows —
+20 MGQ + 20 MGP, one row per bore x bearing type, each using its own
+minimum populated stroke as a representative figure — SMC's own ratings
+are genuinely stroke-dependent, not seeded per-stroke in `0.1.0`),
+imported via `scripts/seed-guided-cylinder-catalog.mts` (idempotent, no
+new catalog-engine code, mirrors `scripts/
+seed-pneumatic-cylinder-catalog.mts`'s own runtime shim exactly).
+`lib/application/catalogs/load-component-assignment-view.ts` now
+dispatches between `pneumatic_cylinder` and `pneumatic_cylinder_guided` —
+the second component type with `matchingAvailable: true` instead of the
+generic `matchingUnavailableReason`. A new DB-gated fixture test in
+`load-component-assignment-view.test.ts` reproduces the MGQM40 scenario
+end to end (a real MGQM40 that accepts on every check, a deliberately
+undersized MGQM12 that is rejected) — written and typechecked, but **not
+executed against a live database in this authoring session** (no
+`DATABASE_URL`/`NODE_EXTRA_CA_CERTS` available), a disclosed gap, not a
+claimed pass.
+
+### Stage 6 — Release
+
+**Done (2026-08-26).** `npm run module:source-hash -- guided-cylinder-
+sizing 0.1.0` computed `f3b829c92ae603a7`, pinned in `package.test.ts` as
+`expectedSourceHash` — both `import-boundary` and `source-immutability`
+now pass as real checks, not skipped, and the `catalog-adapter`
+conformance check reports `pass`. `npm run registry:generate` registered
+the module: `guided-cylinder-sizing@0.1.0` in
+`lib/modules/registry.generated.ts` (28 modules total). Sealed package
+content hash: `8b720093cc2639d5`. Full non-DB suite green (2703/2703),
+`npx tsc --noEmit` clean, `npm run lint` clean (0 errors), `npm run build`
+clean. **DB-gated suite not confirmed this session** — see Stage 5's own
+disclosed gap above. Unit 7.3 is now fully released at the non-DB
+verification level — this project's second module with a real
+`CatalogAdapter` wired end to end, and the third Milestone 7 module.
+
+**What still needs the founder's own action, not further implementation
+work:** running `scripts/seed-guided-cylinder-catalog.mts` against the
+live database (one-time, manual), then reviewing/trimming the seeded
+40-row MGQ/MGP catalog set to the founder's own real working models.
+**What still needs a session with live database access:** running the
+DB-gated suite (including the new fixture test above) to confirm it
+actually passes, not just typechecks.
+
 # Initial Two-Week Start Sequence
 
 This is the recommended exact starting order. It is not a promise of

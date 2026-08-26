@@ -217,6 +217,121 @@ green (including a new catalog-matching fixture test in
 What still needs the founder's own action: running the seed script against
 the live database (one-time, manual) and reviewing/trimming the seeded
 catalog rows.
+**2026-08-26: four founder-directed UI fixes.** The navigator's per-module
+"Archive" action is replaced with a permanent "Delete" action
+(`components/engineering/delete-module-instance-dialog.tsx`, `Trash2` icon)
+— a real, irreversible hard delete (`deleteModuleInstance` in
+`lib/db/repositories/project-repository.ts`, ownership-scoped like
+`deleteProject`), not a relabeling of archive. Every dependent relation
+(`ParameterValue`, `CalculationRun`, `ComponentAssignment`, `ParameterLink`
+as either source or target) already had `onDelete: Cascade` in
+`prisma/schema.prisma`, so no schema change was needed; the impact preview
+shown before confirming (dependent links, workflow-role attachment) reuses
+the same lookups the archive preview already used, since deletion actually
+severs those links rather than leaving them intact. The archive backend
+(`archiveModuleInstance`, `archivedAt`) is kept — `listModuleInstancesForWorkflowInstance`
+and other read paths still rely on it — only its one UI entry point was
+replaced; `archive-module-instance-dialog.tsx` (now unreferenced) was
+deleted. The generic module workspace's plain stacked layout is now
+`max-w-6xl` (previously `max-w-3xl`), matching the bento layout's own
+width, so a 5-group module like `pneumatic-cylinder@0.1.0` renders as wide
+as `belt-pulley-drive-motor-sizing`'s bento layout instead of narrower.
+`AddModuleInstanceDialog`'s non-motor-sizing category button is relabeled
+"Pneumatic Selection" (was "Other modules"). The "Add module" picker
+(`app/(workspace)/workspace/module-package-options.ts`, split out of
+`page.tsx` for testability) now lists only the newest registered version of
+each module id — `pneumatic-cylinder-sizing@0.1.0` and the in-progress
+`@0.1.1` were both showing as separate, identically-labeled picker options
+once a second version existed; older released versions stay registered and
+immutable, this only narrows what new-instance creation offers.
+**2026-08-26 (same day): the misleading "Default" source badge is fixed —
+this is the real cause of the recurring `Missing required input
+"incline_angle"` Run failure a founder hit on both `pneumatic-cylinder-
+sizing` and `belt-pulley-drive-motor-sizing`.** `resolveModuleInputs`
+(`lib/db/repositories/graph-repository.ts`) resolves an unset port to
+`{ source: "default" }` purely to mean "no manual value, link, or workflow
+value was ever supplied" — that resolver-level state has never meant "a
+real value is behind this," but the generic renderer's `SourceBadge`
+rendered every `"default"`-source field identically, so a genuinely empty
+required field (e.g. `motion.axis.incline_angle`, whose canonical
+definition carries no `defaultPolicy: { kind: "constant" }`) looked exactly
+like an actually-populated one (e.g. `motion.axis.gravity`, which does).
+`ModuleInputFieldView` gains an optional `hasBuiltInDefault` flag
+(`lib/application/calculations/load-module-workspace-view.ts`, set from
+`definition.defaultPolicy.kind === "constant"` — the same "optional so
+existing fixtures compile unchanged" precedent `disabled` already
+established), and `SourceBadge` (`components/engineering/module-input-
+workspace.tsx`) now renders "Not set" in the error color instead of
+"Default" whenever a field is unset and has no real constant behind it.
+Nothing about input resolution, defaulting, or the required-input check
+itself changed — this is a display-only fix for a genuinely confusing
+UI state; the underlying fields still require the founder to type a value
+and click Save before Run will succeed.
+**2026-08-26 (same day): a second, related "Linked" confusion is fixed —
+a founder hit `Missing required input "operating_pressure"` on a field
+that displayed "Linked" and looked configured, because the source module
+instance had never been run.** For a link to another module's *output*
+(not a requirement/assembly value), `resolveModuleInputs`
+(`lib/db/repositories/graph-repository.ts`) always leaves `resolved.value`
+`null` by design — the real value is only ever pulled at Run time, inside
+`executeModuleInstance`'s own transaction (`resolveModuleOutputValue`), from
+the source module's latest calculation run. The generic renderer had no way
+to preview that outcome, so a linked field whose source had no run yet (or
+whose latest run was stale) looked identical to one that would actually
+resolve. `resolveModuleOutputValue` (and its `UpstreamValue` result type)
+moved out of `execute-module-instance.ts` into a new shared
+`lib/application/calculations/resolve-module-output-value.ts` so both
+callers use the exact same resolution and can never disagree about it.
+`loadModuleWorkspaceView` now previews it for every module-output-linked
+port and exposes the result as `ModuleInputFieldView.linkedSourceStatus`
+(`"ready" | "stale" | "not_run"`, optional — same "existing fixtures compile
+unchanged" precedent as `hasBuiltInDefault`/`disabled`); `LinkedFieldControl`
+(`components/engineering/link-suggestion-panel.tsx`) renders an explicit
+warning ("Source module has not been run yet — run it, then run this module
+again." / the stale equivalent) instead of the generic caption whenever
+status is not `"ready"`. Nothing about Run's own resolution or the
+`stale_upstream` refusal changed — this is a preview so the founder can see
+the problem before clicking Run, not a behavior change to Run itself.
+**2026-08-26 (same day): Unit 7.3 (`guided-cylinder-sizing`) is fully
+released and registered — the third Milestone 7 module, and the first of
+four planned new pneumatic actuator families (Dual Rod, Table Cylinder,
+and Rodless remain, each its own future design doc).** Sibling to
+`pneumatic-cylinder-sizing@0.1.0` (round-body cylinders; released,
+immutable, untouched). Source research fetched and read both SMC MGQ and
+MGP catalogs directly this session, finding six real corrections to the
+founder's own design doc — most significantly that MGP's own catalog has
+no equivalent "Allowable Lateral Load" table to MGQ's own (a plate-
+displacement stiffness graph instead, so that check runs for MGQ
+candidates only in `0.1.0`) and that neither catalog publishes a discrete
+allowable-kinetic-energy figure (both give a load-mass-vs-speed graph, so
+cushion kinetic energy is reported only, not checked against a candidate,
+in `0.1.0`) — see `context/modules/guided-cylinder-sizing/stage-1-spec.md`
+"Corrections" for the full account. Registry `1.18.0` releases eight new
+`pneumatic_guided_sizing.*` parameters, including a new `required_moment`
+output combining three roll/pitch/yaw lever-arm moments as a Euclidean
+sum — this module's own disclosed engineering assumption, not a value
+either fetched SMC catalog documents. `lib/application/catalogs/
+guided-cylinder-matching.ts` is this project's second real `CatalogAdapter`
+wired end to end (after `pneumatic-cylinder-sizing@0.1.0`'s own), and
+`load-component-assignment-view.ts` now dispatches between
+`pneumatic_cylinder` and `pneumatic_cylinder_guided`. Catalog seed data:
+`reference/catalog-seed/smc-mgq-mgp.csv` (40 rows), via `scripts/
+seed-guided-cylinder-catalog.mts`. Source-immutability hash pinned
+(`f3b829c92ae603a7`), registered via `npm run registry:generate`
+(`guided-cylinder-sizing@0.1.0`, 28 modules total), sealed package content
+hash `8b720093cc2639d5`. Full validation record:
+`validation/guided-cylinder-sizing/0.1.0.md`; four new
+`validation/source-index.md` rows. Full non-DB suite green (2703/2703),
+typecheck/lint/build clean. **The DB-gated suite (including a new
+`load-component-assignment-view.test.ts` catalog-matching fixture) was NOT
+run this session** — no `DATABASE_URL`/`NODE_EXTRA_CA_CERTS` were
+available in this environment; the fixture typechecks and follows
+`pneumatic-cylinder-sizing@0.1.0`'s own verified fixture pattern exactly,
+but has not been executed against a live database — a disclosed gap for
+the next session with DB access to close, not a claimed pass. What still
+needs the founder's own action: running the seed script against the live
+database (one-time, manual) and reviewing/trimming the seeded catalog
+rows.
 
 ---
 
