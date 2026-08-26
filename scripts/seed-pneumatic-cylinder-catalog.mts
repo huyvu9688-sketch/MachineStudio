@@ -173,7 +173,13 @@ const { importCatalog } =
 // --- Component schema (Task 14 Step 1) ------------------------------------
 
 const COMPONENT_TYPE_ID = "pneumatic_cylinder";
-const SCHEMA_VERSION = "1.0.0";
+// A prior partial run (2026-08-25) already created ComponentType and
+// ComponentSchemaVersion@1.0.0 in the live database, but without the two
+// cushion-energy fields below and with zero part revisions imported
+// (confirmed by direct query -- this file's own "write-once snapshot, no
+// update path" comment above means 1.0.0 can never gain those fields).
+// 1.1.0 is the real first working schema version for this component type.
+const SCHEMA_VERSION = "1.1.0";
 
 const PNEUMATIC_CYLINDER_SCHEMA_FIELDS: ComponentAttributeFieldDefinition[] = [
   {
