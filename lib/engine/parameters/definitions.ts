@@ -117,13 +117,27 @@
 // assumption, not an SMC-documented combination method). No new
 // unit-registry dimension or unit is needed (N*m/torqueDisplay already
 // exist).
+//
+// v1.19 adds the full dual_rod_sizing.* group (6 new parameters) for the
+// dual-rod-cylinder-sizing module (context/modules/
+// dual-rod-cylinder-sizing/stage-2-contract.md), Milestone 7's fourth
+// module and the second of four planned new pneumatic actuator families
+// (dual rod; docs/superpowers/specs/
+// 2026-08-26-dual-rod-cylinder-sizing-design.md). Reuses the same base
+// trio and pneumatic ports pneumatic_sizing.*/pneumatic_guided_sizing.*
+// already reuse; mints new IDs rather than reusing either sibling
+// module's own analogous parameters. No pneumatic.mounting_style or
+// pneumatic.buckling_safety_factor port -- this module has no buckling
+// check, the one genuine port-level scope difference from both sibling
+// modules.
+//
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.18.0";
+export const PARAMETER_REGISTRY_VERSION = "1.19.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -3863,7 +3877,94 @@ const pneumaticGuidedCylinderSizing: readonly ParameterDefinition[] = [
   }),
 ];
 
-/** All released parameter definitions for registry v1.18, in authored order. */
+// --- Dual rod cylinder sizing (Unit 7.4 Stage 2) ----------------------------
+// See context/modules/dual-rod-cylinder-sizing/stage-2-contract.md. The
+// third of four planned new pneumatic actuator family sizing modules
+// (after pneumatic-cylinder-sizing@0.1.0 round-body, guided-cylinder-
+// sizing@0.1.0 guide plate). Reuses the same base trio and pneumatic ports
+// pneumatic_sizing.*/pneumatic_guided_sizing.* already reuse
+// (motion.axis.incline_angle/friction_coefficient/total_moving_mass,
+// pneumatic.operating_pressure/load_factor/cushion_type/max_piston_speed/
+// kinetic_energy). Mints new IDs for process_force/required_stroke/
+// required_extend_force/required_retract_force rather than reusing either
+// sibling module's own analogous parameters -- this registry's own "never
+// let a resolved value from one module look like a compatible link
+// source for an unrelated one" convention. No pneumatic.mounting_style or
+// pneumatic.buckling_safety_factor port: this module has no buckling
+// check (stage-1-spec.md "No buckling check for this family"), the one
+// genuine scope difference from both sibling modules.
+const dualRodSizing: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "dual_rod_sizing.process_force",
+    displayName: "Process force (extend stroke)",
+    symbol: "F_proc",
+    definition:
+      "Additive working force the cylinder must supply on top of the mass-derived load, on the extend (working) stroke only -- e.g. a clamping or pressing force. Zero (the default) is a structural 'no process force' statement, not a guessed physical value. Mints a new ID rather than reusing pneumatic_sizing.process_force or pneumatic_guided_sizing.process_force -- stage-2-contract.md Decision 3.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "N") },
+  }),
+  defineParameter({
+    id: "dual_rod_sizing.required_stroke",
+    displayName: "Required stroke",
+    symbol: "L_req",
+    definition:
+      "Travel distance the application needs. An application requirement the catalog-matched CXS2 candidate's own stroke range must cover, and one of the two inputs (with max_piston_speed) that selects which seeded load-mass-vs-overhang band applies.",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "dual_rod_sizing.required_extend_force",
+    displayName: "Required extend-side force (computed)",
+    symbol: "F_req,ext",
+    definition:
+      "Required cylinder force on the extend (working) stroke: additive process force plus the incline/friction-resolved load force. Computed by this module from load_mass, incline_angle, friction_coefficient, and process_force -- not engineer-supplied.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+  }),
+  defineParameter({
+    id: "dual_rod_sizing.required_retract_force",
+    displayName: "Required retract-side force (computed)",
+    symbol: "F_req,ret",
+    definition:
+      "Required cylinder force on the retract (return) stroke: the incline/friction-resolved load force only (no process force). May be negative for a strongly gravity-assisted return stroke, meaning the actuator must resist/brake rather than drive -- reported as computed, not floored. Computed by this module, not engineer-supplied.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+  }),
+  defineParameter({
+    id: "dual_rod_sizing.overhang_length",
+    displayName: "Overhang length",
+    symbol: "L_oh",
+    definition:
+      "Lever arm from the dual-rod cylinder's own end-plate load-reference point to the load's center of gravity (SMC's own 'Overhang L'). Governs the load-mass-vs-overhang-length structural check unique to this twin-guide-rod mechanism -- no natural zero-default, required (stage-2-contract.md Decision 5).",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "dual_rod_sizing.mounting_orientation",
+    displayName: "Mounting orientation",
+    symbol: "orient",
+    definition:
+      "Installation orientation relative to gravity, restricted to the two values SMC's own CXS2 'Model Selection' load-mass-vs-overhang graphs are keyed by. Deliberately not a reuse of motion.axis.orientation (horizontal/vertical/inclined): CXS2's own selection graphs have no 'inclined' bucket, so reusing the three-value enum would admit a value with no seeded band behind it (stage-2-contract.md Decision 4).",
+    valueType: "enum",
+    enumId: "dual_rod_mounting_orientation",
+    enumOptions: ["vertical", "horizontal"],
+    defaultPolicy: { kind: "required" },
+  }),
+];
+
+/** All released parameter definitions for registry v1.19, in authored order. */
 export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...projectAndEnvironment,
   ...axisApplication,
@@ -3881,4 +3982,5 @@ export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...pneumaticCylinder,
   ...pneumaticCylinderSizing,
   ...pneumaticGuidedCylinderSizing,
+  ...dualRodSizing,
 ];
