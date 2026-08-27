@@ -1,0 +1,13 @@
+Model,Bore (mm),Rod (mm),Bearing Type,Stroke Min (mm),Stroke Max (mm)
+CXS2M6,6,4,slide,10,100
+CXS2L6,6,4,ball_bushing,10,100
+CXS2M10,10,6,slide,10,150
+CXS2L10,10,6,ball_bushing,10,150
+CXS2M16,16,8,slide,10,200
+CXS2L16,16,8,ball_bushing,10,200
+CXS2M20,20,10,slide,10,200
+CXS2L20,20,10,ball_bushing,10,200
+CXS2M25,25,12,slide,10,200
+CXS2L25,25,12,ball_bushing,10,200
+CXS2M32,32,16,slide,10,200
+CXS2L32,32,16,ball_bushing,10,200
