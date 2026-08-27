@@ -183,6 +183,61 @@ describe("selectMgpSelectionBand", () => {
     });
   });
 
+  it("exposes the page-552 stopper scope cautions on a successful selection", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "stopper",
+        bearingType: "slide",
+        operatingPressureMPa: 0.4,
+        requiredStrokeMm: 30,
+        transferSpeedMPerMin: 20,
+        boreDiameterMm: 25,
+      }),
+    ).toMatchObject({
+      inEnvelope: true,
+      scopeWarnings: [
+        "The page-552 stopper plots assume L ≈ 50 mm; for a longer L, select a sufficiently large bore.",
+        "If roller-conveyor line pressure is applied after the workpiece stops, use horizontal graphs 13 or 15 instead of the stopper plots.",
+      ],
+    });
+  });
+
+  it.each([
+    { boreDiameterMm: 12, terminalSpeedMPerMin: 30 },
+    { boreDiameterMm: 32, terminalSpeedMPerMin: 30 },
+    { boreDiameterMm: 50, terminalSpeedMPerMin: 40 },
+    { boreDiameterMm: 100, terminalSpeedMPerMin: 50 },
+  ])(
+    "enforces the $terminalSpeedMPerMin m/min stopper endpoint for bore $boreDiameterMm",
+    ({ boreDiameterMm, terminalSpeedMPerMin }) => {
+      const requiredStrokeMm = boreDiameterMm <= 25 ? 30 : 50;
+      expect(
+        selectMgpSelectionBand({
+          applicationCase: "stopper",
+          bearingType: "slide",
+          operatingPressureMPa: 0.4,
+          requiredStrokeMm,
+          transferSpeedMPerMin: terminalSpeedMPerMin,
+          boreDiameterMm,
+        }),
+      ).toMatchObject({ inEnvelope: true });
+
+      expect(
+        selectMgpSelectionBand({
+          applicationCase: "stopper",
+          bearingType: "slide",
+          operatingPressureMPa: 0.4,
+          requiredStrokeMm,
+          transferSpeedMPerMin: terminalSpeedMPerMin + 0.01,
+          boreDiameterMm,
+        }),
+      ).toMatchObject({
+        inEnvelope: false,
+        reason: "transfer_speed_outside_published_envelope",
+      });
+    },
+  );
+
   it("enforces MGPM-only and the two published stopper stroke limits", () => {
     expect(
       selectMgpSelectionBand({

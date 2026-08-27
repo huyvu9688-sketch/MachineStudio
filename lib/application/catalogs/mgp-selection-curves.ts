@@ -6,6 +6,11 @@ export type MgpBearingType =
 
 export type MgpPressureBand = "0.4_mpa" | "at_least_0.5_mpa";
 
+export const MGP_STOPPER_SCOPE_WARNINGS = Object.freeze([
+  "The page-552 stopper plots assume L ≈ 50 mm; for a longer L, select a sufficiently large bore.",
+  "If roller-conveyor line pressure is applied after the workpiece stops, use horizontal graphs 13 or 15 instead of the stopper plots.",
+] as const);
+
 export interface MgpSelectionCurve {
   readonly graph: number;
   readonly sourcePage: 546 | 547 | 548 | 549 | 550 | 551 | 552;
@@ -3625,6 +3630,7 @@ export interface MgpSelectedBand {
   readonly xUnit: "mm" | "m/min";
   readonly xValue: number;
   readonly loadCoefficient: 0.6 | 1 | 1.7;
+  readonly scopeWarnings?: readonly string[];
 }
 
 export interface MgpSelectionBandInput {
@@ -3709,6 +3715,7 @@ function selectedBand(
     readonly maxStrokeMm?: 30 | 50;
     readonly minStrokeExclusiveMm?: 30 | 50;
     readonly horizontalOffsetMm?: 50 | 100;
+    readonly scopeWarnings?: readonly string[];
   } = {},
 ): MgpSelectedBand {
   return {
@@ -3727,6 +3734,9 @@ function selectedBand(
     ...(options.horizontalOffsetMm === undefined
       ? {}
       : { horizontalOffsetMm: options.horizontalOffsetMm }),
+    ...(options.scopeWarnings === undefined
+      ? {}
+      : { scopeWarnings: options.scopeWarnings }),
     xUnit,
     xValue,
     loadCoefficient: speed.loadCoefficient,
@@ -3770,26 +3780,46 @@ export function selectMgpSelectionBand(
         `MGP limits this stopper bore group to ${maxStrokeMm} mm stroke.`,
       );
     }
+    const graph = bore <= 25 ? 21 : 22;
+    const sourceCurve = MGP_SELECTION_CURVES.find(
+      (curve) =>
+        curve.graph === graph &&
+        curve.bearingType === "slide" &&
+        curve.pressureBand === pressureBand &&
+        curve.boreDiameterMm === bore,
+    );
+    const minimumTransferSpeed = sourceCurve?.points[0]?.x;
+    const maximumTransferSpeed = sourceCurve?.points.at(-1)?.x;
+    if (
+      sourceCurve === undefined ||
+      minimumTransferSpeed === undefined ||
+      maximumTransferSpeed === undefined
+    ) {
+      return outOfEnvelope(
+        "stopper_bore_not_published",
+        `No seeded page-552 stopper curve is available for bore ${bore} mm.`,
+      );
+    }
     const transferSpeed = input.transferSpeedMPerMin;
     if (
       transferSpeed === undefined ||
       !Number.isFinite(transferSpeed) ||
-      transferSpeed < 5 ||
-      transferSpeed > 50
+      transferSpeed < minimumTransferSpeed ||
+      transferSpeed > maximumTransferSpeed
     ) {
       return outOfEnvelope(
         "transfer_speed_outside_published_envelope",
-        "The seeded stopper plots cover transfer speeds from 5 to 50 m/min.",
+        `The page-552 stopper curve for bore ${bore} mm covers transfer speeds from ${minimumTransferSpeed} to ${maximumTransferSpeed} m/min.`,
       );
     }
     return selectedBand(
       input,
       pressureBand,
       { maxSpeedMmPerS: 500, loadCoefficient: 1 },
-      bore <= 25 ? 21 : 22,
+      graph,
       "m/min",
       transferSpeed,
-      { maxStrokeMm },
+      { maxStrokeMm, scopeWarnings: MGP_STOPPER_SCOPE_WARNINGS },
     );
   }
 
