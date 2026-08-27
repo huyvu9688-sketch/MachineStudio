@@ -16,8 +16,12 @@ export interface MgpSelectionCurve {
   readonly sourcePage: 546 | 547 | 548 | 549 | 550 | 551 | 552;
   readonly applicationCase: MgpApplicationCase;
   readonly bearingType: MgpBearingType;
-  readonly pressureBand: MgpPressureBand;
-  readonly maxSpeedMmPerS: 200 | 400 | 500;
+  readonly pressureBand?: MgpPressureBand;
+  readonly maxSpeedMmPerS?: 200 | 400;
+  readonly transferSpeedRangeMPerMin?: readonly [
+    minimum: number,
+    maximum: number,
+  ];
   readonly maxStrokeMm?: 30 | 50;
   readonly minStrokeExclusiveMm?: 30 | 50;
   readonly horizontalOffsetMm?: 50 | 100;
@@ -34,8 +38,8 @@ interface CurveSeed {
   readonly sourcePage: 546 | 547 | 548 | 549 | 550 | 551 | 552;
   readonly applicationCase: MgpApplicationCase;
   readonly bearingTypes: readonly MgpBearingType[];
-  readonly pressureBands: readonly MgpPressureBand[];
-  readonly maxSpeedMmPerS: 200 | 400 | 500;
+  readonly pressureBands?: readonly MgpPressureBand[];
+  readonly maxSpeedMmPerS?: 200 | 400;
   readonly maxStrokeMm?: 30 | 50;
   readonly minStrokeExclusiveMm?: 30 | 50;
   readonly horizontalOffsetMm?: 50 | 100;
@@ -3407,8 +3411,6 @@ const CURVE_SEEDS = [
     graph: 21,
     applicationCase: "stopper",
     bearingTypes: ["slide"],
-    pressureBands: ["0.4_mpa", "at_least_0.5_mpa"],
-    maxSpeedMmPerS: 500,
     maxStrokeMm: 30,
     boreDiametersMm: [25],
     xUnit: "m/min",
@@ -3423,8 +3425,6 @@ const CURVE_SEEDS = [
     graph: 21,
     applicationCase: "stopper",
     bearingTypes: ["slide"],
-    pressureBands: ["0.4_mpa", "at_least_0.5_mpa"],
-    maxSpeedMmPerS: 500,
     maxStrokeMm: 30,
     boreDiametersMm: [20],
     xUnit: "m/min",
@@ -3439,8 +3439,6 @@ const CURVE_SEEDS = [
     graph: 21,
     applicationCase: "stopper",
     bearingTypes: ["slide"],
-    pressureBands: ["0.4_mpa", "at_least_0.5_mpa"],
-    maxSpeedMmPerS: 500,
     maxStrokeMm: 30,
     boreDiametersMm: [16],
     xUnit: "m/min",
@@ -3455,8 +3453,6 @@ const CURVE_SEEDS = [
     graph: 21,
     applicationCase: "stopper",
     bearingTypes: ["slide"],
-    pressureBands: ["0.4_mpa", "at_least_0.5_mpa"],
-    maxSpeedMmPerS: 500,
     maxStrokeMm: 30,
     boreDiametersMm: [12],
     xUnit: "m/min",
@@ -3471,8 +3467,6 @@ const CURVE_SEEDS = [
     graph: 22,
     applicationCase: "stopper",
     bearingTypes: ["slide"],
-    pressureBands: ["0.4_mpa", "at_least_0.5_mpa"],
-    maxSpeedMmPerS: 500,
     maxStrokeMm: 50,
     boreDiametersMm: [100],
     xUnit: "m/min",
@@ -3487,8 +3481,6 @@ const CURVE_SEEDS = [
     graph: 22,
     applicationCase: "stopper",
     bearingTypes: ["slide"],
-    pressureBands: ["0.4_mpa", "at_least_0.5_mpa"],
-    maxSpeedMmPerS: 500,
     maxStrokeMm: 50,
     boreDiametersMm: [80],
     xUnit: "m/min",
@@ -3503,8 +3495,6 @@ const CURVE_SEEDS = [
     graph: 22,
     applicationCase: "stopper",
     bearingTypes: ["slide"],
-    pressureBands: ["0.4_mpa", "at_least_0.5_mpa"],
-    maxSpeedMmPerS: 500,
     maxStrokeMm: 50,
     boreDiametersMm: [63],
     xUnit: "m/min",
@@ -3519,8 +3509,6 @@ const CURVE_SEEDS = [
     graph: 22,
     applicationCase: "stopper",
     bearingTypes: ["slide"],
-    pressureBands: ["0.4_mpa", "at_least_0.5_mpa"],
-    maxSpeedMmPerS: 500,
     maxStrokeMm: 50,
     boreDiametersMm: [50],
     xUnit: "m/min",
@@ -3535,8 +3523,6 @@ const CURVE_SEEDS = [
     graph: 22,
     applicationCase: "stopper",
     bearingTypes: ["slide"],
-    pressureBands: ["0.4_mpa", "at_least_0.5_mpa"],
-    maxSpeedMmPerS: 500,
     maxStrokeMm: 50,
     boreDiametersMm: [40],
     xUnit: "m/min",
@@ -3551,8 +3537,6 @@ const CURVE_SEEDS = [
     graph: 22,
     applicationCase: "stopper",
     bearingTypes: ["slide"],
-    pressureBands: ["0.4_mpa", "at_least_0.5_mpa"],
-    maxSpeedMmPerS: 500,
     maxStrokeMm: 50,
     boreDiametersMm: [32],
     xUnit: "m/min",
@@ -3566,17 +3550,23 @@ const CURVE_SEEDS = [
 ] as const satisfies readonly CurveSeed[];
 
 export const MGP_SELECTION_CURVES: readonly MgpSelectionCurve[] = Object.freeze(
-  CURVE_SEEDS.flatMap((seed) =>
-    seed.bearingTypes.flatMap((bearingType) =>
-      seed.pressureBands.flatMap((pressureBand) =>
+  (CURVE_SEEDS as readonly CurveSeed[]).flatMap((seed) => {
+    const pressureBands = seed.pressureBands ?? [undefined];
+    return seed.bearingTypes.flatMap((bearingType) =>
+      pressureBands.flatMap((pressureBand) =>
         seed.boreDiametersMm.map((boreDiameterMm) => {
+          const transferSpeedRangeMPerMin =
+            seed.applicationCase === "stopper"
+              ? Object.freeze([
+                  seed.points[0]![0],
+                  seed.points[seed.points.length - 1]![0],
+                ] as const)
+              : undefined;
           const curve: MgpSelectionCurve = {
             graph: seed.graph,
             sourcePage: seed.sourcePage,
             applicationCase: seed.applicationCase,
             bearingType,
-            pressureBand,
-            maxSpeedMmPerS: seed.maxSpeedMmPerS,
             boreDiameterMm,
             xUnit: seed.xUnit,
             points: Object.freeze(
@@ -3584,6 +3574,13 @@ export const MGP_SELECTION_CURVES: readonly MgpSelectionCurve[] = Object.freeze(
                 Object.freeze({ x, loadMassKg }),
               ),
             ),
+            ...(pressureBand === undefined ? {} : { pressureBand }),
+            ...(seed.maxSpeedMmPerS === undefined
+              ? {}
+              : { maxSpeedMmPerS: seed.maxSpeedMmPerS }),
+            ...(transferSpeedRangeMPerMin === undefined
+              ? {}
+              : { transferSpeedRangeMPerMin }),
             ...("maxStrokeMm" in seed ? { maxStrokeMm: seed.maxStrokeMm } : {}),
             ...("minStrokeExclusiveMm" in seed
               ? { minStrokeExclusiveMm: seed.minStrokeExclusiveMm }
@@ -3595,10 +3592,9 @@ export const MGP_SELECTION_CURVES: readonly MgpSelectionCurve[] = Object.freeze(
           return Object.freeze(curve);
         }),
       ),
-    ),
-  ),
+    );
+  }),
 );
-
 export type MgpSelectionOutOfEnvelopeReason =
   | "invalid_input"
   | "unsupported_operating_pressure"
@@ -3622,14 +3618,19 @@ export interface MgpSelectedBand {
   readonly graph: number;
   readonly applicationCase: MgpApplicationCase;
   readonly bearingType: MgpBearingType;
-  readonly pressureBand: MgpPressureBand;
-  readonly maxSpeedMmPerS: 200 | 400 | 500;
+  readonly operatingPressureMPa: number;
+  readonly pressureBand?: MgpPressureBand;
+  readonly maxSpeedMmPerS?: 200 | 400;
+  readonly transferSpeedRangeMPerMin?: readonly [
+    minimum: number,
+    maximum: number,
+  ];
   readonly maxStrokeMm?: 30 | 50;
   readonly minStrokeExclusiveMm?: 30 | 50;
   readonly horizontalOffsetMm?: 50 | 100;
   readonly xUnit: "mm" | "m/min";
   readonly xValue: number;
-  readonly loadCoefficient: 0.6 | 1 | 1.7;
+  readonly loadCoefficient?: 0.6 | 1 | 1.7;
   readonly scopeWarnings?: readonly string[];
 }
 
@@ -3652,6 +3653,22 @@ function outOfEnvelope(
   message: string,
 ): MgpSelectionOutOfEnvelope {
   return { inEnvelope: false, reason, message };
+}
+
+function isMgpApplicationCase(value: unknown): value is MgpApplicationCase {
+  return (
+    value === "vertical_lifter" ||
+    value === "horizontal_pusher" ||
+    value === "stopper"
+  );
+}
+
+function isMgpBearingType(value: unknown): value is MgpBearingType {
+  return (
+    value === "slide" ||
+    value === "ball_bushing" ||
+    value === "high_precision_ball_bushing"
+  );
 }
 
 function resolvePressureBand(
@@ -3701,13 +3718,22 @@ function resolveSpeedBand(speedMmPerS: number):
   );
 }
 
+type MgpBandSelectionContext =
+  | {
+      readonly pressureBand: MgpPressureBand;
+      readonly maxSpeedMmPerS: 200 | 400;
+      readonly loadCoefficient: 0.6 | 1 | 1.7;
+    }
+  | {
+      readonly transferSpeedRangeMPerMin: readonly [
+        minimum: number,
+        maximum: number,
+      ];
+    };
+
 function selectedBand(
   input: MgpSelectionBandInput,
-  pressureBand: MgpPressureBand,
-  speed: {
-    readonly maxSpeedMmPerS: 200 | 400 | 500;
-    readonly loadCoefficient: 0.6 | 1 | 1.7;
-  },
+  selectionContext: MgpBandSelectionContext,
   graph: number,
   xUnit: "mm" | "m/min",
   xValue: number,
@@ -3723,8 +3749,8 @@ function selectedBand(
     graph,
     applicationCase: input.applicationCase,
     bearingType: input.bearingType,
-    pressureBand,
-    maxSpeedMmPerS: speed.maxSpeedMmPerS,
+    operatingPressureMPa: input.operatingPressureMPa,
+    ...selectionContext,
     ...(options.maxStrokeMm === undefined
       ? {}
       : { maxStrokeMm: options.maxStrokeMm }),
@@ -3739,22 +3765,38 @@ function selectedBand(
       : { scopeWarnings: options.scopeWarnings }),
     xUnit,
     xValue,
-    loadCoefficient: speed.loadCoefficient,
   };
 }
-
 export function selectMgpSelectionBand(
   input: MgpSelectionBandInput,
 ): MgpSelectionBandResult {
+  if (!isMgpApplicationCase(input.applicationCase)) {
+    return outOfEnvelope(
+      "invalid_input",
+      "Application case must be a published MGP selection case.",
+    );
+  }
+  if (!isMgpBearingType(input.bearingType)) {
+    return outOfEnvelope(
+      "invalid_input",
+      "Bearing type must be a published MGP bearing type.",
+    );
+  }
+  if (
+    !Number.isFinite(input.operatingPressureMPa) ||
+    input.operatingPressureMPa <= 0
+  ) {
+    return outOfEnvelope(
+      "invalid_input",
+      "Operating pressure must be finite and positive.",
+    );
+  }
   if (!Number.isFinite(input.requiredStrokeMm) || input.requiredStrokeMm < 0) {
     return outOfEnvelope(
       "invalid_input",
       "Required stroke must be finite and non-negative.",
     );
   }
-
-  const pressureBand = resolvePressureBand(input.operatingPressureMPa);
-  if (typeof pressureBand !== "string") return pressureBand;
 
   if (input.applicationCase === "stopper") {
     if (input.bearingType !== "slide") {
@@ -3785,7 +3827,6 @@ export function selectMgpSelectionBand(
       (curve) =>
         curve.graph === graph &&
         curve.bearingType === "slide" &&
-        curve.pressureBand === pressureBand &&
         curve.boreDiameterMm === bore,
     );
     const minimumTransferSpeed = sourceCurve?.points[0]?.x;
@@ -3814,14 +3855,21 @@ export function selectMgpSelectionBand(
     }
     return selectedBand(
       input,
-      pressureBand,
-      { maxSpeedMmPerS: 500, loadCoefficient: 1 },
+      {
+        transferSpeedRangeMPerMin: Object.freeze([
+          minimumTransferSpeed,
+          maximumTransferSpeed,
+        ] as const),
+      },
       graph,
       "m/min",
       transferSpeed,
       { maxStrokeMm, scopeWarnings: MGP_STOPPER_SCOPE_WARNINGS },
     );
   }
+
+  const pressureBand = resolvePressureBand(input.operatingPressureMPa);
+  if (typeof pressureBand !== "string") return pressureBand;
 
   const pistonSpeed = input.pistonSpeedMmPerS;
   if (pistonSpeed === undefined) {
@@ -3837,11 +3885,11 @@ export function selectMgpSelectionBand(
   if (
     eccentricDistance === undefined ||
     !Number.isFinite(eccentricDistance) ||
-    eccentricDistance <= 0
+    eccentricDistance < 0
   ) {
     return outOfEnvelope(
       "invalid_input",
-      "Eccentric distance must be finite and positive.",
+      "Eccentric distance must be finite and non-negative.",
     );
   }
 
@@ -3885,8 +3933,11 @@ export function selectMgpSelectionBand(
     }
     return selectedBand(
       input,
-      pressureBand,
-      speed,
+      {
+        pressureBand,
+        maxSpeedMmPerS: speed.maxSpeedMmPerS,
+        loadCoefficient: speed.loadCoefficient,
+      },
       graph,
       "mm",
       eccentricDistance,
@@ -3907,8 +3958,11 @@ export function selectMgpSelectionBand(
   const graph = base + (horizontalOffsetMm === 50 ? 0 : 1);
   return selectedBand(
     input,
-    pressureBand,
-    speed,
+    {
+      pressureBand,
+      maxSpeedMmPerS: speed.maxSpeedMmPerS,
+      loadCoefficient: speed.loadCoefficient,
+    },
     graph,
     "mm",
     input.requiredStrokeMm,
@@ -3924,10 +3978,10 @@ export function interpolateMgpCurve(
   curve: MgpSelectionCurve,
   x: number,
 ): MgpInterpolationResult {
-  if (!Number.isFinite(x) || x <= 0 || curve.points.length < 2) {
+  if (!Number.isFinite(x) || curve.points.length < 2) {
     return outOfEnvelope(
       "invalid_input",
-      "Curve interpolation requires a positive finite x value and at least two source points.",
+      "Curve interpolation requires a finite x value and at least two source points.",
     );
   }
   const first = curve.points[0]!;

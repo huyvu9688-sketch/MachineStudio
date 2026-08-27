@@ -1,9 +1,12 @@
+import { createHash } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
 import {
   MGP_SELECTION_CURVES,
   interpolateMgpCurve,
   selectMgpSelectionBand,
+  type MgpSelectionBandInput,
   type MgpSelectionCurve,
 } from "./mgp-selection-curves";
 
@@ -32,6 +35,121 @@ describe("selectMgpSelectionBand", () => {
         eccentricDistanceMm: 50,
       }),
     ).toMatchObject({ graph: 13, xUnit: "mm", xValue: 30 });
+  });
+
+  it("uses the page-552 stopper plots independently of pressure while retaining that context", () => {
+    const selection = selectMgpSelectionBand({
+      applicationCase: "stopper",
+      bearingType: "slide",
+      operatingPressureMPa: 0.45,
+      requiredStrokeMm: 30,
+      transferSpeedMPerMin: 20,
+      boreDiameterMm: 25,
+    });
+
+    expect(selection).toMatchObject({
+      inEnvelope: true,
+      graph: 21,
+      operatingPressureMPa: 0.45,
+      transferSpeedRangeMPerMin: [5, 30],
+      xUnit: "m/min",
+      xValue: 20,
+    });
+    expect(selection).not.toHaveProperty("pressureBand");
+    expect(selection).not.toHaveProperty("maxSpeedMmPerS");
+    expect(selection).not.toHaveProperty("loadCoefficient");
+  });
+
+  it("maps horizontal L = 0 mm to the published L = 50 mm band", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "horizontal_pusher",
+        bearingType: "slide",
+        operatingPressureMPa: 0.5,
+        requiredStrokeMm: 30,
+        pistonSpeedMmPerS: 200,
+        eccentricDistanceMm: 0,
+      }),
+    ).toMatchObject({ graph: 13, horizontalOffsetMm: 50 });
+  });
+
+  it("keeps a zero vertical L available for the curve-domain check", () => {
+    const selection = selectMgpSelectionBand({
+      applicationCase: "vertical_lifter",
+      bearingType: "slide",
+      operatingPressureMPa: 0.4,
+      requiredStrokeMm: 30,
+      pistonSpeedMmPerS: 200,
+      eccentricDistanceMm: 0,
+      boreDiameterMm: 25,
+    });
+
+    expect(selection).toMatchObject({
+      inEnvelope: true,
+      graph: 1,
+      xValue: 0,
+    });
+    if (!selection.inEnvelope) throw new Error("Expected a vertical band.");
+
+    const curve = MGP_SELECTION_CURVES.find(
+      (candidate) =>
+        candidate.graph === selection.graph &&
+        candidate.bearingType === selection.bearingType &&
+        candidate.pressureBand === selection.pressureBand &&
+        candidate.boreDiameterMm === 25,
+    );
+    expect(curve).toBeDefined();
+    if (curve !== undefined) {
+      expect(interpolateMgpCurve(curve, selection.xValue)).toMatchObject({
+        inEnvelope: false,
+        reason: "x_outside_curve_domain",
+      });
+    }
+  });
+
+  it("rejects a negative eccentric distance", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "horizontal_pusher",
+        bearingType: "slide",
+        operatingPressureMPa: 0.5,
+        requiredStrokeMm: 30,
+        pistonSpeedMmPerS: 200,
+        eccentricDistanceMm: -0.01,
+      }),
+    ).toMatchObject({ inEnvelope: false, reason: "invalid_input" });
+  });
+
+  it("rejects unrecognised application cases at runtime", () => {
+    const input = {
+      applicationCase: "unsupported_case",
+      bearingType: "slide",
+      operatingPressureMPa: 0.5,
+      requiredStrokeMm: 30,
+      pistonSpeedMmPerS: 200,
+      eccentricDistanceMm: 50,
+    } as unknown as MgpSelectionBandInput;
+
+    expect(selectMgpSelectionBand(input)).toMatchObject({
+      inEnvelope: false,
+      reason: "invalid_input",
+    });
+  });
+
+  it("rejects unrecognised bearing types at runtime", () => {
+    const input = {
+      applicationCase: "horizontal_pusher",
+      bearingType: "unsupported_bearing",
+      operatingPressureMPa: 0.5,
+      requiredStrokeMm: 30,
+      pistonSpeedMmPerS: 200,
+      eccentricDistanceMm: 50,
+    } as unknown as MgpSelectionBandInput;
+
+    expect(selectMgpSelectionBand(input)).toMatchObject({
+      inEnvelope: false,
+      reason: "invalid_input",
+    });
   });
 
   it("returns an explicit out-of-envelope result for vertical L at the software-only boundary", () => {
@@ -163,7 +281,7 @@ describe("selectMgpSelectionBand", () => {
       graph: 21,
       xUnit: "m/min",
       xValue: 20,
-      maxSpeedMmPerS: 500,
+      transferSpeedRangeMPerMin: [5, 30],
     });
 
     expect(
@@ -179,7 +297,7 @@ describe("selectMgpSelectionBand", () => {
       graph: 22,
       xUnit: "m/min",
       xValue: 20,
-      maxSpeedMmPerS: 500,
+      transferSpeedRangeMPerMin: [5, 30],
     });
   });
 
@@ -311,6 +429,47 @@ describe("MGP_SELECTION_CURVES", () => {
     );
   });
 
+  it("models the page-552 stopper curves only with their transfer-speed domains", () => {
+    const stopperCurves = MGP_SELECTION_CURVES.filter(
+      (curve) => curve.applicationCase === "stopper",
+    );
+
+    expect(stopperCurves).not.toHaveLength(0);
+    for (const curve of stopperCurves) {
+      expect(curve).not.toHaveProperty("pressureBand");
+      expect(curve).not.toHaveProperty("maxSpeedMmPerS");
+      expect(curve.transferSpeedRangeMPerMin).toEqual([
+        curve.points[0]!.x,
+        curve.points.at(-1)!.x,
+      ]);
+    }
+  });
+
+  it("locks the complete reviewed curve transcript with a deterministic digest", () => {
+    const reviewedProjection = MGP_SELECTION_CURVES.map((curve) => ({
+      graph: curve.graph,
+      sourcePage: curve.sourcePage,
+      applicationCase: curve.applicationCase,
+      bearingType: curve.bearingType,
+      pressureBand: curve.pressureBand ?? null,
+      maxSpeedMmPerS: curve.maxSpeedMmPerS ?? null,
+      transferSpeedRangeMPerMin: curve.transferSpeedRangeMPerMin ?? null,
+      maxStrokeMm: curve.maxStrokeMm ?? null,
+      minStrokeExclusiveMm: curve.minStrokeExclusiveMm ?? null,
+      horizontalOffsetMm: curve.horizontalOffsetMm ?? null,
+      boreDiameterMm: curve.boreDiameterMm,
+      xUnit: curve.xUnit,
+      points: curve.points,
+    }));
+    const digest = createHash("sha256")
+      .update(JSON.stringify(reviewedProjection))
+      .digest("hex");
+
+    expect(digest).toBe(
+      "96ae667ea63440f16bee3c91a547c570309f57dd1e338ac6bbdaf019f1c7c804",
+    );
+  });
+
   it("reproduces the two page-545 example margins from source-backed curves", () => {
     const vertical = MGP_SELECTION_CURVES.find(
       (curve) =>
@@ -378,11 +537,10 @@ describe("interpolateMgpCurve", () => {
       sourcePage: 552,
       applicationCase: "stopper",
       bearingType: "slide",
-      pressureBand: "0.4_mpa",
-      maxSpeedMmPerS: 500,
       maxStrokeMm: 30,
       boreDiameterMm: 25,
       xUnit: "m/min",
+      transferSpeedRangeMPerMin: [10, 30],
       points: [
         { x: 10, loadMassKg: 20 },
         { x: 30, loadMassKg: 10 },
