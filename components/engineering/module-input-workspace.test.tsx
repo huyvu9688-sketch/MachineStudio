@@ -5,12 +5,14 @@ import userEvent from "@testing-library/user-event";
 import { ModuleInputWorkspace } from "./module-input-workspace";
 import {
   confirmSuggestedLinkAction,
+  previewModuleComputationAction,
   removeParameterLinkAction,
-  setModuleInputValueAction,
+  saveModuleInputsAction,
 } from "@/app/(workspace)/workspace/actions";
 import type {
   LinkSuggestionSourceView,
   ModuleInputFieldView,
+  ModulePreviewView,
   ModuleWorkspaceView,
 } from "@/lib/application";
 
@@ -19,14 +21,27 @@ import type {
 // mocked for the same reason every other component test in this directory
 // mocks the "use server" file (see app-bar.test.tsx).
 vi.mock("@/app/(workspace)/workspace/actions", () => ({
-  setModuleInputValueAction: vi.fn(),
+  saveModuleInputsAction: vi.fn(),
+  previewModuleComputationAction: vi.fn(),
   confirmSuggestedLinkAction: vi.fn(),
   removeParameterLinkAction: vi.fn(),
 }));
 
 beforeEach(() => {
-  vi.mocked(setModuleInputValueAction).mockReset();
-  vi.mocked(setModuleInputValueAction).mockResolvedValue({ status: "success" });
+  vi.mocked(saveModuleInputsAction).mockReset();
+  vi.mocked(saveModuleInputsAction).mockResolvedValue({ status: "success" });
+  vi.mocked(previewModuleComputationAction).mockReset();
+  vi.mocked(previewModuleComputationAction).mockResolvedValue({
+    status: "success",
+    preview: {
+      outputs: [],
+      checks: [],
+      warnings: [],
+      validity: [],
+      trace: null,
+      sources: [],
+    },
+  });
   vi.mocked(confirmSuggestedLinkAction).mockReset();
   vi.mocked(confirmSuggestedLinkAction).mockResolvedValue({
     status: "success",
@@ -34,6 +49,11 @@ beforeEach(() => {
   vi.mocked(removeParameterLinkAction).mockReset();
   vi.mocked(removeParameterLinkAction).mockResolvedValue({ status: "success" });
 });
+
+function noopOnPreviewChange(): void {
+  // The test's own assertions read the mock's calls when they care about
+  // what was lifted, rather than reading state from this no-op.
+}
 
 const quantityDefaultField: ModuleInputFieldView = {
   portKey: "payload_mass",
@@ -287,6 +307,7 @@ describe("ModuleInputWorkspace", () => {
           linkedField,
           unsupportedField,
         ])}
+        onPreviewChange={noopOnPreviewChange}
       />,
     );
 
@@ -296,10 +317,6 @@ describe("ModuleInputWorkspace", () => {
     expect(screen.getByText("example-scaffold@0.1.0")).toBeInTheDocument();
     expect(screen.getByText("Inputs")).toBeInTheDocument();
 
-    // Quantity: label, help text, unit selector, "Default" source badge.
-    // (Both the quantity field and the unsupported field resolve to
-    // "default" with no registry-level constant behind them, so both render
-    // "Not set", not "Default" — see hasBuiltInDefault's own doc comment.)
     expect(screen.getByLabelText("Payload mass")).toBeInTheDocument();
     expect(
       screen.getByText("Total moving mass carried by the axis."),
@@ -308,24 +325,24 @@ describe("ModuleInputWorkspace", () => {
     expect(screen.getAllByText("Not set")).toHaveLength(2);
     expect(screen.queryByText("Default")).not.toBeInTheDocument();
 
-    // Enum: pre-selected current value, "Manual" badge, load-case chip.
     expect(screen.getByLabelText("Axis orientation")).toHaveValue("vertical");
     expect(screen.getByText("Manual")).toBeInTheDocument();
     expect(screen.getByText("Normal load case")).toBeInTheDocument();
 
-    // Boolean: pre-checked from a workflow-provided value, "Workflow" badge.
     expect(screen.getByLabelText("Holding brake present")).toBeInTheDocument();
     expect(screen.getByRole("checkbox")).toBeChecked();
     expect(screen.getByText("Workflow")).toBeInTheDocument();
 
-    // Linked: read-only notice instead of an editable control, "Linked" badge.
     expect(screen.getByText("Linked")).toBeInTheDocument();
     expect(screen.getByText(/Linked from a module output/)).toBeInTheDocument();
 
-    // Unsupported (vector_quantity, non-axis frame): honest deferral notice, not a crash or invented editor.
     expect(
       screen.getByText(/Editing vector quantity values is not supported yet/),
     ).toBeInTheDocument();
+
+    // The header's own single Save/Run pair, not one per field.
+    expect(screen.getAllByRole("button", { name: "Save" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Run" })).toHaveLength(1);
   });
 
   it("renders 'Default' (not 'Not set') for an unset field with a real registry constant", () => {
@@ -336,51 +353,48 @@ describe("ModuleInputWorkspace", () => {
       label: "Gravitational acceleration",
       hasBuiltInDefault: true,
     };
-    render(<ModuleInputWorkspace view={view([gravityField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([gravityField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(screen.getByText("Default")).toBeInTheDocument();
     expect(screen.queryByText("Not set")).not.toBeInTheDocument();
   });
 
-  it("renders a structurally different module (different port/parameter/unit) through the same component", () => {
-    const relayField: ModuleInputFieldView = {
-      portKey: "thrust_force_in",
-      parameterId: "motion.axis.thrust_force",
-      label: "Thrust force",
-      help: null,
-      required: true,
-      loadCase: null,
-      field: {
-        kind: "quantity",
-        canonicalUnit: "N",
-        displayUnits: ["N", "kN", "lbf"],
-      },
-      resolved: { source: "default" },
-      suggestions: [],
-      linkRemovalImpact: null,
-    };
-
-    render(<ModuleInputWorkspace view={view([relayField])} />);
-
-    expect(screen.getByLabelText("Thrust force")).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "N" })).toBeInTheDocument();
-  });
   it("renders a stored canonical length in its selected display unit", () => {
-    render(<ModuleInputWorkspace view={view([lengthManualField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([lengthManualField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(screen.getByLabelText("Stroke")).toHaveValue(500);
     expect(screen.getByLabelText("Stroke unit")).toHaveValue("mm");
   });
 
   it("does not round a stored quantity while preparing its display magnitude", () => {
-    render(<ModuleInputWorkspace view={view([fractionalLengthManualField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([fractionalLengthManualField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(screen.getByLabelText("Stroke")).toHaveValue(123.456789);
     expect(screen.getByLabelText("Stroke unit")).toHaveValue("mm");
   });
 
   it("renders a stored canonical temperature in its selected affine display unit", () => {
-    render(<ModuleInputWorkspace view={view([temperatureManualField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([temperatureManualField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(screen.getByLabelText("Ambient temperature")).toHaveValue(25);
     expect(screen.getByLabelText("Ambient temperature unit")).toHaveValue(
@@ -388,24 +402,34 @@ describe("ModuleInputWorkspace", () => {
     );
   });
 
-  it("submits a quantity field's manual value and clears the field-level error on success", async () => {
+  it("submits every field through the single Save button", async () => {
     const user = userEvent.setup();
-    render(<ModuleInputWorkspace view={view([quantityDefaultField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([quantityDefaultField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     await user.type(screen.getByLabelText("Payload mass"), "12");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(setModuleInputValueAction).toHaveBeenCalled();
+    expect(saveModuleInputsAction).toHaveBeenCalled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("shows the action's error message beside the field on failure", async () => {
-    vi.mocked(setModuleInputValueAction).mockResolvedValueOnce({
+  it("shows Save's error message near the header on failure", async () => {
+    vi.mocked(saveModuleInputsAction).mockResolvedValueOnce({
       status: "error",
       message: "Enter a numeric value.",
     });
     const user = userEvent.setup();
-    render(<ModuleInputWorkspace view={view([quantityDefaultField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([quantityDefaultField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     await user.type(screen.getByLabelText("Payload mass"), "12");
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -415,9 +439,146 @@ describe("ModuleInputWorkspace", () => {
     );
   });
 
-  it("shows a link suggestion (parameter, value, origin, load case) and confirms it on request", async () => {
+  it("previews via Run without calling Save, and lifts the successful computation", async () => {
+    const preview: ModulePreviewView = {
+      outputs: [
+        {
+          portKey: "result",
+          parameterId: "motion.axis.thrust_force",
+          label: "Thrust force",
+          value: { v: 1, kind: "quantity", value: 12, unit: "N" },
+          loadCase: null,
+        },
+      ],
+      checks: [],
+      warnings: [],
+      validity: [],
+      trace: null,
+      sources: [],
+    };
+    vi.mocked(previewModuleComputationAction).mockResolvedValueOnce({
+      status: "success",
+      preview,
+    });
+    const onPreviewChange = vi.fn();
     const user = userEvent.setup();
-    render(<ModuleInputWorkspace view={view([fieldWithSuggestion])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([lengthManualField])}
+        onPreviewChange={onPreviewChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Run" }));
+
+    expect(previewModuleComputationAction).toHaveBeenCalled();
+    expect(saveModuleInputsAction).not.toHaveBeenCalled();
+    expect(onPreviewChange).toHaveBeenCalledWith(preview);
+  });
+
+  it("shows Run's error message near the header on a failed preview", async () => {
+    vi.mocked(previewModuleComputationAction).mockResolvedValueOnce({
+      status: "error",
+      message: 'Input "thrust_force_in" is linked to a stale upstream result.',
+    });
+    const user = userEvent.setup();
+    render(
+      <ModuleInputWorkspace
+        view={view([lengthManualField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Run" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "stale upstream result",
+    );
+  });
+
+  it("clears the lifted preview once Save succeeds", async () => {
+    const onPreviewChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ModuleInputWorkspace
+        view={view([lengthManualField])}
+        onPreviewChange={onPreviewChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onPreviewChange).toHaveBeenCalledWith(null);
+  });
+
+  it("disables Run while a required field is incomplete, and names it in the tooltip", () => {
+    render(
+      <ModuleInputWorkspace
+        view={view([quantityDefaultField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
+
+    const runButton = screen.getByRole("button", { name: "Run" });
+    expect(runButton).toBeDisabled();
+    expect(runButton.closest("span")).toHaveAttribute(
+      "title",
+      "Missing required input: Payload mass",
+    );
+  });
+
+  it("enables Run once every required field is complete", async () => {
+    const user = userEvent.setup();
+    render(
+      <ModuleInputWorkspace
+        view={view([quantityDefaultField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Payload mass"), "12");
+
+    expect(screen.getByRole("button", { name: "Run" })).not.toBeDisabled();
+  });
+
+  it("treats an already-saved required field as complete immediately, without typing", () => {
+    render(
+      <ModuleInputWorkspace
+        view={view([lengthManualField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Run" })).not.toBeDisabled();
+  });
+
+  it("treats a required linked field as satisfying Run regardless of its own link's run status", () => {
+    render(
+      <ModuleInputWorkspace
+        view={view([{ ...linkedField, linkedSourceStatus: "not_run" }])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Run" })).not.toBeDisabled();
+  });
+
+  it("shows a link suggestion behind the meatball menu and confirms it on request", async () => {
+    const user = userEvent.setup();
+    render(
+      <ModuleInputWorkspace
+        view={view([fieldWithSuggestion])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
+
+    expect(
+      screen.queryByText("Use Payload mass 12 kg from Machine — Normal load case?"),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /Suggested source for Payload mass/ }),
+    );
 
     expect(
       screen.getByText(
@@ -432,19 +593,42 @@ describe("ModuleInputWorkspace", () => {
     expect(confirmSuggestedLinkAction).toHaveBeenCalled();
   });
 
-  it("dismisses a suggestion without calling the confirm action", async () => {
+  it("dismisses a suggestion, disabling (not removing) the meatball trigger once none remain, without calling the confirm action", async () => {
     const user = userEvent.setup();
-    render(<ModuleInputWorkspace view={view([fieldWithSuggestion])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([fieldWithSuggestion])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
+    await user.click(
+      screen.getByRole("button", { name: /Suggested source for Payload mass/ }),
+    );
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
 
-    expect(screen.queryByText("Suggested source")).not.toBeInTheDocument();
+    const trigger = screen.getByRole("button", {
+      name: "No remaining suggestions for Payload mass",
+    });
+    expect(trigger).toHaveAttribute("aria-disabled", "true");
     expect(confirmSuggestedLinkAction).not.toHaveBeenCalled();
+
+    // aria-disabled alone is cosmetic (the trigger is deliberately never
+    // given the native `disabled` attribute, to preserve Radix's focus
+    // restoration) -- the real guard is the popover refusing to reopen.
+    // Confirm that guard, not just the attribute meant to communicate it.
+    await user.click(trigger);
+    expect(screen.queryByText("View source")).not.toBeInTheDocument();
   });
 
   it("states the downstream stale-impact count before removing a confirmed link", async () => {
     const user = userEvent.setup();
-    render(<ModuleInputWorkspace view={view([linkedField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([linkedField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(screen.queryByText(/will mark/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Remove link" }));
@@ -462,7 +646,12 @@ describe("ModuleInputWorkspace", () => {
       ...linkedField,
       linkedSourceStatus: "not_run",
     };
-    render(<ModuleInputWorkspace view={view([notRunField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([notRunField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(
       screen.getByText(
@@ -476,7 +665,12 @@ describe("ModuleInputWorkspace", () => {
       ...linkedField,
       linkedSourceStatus: "stale",
     };
-    render(<ModuleInputWorkspace view={view([staleField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([staleField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(
       screen.getByText(
@@ -490,7 +684,12 @@ describe("ModuleInputWorkspace", () => {
       ...linkedField,
       linkedSourceStatus: "ready",
     };
-    render(<ModuleInputWorkspace view={view([readyField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([readyField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(
       screen.queryByText(/has not been run yet|latest run is stale/),
@@ -498,7 +697,12 @@ describe("ModuleInputWorkspace", () => {
   });
 
   it("renders a stored axis-frame vector in its selected display unit, per component", () => {
-    render(<ModuleInputWorkspace view={view([vectorManualField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([vectorManualField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(
       screen.getByLabelText("Center-of-mass offset X (travel direction)"),
@@ -511,16 +715,18 @@ describe("ModuleInputWorkspace", () => {
       "mm",
     );
 
-    // Short visible captions ("X"/"Y"/"Z") for sighted users, distinct from
-    // the full aria-label text screen readers get — a persistent caption,
-    // not a placeholder that vanishes once a value is entered.
     expect(screen.getByText("X")).toBeInTheDocument();
     expect(screen.getByText("Y")).toBeInTheDocument();
     expect(screen.getByText("Z")).toBeInTheDocument();
   });
 
   it("renders empty component inputs for a vector field with no current value", () => {
-    render(<ModuleInputWorkspace view={view([vectorDefaultField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([vectorDefaultField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(
       screen.getByLabelText("External process force X (travel direction)"),
@@ -533,43 +739,88 @@ describe("ModuleInputWorkspace", () => {
 
   it("submits a vector field's three components and the shared unit", async () => {
     const user = userEvent.setup();
-    render(<ModuleInputWorkspace view={view([vectorManualField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([vectorManualField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(setModuleInputValueAction).toHaveBeenCalled();
+    expect(saveModuleInputsAction).toHaveBeenCalled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("does not submit a required vector field while a component is left blank (native validation)", async () => {
     const user = userEvent.setup();
-    render(<ModuleInputWorkspace view={view([vectorDefaultField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([vectorDefaultField, lengthManualField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     await user.type(
       screen.getByLabelText("External process force X (travel direction)"),
       "10",
     );
-    // Y and Z stay blank; the field is required, so the browser blocks
-    // submission before the Server Action is ever called.
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(setModuleInputValueAction).not.toHaveBeenCalled();
+    expect(saveModuleInputsAction).not.toHaveBeenCalled();
   });
 
-  it("renders a disabled field's control and Save button non-interactive, and omits its link-suggestion panel", () => {
-    render(<ModuleInputWorkspace view={view([disabledFieldWithSuggestion])} />);
+  it("keeps Run disabled while a required vector field has an incomplete component", async () => {
+    const user = userEvent.setup();
+    render(
+      <ModuleInputWorkspace
+        view={view([vectorDefaultField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
+
+    await user.type(
+      screen.getByLabelText("External process force X (travel direction)"),
+      "10",
+    );
+    await user.type(
+      screen.getByLabelText("External process force Y (transverse)"),
+      "20",
+    );
+    expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
+
+    await user.type(
+      screen.getByLabelText("External process force Z"),
+      "30",
+    );
+    expect(screen.getByRole("button", { name: "Run" })).not.toBeDisabled();
+  });
+
+  it("renders a disabled field's control non-interactive and omits its link-suggestion menu, without blocking the header's Save/Run", () => {
+    render(
+      <ModuleInputWorkspace
+        view={view([disabledFieldWithSuggestion])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(screen.getByRole("spinbutton")).toBeDisabled();
     expect(screen.getByRole("combobox")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-    expect(screen.queryByText("Suggested source")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Suggested source/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run" })).not.toBeDisabled();
   });
 
-  it("renders a non-disabled field's control and Save button interactive", () => {
-    render(<ModuleInputWorkspace view={view([enumManualField])} />);
+  it("renders a non-disabled field's control interactive", () => {
+    render(
+      <ModuleInputWorkspace
+        view={view([enumManualField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
 
     expect(screen.getByRole("combobox")).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
   });
 
   it("renders the bento grid when the module declares belt-pulley's exact four group ids, including a reserved motion-profile-chart placeholder", () => {
@@ -604,7 +855,9 @@ describe("ModuleInputWorkspace", () => {
       ],
     };
 
-    render(<ModuleInputWorkspace view={bentoView} />);
+    render(
+      <ModuleInputWorkspace view={bentoView} onPreviewChange={noopOnPreviewChange} />,
+    );
 
     expect(
       screen.getByRole("heading", { name: "Geometry and environment" }),
@@ -628,6 +881,7 @@ describe("ModuleInputWorkspace", () => {
     render(
       <ModuleInputWorkspace
         view={view([quantityDefaultField, enumManualField])}
+        onPreviewChange={noopOnPreviewChange}
       />,
     );
 
