@@ -82,7 +82,17 @@ export const DUAL_ROD_LOAD_MASS_CURVES: readonly LoadMassCurve[] = [
   { mountingOrientation: "horizontal", strokeBandMaxMm: 10, speedBandMaxMps: 0.4, boreDiameterMm: 6, bearingType: "slide", plateauEndOverhangMm: 4, plateauLoadMassKg: 0.08, edgeOverhangMm: 44, edgeLoadMassKg: 0.01 },
   // Graph 10, <=30mm stroke, bore 6.
   { mountingOrientation: "horizontal", strokeBandMaxMm: 30, speedBandMaxMps: 0.8, boreDiameterMm: 6, bearingType: "slide", plateauEndOverhangMm: 4, plateauLoadMassKg: 0.038, edgeOverhangMm: 20, edgeLoadMassKg: 0.01 },
-  { mountingOrientation: "horizontal", strokeBandMaxMm: 30, speedBandMaxMps: 0.8, boreDiameterMm: 6, bearingType: "ball_bushing", plateauEndOverhangMm: 5, plateauLoadMassKg: 0.07, edgeOverhangMm: 28, edgeLoadMassKg: 0.01 },
+  // Graph 10 CXS2L (ball_bushing) speed rating read as the "(L)"-annotated
+  // <=400mm/s branch of the source table's own "<=400 (L) / <=800mm/s"
+  // speed-band cell -- structurally different from graph 9's own two-speed
+  // cell (which splits by SPEED within one bearing type, CXS2M only, since
+  // CXS2L had no data there). Here "(L)" instead splits by BEARING TYPE:
+  // CXS2L is rated to <=400mm/s, CXS2M (unlabeled/default) to <=800mm/s.
+  // No legend in the source table resolves this explicitly -- flagged for
+  // founder confirmation against the real graph 10 image before catalog
+  // seeding, the same "founder review/trim pending" treatment this file's
+  // own header comment already calls for on the whole dataset.
+  { mountingOrientation: "horizontal", strokeBandMaxMm: 30, speedBandMaxMps: 0.4, boreDiameterMm: 6, bearingType: "ball_bushing", plateauEndOverhangMm: 5, plateauLoadMassKg: 0.07, edgeOverhangMm: 28, edgeLoadMassKg: 0.01 },
   // Graph 11, <=50mm stroke, bore 6.
   { mountingOrientation: "horizontal", strokeBandMaxMm: 50, speedBandMaxMps: 0.8, boreDiameterMm: 6, bearingType: "slide", plateauEndOverhangMm: 4, plateauLoadMassKg: 0.03, edgeOverhangMm: 13, edgeLoadMassKg: 0.01 },
   { mountingOrientation: "horizontal", strokeBandMaxMm: 50, speedBandMaxMps: 0.8, boreDiameterMm: 6, bearingType: "ball_bushing", plateauEndOverhangMm: 4, plateauLoadMassKg: 0.038, edgeOverhangMm: 19, edgeLoadMassKg: 0.01 },

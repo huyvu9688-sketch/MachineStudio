@@ -13,9 +13,10 @@ describe("DUAL_ROD_LOAD_MASS_CURVES data integrity", () => {
     expect(horizontal.length).toBe(86);
   });
 
-  it("every curve has a non-negative plateau overhang at or below its own edge overhang", () => {
+  it("every curve has a positive plateau overhang at or below its own positive edge overhang (matches math.ts's own resolveAllowableLoadMass validation, which requires both strictly positive)", () => {
     for (const curve of DUAL_ROD_LOAD_MASS_CURVES) {
-      expect(curve.plateauEndOverhangMm).toBeGreaterThanOrEqual(0);
+      expect(curve.plateauEndOverhangMm).toBeGreaterThan(0);
+      expect(curve.edgeOverhangMm).toBeGreaterThan(0);
       expect(curve.plateauEndOverhangMm).toBeLessThanOrEqual(curve.edgeOverhangMm);
     }
   });
