@@ -157,6 +157,13 @@ state this unit introduces — everything else about a field (its label,
 badge, help text, suggestions) keeps rendering from server props exactly
 as today.
 
+"Non-empty" per field kind: `quantity` needs a parseable magnitude (unit
+always has a default selection, so it's never the blocker); `vector_quantity`
+needs all three components parseable; `enum` needs a selected option
+(the control already forces this — no blank option once a value exists,
+per the existing `FieldControl` rendering); `boolean` is always complete
+(a checkbox is always definitively true or false, never empty).
+
 ### Result pane
 
 `ModuleResultPanel` gains a third display state alongside "no run yet" and
