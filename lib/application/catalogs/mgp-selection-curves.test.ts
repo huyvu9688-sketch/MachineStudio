@@ -1,0 +1,353 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  MGP_SELECTION_CURVES,
+  interpolateMgpCurve,
+  selectMgpSelectionBand,
+  type MgpSelectionCurve,
+} from "./mgp-selection-curves";
+
+describe("selectMgpSelectionBand", () => {
+  it("selects published graph 5 for the page-545 vertical example band", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "vertical_lifter",
+        bearingType: "ball_bushing",
+        operatingPressureMPa: 0.5,
+        requiredStrokeMm: 30,
+        pistonSpeedMmPerS: 200,
+        eccentricDistanceMm: 90,
+      }),
+    ).toMatchObject({ graph: 5, xUnit: "mm", xValue: 90 });
+  });
+
+  it("selects published graph 13 for the page-545 horizontal example band", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "horizontal_pusher",
+        bearingType: "slide",
+        operatingPressureMPa: 0.5,
+        requiredStrokeMm: 30,
+        pistonSpeedMmPerS: 200,
+        eccentricDistanceMm: 50,
+      }),
+    ).toMatchObject({ graph: 13, xUnit: "mm", xValue: 30 });
+  });
+
+  it("returns an explicit out-of-envelope result for vertical L at the software-only boundary", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "vertical_lifter",
+        bearingType: "slide",
+        operatingPressureMPa: 0.4,
+        requiredStrokeMm: 30,
+        pistonSpeedMmPerS: 200,
+        eccentricDistanceMm: 200,
+      }),
+    ).toMatchObject({
+      inEnvelope: false,
+      reason: "eccentric_distance_requires_selection_software",
+    });
+  });
+
+  it("returns an explicit out-of-envelope result for horizontal L above 100 mm", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "horizontal_pusher",
+        bearingType: "slide",
+        operatingPressureMPa: 0.5,
+        requiredStrokeMm: 30,
+        pistonSpeedMmPerS: 200,
+        eccentricDistanceMm: 100.01,
+      }),
+    ).toMatchObject({
+      inEnvelope: false,
+      reason: "horizontal_offset_above_published_envelope",
+    });
+  });
+
+  it("does not silently classify the unsupported pressure gap from 0.41 to 0.49 MPa", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "vertical_lifter",
+        bearingType: "slide",
+        operatingPressureMPa: 0.45,
+        requiredStrokeMm: 30,
+        pistonSpeedMmPerS: 200,
+        eccentricDistanceMm: 50,
+      }),
+    ).toMatchObject({
+      inEnvelope: false,
+      reason: "unsupported_operating_pressure",
+    });
+  });
+
+  it("returns an explicit out-of-envelope result above the 500 mm/s coefficient-table limit", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "horizontal_pusher",
+        bearingType: "ball_bushing",
+        operatingPressureMPa: 0.5,
+        requiredStrokeMm: 30,
+        pistonSpeedMmPerS: 500.01,
+        eccentricDistanceMm: 50,
+      }),
+    ).toMatchObject({
+      inEnvelope: false,
+      reason: "piston_speed_above_published_envelope",
+    });
+  });
+
+  it("uses the page-545 coefficient table without changing the 400 mm/s graph identity", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "vertical_lifter",
+        bearingType: "ball_bushing",
+        operatingPressureMPa: 0.4,
+        requiredStrokeMm: 30,
+        pistonSpeedMmPerS: 300,
+        eccentricDistanceMm: 75,
+      }),
+    ).toMatchObject({ graph: 9, loadCoefficient: 1.7 });
+
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "vertical_lifter",
+        bearingType: "ball_bushing",
+        operatingPressureMPa: 0.4,
+        requiredStrokeMm: 30,
+        pistonSpeedMmPerS: 500,
+        eccentricDistanceMm: 75,
+      }),
+    ).toMatchObject({ graph: 9, loadCoefficient: 0.6 });
+  });
+
+  it("labels the published over-stroke vertical bands without a false maximum", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "vertical_lifter",
+        bearingType: "ball_bushing",
+        operatingPressureMPa: 0.5,
+        requiredStrokeMm: 31,
+        pistonSpeedMmPerS: 200,
+        eccentricDistanceMm: 90,
+        boreDiameterMm: 25,
+      }),
+    ).toMatchObject({ graph: 6, minStrokeExclusiveMm: 30 });
+  });
+
+  it("maps high-precision ball bushings to the published ball-bushing graphs", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "horizontal_pusher",
+        bearingType: "high_precision_ball_bushing",
+        operatingPressureMPa: 0.4,
+        requiredStrokeMm: 50,
+        pistonSpeedMmPerS: 400,
+        eccentricDistanceMm: 80,
+      }),
+    ).toMatchObject({ graph: 20, horizontalOffsetMm: 100 });
+  });
+
+  it("selects both unnumbered page-552 stopper bore-group bands", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "stopper",
+        bearingType: "slide",
+        operatingPressureMPa: 0.4,
+        requiredStrokeMm: 30,
+        transferSpeedMPerMin: 20,
+        boreDiameterMm: 25,
+      }),
+    ).toMatchObject({
+      graph: 21,
+      xUnit: "m/min",
+      xValue: 20,
+      maxSpeedMmPerS: 500,
+    });
+
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "stopper",
+        bearingType: "slide",
+        operatingPressureMPa: 0.4,
+        requiredStrokeMm: 50,
+        transferSpeedMPerMin: 20,
+        boreDiameterMm: 32,
+      }),
+    ).toMatchObject({
+      graph: 22,
+      xUnit: "m/min",
+      xValue: 20,
+      maxSpeedMmPerS: 500,
+    });
+  });
+
+  it("enforces MGPM-only and the two published stopper stroke limits", () => {
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "stopper",
+        bearingType: "ball_bushing",
+        operatingPressureMPa: 0.4,
+        requiredStrokeMm: 30,
+        transferSpeedMPerMin: 20,
+        boreDiameterMm: 25,
+      }),
+    ).toMatchObject({
+      inEnvelope: false,
+      reason: "stopper_requires_slide_bearing",
+    });
+
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "stopper",
+        bearingType: "slide",
+        operatingPressureMPa: 0.4,
+        requiredStrokeMm: 31,
+        transferSpeedMPerMin: 20,
+        boreDiameterMm: 25,
+      }),
+    ).toMatchObject({
+      inEnvelope: false,
+      reason: "stopper_stroke_above_bore_limit",
+    });
+
+    expect(
+      selectMgpSelectionBand({
+        applicationCase: "stopper",
+        bearingType: "slide",
+        operatingPressureMPa: 0.4,
+        requiredStrokeMm: 51,
+        transferSpeedMPerMin: 20,
+        boreDiameterMm: 32,
+      }),
+    ).toMatchObject({
+      inEnvelope: false,
+      reason: "stopper_stroke_above_bore_limit",
+    });
+  });
+});
+
+describe("MGP_SELECTION_CURVES", () => {
+  it("contains positive, ordered source points for every published model-selection graph", () => {
+    expect(new Set(MGP_SELECTION_CURVES.map((curve) => curve.graph))).toEqual(
+      new Set(Array.from({ length: 22 }, (_, index) => index + 1)),
+    );
+
+    for (const curve of MGP_SELECTION_CURVES) {
+      expect(curve.points.length).toBeGreaterThanOrEqual(2);
+      for (let index = 0; index < curve.points.length; index += 1) {
+        const point = curve.points[index];
+        expect(point?.x).toBeGreaterThan(0);
+        expect(point?.loadMassKg).toBeGreaterThan(0);
+        if (index > 0)
+          expect(point?.x).toBeGreaterThan(curve.points[index - 1]!.x);
+      }
+    }
+  });
+
+  it("covers both pressure bands and both published ball-bushing bearing names", () => {
+    const graph5 = MGP_SELECTION_CURVES.filter((curve) => curve.graph === 5);
+    expect(new Set(graph5.map((curve) => curve.pressureBand))).toEqual(
+      new Set(["0.4_mpa", "at_least_0.5_mpa"]),
+    );
+    expect(new Set(graph5.map((curve) => curve.bearingType))).toEqual(
+      new Set(["ball_bushing", "high_precision_ball_bushing"]),
+    );
+  });
+
+  it("reproduces the two page-545 example margins from source-backed curves", () => {
+    const vertical = MGP_SELECTION_CURVES.find(
+      (curve) =>
+        curve.graph === 5 &&
+        curve.bearingType === "ball_bushing" &&
+        curve.pressureBand === "at_least_0.5_mpa" &&
+        curve.boreDiameterMm === 25,
+    );
+    expect(vertical).toBeDefined();
+    if (vertical !== undefined) {
+      const result = interpolateMgpCurve(vertical, 90);
+      expect(result).toMatchObject({ inEnvelope: true });
+      if (result.inEnvelope) {
+        expect(result.loadMassKg).toBeCloseTo(3.62, 1);
+        expect(result.loadMassKg).toBeGreaterThan(3);
+      }
+    }
+
+    const horizontal = MGP_SELECTION_CURVES.find(
+      (curve) =>
+        curve.graph === 13 &&
+        curve.bearingType === "slide" &&
+        curve.pressureBand === "at_least_0.5_mpa" &&
+        curve.boreDiameterMm === 20,
+    );
+    expect(horizontal).toBeDefined();
+    if (horizontal !== undefined) {
+      expect(interpolateMgpCurve(horizontal, 30)).toEqual({
+        inEnvelope: true,
+        loadMassKg: 2.47,
+      });
+    }
+  });
+});
+
+describe("interpolateMgpCurve", () => {
+  const verticalCurve: MgpSelectionCurve = {
+    graph: 5,
+    sourcePage: 547,
+    applicationCase: "vertical_lifter",
+    bearingType: "ball_bushing",
+    pressureBand: "at_least_0.5_mpa",
+    maxSpeedMmPerS: 200,
+    maxStrokeMm: 30,
+    boreDiameterMm: 25,
+    xUnit: "mm",
+    points: [
+      { x: 10, loadMassKg: 12 },
+      { x: 30, loadMassKg: 12 },
+      { x: 200, loadMassKg: 2 },
+    ],
+  };
+
+  it("uses log-log interpolation for vertical and horizontal graph axes", () => {
+    const result = interpolateMgpCurve(verticalCurve, Math.sqrt(30 * 200));
+    expect(result).toMatchObject({ inEnvelope: true });
+    if (result.inEnvelope) {
+      expect(result.loadMassKg).toBeCloseTo(Math.sqrt(12 * 2), 8);
+    }
+  });
+
+  it("uses linear interpolation for the stopper graph", () => {
+    const stopperCurve: MgpSelectionCurve = {
+      graph: 21,
+      sourcePage: 552,
+      applicationCase: "stopper",
+      bearingType: "slide",
+      pressureBand: "0.4_mpa",
+      maxSpeedMmPerS: 500,
+      maxStrokeMm: 30,
+      boreDiameterMm: 25,
+      xUnit: "m/min",
+      points: [
+        { x: 10, loadMassKg: 20 },
+        { x: 30, loadMassKg: 10 },
+      ],
+    };
+
+    expect(interpolateMgpCurve(stopperCurve, 20)).toEqual({
+      inEnvelope: true,
+      loadMassKg: 15,
+    });
+  });
+
+  it("does not extrapolate beyond a curve's own seeded endpoints", () => {
+    expect(interpolateMgpCurve(verticalCurve, 9.99)).toMatchObject({
+      inEnvelope: false,
+      reason: "x_outside_curve_domain",
+    });
+    expect(interpolateMgpCurve(verticalCurve, 200.01)).toMatchObject({
+      inEnvelope: false,
+      reason: "x_outside_curve_domain",
+    });
+  });
+});
