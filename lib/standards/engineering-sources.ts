@@ -379,6 +379,16 @@ export const engineeringMethodDocuments: readonly SourceDocument[] = [
     note: "Found researching guided-cylinder-sizing's own Stage 1 fetch: a broader guided-actuator family catalog chapter bundling MGP alongside several sibling series (MGJ, MGG, MGC, MGF, MGZ, MGT, MGPS, MGPW); only the MGP-specific dimensional/rating pages (bore 12-100 mm, MGPM slide-bearing and MGPL/MGPA ball-bushing variants) were read -- sibling-series pages are out of scope for this module. Fetched via content2.smcetech.com's own MGP.pdf mirror (smcworld.com/smcpneumatics.com both returned HTTP 403); PDF bytes fetched successfully but WebFetch's own text-extraction model could not parse them, extracted locally with pdftotext instead, the same workaround jp.smc.mgq_series_catalog required. A real, confirmed cross-series finding: MGP's own catalog has no 'Allowable Lateral Load' table at all -- its own high-precision ball-bushing (MGPA) variant instead publishes a plate-displacement-vs-load stiffness graph, not a discrete allowable-load rating, for the equivalent data (context/modules/guided-cylinder-sizing/stage-1-spec.md correction 2). Allowable Rotational Torque of Plate is present and, like MGQ, is one single combined figure with zero 'roll'/'pitch'/'yaw' terminology found anywhere in the fetched pages.",
   },
   {
+    id: asSourceDocumentId("jp.smc.cxs2_series_catalog"),
+    classification: "manufacturer_method",
+    title: "CXS2 Series Compact Guide Cylinder (Dual Rod) — Model Selection",
+    authority: "SMC Corporation",
+    market: "JP",
+    access: "public",
+    officialUrl: "https://content2.smcetech.com/pdf/ES20-275-CXS2.pdf",
+    note: "CXS2 (CXS2L ball-bushing / CXS2M slide-bearing) series only -- the older CXSJ/CXS/CXSW dual-rod sub-families are out of scope for dual-rod-cylinder-sizing@0.1.0.",
+  },
+  {
     id: asSourceDocumentId("us.norgren.m1000_heavy_duty_cylinders"),
     classification: "manufacturer_method",
     title: "M/1000 Heavy Duty Cylinders, Double Acting — Technical Data Sheet",
@@ -755,6 +765,14 @@ export const engineeringMethodRevisions: readonly SourceRevision[] = [
       "MGP-specific dimensional/rating pages of SMC's broader Guided Actuators family catalog chapter, web PDF accessed 2026-08-26 via content2.smcetech.com's own MGP.pdf mirror",
     officialUrl: "https://content2.smcetech.com/pdf/MGP.pdf",
     note: "Read this session via content2.smcetech.com/pdf/MGP.pdf (PDF bytes fetched successfully but WebFetch's own text-extraction model could not parse them, extracted locally with pdftotext -raw mode instead -- this table's own layout was clean/single-block, unlike MGQ's own torque table, so no cross-check against a second extraction mode was needed). Full fetched bore/rod/torque table recorded in context/modules/guided-cylinder-sizing/stage-1-spec.md 'Fetch record'. A real, confirmed cross-series finding recorded here: MGP has no equivalent 'Allowable Lateral Load' table to MGQ's own (see jp.smc.mgp_series_catalog's own SourceDocument note).",
+  },
+  {
+    id: asSourceRevisionId("jp.smc.cxs2_series_catalog@web-2026-08-26"),
+    documentId: asSourceDocumentId("jp.smc.cxs2_series_catalog"),
+    edition:
+      "CXS2 series catalog (ES20-275-CXS2, 'Model Selection' chapter), web PDF accessed 2026-08-26 via content2.smcetech.com's own ES20-275-CXS2.pdf mirror",
+    officialUrl: "https://content2.smcetech.com/pdf/ES20-275-CXS2.pdf",
+    note: "CXS2 (CXS2L ball-bushing / CXS2M slide-bearing) series only -- the older CXSJ/CXS/CXSW dual-rod sub-families are out of scope for dual-rod-cylinder-sizing@0.1.0. Theoretical Output table (p.12) confirmed numerically identical to the older CXSJ catalog's own table. The 'Model Selection' load-mass-vs-overhang-length graphs (21 charts) were not machine-readable by automated PDF-to-image tooling; the digitized dataset (lib/modules/dual-rod-cylinder-sizing/0.1.0/load-mass-curves.ts) was read directly off founder-supplied high-resolution graph screenshots instead -- see context/modules/dual-rod-cylinder-sizing/stage-1-spec.md.",
   },
   {
     id: asSourceRevisionId(
