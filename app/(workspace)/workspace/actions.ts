@@ -28,6 +28,7 @@ import {
   executeModuleInstance,
   previewArchiveModuleInstanceImpact,
   previewDeleteModuleInstanceImpact,
+  previewModuleComputation,
   removeParameterLink,
   renameMachineAssembly,
   renameMachineProject,
@@ -48,15 +49,9 @@ import {
   asWorkflowInstanceId,
   type ParameterNodeKind,
 } from "@/lib/db";
-import {
-  SERIALIZATION_FORMAT_VERSION,
-  getParameter,
-  type EngineeringValue,
-  type LoadCaseCategory,
-} from "@/lib/engine";
-import type { ActionState } from "./action-state";
-import { parseSubmittedQuantity } from "./parse-submitted-quantity";
-import { parseSubmittedVector } from "./parse-submitted-vector";
+import { type EngineeringValue } from "@/lib/engine";
+import type { ActionState, ModulePreviewActionState } from "./action-state";
+import { parseLoadCase, parseSubmittedField, submittedPortKeys } from "./parse-submitted-field";
 
 function fieldValue(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -260,184 +255,99 @@ export async function previewDeleteModuleInstanceImpactAction(
   };
 }
 
-const LOAD_CASE_CATEGORIES = [
-  "normal",
-  "peak",
-  "holding",
-  "emergency_stop",
-] as const;
-
-/** Parses a load-case field, ignoring anything outside the declared set. */
-function parseLoadCase(raw: string): LoadCaseCategory | undefined {
-  return (LOAD_CASE_CATEGORIES as readonly string[]).includes(raw)
-    ? (raw as LoadCaseCategory)
-    : undefined;
-}
-
 /**
- * Sets a manual value on one module input port (Unit 3.3's generic input
- * renderer). Thin glue only: this file's job is turning `FormData` into a
- * validated `EngineeringValue` in the parameter's canonical unit — the write
- * itself, ownership, and stale propagation are entirely
- * `setParameterValue`'s (Unit 2.5), reused unchanged. The canonical unit and
- * enum/option set are re-derived here from the released parameter registry
- * rather than trusted from the form, since a client-supplied unit or enum id
- * would otherwise let a tampered request store a value the registry does not
- * actually describe.
+ * Saves every editable field's current form value and executes a real,
+ * persisted `CalculationRun` in one action (module workspace save/run
+ * redesign, 2026-08-27) — the single commit point that replaces the old
+ * one-Save-per-field flow (`setModuleInputValueAction`) plus a separate bare
+ * Run click (`runModuleInstanceAction`, both removed by this change).
+ * `submittedPortKeys` enumerates exactly the ports the client rendered an
+ * editable control for (`fields.<portKey>.valueKind`) — a linked, disabled,
+ * or unsupported port never appears there, so nothing extra needs skipping
+ * here. Loops unconditionally (`setParameterValue`'s own no-op guard absorbs
+ * a resubmitted, unchanged value) rather than tracking per-field dirty
+ * state. Two sequential existing calls (`setParameterValue`,
+ * `executeModuleInstance`), not one new cross-field transaction — see the
+ * design doc's "Non-goals".
  */
-export async function setModuleInputValueAction(
+export async function saveModuleInputsAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   const { userId } = await auth.protect();
-
-  const parameterId = fieldValue(formData, "parameterId");
-  const definition = getParameter(parameterId);
-  if (definition === undefined) {
-    return { status: "error", message: `Unknown parameter "${parameterId}".` };
-  }
-
-  const valueKind = fieldValue(formData, "valueKind");
-  let value: EngineeringValue;
-  if (valueKind === "quantity") {
-    if (definition.canonicalUnit === undefined) {
-      return {
-        status: "error",
-        message: "This parameter has no canonical unit.",
-      };
-    }
-    const parsed = parseSubmittedQuantity(
-      fieldValue(formData, "magnitude"),
-      fieldValue(formData, "unit"),
-      definition.canonicalUnit,
-    );
-    if (!parsed.ok) {
-      return { status: "error", message: parsed.message };
-    }
-    value = parsed.value;
-  } else if (valueKind === "vector_quantity") {
-    // Never trust a client-supplied valueKind alone: re-derive the frame
-    // from the registry, the same "never trust a client-supplied unit/enumId"
-    // discipline this action already applies to the quantity/enum branches
-    // (ui-context.md "Server Actions"). A tampered request could otherwise
-    // write an axis-framed vector onto a parameter whose real frame differs
-    // — exactly what axis.v1 says must be rejected, not silently reinterpreted
-    // (context/modules/axis-load-cases/stage-1-spec.md).
-    if (definition.frame !== "axis") {
-      return {
-        status: "error",
-        message: "This parameter does not use the axis vector frame.",
-      };
-    }
-    if (definition.canonicalUnit === undefined) {
-      return {
-        status: "error",
-        message: "This parameter has no canonical unit.",
-      };
-    }
-    const parsed = parseSubmittedVector(
-      [
-        fieldValue(formData, "component-0"),
-        fieldValue(formData, "component-1"),
-        fieldValue(formData, "component-2"),
-      ],
-      fieldValue(formData, "unit"),
-      definition.canonicalUnit,
-      "axis",
-    );
-    if (!parsed.ok) {
-      return { status: "error", message: parsed.message };
-    }
-    value = parsed.value;
-  } else if (valueKind === "enum") {
-    if (definition.enumId === undefined) {
-      return {
-        status: "error",
-        message: "This parameter is not an enumeration.",
-      };
-    }
-    const option = fieldValue(formData, "option");
-    if (!(definition.enumOptions ?? []).includes(option)) {
-      return { status: "error", message: "Select a valid option." };
-    }
-    value = {
-      v: SERIALIZATION_FORMAT_VERSION,
-      kind: "enum",
-      enumId: definition.enumId,
-      value: option,
-    };
-  } else if (valueKind === "boolean") {
-    // Never trust a client-supplied valueKind alone (the same discipline
-    // the vector_quantity branch above already applies): a tampered
-    // request could otherwise submit a boolean value for a parameter the
-    // registry declares as a quantity/vector/enum, bypassing every kind
-    // and unit check those branches perform.
-    if (definition.valueType !== "boolean") {
-      return {
-        status: "error",
-        message: "This parameter is not a boolean.",
-      };
-    }
-    value = {
-      v: SERIALIZATION_FORMAT_VERSION,
-      kind: "boolean",
-      value: fieldValue(formData, "checked") === "true",
-    };
-  } else {
-    return {
-      status: "error",
-      message: `Unsupported value kind "${valueKind}".`,
-    };
-  }
-
-  const loadCase = parseLoadCase(fieldValue(formData, "loadCase"));
-  const result = await setParameterValue(
-    {
-      configurationId: asMachineConfigurationId(
-        fieldValue(formData, "configurationId"),
-      ),
-      moduleInstanceId: asModuleInstanceId(
-        fieldValue(formData, "moduleInstanceId"),
-      ),
-      nodeKind: "module_input",
-      parameterId,
-      ...(loadCase !== undefined ? { loadCase } : {}),
-      source: "manual",
-      value,
-    },
-    asUserId(userId),
+  const ownerId = asUserId(userId);
+  const configurationId = asMachineConfigurationId(
+    fieldValue(formData, "configurationId"),
   );
-  if (!result.ok) {
-    return { status: "error", message: result.error.message };
+  const moduleInstanceId = asModuleInstanceId(
+    fieldValue(formData, "moduleInstanceId"),
+  );
+
+  for (const portKey of submittedPortKeys(formData)) {
+    const parsed = parseSubmittedField(formData, portKey);
+    if (!parsed.ok) {
+      return { status: "error", message: parsed.message };
+    }
+    const result = await setParameterValue(
+      {
+        configurationId,
+        moduleInstanceId,
+        nodeKind: "module_input",
+        parameterId: parsed.parameterId,
+        ...(parsed.loadCase !== undefined ? { loadCase: parsed.loadCase } : {}),
+        source: "manual",
+        value: parsed.value,
+      },
+      ownerId,
+    );
+    if (!result.ok) {
+      return { status: "error", message: result.error.message };
+    }
+  }
+
+  const executed = await executeModuleInstance({ moduleInstanceId, ownerId });
+  if (!executed.ok) {
+    return { status: "error", message: executed.error.message };
   }
   revalidatePath("/workspace");
   return { status: "success" };
 }
 
 /**
- * Runs a module instance (Unit 3.5's Result pane "Run" action). Thin glue
- * only — `executeModuleInstance` (Unit 2.4) does the actual authorization,
- * input resolution, compute, and persistence; this just turns its typed
- * result into the `ActionState` shape `useActionState` renders. Its
- * `stale_upstream` error surfaces exactly the message the service already
- * composed (which upstream module needs re-running), not a generic one.
+ * Previews a module instance's computation from its currently-resolved
+ * inputs, with the submitted form's field overrides applied on top (module
+ * workspace save/run redesign, 2026-08-27) — Run's Server Action. Writes
+ * nothing; thin glue over `previewModuleComputation`, the same pattern every
+ * other action in this file follows over its own application service.
  */
-export async function runModuleInstanceAction(
-  _prevState: ActionState,
+export async function previewModuleComputationAction(
+  _prevState: ModulePreviewActionState,
   formData: FormData,
-): Promise<ActionState> {
+): Promise<ModulePreviewActionState> {
   const { userId } = await auth.protect();
-  const result = await executeModuleInstance({
-    moduleInstanceId: asModuleInstanceId(
-      fieldValue(formData, "moduleInstanceId"),
-    ),
-    ownerId: asUserId(userId),
+  const ownerId = asUserId(userId);
+  const moduleInstanceId = asModuleInstanceId(
+    fieldValue(formData, "moduleInstanceId"),
+  );
+
+  const overrides: Record<string, EngineeringValue> = {};
+  for (const portKey of submittedPortKeys(formData)) {
+    const parsed = parseSubmittedField(formData, portKey);
+    if (!parsed.ok) {
+      return { status: "error", message: parsed.message };
+    }
+    overrides[portKey] = parsed.value;
+  }
+
+  const result = await previewModuleComputation({
+    moduleInstanceId,
+    ownerId,
+    overrides,
   });
   if (!result.ok) {
     return { status: "error", message: result.error.message };
   }
-  revalidatePath("/workspace");
-  return { status: "success" };
+  return { status: "success", preview: result.preview };
 }
 
 /**
