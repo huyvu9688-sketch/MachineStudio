@@ -29,7 +29,7 @@ export const validation: ValidationRecord = {
   independentBenchmark:
     "Not yet performed -- Stage 3 draft. The theoretical-force formula is reused/reproduced unchanged from pneumatic-cylinder-sizing@0.1.0, which already has a completed independent-benchmark substitute (Norgren M/1000, via pneumatic-cylinder@0.1.0); this is expected to be cited by reference at Stage 4, not re-run, since the formula bodies are unchanged. The new load-mass-vs-overhang interpolation has no independent source of any kind -- Stage 4 will need to state this as a disclosed 0.1.0 limitation, not resolve it.",
   reviewer: "Not yet performed -- Stage 4 has not been completed.",
-  reviewDate: "",
+  reviewDate: "not yet reviewed",
   supportedUseLimits: [
     "Computes a required specification for catalog matching; does not check one already-selected cylinder.",
     "No load case (normal/peak/etc.) semantics; every input is a single engineer-supplied value per run.",
