@@ -150,5 +150,9 @@ export const ports: ModulePorts = {
       key: "cushion_type_out",
       parameterId: asParameterId("pneumatic.cushion_type"),
     },
+    {
+      key: "load_mass_out",
+      parameterId: asParameterId("motion.axis.total_moving_mass"),
+    },
   ],
 };
