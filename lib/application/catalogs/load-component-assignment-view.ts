@@ -63,6 +63,10 @@ import {
   evaluateGuidedCylinderCandidates,
   type GuidedCylinderMatchCandidate,
 } from "./guided-cylinder-matching";
+import {
+  evaluateDualRodCylinderCandidates,
+  type DualRodCylinderMatchCandidate,
+} from "./dual-rod-cylinder-matching";
 
 /** One candidate manufacturer part, described for the candidate table. */
 export interface CandidatePartView {
@@ -295,14 +299,16 @@ export async function loadComponentAssignmentView(
   }
 
   // An adapter exists and the module has run. For "pneumatic_cylinder"
-  // (Unit 7.2) and "pneumatic_cylinder_guided" (Unit 7.3), the
-  // requiredSpec -> MatchCriterion mapping now has a real implementation
-  // -- see this file's own header for why every other component type
-  // still reports matchingAvailable: false (Milestone 4's own still-open
-  // deferral, not touched by this change).
+  // (Unit 7.2), "pneumatic_cylinder_guided" (Unit 7.3), and
+  // "pneumatic_cylinder_dual_rod" (Unit 7.4), the requiredSpec ->
+  // MatchCriterion mapping now has a real implementation -- see this
+  // file's own header for why every other component type still reports
+  // matchingAvailable: false (Milestone 4's own still-open deferral, not
+  // touched by this change).
   if (
     adapter.componentType !== "pneumatic_cylinder" &&
-    adapter.componentType !== "pneumatic_cylinder_guided"
+    adapter.componentType !== "pneumatic_cylinder_guided" &&
+    adapter.componentType !== "pneumatic_cylinder_dual_rod"
   ) {
     return {
       ...base,
@@ -334,10 +340,15 @@ export async function loadComponentAssignmentView(
           run.snapshot.computation,
           matchCandidates as PneumaticCylinderMatchCandidate[],
         )
-      : evaluateGuidedCylinderCandidates(
-          run.snapshot.computation,
-          matchCandidates as GuidedCylinderMatchCandidate[],
-        );
+      : adapter.componentType === "pneumatic_cylinder_guided"
+        ? evaluateGuidedCylinderCandidates(
+            run.snapshot.computation,
+            matchCandidates as GuidedCylinderMatchCandidate[],
+          )
+        : evaluateDualRodCylinderCandidates(
+            run.snapshot.computation,
+            matchCandidates as DualRodCylinderMatchCandidate[],
+          );
 
   const revisionById = new Map(revisions.map((r) => [r.id, r]));
   const accepted: RankedCandidateView[] = [];

@@ -603,5 +603,183 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       await client.prisma.manufacturer.delete({ where: { id: manufacturer.id } });
     });
+
+    // Disclosed gap (Unit 7.4 / plan task 23 of 27): this test cannot pass
+    // until plan task 25 runs `npm run registry:generate` and commits
+    // lib/modules/registry.generated.ts -- `dual-rod-cylinder-sizing` is
+    // not yet a registered module package, so `executeModuleInstance`
+    // below would return `module_not_found` even with a live database.
+    // Written and typechecked now (task 23), not executed against a live
+    // database in this session -- DATABASE_URL is also unset here, so
+    // `describe.skipIf(!liveDatabaseAvailable)` above skips this whole
+    // block regardless. Expected to pass unmodified once task 25 lands,
+    // the same order-of-operations gap this plan's own task list creates.
+    it("returns real ranked/rejected candidates for a dual-rod-cylinder-sizing module instance with catalog rows", async () => {
+      const user = await projects.upsertUser(`test-user-${randomUUID()}`);
+      createdUserIds.push(user.id);
+      const project = await projects.createProject({
+        ownerId: user.id,
+        name: "Dual rod station",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const config = await projects.createConfiguration({
+        projectId: project.id,
+        name: "Baseline",
+      });
+      const assembly = await projects.createAssembly({
+        configurationId: config.id,
+        name: "Dual rod cylinder",
+      });
+      const mi = await projects.createModuleInstance({
+        assemblyId: assembly.id,
+        configurationId: config.id,
+        modulePackageId: "dual-rod-cylinder-sizing",
+        moduleVersion: "0.1.0",
+        label: "Dual rod cylinder sizing",
+      });
+
+      // Same CXS2M20 reference scenario this module's own Stage 4 reference
+      // example reproduces (lib/modules/dual-rod-cylinder-sizing/0.1.0/
+      // smc-reference-example.ts): horizontal mounting, 0.5 kg load, 0.1
+      // friction coefficient, 0 incline, 0 process force, 0.5 MPa
+      // pressure, 0.7 load factor, 0.3 m/s speed, 8mm required stroke,
+      // 4mm overhang.
+      const inputs: Array<{
+        parameterId: string;
+        value: ReturnType<typeof makeQuantity> | EnumValue;
+      }> = [
+        { parameterId: "motion.axis.incline_angle", value: makeQuantity(0, "rad") },
+        { parameterId: "motion.axis.friction_coefficient", value: makeQuantity(0.1, "ratio") },
+        { parameterId: "motion.axis.total_moving_mass", value: makeQuantity(0.5, "kg") },
+        { parameterId: "dual_rod_sizing.process_force", value: makeQuantity(0, "N") },
+        { parameterId: "pneumatic.operating_pressure", value: makeQuantity(0.5, "MPa") },
+        { parameterId: "pneumatic.load_factor", value: makeQuantity(0.7, "ratio") },
+        { parameterId: "pneumatic.max_piston_speed", value: makeQuantity(0.3, "m/s") },
+        { parameterId: "pneumatic.cushion_type", value: enumValue("pneumatic_cushion_type", "none") },
+        { parameterId: "dual_rod_sizing.required_stroke", value: makeQuantity(8, "mm") },
+        { parameterId: "dual_rod_sizing.overhang_length", value: makeQuantity(4, "mm") },
+        {
+          parameterId: "dual_rod_sizing.mounting_orientation",
+          value: enumValue("dual_rod_mounting_orientation", "horizontal"),
+        },
+      ];
+      for (const input of inputs) {
+        await graph.createParameterValue({
+          configurationId: config.id,
+          moduleInstanceId: mi.id,
+          nodeKind: "module_input",
+          parameterId: input.parameterId,
+          source: "manual",
+          value: input.value,
+        });
+      }
+
+      const executed = await executeModuleInstance({
+        moduleInstanceId: mi.id,
+        ownerId: user.id,
+      });
+      if (!executed.ok) {
+        throw new Error(`fixture run failed: ${executed.error.message}`);
+      }
+
+      // Catalog fixture: a real CXS2M20-like part (accepts on every check --
+      // bore 20mm, rod 10mm, slide bearing, an 8mm required stroke inside a
+      // synthetic 5-100mm stroke range -- the same "real bore/rod, synthetic
+      // stroke range pending the catalog-seed task" fixture
+      // dual-rod-cylinder-matching.test.ts's own accepting smoke test
+      // already uses) and a deliberately undersized bore-6 part (rejects on
+      // the load-mass-vs-overhang-length check -- the same synthetic
+      // candidate that test file's own rejecting smoke test already uses).
+      // Uses the real "pneumatic_cylinder_dual_rod" ComponentType id, the
+      // same idempotent load-or-create pattern the
+      // pneumatic_cylinder/pneumatic_cylinder_guided fixtures above use.
+      const manufacturer = await catalog.createManufacturer({
+        name: `Test SMC ${randomUUID()}`,
+      });
+      const componentTypeId = asComponentTypeId("pneumatic_cylinder_dual_rod");
+      const existingType = await client.prisma.componentType.findUnique({
+        where: { id: componentTypeId },
+      });
+      if (existingType === null) {
+        await catalog.createComponentType({
+          id: componentTypeId,
+          name: "Pneumatic dual-rod cylinder",
+        });
+      }
+      const schemaFields = [
+        { key: "bore_diameter", label: "Bore diameter", valueKind: "quantity" as const, required: true, unit: "mm" },
+        { key: "rod_diameter", label: "Rod diameter", valueKind: "quantity" as const, required: true, unit: "mm" },
+        { key: "stroke_min", label: "Minimum standard stroke", valueKind: "quantity" as const, required: true, unit: "mm" },
+        { key: "stroke_max", label: "Maximum standard stroke", valueKind: "quantity" as const, required: true, unit: "mm" },
+        { key: "bearing_type", label: "Bearing type", valueKind: "enum" as const, required: true, enumId: "dual_rod_bearing_type" },
+      ];
+      const schemaVersionString = "1.0.0";
+      const existingSchemaVersion = await client.prisma.componentSchemaVersion.findUnique({
+        where: {
+          componentTypeId_version: {
+            componentTypeId,
+            version: schemaVersionString,
+          },
+        },
+      });
+      const schemaVersion =
+        existingSchemaVersion !== null
+          ? { id: asComponentSchemaVersionId(existingSchemaVersion.id) }
+          : await catalog.createComponentSchemaVersion({
+              componentTypeId,
+              version: schemaVersionString,
+              fields: schemaFields,
+            });
+
+      const passingRevision = await catalog.createManufacturerPartRevision({
+        manufacturerId: manufacturer.id,
+        componentTypeId,
+        componentSchemaVersionId: schemaVersion.id,
+        partNumber: `CXS2M20-test-${randomUUID()}`,
+        sourceRevision: "test-fixture",
+        attributes: {
+          bore_diameter: makeQuantity(20, "mm"),
+          rod_diameter: makeQuantity(10, "mm"),
+          bearing_type: enumValue("dual_rod_bearing_type", "slide"),
+          stroke_min: makeQuantity(5, "mm"),
+          stroke_max: makeQuantity(100, "mm"),
+        },
+      });
+      const rejectedRevision = await catalog.createManufacturerPartRevision({
+        manufacturerId: manufacturer.id,
+        componentTypeId,
+        componentSchemaVersionId: schemaVersion.id,
+        partNumber: `CXS2M6-test-${randomUUID()}`,
+        sourceRevision: "test-fixture",
+        attributes: {
+          bore_diameter: makeQuantity(6, "mm"),
+          rod_diameter: makeQuantity(3, "mm"),
+          bearing_type: enumValue("dual_rod_bearing_type", "slide"),
+          stroke_min: makeQuantity(1, "mm"),
+          stroke_max: makeQuantity(50, "mm"),
+        },
+      });
+
+      const view = await loadComponentAssignmentView(mi.id, user.id);
+
+      expect(view).not.toBeNull();
+      expect(view?.componentType).toBe("pneumatic_cylinder_dual_rod");
+      expect(view?.matchingAvailable).toBe(true);
+      expect(view?.matchingUnavailableReason).toBeNull();
+      expect(view?.requiredSpec.length).toBeGreaterThan(0);
+
+      const acceptedIds = (view?.accepted ?? []).map((c) => c.part.id);
+      const rejectedIds = (view?.rejected ?? []).map((c) => c.part.id);
+      expect(acceptedIds).toContain(passingRevision.id);
+      expect(rejectedIds).toContain(rejectedRevision.id);
+      expect(
+        (view?.accepted.length ?? 0) + (view?.rejected.length ?? 0),
+      ).toBeGreaterThanOrEqual(2);
+
+      await client.prisma.manufacturerPartRevision.deleteMany({
+        where: { id: { in: [passingRevision.id, rejectedRevision.id] } },
+      });
+      await client.prisma.manufacturer.delete({ where: { id: manufacturer.id } });
+    });
   },
 );
