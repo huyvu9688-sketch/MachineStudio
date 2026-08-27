@@ -332,6 +332,78 @@ the next session with DB access to close, not a claimed pass. What still
 needs the founder's own action: running the seed script against the live
 database (one-time, manual) and reviewing/trimming the seeded catalog
 rows.
+**2026-08-27: `dual-rod-cylinder-sizing@0.1.0` is fully released and
+registered — the fourth Milestone 7 module, and the second of four
+planned new pneumatic actuator families (after guided-cylinder-sizing).**
+Sibling to `pneumatic-cylinder-sizing@0.1.0` (round-body) and
+`guided-cylinder-sizing@0.1.0` (guide plate) — none of the three touched.
+Registry `1.19.0` releases six new `dual_rod_sizing.*` parameters. This
+module has no buckling check at all (a disclosed scope difference, not a
+gap): SMC's own CXS2 catalog gives no buckling formula, and the governing
+structural check is instead a new `resolveAllowableLoadMass` log-log
+interpolation over a 130-curve digitized dataset (44 vertical + 86
+horizontal — one curve per bore x bearing-type combination across SMC's
+own 21 published graphs, not 21 curves total, a real miscount corrected
+during transcription). **A real, consequential formula defect was found
+and fixed mid-build, not merely disclosed:** this module's own Stage 1
+research had concluded CXS2's piston area was NOT doubled versus a plain
+single-piston cylinder (by comparing CXS2's own Theoretical Output table
+only against the older CXSJ catalog's own table, which was itself already
+double-piston — proving nothing against a true single-piston baseline).
+Once SMC's own primary-source catalog text became directly available
+mid-session, the real figures were checked against the naive `pi*D^2/4`
+formula directly: ~2.00x at two independent bore sizes (10mm, 32mm), both
+directions — confirming SMC's own marketing claim ("double piston
+construction provides twice the output force") was true all along, and
+that this project's own earlier analysis had the wrong baseline. Fixed in
+`math.ts`'s `resolvePistonAreas` (now returns the doubled area) before
+release, with the correction propagated to `stage-1-spec.md`,
+`validation.ts`, and every dependent test — `0.1.0` ships with the
+correct formula, not a disclosed-but-unfixed defect. This makes the
+theoretical-force formula area unusually well validated for a first
+release: confirmed directly against SMC's own primary source at two
+independent bore sizes in both directions, not merely cited by reference
+from a sibling module's own benchmark. The load-mass-vs-overhang-length
+interpolation itself has no independent benchmark of any kind (a real,
+disclosed `0.1.0` evidence gap) — verified instead by property tests
+(the geometric-mean value at a curve's own true log-log midpoint, an
+independently-derivable property of log-log interpolation) and
+data-integrity tests over the full seeded dataset. One digitized curve
+(graph 10, bore 6, CXS2L speed band) resolves a genuinely ambiguous
+source-table annotation using the best-evidenced reading available,
+disclosed inline for founder confirmation. `lib/application/catalogs/
+dual-rod-cylinder-matching.ts` is this project's third real
+`CatalogAdapter` wired end to end. Catalog seed data:
+`reference/catalog-seed/smc-cxs2.csv` (12 rows — 6 bores x 2 bearing
+types), via `scripts/seed-dual-rod-cylinder-catalog.mts`; real bore/rod/
+stroke-range dimensions confirmed directly from SMC's own catalog text,
+not inferred from a sibling series as originally planned.
+`lib/application/catalogs/load-component-assignment-view.ts` now
+dispatches across three component types (`pneumatic_cylinder`,
+`pneumatic_cylinder_guided`, `pneumatic_cylinder_dual_rod`). Source-
+immutability hash: `1e98287d8214ba03`. Registered via `npm run
+registry:generate` (`dual-rod-cylinder-sizing@0.1.0`, 29 modules total).
+Sealed package content hash: `51706798739f3b2a`. Full validation record:
+`validation/dual-rod-cylinder-sizing/0.1.0.md`; five new
+`validation/source-index.md` rows (one new source, four reused). Full
+non-DB suite green (2781/2783 tests relevant to this work; the only 2
+failures are in an unrelated, separate, concurrent in-progress work item
+outside this module's own scope), typecheck/lint/build clean. **The
+DB-gated catalog-matching fixture test (`load-component-assignment-view.
+test.ts`) was NOT run this session** — no `DATABASE_URL`/
+`NODE_EXTRA_CA_CERTS` were available; it typechecks and follows
+`guided-cylinder-sizing@0.1.0`'s own verified fixture pattern exactly, a
+disclosed gap for the next session with DB access to close. The
+DB-free application-layer matcher test (`dual-rod-cylinder-matching.
+test.ts`) is fully run and passing. What still needs the founder's own
+action: running the seed script against the live database (one-time,
+manual); reviewing/trimming the seeded 12-row catalog set; and — a real,
+distinct review item from every prior module's own catalog-seed review —
+reviewing the 130-row digitized load-mass-vs-overhang dataset
+(`load-mass-curves.ts`) against the source graph images, since it was
+eye-read from graphs rather than transcribed from a printed table, with
+one row's own band assignment flagged as a disclosed, best-evidenced
+reading pending confirmation.
 
 ---
 
