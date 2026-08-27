@@ -134,6 +134,7 @@ describe("released registry", () => {
       valueType: "quantity",
       canonicalUnit: "ratio",
       range: { min: 1, unit: "ratio" },
+      defaultPolicy: { kind: "required" },
     });
     expect(
       PARAMETER_REGISTRY.get("pneumatic_guided_mgp_sizing.transfer_speed"),

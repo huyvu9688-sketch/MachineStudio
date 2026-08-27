@@ -70,6 +70,15 @@ describe("unit registry", () => {
     }
   });
 
+  it("defines m/min as a speed-compatible display unit", () => {
+    const metersPerMinute = getUnit("m/min");
+    const metersPerSecond = getUnit("m/s");
+
+    expect(dimensionsEqual(metersPerMinute.dimension, Dimensions.speed)).toBe(
+      true,
+    );
+    expect(metersPerMinute.factor).toBe(metersPerSecond.factor / 60);
+  });
   it("throws UnknownUnitError for an unregistered symbol", () => {
     expect(() => getUnit("furlong")).toThrow(UnknownUnitError);
     expect(hasUnit("furlong")).toBe(false);
