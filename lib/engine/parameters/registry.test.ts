@@ -120,6 +120,7 @@ describe("released registry", () => {
     ).toMatchObject({
       valueType: "enum",
       enumOptions: ["vertical_lifter", "horizontal_pusher", "stopper"],
+      defaultPolicy: { kind: "required" },
     });
     expect(
       PARAMETER_REGISTRY.get("pneumatic_guided_mgp_sizing.eccentric_distance"),
@@ -127,6 +128,7 @@ describe("released registry", () => {
       valueType: "quantity",
       canonicalUnit: "mm",
       range: { min: 0, unit: "mm" },
+      defaultPolicy: { kind: "required" },
     });
     expect(
       PARAMETER_REGISTRY.get("pneumatic_guided_mgp_sizing.load_safety_factor"),
@@ -142,6 +144,8 @@ describe("released registry", () => {
       valueType: "quantity",
       canonicalUnit: "m/s",
       displayUnits: ["m/s", "m/min"],
+      range: { min: 0, unit: "m/s" },
+      defaultPolicy: { kind: "required" },
     });
   });
   it("lists definitions sorted by ID", () => {
