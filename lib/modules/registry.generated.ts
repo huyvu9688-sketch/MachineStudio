@@ -17,6 +17,7 @@ import mod_direct_drive_conveyor_motor_sizing_0_1_0 from "./direct-drive-conveyo
 import mod_direct_drive_conveyor_motor_sizing_0_2_0 from "./direct-drive-conveyor-motor-sizing/0.2.0";
 import mod_direct_drive_conveyor_motor_sizing_0_2_1 from "./direct-drive-conveyor-motor-sizing/0.2.1";
 import mod_drive_train_0_1_0 from "./drive-train/0.1.0";
+import mod_dual_rod_cylinder_sizing_0_1_0 from "./dual-rod-cylinder-sizing/0.1.0";
 import mod_example_relay_0_1_0 from "./example-relay/0.1.0";
 import mod_example_scaffold_0_1_0 from "./example-scaffold/0.1.0";
 import mod_guided_cylinder_sizing_0_1_0 from "./guided-cylinder-sizing/0.1.0";
@@ -48,6 +49,7 @@ export const MODULE_REGISTRY: Readonly<Record<string, ModulePackage>> = {
   "direct-drive-conveyor-motor-sizing@0.2.0": mod_direct_drive_conveyor_motor_sizing_0_2_0,
   "direct-drive-conveyor-motor-sizing@0.2.1": mod_direct_drive_conveyor_motor_sizing_0_2_1,
   "drive-train@0.1.0": mod_drive_train_0_1_0,
+  "dual-rod-cylinder-sizing@0.1.0": mod_dual_rod_cylinder_sizing_0_1_0,
   "example-relay@0.1.0": mod_example_relay_0_1_0,
   "example-scaffold@0.1.0": mod_example_scaffold_0_1_0,
   "guided-cylinder-sizing@0.1.0": mod_guided_cylinder_sizing_0_1_0,
