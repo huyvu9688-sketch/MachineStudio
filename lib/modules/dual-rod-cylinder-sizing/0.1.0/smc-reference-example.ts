@@ -6,31 +6,18 @@
 // (graph 14 in the digitized dataset: plateau 1.0 kg @ L<=4mm, 0.07 kg @
 // L=100mm).
 //
-// Rod diameter (10mm) is a DISCLOSED INFERENCE, not a directly-confirmed
-// CXS2 catalog value: this session had no live access to re-fetch
-// ES20-275-CXS2.pdf's own dimension table, and no CXS2-specific bore-20
-// rod diameter is recorded anywhere in this repo. An attempt to back-solve
-// it from this module's own two already-recorded CXS2 area figures (bore
-// 10: OUT 157mm^2/IN 100mm^2; bore 32: OUT 1608mm^2/IN 1206mm^2, both in
-// context/modules/dual-rod-cylinder-sizing/stage-1-spec.md) did not
-// produce a diameter consistent with the nominal bore label via the
-// simple area=pi*D^2/4 formula, so that path was abandoned rather than
-// forcing an unreliable derivation. 10mm instead reuses SMC's own MGQ/MGP
-// guided-cylinder series' bore-20 rod diameter (reference/catalog-seed/
-// smc-mgq-mgp.csv), on the argument that CXS2 -- like MGQ/MGP, unlike the
-// plain round-body CM2/CA2 series (8mm rod at bore 20 per reference/
-// catalog-seed/smc-cm2-ca2.csv, the ISO 6431 convention) -- has "one
-// force-producing rod plus one parallel guide rod for anti-rotation"
-// (docs/superpowers/specs/2026-08-26-dual-rod-cylinder-sizing-design.md),
-// mechanically the same guided-cylinder class as MGQ/MGP. This is a
-// disclosed engineering judgment call pending founder confirmation
-// against the real CXS2 catalog, not a sourced value -- the same
-// "inferred, not directly confirmed" treatment pneumatic-cylinder-
-// sizing@0.1.0's own CA2 bore-40 rod diameter already received. The
-// reference example's own checked assertions do not depend on this value
-// being exactly right: theoretical force only needs to clear a tiny
-// 0.49 N requirement by a wide margin, true for any physically plausible
-// rod diameter at this bore.
+// Rod diameter (10mm) was originally a disclosed inference (this module's
+// own MGQ/MGP-convention argument, since this session had no live access
+// to re-fetch ES20-275-CXS2.pdf's own dimension table at the time). It is
+// now directly confirmed: `reference/source-material/dual-rod-cylinder/
+// CXS2.md`'s own "Theoretical Output" table lists "CXS2m20 / 10" under
+// "Rod size [mm]" explicitly. This table also confirmed a separate,
+// larger correction -- CXS2's piston area is genuinely doubled (a real
+// dual-piston mechanism, not the single-piston formula this module
+// originally assumed; see stage-1-spec.md "CORRECTION (2026-08-27)" and
+// math.ts's own resolvePistonAreas) -- which `resolveTheoreticalForce`
+// below picks up automatically via resolvePistonAreas's own corrected
+// area, with no change needed to this file's own scenario values.
 
 import { executeModule, makeQuantity } from "@/lib/engine";
 import { dualRodCylinderSizingModule } from "./index";

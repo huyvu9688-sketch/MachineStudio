@@ -71,19 +71,54 @@ describe("resolveRequiredForce", () => {
 });
 
 describe("resolvePistonAreas", () => {
-  it("computes A1 = pi*D^2/4 and A2 = pi*(D^2-d^2)/4", () => {
+  it("computes A1 = 2*pi*D^2/4 and A2 = 2*pi*(D^2-d^2)/4 (dual-piston mechanism)", () => {
     const { extendAreaMm2, retractAreaMm2 } = resolvePistonAreas({
       boreDiameterMm: 20,
       rodDiameterMm: 10,
     });
-    expect(extendAreaMm2).toBeCloseTo((Math.PI * 20 ** 2) / 4, 6);
-    expect(retractAreaMm2).toBeCloseTo((Math.PI * (400 - 100)) / 4, 6);
+    expect(extendAreaMm2).toBeCloseTo(2 * ((Math.PI * 20 ** 2) / 4), 6);
+    expect(retractAreaMm2).toBeCloseTo(2 * ((Math.PI * (400 - 100)) / 4), 6);
   });
 
   it("rejects a rod diameter not less than the bore diameter", () => {
     expect(() =>
       resolvePistonAreas({ boreDiameterMm: 10, rodDiameterMm: 10 }),
     ).toThrow(DualRodCylinderSizingInputError);
+  });
+
+  /** Asserts `actual` is within `toleranceFraction` (relative) of `catalogValue` -- the printed catalog figure is itself rounded to 3 significant figures, so an exact-decimal-place comparison is the wrong tool here. */
+  function expectWithinCatalogRounding(
+    actual: number,
+    catalogValue: number,
+    toleranceFraction = 0.01,
+  ): void {
+    expect(Math.abs(actual - catalogValue) / catalogValue).toBeLessThan(toleranceFraction);
+  }
+
+  it("matches SMC's own published CXS2 Theoretical Output areas at bore 10 (rod 6mm) to within catalog rounding", () => {
+    // reference/source-material/dual-rod-cylinder/CXS2.md: CXS2m10, rod 6mm,
+    // OUT 157mm^2, IN 100mm^2 -- both exactly 2x the naive single-piston
+    // pi*D^2/4 (78.54mm^2) / pi*(D^2-d^2)/4 (50.27mm^2) figures.
+    const { extendAreaMm2, retractAreaMm2 } = resolvePistonAreas({
+      boreDiameterMm: 10,
+      rodDiameterMm: 6,
+    });
+    expectWithinCatalogRounding(extendAreaMm2, 157);
+    expectWithinCatalogRounding(retractAreaMm2, 100);
+  });
+
+  it("matches SMC's own published CXS2 Theoretical Output areas at bore 32 (rod 16mm) to within catalog rounding", () => {
+    // reference/source-material/dual-rod-cylinder/CXS2.md: CXS2m32, rod
+    // 16mm, OUT 1608mm^2, IN 1206mm^2 -- both exactly 2x the naive
+    // single-piston pi*D^2/4 (804.25mm^2) / pi*(D^2-d^2)/4 (603.19mm^2)
+    // figures. A second, independent bore size confirming the same 2x
+    // pattern already confirmed at bore 10 -- not a coincidence.
+    const { extendAreaMm2, retractAreaMm2 } = resolvePistonAreas({
+      boreDiameterMm: 32,
+      rodDiameterMm: 16,
+    });
+    expectWithinCatalogRounding(extendAreaMm2, 1608);
+    expectWithinCatalogRounding(retractAreaMm2, 1206);
   });
 });
 

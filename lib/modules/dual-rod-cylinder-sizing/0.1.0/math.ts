@@ -2,15 +2,18 @@
  * Pure SI/mm-number kernel for the dual-rod-cylinder-sizing module
  * (Unit 7.4). Reproduces (independently, not imported -- ADR-0011's reuse
  * policy) pneumatic-cylinder-sizing@0.1.0's own resolveRequiredForce,
- * resolvePistonAreas, resolveTheoreticalForce, and
- * resolveCushionKineticEnergy unchanged, and adds a new
- * resolveAllowableLoadMass for the load-mass-vs-overhang-length structural
- * check unique to this twin-guide-rod mechanism. Unlike every other
- * pneumatic sizing module in this project, there is NO buckling section
- * here -- SMC's own CXS2 catalog gives no buckling formula, and this
- * mechanism's own governing structural check is the load-mass-vs-overhang
- * lookup instead (context/modules/dual-rod-cylinder-sizing/
- * stage-1-spec.md "No buckling check for this family").
+ * resolveTheoreticalForce, and resolveCushionKineticEnergy unchanged;
+ * resolvePistonAreas adapts that same formula shape with a doubled area
+ * (see its own doc comment) since CXS2 is a confirmed genuine dual-piston
+ * mechanism, not a plain single-piston cylinder like the round-body/
+ * guided sibling modules. Adds a new resolveAllowableLoadMass for the
+ * load-mass-vs-overhang-length structural check unique to this
+ * twin-guide-rod mechanism. Unlike every other pneumatic sizing module in
+ * this project, there is NO buckling section here -- SMC's own CXS2
+ * catalog gives no buckling formula, and this mechanism's own governing
+ * structural check is the load-mass-vs-overhang lookup instead
+ * (context/modules/dual-rod-cylinder-sizing/stage-1-spec.md "No buckling
+ * check for this family").
  *
  * Same mm/MPa/N unit-system choice as pneumatic-cylinder-sizing@0.1.0's
  * own math.ts, for the same reason: 1 MPa = 1 N/mm^2 exactly, so
@@ -119,11 +122,22 @@ export interface PistonAreasResult {
 }
 
 /**
- * `A1 = pi*D^2/4`, `A2 = pi*(D^2-d^2)/4`. Single bore-dependent area pair,
- * not doubled -- confirmed directly against CXS2's own "Theoretical
- * Output" table, which is numerically identical to the older CXSJ
- * catalog's own table (stage-1-spec.md "A marketing claim... found not to
- * hold").
+ * `A1 = 2 * pi*D^2/4`, `A2 = 2 * pi*(D^2-d^2)/4` -- CXS2 is a genuine
+ * dual-piston mechanism (SMC's own marketing text: "Double piston
+ * construction provides twice the output force"), confirmed directly
+ * against CXS2's own "Theoretical Output" table
+ * (`reference/source-material/dual-rod-cylinder/CXS2.md`): the printed
+ * OUT/IN piston-area figures at every bore size are ~2.00x the naive
+ * single-piston `pi*D^2/4`/`pi*(D^2-d^2)/4` values (e.g. CXS2m10, rod
+ * 6mm: OUT 157mm^2 vs. naive 78.54mm^2; IN 100mm^2 vs. naive 50.27mm^2 --
+ * both exactly 2x. CXS2m32, rod 16mm: OUT 1608mm^2 vs. naive 804.25mm^2;
+ * IN 1206mm^2 vs. naive 603.19mm^2 -- both exactly 2x). This corrects an
+ * earlier Stage 1 conclusion (stage-1-spec.md "A marketing claim...
+ * found not to hold") that compared CXS2's table only against the older
+ * CXSJ catalog's own table (also already double-piston) and wrongly
+ * inferred "not doubled" from the two tables matching each other --
+ * neither table was ever checked against a plain single-piston baseline
+ * until this correction.
  */
 export function resolvePistonAreas(input: PistonAreasInput): PistonAreasResult {
   assertPositive("boreDiameterMm", input.boreDiameterMm);
@@ -132,9 +146,12 @@ export function resolvePistonAreas(input: PistonAreasInput): PistonAreasResult {
     fail("rodDiameterMm must be less than boreDiameterMm.");
   }
 
-  const extendAreaMm2 = (Math.PI * input.boreDiameterMm ** 2) / 4;
+  const DUAL_PISTON_FACTOR = 2;
+  const extendAreaMm2 =
+    DUAL_PISTON_FACTOR * ((Math.PI * input.boreDiameterMm ** 2) / 4);
   const retractAreaMm2 =
-    (Math.PI * (input.boreDiameterMm ** 2 - input.rodDiameterMm ** 2)) / 4;
+    DUAL_PISTON_FACTOR *
+    ((Math.PI * (input.boreDiameterMm ** 2 - input.rodDiameterMm ** 2)) / 4);
 
   return { extendAreaMm2, retractAreaMm2 };
 }
@@ -151,7 +168,7 @@ export interface TheoreticalForceResult {
   readonly forceN: number;
 }
 
-/** `F = eta * A * P` (SMC's own formula shape, confirmed against CXS2's own Theoretical Output table). */
+/** `F = eta * A * P` (SMC's own formula shape, confirmed against CXS2's own Theoretical Output table). `A` is the dual-piston area `resolvePistonAreas` already returns -- this function itself is unchanged, direction-agnostic, and correct once the area passed in reflects the real doubled mechanism. */
 export function resolveTheoreticalForce(
   input: TheoreticalForceInput,
 ): TheoreticalForceResult {

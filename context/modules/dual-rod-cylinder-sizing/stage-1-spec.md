@@ -100,21 +100,44 @@ below) — this session's own PDF-to-image tooling (`pdftoppm`, Ghostscript,
 ImageMagick, Python) was unavailable in this environment, and no data was
 fabricated to fill that gap.
 
-**A marketing claim checked against SMC's own engineering table and found
-not to hold:** SMC's own product pages describe CXS2 as "double piston
-construction" providing "twice the output force" versus the older
-CXSJ/CXS. Reading CXS2's own "Theoretical Output" table
+**CORRECTION (2026-08-27): the marketing claim below was checked again
+against a directly available primary-source extract
+(`reference/source-material/dual-rod-cylinder/CXS2.md`) and found to
+hold — the original conclusion in this section was wrong.** SMC's own
+CXS2 catalog literally states "Double piston construction provides twice
+the output force" (`CXS2.md` line 72-73), and its own "Theoretical
+Output" table confirms this directly: every printed OUT/IN piston-area
+figure is ~2.00x the naive single-piston `pi*D^2/4`/`pi*(D^2-d^2)/4`
+value for its own bore/rod pair, at every bore size checked (CXS2m10, rod
+6mm: OUT 157mm² vs. naive 78.54mm² = 2.00x; IN 100mm² vs. naive 50.27mm²
+= 1.99x. CXS2m32, rod 16mm: OUT 1608mm² vs. naive 804.25mm² = 2.00x; IN
+1206mm² vs. naive 603.19mm² = 2.00x). The original comparison below
+(CXS2's table vs. the older CXSJ catalog's own table) was a real, correct
+observation — the two tables genuinely are numerically identical — but
+the inference drawn from it was wrong: CXSJ was itself already a
+double-piston mechanism (the whole CXSJ/CXS/CXS2 dual-rod family, not
+just CXS2), so two tables matching each other proves nothing about
+whether either matches a plain single-piston baseline. Neither table was
+ever checked against that baseline until this correction. `math.ts`'s own
+`resolvePistonAreas` now returns the correctly-doubled area (fixed
+2026-08-27, after this module's own Stage 3/4 work was already underway
+-- see `math.test.ts`'s own CXS2m10/CXS2m32 reproduction tests for the
+same independent verification recorded here).
+
+**Original (superseded) text, kept for the historical record of what was
+checked and how the error happened:** "SMC's own product pages describe
+CXS2 as 'double piston construction' providing 'twice the output force'
+versus the older CXSJ/CXS. Reading CXS2's own 'Theoretical Output' table
 (`ES20-275-CXS2.pdf` p.12) against the older CXSJ catalog's own table
 (`CXS.pdf` p.738) directly: the two tables are numerically identical —
 same bore/rod/area/force figures for every bore size (e.g. CXS2m10: OUT
 157mm²/IN 100mm², matching CXSJ10's own OUT 157mm²/IN 100mm² exactly).
 The formula is the same single-piston `F = P × A` shape this project's
 other two pneumatic sizing modules already use, with one bore-dependent
-area pair, not a doubled area. CXS2's real, confirmed improvements are
-allowable kinetic energy (7x) and max piston speed (2.6x) versus the
-CXSJ/CXS series it replaces, not force. Recorded here as a corrected
-assumption per this project's own "check the primary source, not the
-summary" policy.
+area pair, not a doubled area." CXS2's real, additionally confirmed
+improvements over CXSJ/CXS are allowable kinetic energy (7x) and max
+piston speed (2.6x) — those two figures are unaffected by this
+correction.
 
 ## Load-bearing check: load mass vs. overhang length
 
