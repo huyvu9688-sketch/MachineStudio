@@ -12,6 +12,15 @@ export {
 } from "./calculations/execute-module-instance";
 
 export {
+  previewModuleComputation,
+  type PreviewModuleComputationInput,
+  type PreviewModuleComputationError,
+  type PreviewModuleComputationErrorCode,
+  type PreviewModuleComputationResult,
+  type ModulePreviewView,
+} from "./calculations/preview-module-computation";
+
+export {
   loadModuleWorkspaceView,
   type ModuleWorkspaceView,
   type ModuleWorkspaceModuleSummary,
