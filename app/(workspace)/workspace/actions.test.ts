@@ -1,4 +1,4 @@
-// Coverage for setModuleInputValueAction's "vector_quantity" branch (the
+// Coverage for saveModuleInputsAction's "vector_quantity" branch (the
 // axis-frame vector-quantity input editor's save path — Task 3 of
 // docs/design/vector-quantity-input-editor.md
 // "Save path"). This is the one file in app/(workspace)/workspace that had
@@ -7,26 +7,27 @@
 // whole "./actions" module out, and parseSubmittedVector's own tests
 // (parse-submitted-vector.test.ts) only ever receive the literal "axis"
 // this action passes in — they have no way to independently exercise a
-// *mismatched* registry frame. So the action's own
+// *mismatched* registry frame. So the shared parser's own
 // `definition.frame !== "axis"` guard — the actual defense against a
 // tampered `valueKind=vector_quantity` submission landing a mis-framed
 // vector on a parameter whose real frame differs (see the guard's comment
-// in actions.ts) — was otherwise backed by nothing but that comment.
+// in parse-submitted-field.ts) — was otherwise backed by nothing but that
+// comment.
 //
-// This exercises the real setModuleInputValueAction end to end against the
+// This exercises the real saveModuleInputsAction end to end against the
 // real released parameter registry (lib/engine/parameters/definitions.ts),
-// mocking only its three real dependencies: Clerk's auth.protect(),
-// next/cache's revalidatePath (a no-op outside a real request scope — it
-// throws "Invariant: static generation store missing" otherwise), and the
-// two lib/db and lib/application seams setParameterValue is the only
-// exercised export of. Every "as*" id-branding helper mocked from "@/lib/db"
-// reproduces its real identity-at-runtime behavior
-// (lib/db/repositories/types.ts) rather than pulling in the real module,
-// which loads the Prisma client (lib/db/client.ts) and requires a live
-// DATABASE_URL — exactly what every other application-layer test in this
-// repo avoids via `describe.skipIf(!liveDatabaseAvailable)` (see
-// tests/live-database.ts). setParameterValue's own write behavior is
-// already fully covered live in
+// mocking only its real dependencies: Clerk's auth.protect(), next/cache's
+// revalidatePath (a no-op outside a real request scope — it throws
+// "Invariant: static generation store missing" otherwise), and the
+// lib/db and lib/application seams setParameterValue and
+// executeModuleInstance are the only exercised exports of. Every "as*"
+// id-branding helper mocked from "@/lib/db" reproduces its real
+// identity-at-runtime behavior (lib/db/repositories/types.ts) rather than
+// pulling in the real module, which loads the Prisma client
+// (lib/db/client.ts) and requires a live DATABASE_URL — exactly what every
+// other application-layer test in this repo avoids via
+// `describe.skipIf(!liveDatabaseAvailable)` (see tests/live-database.ts).
+// setParameterValue's own write behavior is already fully covered live in
 // lib/application/parameters/stale-propagation.test.ts; this file tests
 // only the glue in front of it.
 
@@ -35,12 +36,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockAuthProtect,
   mockSetParameterValue,
+  mockExecuteModuleInstance,
   mockStartWorkflowInstance,
   mockDeleteAccount,
   mockRedirect,
 } = vi.hoisted(() => ({
   mockAuthProtect: vi.fn(),
   mockSetParameterValue: vi.fn(),
+  mockExecuteModuleInstance: vi.fn(),
   mockStartWorkflowInstance: vi.fn(),
   mockDeleteAccount: vi.fn(),
   mockRedirect: vi.fn(),
@@ -80,20 +83,21 @@ vi.mock("@/lib/db", () => ({
   asWorkflowInstanceId: (id: string) => id,
 }));
 
-// setModuleInputValueAction, startWorkflowInstanceAction, and
+// saveModuleInputsAction, startWorkflowInstanceAction, and
 // deleteAccountAction are the only actions under test in this file;
-// setParameterValue, startWorkflowInstance, and deleteAccount are the only
-// "@/lib/application" exports they call — every other named export
-// actions.ts imports from that module backs a different action not
-// exercised by this file.
+// setParameterValue, executeModuleInstance, startWorkflowInstance, and
+// deleteAccount are the only "@/lib/application" exports they call — every
+// other named export actions.ts imports from that module backs a different
+// action not exercised by this file.
 vi.mock("@/lib/application", () => ({
   setParameterValue: mockSetParameterValue,
+  executeModuleInstance: mockExecuteModuleInstance,
   startWorkflowInstance: mockStartWorkflowInstance,
   deleteAccount: mockDeleteAccount,
 }));
 
 import {
-  setModuleInputValueAction,
+  saveModuleInputsAction,
   startWorkflowInstanceAction,
   deleteAccountAction,
 } from "./actions";
@@ -108,7 +112,7 @@ function buildFormData(fields: Record<string, string>): FormData {
   return data;
 }
 
-describe("setModuleInputValueAction: vector_quantity branch", () => {
+describe("saveModuleInputsAction: vector_quantity branch", () => {
   beforeEach(() => {
     mockAuthProtect.mockReset();
     mockAuthProtect.mockResolvedValue({ userId: "test-user-1" });
@@ -118,6 +122,11 @@ describe("setModuleInputValueAction: vector_quantity branch", () => {
       value: {},
       staleModuleInstanceIds: [],
     });
+    mockExecuteModuleInstance.mockReset();
+    mockExecuteModuleInstance.mockResolvedValue({
+      ok: true,
+      run: { id: "run-1", status: "pass" },
+    });
   });
 
   it("rejects a vector_quantity submission for a parameter whose real registry frame is not axis, without writing", async () => {
@@ -125,19 +134,19 @@ describe("setModuleInputValueAction: vector_quantity branch", () => {
     // no declared `frame` (defaults to "none" per
     // lib/engine/parameters/define.ts's `frame: spec.frame ?? "none"`). A
     // tampered request could still submit valueKind=vector_quantity against
-    // it; the action must re-derive the registry's real frame rather than
-    // trust the client's claim.
-    const result = await setModuleInputValueAction(
+    // it; the shared parser must re-derive the registry's real frame rather
+    // than trust the client's claim.
+    const result = await saveModuleInputsAction(
       IDLE_ACTION_STATE,
       buildFormData({
-        parameterId: "motion.axis.payload_mass",
-        valueKind: "vector_quantity",
         configurationId: "cfg-1",
         moduleInstanceId: "mod-1",
-        "component-0": "1",
-        "component-1": "2",
-        "component-2": "3",
-        unit: "kg",
+        "fields.payload_mass.parameterId": "motion.axis.payload_mass",
+        "fields.payload_mass.valueKind": "vector_quantity",
+        "fields.payload_mass.component-0": "1",
+        "fields.payload_mass.component-1": "2",
+        "fields.payload_mass.component-2": "3",
+        "fields.payload_mass.unit": "kg",
       }),
     );
 
@@ -146,29 +155,34 @@ describe("setModuleInputValueAction: vector_quantity branch", () => {
       message: "This parameter does not use the axis vector frame.",
     });
     expect(mockSetParameterValue).not.toHaveBeenCalled();
+    expect(mockExecuteModuleInstance).not.toHaveBeenCalled();
   });
 
-  it("parses a valid vector_quantity submission for a real frame:axis parameter and writes the converted VectorQuantity", async () => {
+  it("parses a valid vector_quantity submission, writes it, and executes the module", async () => {
     // motion.axis.center_of_mass_offset is a real released vector_quantity
     // parameter with frame: "axis" and canonicalUnit "m"
     // (lib/engine/parameters/definitions.ts), and carries no loadCases
     // restriction, so no "loadCase" form field is needed.
-    const result = await setModuleInputValueAction(
+    const result = await saveModuleInputsAction(
       IDLE_ACTION_STATE,
       buildFormData({
-        parameterId: "motion.axis.center_of_mass_offset",
-        valueKind: "vector_quantity",
         configurationId: "cfg-1",
         moduleInstanceId: "mod-1",
-        "component-0": "1",
-        "component-1": "2",
-        "component-2": "3",
-        unit: "m",
+        "fields.cg_offset.parameterId": "motion.axis.center_of_mass_offset",
+        "fields.cg_offset.valueKind": "vector_quantity",
+        "fields.cg_offset.component-0": "1",
+        "fields.cg_offset.component-1": "2",
+        "fields.cg_offset.component-2": "3",
+        "fields.cg_offset.unit": "m",
       }),
     );
 
     expect(result).toEqual({ status: "success" });
     expect(mockSetParameterValue).toHaveBeenCalledTimes(1);
+    expect(mockExecuteModuleInstance).toHaveBeenCalledWith({
+      moduleInstanceId: "mod-1",
+      ownerId: "test-user-1",
+    });
 
     const [input, userId] = mockSetParameterValue.mock.calls[0] as [
       Record<string, unknown>,
@@ -190,6 +204,85 @@ describe("setModuleInputValueAction: vector_quantity branch", () => {
       frame: "axis",
       displayUnit: "m",
     });
+  });
+
+  it("stops and reports the error without executing when a field write fails", async () => {
+    mockSetParameterValue.mockResolvedValueOnce({
+      ok: false,
+      error: { code: "invalid_input", message: "Something went wrong." },
+    });
+
+    const result = await saveModuleInputsAction(
+      IDLE_ACTION_STATE,
+      buildFormData({
+        configurationId: "cfg-1",
+        moduleInstanceId: "mod-1",
+        "fields.cg_offset.parameterId": "motion.axis.center_of_mass_offset",
+        "fields.cg_offset.valueKind": "vector_quantity",
+        "fields.cg_offset.component-0": "1",
+        "fields.cg_offset.component-1": "2",
+        "fields.cg_offset.component-2": "3",
+        "fields.cg_offset.unit": "m",
+      }),
+    );
+
+    expect(result).toEqual({
+      status: "error",
+      message: "Something went wrong.",
+    });
+    expect(mockExecuteModuleInstance).not.toHaveBeenCalled();
+  });
+
+  it("saves every submitted field before executing, short-circuiting on the second field's failing write", async () => {
+    // Two fields in one submission -- the loop's actual reason for existing
+    // (saving several fields in one Save click, not just one).
+    mockSetParameterValue.mockResolvedValueOnce({
+      ok: true,
+      value: {},
+      staleModuleInstanceIds: [],
+    });
+    mockSetParameterValue.mockResolvedValueOnce({
+      ok: false,
+      error: { code: "invalid_input", message: "Second field rejected." },
+    });
+
+    const result = await saveModuleInputsAction(
+      IDLE_ACTION_STATE,
+      buildFormData({
+        configurationId: "cfg-1",
+        moduleInstanceId: "mod-1",
+        "fields.cg_offset.parameterId": "motion.axis.center_of_mass_offset",
+        "fields.cg_offset.valueKind": "vector_quantity",
+        "fields.cg_offset.component-0": "1",
+        "fields.cg_offset.component-1": "2",
+        "fields.cg_offset.component-2": "3",
+        "fields.cg_offset.unit": "m",
+        "fields.payload_mass.parameterId": "motion.axis.payload_mass",
+        "fields.payload_mass.valueKind": "quantity",
+        "fields.payload_mass.magnitude": "12",
+        "fields.payload_mass.unit": "kg",
+      }),
+    );
+
+    expect(result).toEqual({
+      status: "error",
+      message: "Second field rejected.",
+    });
+    expect(mockSetParameterValue).toHaveBeenCalledTimes(2);
+    expect(mockExecuteModuleInstance).not.toHaveBeenCalled();
+
+    const firstCallInput = mockSetParameterValue.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
+    const secondCallInput = mockSetParameterValue.mock.calls[1][0] as Record<
+      string,
+      unknown
+    >;
+    expect(firstCallInput.parameterId).toBe(
+      "motion.axis.center_of_mass_offset",
+    );
+    expect(secondCallInput.parameterId).toBe("motion.axis.payload_mass");
   });
 });
 
