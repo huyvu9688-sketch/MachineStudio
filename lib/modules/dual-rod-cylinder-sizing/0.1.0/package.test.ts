@@ -42,7 +42,7 @@ function baselineInput(): RawInput {
   };
 }
 
-const EXPECTED_SOURCE_HASH = "4b57e219e38e4333";
+const EXPECTED_SOURCE_HASH = "1e98287d8214ba03";
 
 describe("dual-rod-cylinder-sizing 0.1.0 module conformance", () => {
   const report = runModuleConformance(dualRodCylinderSizingModule, {
