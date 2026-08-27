@@ -137,7 +137,7 @@ import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.19.0";
+export const PARAMETER_REGISTRY_VERSION = "1.20.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -3877,6 +3877,60 @@ const pneumaticGuidedCylinderSizing: readonly ParameterDefinition[] = [
   }),
 ];
 
+// --- MGP-first guided cylinder sizing (0.2.0 Stage 2) ----------------------
+// See context/modules/guided-cylinder-sizing/0.2.0-stage-2-contract.md.
+// This future, simplified MGP selection workflow is additive: it leaves the
+// released pneumatic_guided_sizing.* contract untouched.
+
+const pneumaticGuidedMgpSizing: readonly ParameterDefinition[] = [
+  defineParameter({
+    id: "pneumatic_guided_mgp_sizing.application_case",
+    displayName: "MGP application case",
+    symbol: "case",
+    definition:
+      "MGP catalogue selection workflow: vertical lifter, horizontal pusher, or stopper. The selected case controls the applicable selection graph and candidate bearing families.",
+    valueType: "enum",
+    enumId: "pneumatic_guided_mgp_application_case",
+    enumOptions: ["vertical_lifter", "horizontal_pusher", "stopper"],
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic_guided_mgp_sizing.eccentric_distance",
+    displayName: "Eccentric distance",
+    symbol: "L",
+    definition:
+      "Distance from the MGP guide plate to the load centre of gravity, as defined by the MGP selection diagrams. Used for vertical lifter and horizontal pusher selection.",
+    valueType: "quantity",
+    canonicalUnit: "mm",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "mm" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic_guided_mgp_sizing.load_safety_factor",
+    displayName: "Guided-load safety factor",
+    symbol: "f_s",
+    definition:
+      "Engineer-selected multiplier applied to moving mass before MGP catalogue graph selection. It is required and never assumed by the module.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "pneumatic_guided_mgp_sizing.transfer_speed",
+    displayName: "Stopper transfer speed",
+    symbol: "v_t",
+    definition:
+      "Speed of the transferred object striking the stopper, used for MGP stopper selection.",
+    valueType: "quantity",
+    canonicalUnit: "m/s",
+    displayUnits: ["m/s", "m/min"],
+    range: { min: 0, unit: "m/s" },
+    defaultPolicy: { kind: "required" },
+  }),
+];
 // --- Dual rod cylinder sizing (Unit 7.4 Stage 2) ----------------------------
 // See context/modules/dual-rod-cylinder-sizing/stage-2-contract.md. The
 // second of four planned new pneumatic actuator families (after guided-
@@ -3983,5 +4037,6 @@ export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...pneumaticCylinder,
   ...pneumaticCylinderSizing,
   ...pneumaticGuidedCylinderSizing,
+  ...pneumaticGuidedMgpSizing,
   ...dualRodSizing,
 ];

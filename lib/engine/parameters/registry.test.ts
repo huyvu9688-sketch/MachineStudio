@@ -67,8 +67,8 @@ describe("parameter registry compatibility", () => {
 });
 
 describe("released registry", () => {
-  it("loads every seed definition and is version 1.19.0", () => {
-    expect(PARAMETER_REGISTRY.version).toBe("1.19.0");
+  it("loads every seed definition and is version 1.20.0", () => {
+    expect(PARAMETER_REGISTRY.version).toBe("1.20.0");
     expect(listParameters().length).toBe(PARAMETER_DEFINITIONS.length);
   });
 
@@ -114,6 +114,35 @@ describe("released registry", () => {
     expect(getParameter("does.not.exist")).toBeUndefined();
   });
 
+  it("maps the MGP-first guided cylinder selection inputs", () => {
+    expect(
+      PARAMETER_REGISTRY.get("pneumatic_guided_mgp_sizing.application_case"),
+    ).toMatchObject({
+      valueType: "enum",
+      enumOptions: ["vertical_lifter", "horizontal_pusher", "stopper"],
+    });
+    expect(
+      PARAMETER_REGISTRY.get("pneumatic_guided_mgp_sizing.eccentric_distance"),
+    ).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "mm",
+      range: { min: 0, unit: "mm" },
+    });
+    expect(
+      PARAMETER_REGISTRY.get("pneumatic_guided_mgp_sizing.load_safety_factor"),
+    ).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "ratio",
+      range: { min: 1, unit: "ratio" },
+    });
+    expect(
+      PARAMETER_REGISTRY.get("pneumatic_guided_mgp_sizing.transfer_speed"),
+    ).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "m/s",
+      displayUnits: ["m/s", "m/min"],
+    });
+  });
   it("lists definitions sorted by ID", () => {
     const ids = listParameters().map((d) => d.id);
     const sorted = [...ids].sort();

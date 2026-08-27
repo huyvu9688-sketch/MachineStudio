@@ -31,6 +31,7 @@ const EXPECTED_UNITS = [
   "lbf*ft",
   "J",
   "m/s",
+  "m/min",
   "mm/s",
   "in/s",
   "m/s^2",

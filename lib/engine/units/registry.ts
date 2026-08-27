@@ -123,6 +123,7 @@ const UNIT_LIST: readonly UnitDefinition[] = [
   def("J", Dimensions.torque, 1),
   // Linear speed
   def("m/s", Dimensions.speed, 1, { siCoherent: true }),
+  def("m/min", Dimensions.speed, 1 / 60),
   def("mm/s", Dimensions.speed, 1e-3),
   def("in/s", Dimensions.speed, IN_TO_M),
   // Linear acceleration
