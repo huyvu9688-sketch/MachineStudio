@@ -77,7 +77,7 @@ describe("evaluateMgpGuidedCylinderCandidates", () => {
       computation("vertical_lifter"),
       snapshot("vertical_lifter"),
       [
-        candidate("mgpl-25-30", {
+        candidate("mgpl-100-30", {
           bore: 25,
           rod: 12,
           bearing: "ball_bushing",
@@ -102,7 +102,7 @@ describe("evaluateMgpGuidedCylinderCandidates", () => {
       computation("vertical_lifter"),
       input,
       [
-        candidate("mgpl-25-30", {
+        candidate("mgpl-100-30", {
           bore: 25,
           rod: 12,
           bearing: "ball_bushing",
@@ -178,8 +178,17 @@ describe("evaluateMgpGuidedCylinderCandidates", () => {
           bearing: "ball_bushing",
           stroke: 30,
         }),
+        candidate("mgpl-100-30", {
+          bore: 100,
+          rod: 26,
+          bearing: "ball_bushing",
+          stroke: 30,
+        }),
       ],
     );
+    expect(outcome.accepted.map((entry) => entry.candidate.id)).toEqual([
+      "mgpl-100-30",
+    ]);
     expect(outcome.rejected[0]?.reasons[0]).toContain(
       "speed-corrected factored load 5.10 kg",
     );
