@@ -19,7 +19,6 @@ import { LoadCaseChip } from "./load-case-chip";
 import { formatQuantity } from "@/lib/engine/units";
 import { overallCheckStatus } from "@/lib/engine/trace/checks";
 import type {
-  CalculationTrace,
   CheckResult,
   EngineeringValue,
   TraceNode,
