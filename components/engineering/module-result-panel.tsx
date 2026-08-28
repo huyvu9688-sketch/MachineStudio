@@ -1,8 +1,7 @@
 "use client";
 
-import { useActionState, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AlertTriangle, ChevronRight, Play, Printer } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -12,20 +11,32 @@ import { StatusBadge } from "./status-badge";
 import { EmptyState } from "./empty-state";
 import { formatEngineeringValue } from "./format-engineering-value";
 import { LoadCaseChip } from "./load-case-chip";
-import { runModuleInstanceAction } from "@/app/(workspace)/workspace/actions";
-import { IDLE_ACTION_STATE } from "@/app/(workspace)/workspace/action-state";
 // Deep import, not the `@/lib/engine` barrel: that barrel also re-exports
 // `lib/engine/module-sdk`'s `runModuleConformance` (`conformance.ts`, which
 // has its own `import "server-only"`), which would break this client
 // component's bundle. `lib/engine/units` is its own self-contained,
 // server-only-free public surface.
 import { formatQuantity } from "@/lib/engine/units";
-import type { EngineeringValue, TraceNode } from "@/lib/engine";
-import type { ModuleResultView, SourceReferenceView } from "@/lib/application";
+import type {
+  CalculationTrace,
+  CheckResult,
+  EngineeringValue,
+  TraceNode,
+  ValidityResult,
+  Warning,
+} from "@/lib/engine";
+import type {
+  ModulePreviewView,
+  ModuleResultView,
+  RunOutputView,
+  SourceReferenceView,
+} from "@/lib/application";
 import { cn } from "@/lib/utils";
 
 export interface ModuleResultPanelProps {
   readonly view: ModuleResultView;
+  /** The live, unpersisted preview from a Run click in the sibling `ModuleInputWorkspace` (lifted via `WorkspaceShell`). `null` when there is none showing. */
+  readonly preview: ModulePreviewView | null;
 }
 
 /** Numeric cells use `formatQuantity` (proper significant figures + unit); every other kind falls back to the shared short form. */
@@ -33,35 +44,6 @@ function formatResultValue(value: EngineeringValue): string {
   return value.kind === "quantity"
     ? formatQuantity(value, { useDisplayUnit: true })
     : formatEngineeringValue(value);
-}
-
-function RunButton({
-  moduleInstanceId,
-}: {
-  readonly moduleInstanceId: string;
-}) {
-  const [state, formAction, isPending] = useActionState(
-    runModuleInstanceAction,
-    IDLE_ACTION_STATE,
-  );
-  return (
-    <form action={formAction} className="flex flex-col items-end gap-1">
-      <input type="hidden" name="moduleInstanceId" value={moduleInstanceId} />
-      <Button type="submit" size="sm" disabled={isPending}>
-        <Play aria-hidden="true" className="h-3.5 w-3.5" />
-        {isPending ? "Running…" : "Run"}
-      </Button>
-      {state.status === "error" ? (
-        <p
-          role="alert"
-          className="max-w-xs text-right text-[12px]"
-          style={{ color: "var(--state-error)" }}
-        >
-          {state.message}
-        </p>
-      ) : null}
-    </form>
-  );
 }
 
 /** ui-context.md Status Model "Stale" — shown above every other result, per that section. */
@@ -84,8 +66,12 @@ function StaleBanner({ reason }: { readonly reason: string | null }) {
   );
 }
 
-function OutputSummary({ view }: { readonly view: ModuleResultView }) {
-  if (view.outputs.length === 0) {
+function OutputSummary({
+  outputs,
+}: {
+  readonly outputs: readonly RunOutputView[];
+}) {
+  if (outputs.length === 0) {
     return (
       <p className="text-[13px] text-text-muted">
         This run produced no output values.
@@ -94,7 +80,7 @@ function OutputSummary({ view }: { readonly view: ModuleResultView }) {
   }
   return (
     <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5">
-      {view.outputs.map((output) => (
+      {outputs.map((output) => (
         <div key={output.portKey} className="contents">
           <dt className="flex flex-wrap items-center gap-1.5 text-[13px] text-text-primary">
             {output.label}
@@ -172,8 +158,8 @@ function ComparisonSection({ view }: { readonly view: ModuleResultView }) {
   );
 }
 
-function CheckTable({ view }: { readonly view: ModuleResultView }) {
-  if (view.checks.length === 0) {
+function CheckTable({ checks }: { readonly checks: readonly CheckResult[] }) {
+  if (checks.length === 0) {
     return (
       <p className="text-[13px] text-text-muted">
         This run declares no checks.
@@ -193,7 +179,7 @@ function CheckTable({ view }: { readonly view: ModuleResultView }) {
           </tr>
         </thead>
         <tbody>
-          {view.checks.map((check) => (
+          {checks.map((check) => (
             <tr
               key={check.id}
               className="border-b border-border-default last:border-b-0"
@@ -227,14 +213,18 @@ function CheckTable({ view }: { readonly view: ModuleResultView }) {
   );
 }
 
-function WarningsPanel({ view }: { readonly view: ModuleResultView }) {
-  const outOfEnvelope = view.validity.filter(
-    (v) => v.status !== "within_limits",
-  );
-  if (view.warnings.length === 0 && outOfEnvelope.length === 0) return null;
+function WarningsPanel({
+  warnings,
+  validity,
+}: {
+  readonly warnings: readonly Warning[];
+  readonly validity: readonly ValidityResult[];
+}) {
+  const outOfEnvelope = validity.filter((v) => v.status !== "within_limits");
+  if (warnings.length === 0 && outOfEnvelope.length === 0) return null;
   return (
     <div className="flex flex-col gap-2">
-      {view.warnings.map((warning) => (
+      {warnings.map((warning) => (
         <p
           key={warning.id}
           className="rounded-md border px-2.5 py-1.5 text-[12px]"
@@ -417,25 +407,20 @@ function ResultSection({
 }
 
 /**
- * The generic result and trace renderer (Unit 3.5, `implementation-map.md`:
- * "Output summary", "Check table", "Warning/invalidity panel", "Expandable
- * trace", "Source references", "Previous-run comparison", "Stale banner").
- * Renders entirely from `loadModuleResultView`'s already-described snapshot
- * data — no module compute code is imported here (this unit's exit
- * criterion) — and owns the "Run module" trigger both Unit 3.3 and Unit 3.4
- * deliberately deferred here (ui-context.md "Generic Module Workspace").
- *
- * Scope note: "Assigned manufacturer part and stale state" from
- * ui-context.md's broader Result-pane description is Unit 3.6's deliverable
- * ("An engineer can assign a manufacturer part and see its supporting run"),
- * not this unit's — nothing here reads `ComponentAssignment`. Likewise, the
- * application-shell status bar's tree-wide "stale count" placeholder
- * (Unit 3.1) stays a placeholder: this unit renders one module's stale
- * state, not an aggregate across every module instance in the
- * configuration, which implementation-map.md's Unit 3.5 deliverable list
- * does not name.
+ * The generic result and trace renderer (Unit 3.5, redesigned 2026-08-27 —
+ * see docs/superpowers/specs/2026-08-27-module-workspace-save-run-redesign-
+ * design.md). Renders one of three states: never run (`view.run === null`
+ * and no `preview`), a persisted `CalculationRun` (`view`, unchanged from
+ * before this redesign), or a live, unpersisted preview (`preview`, from a
+ * Run click in the sibling `ModuleInputWorkspace`) with a visible "not
+ * saved" banner. The "Run module" trigger this panel used to own moved to
+ * `ModuleInputWorkspace`'s action bar in this redesign — this file no
+ * longer imports any Server Action.
  */
-export function ModuleResultPanel({ view }: ModuleResultPanelProps) {
+export function ModuleResultPanel({ view, preview }: ModuleResultPanelProps) {
+  const active = preview ?? view;
+  const hasContent = preview !== null || view.run !== null;
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-6 pb-8">
       <header className="flex items-center gap-3 border-b border-border-default pb-3">
@@ -456,42 +441,54 @@ export function ModuleResultPanel({ view }: ModuleResultPanelProps) {
             <Printer aria-hidden="true" className="h-3.5 w-3.5" />
             Report
           </a>
-          <RunButton moduleInstanceId={view.moduleInstance.id} />
         </div>
       </header>
 
-      {view.run?.stale === true ? (
+      {view.run?.stale === true && preview === null ? (
         <StaleBanner reason={view.run.staleReason} />
       ) : null}
 
-      {view.run === null ? (
+      {!hasContent ? (
         <EmptyState
           compact
           icon={Play}
           title="Not run yet"
-          description="Click Run to compute this module's result from its current inputs."
+          description="Click Run in the header above to preview this module's result from its current inputs."
         />
       ) : (
         <>
+          {preview !== null ? (
+            <div
+              className="flex items-center gap-2 rounded-md border px-3 py-2 text-[13px]"
+              style={{
+                borderColor: "var(--state-neutral)",
+                color: "var(--state-neutral)",
+              }}
+            >
+              <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
+              <span>Preview — not saved. Click Save to keep this result.</span>
+            </div>
+          ) : null}
+
           <ResultSection title="Output summary">
-            <OutputSummary view={view} />
+            <OutputSummary outputs={active.outputs} />
           </ResultSection>
 
-          {view.comparison !== null ? (
+          {preview === null && view.comparison !== null ? (
             <ResultSection title="Previous-run comparison">
               <ComparisonSection view={view} />
             </ResultSection>
           ) : null}
 
           <ResultSection title="Checks">
-            <CheckTable view={view} />
+            <CheckTable checks={active.checks} />
           </ResultSection>
 
-          <WarningsPanel view={view} />
+          <WarningsPanel warnings={active.warnings} validity={active.validity} />
 
           <ResultSection title="Calculation trace">
             <div className="flex flex-col">
-              {view.trace?.sections.map((section) => (
+              {active.trace?.sections.map((section) => (
                 <TraceNodeItem
                   key={`${section.node}-${section.id}`}
                   node={section}
@@ -502,7 +499,7 @@ export function ModuleResultPanel({ view }: ModuleResultPanelProps) {
           </ResultSection>
 
           <ResultSection title="Source references">
-            <SourceReferencesList sources={view.sources} />
+            <SourceReferencesList sources={active.sources} />
           </ResultSection>
         </>
       )}
