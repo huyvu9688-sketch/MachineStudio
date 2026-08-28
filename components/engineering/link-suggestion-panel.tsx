@@ -1,8 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Link2Off } from "lucide-react";
+import { EllipsisVertical, Link2Off } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   confirmSuggestedLinkAction,
   removeParameterLinkAction,
@@ -201,8 +206,18 @@ export interface LinkSuggestionPanelProps {
   readonly targetModuleInstanceId: string;
 }
 
-/** Renders `field.suggestions`, nearest scope first. Renders nothing when there are none or all are dismissed. */
-export function LinkSuggestionPanel({
+/**
+ * The ⋮ suggestion-menu trigger (module workspace save/run redesign,
+ * 2026-08-27) — replaces the old always-visible "Suggested sources" box,
+ * which read as unexplained clutter (founder feedback). Renders nothing
+ * when `field.suggestions` is empty, same as the box it replaces. No
+ * suggestion-count badge on the trigger — a plain icon, per founder
+ * preference. Every row inside keeps identical underlying behavior to the
+ * old panel: Confirm still calls the unchanged `confirmSuggestedLinkAction`;
+ * View source still expands inline detail; Dismiss is still
+ * client-side-only, recomputed every render, nothing persisted.
+ */
+export function LinkSuggestionMenu({
   field,
   configurationId,
   targetModuleInstanceId,
@@ -214,27 +229,38 @@ export function LinkSuggestionPanel({
   if (visible.length === 0) return null;
 
   return (
-    <div
-      className="flex flex-col gap-2 rounded-md border border-border-default p-2.5"
-      style={{ backgroundColor: "rgba(29, 78, 216, 0.05)" }}
-    >
-      <p className="text-[11px] font-medium tracking-wide text-text-muted uppercase">
-        Suggested source{visible.length > 1 ? "s" : ""}
-      </p>
-      {visible.map((suggestion) => (
-        <LinkSuggestionRow
-          key={suggestionKey(suggestion)}
-          suggestion={suggestion}
-          configurationId={configurationId}
-          targetModuleInstanceId={targetModuleInstanceId}
-          targetParameterId={field.parameterId}
-          targetLoadCase={field.loadCase}
-          onDismiss={() =>
-            setDismissed((prev) => new Set(prev).add(suggestionKey(suggestion)))
-          }
-        />
-      ))}
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          size="icon-xs"
+          variant="ghost"
+          aria-label={`Suggested source${visible.length > 1 ? "s" : ""} for ${field.label}`}
+        >
+          <EllipsisVertical aria-hidden="true" className="h-3.5 w-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-80 p-2.5">
+        <p className="mb-2 text-[11px] font-medium tracking-wide text-text-muted uppercase">
+          Suggested source{visible.length > 1 ? "s" : ""}
+        </p>
+        <div className="flex flex-col gap-2">
+          {visible.map((suggestion) => (
+            <LinkSuggestionRow
+              key={suggestionKey(suggestion)}
+              suggestion={suggestion}
+              configurationId={configurationId}
+              targetModuleInstanceId={targetModuleInstanceId}
+              targetParameterId={field.parameterId}
+              targetLoadCase={field.loadCase}
+              onDismiss={() =>
+                setDismissed((prev) => new Set(prev).add(suggestionKey(suggestion)))
+              }
+            />
+          ))}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
