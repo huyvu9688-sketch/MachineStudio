@@ -284,6 +284,48 @@ describe("saveModuleInputsAction: vector_quantity branch", () => {
     );
     expect(secondCallInput.parameterId).toBe("motion.axis.payload_mass");
   });
+
+  it("saves a required field's value and silently skips an untouched optional field left blank", async () => {
+    // Regression coverage for the single-form Save/Run bug found in final
+    // holistic review: ModuleInputWorkspace now submits every rendered
+    // editable field in one FormData payload, including fields the user
+    // never touched (left at their default blank state). Before this fix,
+    // the loop called parseSubmittedField unconditionally for every
+    // submitted port and aborted the whole Save on the first blank field,
+    // even when that field was optional and the actually-required field was
+    // filled in correctly. isSkippableBlankField must make the untouched
+    // optional field a no-op: no parse error, and no setParameterValue call
+    // for it at all.
+    const result = await saveModuleInputsAction(
+      IDLE_ACTION_STATE,
+      buildFormData({
+        configurationId: "cfg-1",
+        moduleInstanceId: "mod-1",
+        // Required, filled in.
+        "fields.payload_mass.parameterId": "motion.axis.payload_mass",
+        "fields.payload_mass.valueKind": "quantity",
+        "fields.payload_mass.required": "true",
+        "fields.payload_mass.magnitude": "12",
+        "fields.payload_mass.unit": "kg",
+        // Optional, left untouched (blank).
+        "fields.cg_offset.parameterId": "motion.axis.center_of_mass_offset",
+        "fields.cg_offset.valueKind": "vector_quantity",
+        "fields.cg_offset.required": "false",
+        "fields.cg_offset.component-0": "",
+        "fields.cg_offset.component-1": "",
+        "fields.cg_offset.component-2": "",
+        "fields.cg_offset.unit": "m",
+      }),
+    );
+
+    expect(result).toEqual({ status: "success" });
+    expect(mockSetParameterValue).toHaveBeenCalledTimes(1);
+    const [input] = mockSetParameterValue.mock.calls[0] as [
+      Record<string, unknown>,
+    ];
+    expect(input.parameterId).toBe("motion.axis.payload_mass");
+    expect(mockExecuteModuleInstance).toHaveBeenCalledTimes(1);
+  });
 });
 
 // startWorkflowInstanceAction (Unit 4.9's generic UI surface): the "id@version

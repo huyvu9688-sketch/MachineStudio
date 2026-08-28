@@ -518,6 +518,12 @@ function ModuleInputFieldRow({
             value={field.field.kind}
             disabled={field.disabled ?? false}
           />
+          <input
+            type="hidden"
+            name={`fields.${field.portKey}.required`}
+            value={field.required ? "true" : "false"}
+            disabled={field.disabled ?? false}
+          />
 
           <FieldControl
             field={field}

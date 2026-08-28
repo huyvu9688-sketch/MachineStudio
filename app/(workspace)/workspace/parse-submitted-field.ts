@@ -151,6 +151,52 @@ export function parseSubmittedField(
 }
 
 /**
+ * Whether a namespaced field group represents a genuinely optional field
+ * left entirely untouched — safe to skip rather than parse/reject. True
+ * only when `fields.<portKey>.required` is not "true" AND every one of the
+ * field's own value sub-fields is blank (a quantity's magnitude; ALL THREE
+ * of a vector's components — a PARTIALLY filled optional vector is a real
+ * mistake, not "left alone", and must still fail validation normally). A
+ * `boolean` field is never blank (a checkbox is always definitively true or
+ * false) and never skippable. An `enum` field is blank when no option is
+ * selected.
+ *
+ * Exists because `ModuleInputWorkspace` now submits every rendered
+ * editable field in one form (module workspace save/run redesign,
+ * 2026-08-27) — including fields the user never touched, left at their
+ * default blank state. Without this check, `saveModuleInputsAction` and
+ * `previewModuleComputationAction` would reject the whole submission on
+ * the first untouched optional field, even when every required field was
+ * filled in correctly.
+ */
+export function isSkippableBlankField(
+  formData: FormData,
+  portKey: string,
+): boolean {
+  if (fieldValue(formData, portKey, "required") === "true") {
+    return false;
+  }
+
+  const valueKind = fieldValue(formData, portKey, "valueKind");
+  if (valueKind === "quantity") {
+    return fieldValue(formData, portKey, "magnitude").trim().length === 0;
+  }
+  if (valueKind === "vector_quantity") {
+    return (
+      fieldValue(formData, portKey, "component-0").trim().length === 0 &&
+      fieldValue(formData, portKey, "component-1").trim().length === 0 &&
+      fieldValue(formData, portKey, "component-2").trim().length === 0
+    );
+  }
+  if (valueKind === "enum") {
+    return fieldValue(formData, portKey, "option").trim().length === 0;
+  }
+  // "boolean" (never blank) and any unrecognized kind (let
+  // `parseSubmittedField` report the real error) are never skippable.
+  return false;
+}
+
+/**
  * Every port key with a submitted `fields.<portKey>.valueKind` group. The
  * client only ever renders that group for a manual/workflow/default,
  * non-disabled, editable field (`ModuleInputWorkspace`'s `FieldControl`

@@ -1,6 +1,7 @@
 // app/(workspace)/workspace/parse-submitted-field.test.ts
 import { describe, expect, it } from "vitest";
 import {
+  isSkippableBlankField,
   parseLoadCase,
   parseSubmittedField,
   submittedPortKeys,
@@ -148,6 +149,103 @@ describe("parseSubmittedField", () => {
       ok: false,
       message: 'Unknown parameter "does.not.exist".',
     });
+  });
+});
+
+describe("isSkippableBlankField", () => {
+  it("is not skippable when required, even if blank", () => {
+    expect(
+      isSkippableBlankField(
+        buildFormData({
+          "fields.payload_mass.required": "true",
+          "fields.payload_mass.valueKind": "quantity",
+          "fields.payload_mass.magnitude": "",
+        }),
+        "payload_mass",
+      ),
+    ).toBe(false);
+  });
+
+  it("is skippable for an optional, fully blank quantity", () => {
+    expect(
+      isSkippableBlankField(
+        buildFormData({
+          "fields.payload_mass.required": "false",
+          "fields.payload_mass.valueKind": "quantity",
+          "fields.payload_mass.magnitude": "",
+        }),
+        "payload_mass",
+      ),
+    ).toBe(true);
+  });
+
+  it("is not skippable for an optional quantity with a real value", () => {
+    expect(
+      isSkippableBlankField(
+        buildFormData({
+          "fields.payload_mass.required": "false",
+          "fields.payload_mass.valueKind": "quantity",
+          "fields.payload_mass.magnitude": "12",
+        }),
+        "payload_mass",
+      ),
+    ).toBe(false);
+  });
+
+  it("is skippable for an optional, fully blank vector_quantity", () => {
+    expect(
+      isSkippableBlankField(
+        buildFormData({
+          "fields.cg_offset.required": "false",
+          "fields.cg_offset.valueKind": "vector_quantity",
+          "fields.cg_offset.component-0": "",
+          "fields.cg_offset.component-1": "",
+          "fields.cg_offset.component-2": "",
+        }),
+        "cg_offset",
+      ),
+    ).toBe(true);
+  });
+
+  it("is not skippable for an optional vector_quantity partially filled in", () => {
+    expect(
+      isSkippableBlankField(
+        buildFormData({
+          "fields.cg_offset.required": "false",
+          "fields.cg_offset.valueKind": "vector_quantity",
+          "fields.cg_offset.component-0": "1",
+          "fields.cg_offset.component-1": "",
+          "fields.cg_offset.component-2": "",
+        }),
+        "cg_offset",
+      ),
+    ).toBe(false);
+  });
+
+  it("is skippable for an optional, blank enum", () => {
+    expect(
+      isSkippableBlankField(
+        buildFormData({
+          "fields.orientation.required": "false",
+          "fields.orientation.valueKind": "enum",
+          "fields.orientation.option": "",
+        }),
+        "orientation",
+      ),
+    ).toBe(true);
+  });
+
+  it("is never skippable for a boolean field", () => {
+    expect(
+      isSkippableBlankField(
+        buildFormData({
+          "fields.enabled.required": "false",
+          "fields.enabled.valueKind": "boolean",
+          "fields.enabled.checked": "false",
+        }),
+        "enabled",
+      ),
+    ).toBe(false);
   });
 });
 

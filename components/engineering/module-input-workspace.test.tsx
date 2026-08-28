@@ -418,6 +418,34 @@ describe("ModuleInputWorkspace", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("renders a hidden required flag mirroring the field's own required-ness", () => {
+    // The single-form Save/Run model submits every rendered editable field
+    // together (module workspace save/run redesign, 2026-08-27); the server
+    // action needs to know per-field whether a blank submission is a real
+    // required-field omission or an untouched optional field it should
+    // silently skip (isSkippableBlankField in
+    // app/(workspace)/workspace/parse-submitted-field.ts). This hidden input
+    // is how that required-ness crosses the client/server boundary.
+    const { container } = render(
+      <ModuleInputWorkspace
+        view={view([
+          quantityDefaultField,
+          { ...lengthManualField, portKey: "optional_stroke", required: false },
+        ])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
+
+    expect(
+      container.querySelector('input[name="fields.payload_mass.required"]'),
+    ).toHaveValue("true");
+    expect(
+      container.querySelector(
+        'input[name="fields.optional_stroke.required"]',
+      ),
+    ).toHaveValue("false");
+  });
+
   it("shows Save's error message near the header on failure", async () => {
     vi.mocked(saveModuleInputsAction).mockResolvedValueOnce({
       status: "error",

@@ -51,7 +51,12 @@ import {
 } from "@/lib/db";
 import { type EngineeringValue } from "@/lib/engine";
 import type { ActionState, ModulePreviewActionState } from "./action-state";
-import { parseLoadCase, parseSubmittedField, submittedPortKeys } from "./parse-submitted-field";
+import {
+  isSkippableBlankField,
+  parseLoadCase,
+  parseSubmittedField,
+  submittedPortKeys,
+} from "./parse-submitted-field";
 
 function fieldValue(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -284,6 +289,9 @@ export async function saveModuleInputsAction(
   );
 
   for (const portKey of submittedPortKeys(formData)) {
+    if (isSkippableBlankField(formData, portKey)) {
+      continue;
+    }
     const parsed = parseSubmittedField(formData, portKey);
     if (!parsed.ok) {
       return { status: "error", message: parsed.message };
@@ -332,6 +340,9 @@ export async function previewModuleComputationAction(
 
   const overrides: Record<string, EngineeringValue> = {};
   for (const portKey of submittedPortKeys(formData)) {
+    if (isSkippableBlankField(formData, portKey)) {
+      continue;
+    }
     const parsed = parseSubmittedField(formData, portKey);
     if (!parsed.ok) {
       return { status: "error", message: parsed.message };
