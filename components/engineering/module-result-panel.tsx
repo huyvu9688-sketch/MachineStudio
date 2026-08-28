@@ -17,6 +17,7 @@ import { LoadCaseChip } from "./load-case-chip";
 // component's bundle. `lib/engine/units` is its own self-contained,
 // server-only-free public surface.
 import { formatQuantity } from "@/lib/engine/units";
+import { overallCheckStatus } from "@/lib/engine/trace/checks";
 import type {
   CalculationTrace,
   CheckResult,
@@ -425,8 +426,14 @@ export function ModuleResultPanel({ view, preview }: ModuleResultPanelProps) {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-6 pb-8">
       <header className="flex items-center gap-3 border-b border-border-default pb-3">
         <h1 className="text-[16px] font-semibold text-text-primary">Result</h1>
-        <StatusBadge status={view.run?.status ?? "not_configured"} />
-        {view.run !== null ? (
+        <StatusBadge
+          status={
+            preview !== null
+              ? overallCheckStatus(preview.checks)
+              : (view.run?.status ?? "not_configured")
+          }
+        />
+        {preview === null && view.run !== null ? (
           <span className="text-[12px] text-text-muted">
             {view.run.createdAt.toLocaleString()}
           </span>
