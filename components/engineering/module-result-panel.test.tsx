@@ -1,29 +1,15 @@
 // @vitest-environment jsdom
-import { describe, expect, vi, it, beforeEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ModuleResultPanel } from "./module-result-panel";
-import { runModuleInstanceAction } from "@/app/(workspace)/workspace/actions";
 import type {
   CalculationTrace,
   CheckResult,
   EngineeringValue,
   Warning,
 } from "@/lib/engine";
-import type { ModuleResultView } from "@/lib/application";
-
-// module-result-panel.tsx imports this Server Action directly (an inline
-// form, like module-input-workspace.tsx's field forms) — mocked for the same
-// reason every other component test in this directory mocks the "use
-// server" file (see module-input-workspace.test.tsx).
-vi.mock("@/app/(workspace)/workspace/actions", () => ({
-  runModuleInstanceAction: vi.fn(),
-}));
-
-beforeEach(() => {
-  vi.mocked(runModuleInstanceAction).mockReset();
-  vi.mocked(runModuleInstanceAction).mockResolvedValue({ status: "success" });
-});
+import type { ModulePreviewView, ModuleResultView } from "@/lib/application";
 
 const thrustForceOut: EngineeringValue = {
   v: 1,
@@ -118,17 +104,23 @@ describe("ModuleResultPanel", () => {
     render(
       <ModuleResultPanel
         view={view({ run: null, outputs: [], checks: [], trace: null })}
+        preview={null}
       />,
     );
 
     expect(screen.getByText("Not run yet")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Click Run in the header above to preview this module's result from its current inputs.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("Not configured")).toBeInTheDocument();
     expect(screen.queryByText("Output summary")).not.toBeInTheDocument();
     expect(screen.queryByText("Checks")).not.toBeInTheDocument();
   });
 
   it("renders the output summary, check table, and trace from a stored run", () => {
-    render(<ModuleResultPanel view={view()} />);
+    render(<ModuleResultPanel view={view()} preview={null} />);
 
     // Overall status (header) and the check row's own status both read
     // "Pass" (`StatusBadge`); the header one carries the accessible run
@@ -147,7 +139,7 @@ describe("ModuleResultPanel", () => {
   });
 
   it("links the Report action at ?module=<id>, opened in a new tab", () => {
-    render(<ModuleResultPanel view={view()} />);
+    render(<ModuleResultPanel view={view()} preview={null} />);
     const link = screen.getByRole("link", { name: /report/i });
     expect(link).toHaveAttribute("href", "/workspace/report?module=m1");
     expect(link).toHaveAttribute("target", "_blank");
@@ -156,7 +148,7 @@ describe("ModuleResultPanel", () => {
 
   it("expands a trace step to reveal its inputs and outputs", async () => {
     const user = userEvent.setup();
-    render(<ModuleResultPanel view={view()} />);
+    render(<ModuleResultPanel view={view()} preview={null} />);
 
     await user.click(
       screen.getByRole("button", { name: "Relay thrust force" }),
@@ -182,6 +174,7 @@ describe("ModuleResultPanel", () => {
             createdAt: new Date("2026-07-31T12:00:00Z"),
           },
         }}
+        preview={null}
       />,
     );
 
@@ -189,19 +182,19 @@ describe("ModuleResultPanel", () => {
   });
 
   it("does not show a stale banner for a fresh run", () => {
-    render(<ModuleResultPanel view={view()} />);
+    render(<ModuleResultPanel view={view()} preview={null} />);
     expect(screen.queryByText(/upstream/i)).not.toBeInTheDocument();
   });
 
   it("renders warnings", () => {
-    render(<ModuleResultPanel view={view({ warnings })} />);
+    render(<ModuleResultPanel view={view({ warnings })} preview={null} />);
     expect(
       screen.getByText("Result is near the validated envelope limit."),
     ).toBeInTheDocument();
   });
 
   it("shows an honest empty note when no run cites a source", () => {
-    render(<ModuleResultPanel view={view()} />);
+    render(<ModuleResultPanel view={view()} preview={null} />);
     expect(screen.getByText("No source references cited.")).toBeInTheDocument();
   });
 
@@ -219,6 +212,7 @@ describe("ModuleResultPanel", () => {
             },
           ],
         })}
+        preview={null}
       />,
     );
     expect(
@@ -245,6 +239,7 @@ describe("ModuleResultPanel", () => {
             changedChecks: [],
           },
         })}
+        preview={null}
       />,
     );
 
@@ -253,7 +248,7 @@ describe("ModuleResultPanel", () => {
   });
 
   it("omits the previous-run comparison section when there is nothing to compare", () => {
-    render(<ModuleResultPanel view={view()} />);
+    render(<ModuleResultPanel view={view()} preview={null} />);
     expect(
       screen.queryByText("Previous-run comparison"),
     ).not.toBeInTheDocument();
@@ -273,6 +268,7 @@ describe("ModuleResultPanel", () => {
             },
           ],
         })}
+        preview={null}
       />,
     );
 
@@ -280,7 +276,7 @@ describe("ModuleResultPanel", () => {
   });
 
   it("does not render a load-case label for an unpinned output", () => {
-    render(<ModuleResultPanel view={view()} />);
+    render(<ModuleResultPanel view={view()} preview={null} />);
     expect(screen.queryByText(/load case$/)).not.toBeInTheDocument();
   });
 
@@ -303,33 +299,118 @@ describe("ModuleResultPanel", () => {
             changedChecks: [],
           },
         })}
+        preview={null}
       />,
     );
 
     expect(screen.getByText("Holding load case")).toBeInTheDocument();
   });
 
-  it("runs the module instance when Run is clicked", async () => {
-    const user = userEvent.setup();
-    render(<ModuleResultPanel view={view()} />);
+  it("renders the live preview instead of the persisted run, with its banner", () => {
+    const preview: ModulePreviewView = {
+      outputs: [
+        {
+          portKey: "thrust_force_out",
+          parameterId: "motion.axis.thrust_force",
+          label: "Thrust force",
+          value: { v: 1, kind: "quantity", value: 99, unit: "N" },
+          loadCase: null,
+        },
+      ],
+      checks: [],
+      warnings: [],
+      validity: [],
+      trace: null,
+      sources: [],
+    };
 
-    await user.click(screen.getByRole("button", { name: "Run" }));
+    render(<ModuleResultPanel view={view()} preview={preview} />);
 
-    expect(runModuleInstanceAction).toHaveBeenCalled();
+    expect(
+      screen.getByText("Preview — not saved. Click Save to keep this result."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("99 N")).toBeInTheDocument();
+    // The persisted run's own comparison section is hidden while previewing.
+    expect(
+      screen.queryByText("Previous-run comparison"),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows the action's error message when running fails", async () => {
-    vi.mocked(runModuleInstanceAction).mockResolvedValueOnce({
-      status: "error",
-      message: 'Input "thrust_force_in" is linked to a stale upstream result.',
-    });
-    const user = userEvent.setup();
-    render(<ModuleResultPanel view={view()} />);
+  it("shows a live preview even when the module instance has never been run", () => {
+    const preview: ModulePreviewView = {
+      outputs: [],
+      checks: [],
+      warnings: [],
+      validity: [],
+      trace: null,
+      sources: [],
+    };
 
-    await user.click(screen.getByRole("button", { name: "Run" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "stale upstream result",
+    render(
+      <ModuleResultPanel
+        view={view({ run: null, outputs: [], checks: [], trace: null })}
+        preview={preview}
+      />,
     );
+
+    expect(screen.queryByText("Not run yet")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Preview — not saved. Click Save to keep this result."),
+    ).toBeInTheDocument();
+  });
+
+  it("suppresses the persisted run's stale banner while a live preview is showing", () => {
+    render(
+      <ModuleResultPanel
+        view={{
+          ...view(),
+          run: {
+            id: "run1" as never,
+            status: "pass",
+            criticalMargin: null,
+            stale: true,
+            staleReason: "Upstream input changed.",
+            createdAt: new Date("2026-07-31T12:00:00Z"),
+          },
+        }}
+        preview={{
+          outputs: [],
+          checks: [],
+          warnings: [],
+          validity: [],
+          trace: null,
+          sources: [],
+        }}
+      />,
+    );
+
+    expect(screen.queryByText("Upstream input changed.")).not.toBeInTheDocument();
+  });
+
+  it("shows the preview's own status and hides the persisted run's timestamp while previewing", () => {
+    // Regression test for the code-review fix (commit 8f59e80): the header
+    // badge and timestamp used to always reflect `view.run`, even while a
+    // completely different `preview` was rendered below — e.g. a failing
+    // persisted run's red "Fail" badge sitting above a passing live preview.
+    render(
+      <ModuleResultPanel
+        view={view()} // view().run.status === "pass", with a timestamp
+        preview={{
+          outputs: [],
+          checks: [], // overallCheckStatus([]) === "not_applicable"
+          warnings: [],
+          validity: [],
+          trace: null,
+          sources: [],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Not applicable")).toBeInTheDocument();
+    expect(screen.queryByText("Pass")).not.toBeInTheDocument();
+    // The persisted run's timestamp is hidden entirely while a preview shows.
+    expect(
+      screen.queryByText(view().run!.createdAt.toLocaleString()),
+    ).not.toBeInTheDocument();
   });
 });
