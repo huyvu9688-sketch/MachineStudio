@@ -47,10 +47,7 @@ import {
   asWorkflowInstanceId,
   type ParameterNodeKind,
 } from "@/lib/db";
-import {
-  type EngineeringValue,
-  type LoadCaseCategory,
-} from "@/lib/engine";
+import { type EngineeringValue } from "@/lib/engine";
 import type { ActionState, ModulePreviewActionState } from "./action-state";
 import {
   parseLoadCase,
