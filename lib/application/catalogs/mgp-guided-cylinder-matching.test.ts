@@ -10,10 +10,13 @@ import { evaluateMgpGuidedCylinderCandidates } from "./mgp-guided-cylinder-match
 
 type CaseName = "vertical_lifter" | "horizontal_pusher" | "stopper";
 
-function computation(caseName: CaseName): ModuleComputation {
+function computation(
+  caseName: CaseName,
+  factoredLoadMassKg = 2,
+): ModuleComputation {
   return {
     outputs: {
-      factored_load_mass: makeQuantity(2, "kg"),
+      factored_load_mass: makeQuantity(factoredLoadMassKg, "kg"),
       application_case_out: applicationCaseValue(caseName),
       required_stroke_out: makeQuantity(30, "mm"),
       operating_pressure_out: makeQuantity(0.5, "MPa"),
@@ -156,5 +159,61 @@ describe("evaluateMgpGuidedCylinderCandidates", () => {
     );
     expect(outcome.accepted).toHaveLength(1);
     expect(outcome.rejected[0]?.candidate.id).toBe("mgpl-20-30");
+  });
+
+  it("applies the published 300 mm/s coefficient once to the factored mass", () => {
+    const input: ModuleInput = {
+      values: {
+        ...snapshot("vertical_lifter").values,
+        max_piston_speed: makeQuantity(0.3, "m/s"),
+      },
+    };
+    const outcome = evaluateMgpGuidedCylinderCandidates(
+      computation("vertical_lifter", 3),
+      input,
+      [
+        candidate("mgpl-12-30", {
+          bore: 12,
+          rod: 6,
+          bearing: "ball_bushing",
+          stroke: 30,
+        }),
+      ],
+    );
+    expect(outcome.rejected[0]?.reasons[0]).toContain(
+      "speed-corrected factored load 5.10 kg",
+    );
+  });
+
+  it("ranks by bore, then graph mass margin, then candidate ID", () => {
+    const outcome = evaluateMgpGuidedCylinderCandidates(
+      computation("vertical_lifter", 0.1),
+      snapshot("vertical_lifter"),
+      [
+        candidate("z-ball-25", {
+          bore: 25,
+          rod: 10,
+          bearing: "ball_bushing",
+          stroke: 30,
+        }),
+        candidate("a-slide-25", {
+          bore: 25,
+          rod: 10,
+          bearing: "slide",
+          stroke: 30,
+        }),
+        candidate("z-ball-12", {
+          bore: 12,
+          rod: 6,
+          bearing: "ball_bushing",
+          stroke: 30,
+        }),
+      ],
+    );
+    expect(outcome.accepted.map((entry) => entry.candidate.id)).toEqual([
+      "z-ball-12",
+      "a-slide-25",
+      "z-ball-25",
+    ]);
   });
 });

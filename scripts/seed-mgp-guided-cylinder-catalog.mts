@@ -1,41 +1,16 @@
-// scripts/seed-guided-cylinder-catalog.mts
+// Seeds the MGP-only catalog component type from the standard basic MGP-Z
+// model/stroke table in reference/source-material/guided cylinder/MGP.md.
 //
-// One-time catalog seed for the pneumatic_cylinder_guided component type
-// (Unit 7.3, Stage 5). Creates the Manufacturer, ComponentType, and
-// ComponentSchemaVersion, then imports reference/catalog-seed/
-// smc-mgq-mgp.csv via the existing generic CSV import pipeline
-// (lib/catalog/csv-import.ts, lib/application/catalogs/import-catalog.ts)
-// -- no new catalog-engine code, matching context/architecture.md
-// "lib/catalog/": manufacturer part data has no self-serve upload UI in
-// the MVP. Mirrors scripts/seed-pneumatic-cylinder-catalog.mts's own
-// structure and runtime shim exactly.
+// Each CSV row is one actual MGPM, MGPL, or MGPA basic model at one exact
+// standard stroke; it is not a range or an invented part-number variant.
+// The source table lists bores 12/16, 20/25, and 32–100 with their respective
+// standard-stroke sets (MGP catalogue page 203 / PDF printed page 537).
 //
-// SEED DATA DISCLOSURE (see also context/modules/guided-cylinder-sizing/
-// stage-1-spec.md "Fetch record" and stage-2-contract.md "Addendum"): the
-// 40 rows in smc-mgq-mgp.csv (20 MGQ + 20 MGP, one row per bore x bearing
-// type) are directly read from SMC's own fetched MGQ and MGP series
-// catalogs, for the founder to review and trim to their real working set
-// after this module ships -- not a claim that every row is a part the
-// founder actually stocks or specifies. The allowable lateral load and
-// allowable rotational torque figures are genuinely stroke-dependent in
-// SMC's own published tables (a separate figure per stroke length, not one
-// constant per bore) -- this seed uses each row's own minimum populated
-// stroke in that table (the "Rating Stroke" CSV column) as a single
-// representative, conservative figure, not the full per-stroke table. A
-// later version could seed a per-stroke table if the founder needs finer
-// resolution; this module's own catalog matcher (lib/application/catalogs/
-// guided-cylinder-matching.ts) does not vary the check by stroke today. MGP
-// rows have no allowable_lateral_load value at all (blank CSV cell, valid
-// since the schema field is optional) -- MGP's own catalog publishes a
-// plate-displacement stiffness graph for the equivalent data, not a
-// discrete allowable-load rating (stage-1-spec.md correction 2); the
-// catalog matcher treats a missing value as "not applicable," not a
-// rejection.
+// Run manually against a real database:
+//   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed-mgp-guided-cylinder-catalog.mts
 //
-// Run manually, once, against a real database:
-//
-//   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed-guided-cylinder-catalog.mts
-
+// The script creates/imports only `pneumatic_cylinder_guided_mgp`; the legacy
+// legacy guided-cylinder data and assignments remain intact.
 // --- Runtime shim --------------------------------------------------------
 // See scripts/seed-pneumatic-cylinder-catalog.mts's own header for why
 // this hook is needed (bundler-style extensionless imports, "@/*"
