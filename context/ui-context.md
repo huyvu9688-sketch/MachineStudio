@@ -343,6 +343,25 @@ frame still renders the "not yet editable" notice, since no other frame has
 a defined convention. See
 `docs/design/vector-quantity-input-editor.md`.
 
+**Update (2026-08-27): Save/Run redesign — one form, a preview Run, and a
+suggestion menu.** `ModuleInputWorkspace` now wraps every field in every
+group in one `<form>`, with a sticky header holding two submit buttons:
+`Run` (`previewModuleComputationAction`, backed by the new
+`previewModuleComputation` application service) computes from the form's
+current values — typed or not yet saved — and shows the result without
+writing anything; `Save` (`saveModuleInputsAction`) persists every field's
+current value via unchanged `setParameterValue`, then executes and persists
+a real `CalculationRun` via unchanged `executeModuleInstance`, both in one
+action. `Run` is disabled, with a tooltip naming what's missing, until every
+required, non-disabled, non-unsupported field either has a non-empty
+client-tracked value or is satisfied by a confirmed link (regardless of that
+link's own run status) — tracked by a small client-side completeness map,
+seeded from each field's server-resolved value on mount. The old
+per-field `setModuleInputValueAction` and the old bare `runModuleInstanceAction`
+are both removed. The always-visible "Suggested sources" box (Unit 3.4) is
+replaced by a small ⋮ menu next to a non-linked field's label — see "Link
+Suggestions" below.
+
 **Implemented (Unit 3.5, Result pane — `components/engineering/
 module-result-panel.tsx`):** `WorkspaceShell` stacks `ModuleResultPanel`
 directly below `ModuleInputWorkspace` in the main canvas (one scrollable
@@ -361,10 +380,13 @@ exists, a previous-run comparison (changed outputs and changed check
 statuses against the run immediately before the latest one). The read model —
 `loadModuleResultView` (`lib/application/calculations/`) — reads entirely
 from the stored snapshot (`CalculationRunSnapshot.computation`); no module
-compute code is imported (this unit's exit criterion). Also owns the "Run
-module" trigger both Unit 3.3 and Unit 3.4 deferred here
-(`runModuleInstanceAction`, thin glue over unchanged `executeModuleInstance`,
-Unit 2.4). The stale banner (`ui-context.md` Status Model "Stale") renders
+compute code is imported (this unit's exit criterion). The "Run module"
+trigger this pane used to own moved to `ModuleInputWorkspace`'s action bar
+in the 2026-08-27 save/run redesign (see above): `ModuleResultPanel` no
+longer imports any Server Action, and instead gains a third display state,
+"Preview" (an unpersisted `ModulePreviewView` from a Run click, shown with a
+"not saved" banner) alongside "never run" and "showing the last saved run".
+The stale banner (`ui-context.md` Status Model "Stale") renders
 above every other result when the latest run is stale.
 
 **Scope note:** "Assigned manufacturer part and stale state" from this
@@ -428,6 +450,16 @@ reads for this unit; revisit if that reads as confusing in practice. A
 "curve"/`vector_quantity` field (no native editor, per the Unit 3.3 deferral
 above) still gets suggestions — linking never needs an editor, so this
 partially softens that deferral without building the curve contract.
+
+**Update (2026-08-27):** the always-visible "Suggested sources" box read as
+unexplained clutter in practice (founder feedback while using the
+workspace). It is replaced by a small ⋮ icon button placed right after the
+field's label/required-tag/source-badge row, opening a Radix `DropdownMenu`
+listing the same rows (`LinkSuggestionMenu`, `link-suggestion-panel.tsx`) —
+renders nothing when there are no suggestions, same as the box it replaces,
+and carries no suggestion-count badge on the trigger itself (a plain icon,
+per founder preference). Underlying behavior — Confirm, View source,
+Dismiss — is unchanged.
 
 A field with an already-confirmed link instead renders `LinkedFieldControl`:
 the existing "Linked from …" notice, plus a two-step "Remove link" → shows
