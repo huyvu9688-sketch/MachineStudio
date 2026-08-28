@@ -27,6 +27,7 @@ import type {
   BomView,
   ComponentAssignmentPanelView,
   BaselineWorkspaceView,
+  ModulePreviewView,
   ModuleResultView,
   ModuleWorkspaceView,
   RequirementsView,
@@ -76,6 +77,22 @@ export type WorkspaceShellProps = {
  */
 export function WorkspaceShell(props: WorkspaceShellProps) {
   const [navigatorCollapsed, setNavigatorCollapsed] = useState(false);
+  const [preview, setPreview] = useState<ModulePreviewView | null>(null);
+
+  // A preview belongs to one module instance's current form. Selecting a
+  // different module (or navigating away and back) must not carry a stale
+  // preview over onto whatever renders next — the same "adjust state during
+  // render when a prop changes" pattern DeleteModuleInstanceDialog already
+  // uses for its own seenStatus tracking.
+  const selectedModuleInstanceId =
+    props.status === "loaded" ? props.selectedModuleInstanceId : null;
+  const [seenModuleInstanceId, setSeenModuleInstanceId] = useState(
+    selectedModuleInstanceId,
+  );
+  if (selectedModuleInstanceId !== seenModuleInstanceId) {
+    setSeenModuleInstanceId(selectedModuleInstanceId);
+    setPreview(null);
+  }
 
   const selectedConfiguration =
     props.status === "loaded"
@@ -164,9 +181,12 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
         >
           {props.status === "loaded" && props.moduleWorkspace !== null ? (
             <div className="flex w-full flex-col">
-              <ModuleInputWorkspace view={props.moduleWorkspace} />
+              <ModuleInputWorkspace
+                view={props.moduleWorkspace}
+                onPreviewChange={setPreview}
+              />
               {props.moduleResult !== null ? (
-                <ModuleResultPanel view={props.moduleResult} />
+                <ModuleResultPanel view={props.moduleResult} preview={preview} />
               ) : null}
               {props.componentAssignment !== null ? (
                 <ComponentAssignmentPanel view={props.componentAssignment} />
