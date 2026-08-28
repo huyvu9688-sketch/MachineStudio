@@ -404,6 +404,18 @@ reviewing the 130-row digitized load-mass-vs-overhang dataset
 eye-read from graphs rather than transcribed from a printed table, with
 one row's own band assignment flagged as a disclosed, best-evidenced
 reading pending confirmation.
+**2026-08-27: the generic module input workspace's Save/Run model is
+redesigned** — `ModuleInputWorkspace` is now one `<form>` with a `Run`
+(preview, no persistence, `previewModuleComputation`) and `Save` (persists
+every field plus a real `CalculationRun`, `saveModuleInputsAction`) pair in
+its header, replacing the old one-`<form>`-per-field
+`setModuleInputValueAction` and the separate bare `runModuleInstanceAction`
+(both removed); the always-visible "Suggested sources" box is replaced by a
+⋮ menu. Founder-directed UI fix, not a validated-calculation change — touches
+only the generic module workspace, `app/(workspace)/workspace/actions.ts`,
+and one new `lib/application/calculations/` service; no change to
+`dual-rod-cylinder-sizing` or any other module package. Full design:
+`docs/superpowers/specs/2026-08-27-module-workspace-save-run-redesign-design.md`.
 
 ---
 
