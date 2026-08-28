@@ -82,7 +82,7 @@ export type ExecuteModuleInstanceResult =
  * refusal because the upstream result is known to be out of date, or nothing
  * resolvable.
  */
-type UpstreamValue =
+export type UpstreamValue =
   | { readonly kind: "value"; readonly value: EngineeringValue }
   | { readonly kind: "stale"; readonly staleReason: string | null }
   | { readonly kind: "unresolved" };
@@ -107,7 +107,7 @@ type UpstreamValue =
  * (`markRunsStaleForModuleInstances`), so there is no older, "less stale" run
  * to fall back to — the upstream module has to be re-run first.
  */
-async function resolveModuleOutputValue(
+export async function resolveModuleOutputValue(
   sourceModuleInstanceId: ModuleInstanceId,
   sourceParameterId: string,
   sourceLoadCase: LoadCaseCategory | null,

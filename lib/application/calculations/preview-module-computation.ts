@@ -9,18 +9,17 @@
 //
 // Mirrors `executeModuleInstance`'s (Unit 2.4) input-resolution loop
 // exactly: a manual/workflow value resolves as authored; a linked value is
-// pulled from the source module's latest run via a locally duplicated
+// pulled from the source module's latest run via the imported
 // `resolveModuleOutputValue` (refusing with `stale_upstream` if that run is
 // stale, identical wording to `executeModuleInstance`'s own message);
 // "default" is left unresolved for the SDK to fill its constant default or
-// report a clear missing-required-input error. The loop (and its private
-// `resolveModuleOutputValue` helper) is duplicated here rather than shared
-// with `execute-module-instance.ts`, which stays unchanged (Non-goal) and
-// runs its own version inside a `RepeatableRead` transaction this use case
-// deliberately never opens — `resolveModuleOutputValue` is not exported
-// from that module (it is a private helper tightly coupled to the caller's
-// transaction client), so there is nothing to import even if sharing were
-// in scope.
+// report a clear missing-required-input error. `resolveModuleOutputValue`
+// is exported from `execute-module-instance.ts` (which otherwise stays
+// unchanged — Non-goal) and reused here as-is: it already takes its
+// `DbClient` as a parameter, so it is not actually coupled to a transaction
+// — this use case simply passes the plain `prisma` client instead of a
+// `tx`, since it never opens a transaction (nothing it reads is written
+// back).
 //
 // The only real difference from executeModuleInstance's loop: for any port
 // whose resolved source is NOT "linked", a value present in `overrides`
@@ -38,7 +37,6 @@ import {
   type CalculationTrace,
   type CheckResult,
   type EngineeringValue,
-  type LoadCaseCategory,
   type ModuleComputation,
   type ValidityResult,
   type Warning,
@@ -46,11 +44,8 @@ import {
 import { getModulePackage } from "@/lib/modules";
 import {
   loadModuleInstanceForOwner,
-  listRunsForModuleInstance,
-  loadCalculationRun,
   prisma,
   resolveModuleInputs,
-  type DbClient,
   type ModuleInstanceId,
   type UserId,
 } from "@/lib/db";
@@ -61,6 +56,7 @@ import {
   type PortValueView,
   type SourceReferenceView,
 } from "./run-view-helpers";
+import { resolveModuleOutputValue } from "./execute-module-instance";
 
 export interface PreviewModuleComputationInput {
   readonly moduleInstanceId: ModuleInstanceId;
@@ -91,76 +87,6 @@ export interface ModulePreviewView {
 export type PreviewModuleComputationResult =
   | { readonly ok: true; readonly preview: ModulePreviewView }
   | { readonly ok: false; readonly error: PreviewModuleComputationError };
-
-/**
- * The outcome of resolving a linked module-output source: a concrete value, a
- * refusal because the upstream result is known to be out of date, or nothing
- * resolvable. Duplicated from `execute-module-instance.ts`'s identical
- * private type — see the file header for why this loop is not shared.
- */
-type UpstreamValue =
-  | { readonly kind: "value"; readonly value: EngineeringValue }
-  | { readonly kind: "stale"; readonly staleReason: string | null }
-  | { readonly kind: "unresolved" };
-
-/**
- * Resolves the value a confirmed link to a module-output source carries,
- * pulling it from that source module's latest calculation run. Duplicated
- * verbatim from `execute-module-instance.ts`'s private
- * `resolveModuleOutputValue` (not exported there, and tightly coupled to its
- * caller's transaction client) — see the file header for why this loop is
- * not shared. Here it always reads through the plain `prisma` client since
- * this use case never opens a transaction.
- */
-async function resolveModuleOutputValue(
-  sourceModuleInstanceId: ModuleInstanceId,
-  sourceParameterId: string,
-  sourceLoadCase: LoadCaseCategory | null,
-  ownerId: UserId,
-  client: DbClient,
-): Promise<UpstreamValue> {
-  const sourceContext = await loadModuleInstanceForOwner(
-    sourceModuleInstanceId,
-    ownerId,
-    client,
-  );
-  if (sourceContext === null) {
-    return { kind: "unresolved" };
-  }
-  const sourcePkg = getModulePackage(
-    sourceContext.moduleInstance.modulePackageId,
-    sourceContext.moduleInstance.moduleVersion,
-  );
-  if (sourcePkg === undefined) {
-    return { kind: "unresolved" };
-  }
-  const outputPort = sourcePkg.ports.outputs.find(
-    (port) =>
-      port.parameterId === sourceParameterId &&
-      (port.loadCase ?? null) === sourceLoadCase,
-  );
-  if (outputPort === undefined) {
-    return { kind: "unresolved" };
-  }
-
-  const summaries = await listRunsForModuleInstance(
-    sourceModuleInstanceId,
-    ownerId,
-    client,
-  );
-  const latest = summaries[0];
-  if (latest === undefined) {
-    return { kind: "unresolved" };
-  }
-  if (latest.stale) {
-    return { kind: "stale", staleReason: latest.staleReason };
-  }
-  const latestRun = await loadCalculationRun(latest.id, ownerId, client);
-  const value = latestRun?.snapshot.computation.outputs[outputPort.key];
-  return value === undefined
-    ? { kind: "unresolved" }
-    : { kind: "value", value };
-}
 
 /**
  * Computes a module instance's result from its currently-resolved inputs —
