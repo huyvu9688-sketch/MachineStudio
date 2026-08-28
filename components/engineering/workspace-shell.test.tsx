@@ -4,12 +4,14 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WorkspaceShell } from "./workspace-shell";
 import { summarizeModuleStatuses } from "./module-status-summary";
+import { previewModuleComputationAction } from "@/app/(workspace)/workspace/actions";
 import type { MarketProfileOption } from "./create-project-dialog";
 import type { ModulePackageOption } from "./add-module-instance-dialog";
 import type { WorkflowDefinitionOption } from "./start-workflow-instance-dialog";
 import type { MachineProjectRecord, ProjectTree } from "@/lib/db";
 import type {
   BaselineWorkspaceView,
+  ModulePreviewView,
   ModuleResultView,
   ModuleWorkspaceView,
   RequirementsView,
@@ -448,5 +450,190 @@ describe("WorkspaceShell", () => {
       screen.getByRole("button", { name: "Hide machine navigator" }),
     );
     expect(screen.queryByText("X axis")).not.toBeInTheDocument();
+  });
+
+  // Covers WorkspaceShell's own preview-lifting wiring (onPreviewChange ->
+  // setPreview -> the `preview` prop passed to ModuleResultPanel), not
+  // ModuleInputWorkspace's callback in isolation (already covered by
+  // module-input-workspace.test.tsx's "previews via Run without calling
+  // Save" test) or ModuleResultPanel's own rendering of a non-null `preview`
+  // prop (covered by module-result-panel.test.tsx). A field with
+  // resolved.source "manual" is used, not "default" like the fixture in the
+  // "renders the module input workspace" test above, so the Run button
+  // starts enabled (isFieldInitiallyComplete only seeds a "default" field as
+  // complete when it also has a built-in default, which this fixture omits).
+  it("lifts a Run preview from ModuleInputWorkspace into the rendered ModuleResultPanel", async () => {
+    const moduleWorkspace: ModuleWorkspaceView = {
+      moduleInstance: {
+        id: "m1" as ModuleWorkspaceView["moduleInstance"]["id"],
+        assemblyId: "a1" as ModuleWorkspaceView["moduleInstance"]["assemblyId"],
+        configurationId:
+          "c1" as ModuleWorkspaceView["moduleInstance"]["configurationId"],
+        label: "Thrust check",
+        modulePackageId: "example-scaffold",
+        moduleVersion: "0.1.0",
+        category: "example",
+        lastRunStatus: "pass",
+      },
+      groups: [
+        {
+          id: "inputs",
+          title: "Inputs",
+          fields: [
+            {
+              portKey: "stroke",
+              parameterId: "motion.axis.stroke",
+              label: "Stroke",
+              help: null,
+              required: true,
+              loadCase: null,
+              field: {
+                kind: "quantity",
+                canonicalUnit: "m",
+                displayUnits: ["m", "mm"],
+              },
+              resolved: {
+                source: "manual",
+                value: {
+                  v: 1,
+                  kind: "quantity",
+                  value: 0.5,
+                  unit: "m",
+                  displayUnit: "mm",
+                },
+              },
+              suggestions: [],
+              linkRemovalImpact: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    const moduleResult: ModuleResultView = {
+      moduleInstance: {
+        id: "m1" as ModuleResultView["moduleInstance"]["id"],
+        assemblyId: "a1" as ModuleResultView["moduleInstance"]["assemblyId"],
+        configurationId:
+          "c1" as ModuleResultView["moduleInstance"]["configurationId"],
+        label: "Thrust check",
+      },
+      run: null,
+      outputs: [],
+      checks: [],
+      warnings: [],
+      validity: [],
+      trace: null,
+      sources: [],
+      comparison: null,
+    };
+
+    const preview: ModulePreviewView = {
+      outputs: [
+        {
+          portKey: "result",
+          parameterId: "motion.axis.thrust_force",
+          label: "Thrust force",
+          value: { v: 1, kind: "quantity", value: 12, unit: "N" },
+          loadCase: null,
+        },
+      ],
+      checks: [],
+      warnings: [],
+      validity: [],
+      trace: null,
+      sources: [],
+    };
+    vi.mocked(previewModuleComputationAction).mockResolvedValueOnce({
+      status: "success",
+      preview,
+    });
+
+    const user = userEvent.setup();
+    const shellProps = {
+      status: "loaded" as const,
+      projects,
+      selectedProject: projectTree,
+      selectedConfigurationId: "c1",
+      selectedModuleInstanceId: "m1",
+      selectedWorkflowInstanceId: null,
+      moduleWorkspace,
+      moduleResult,
+      componentAssignment: null,
+      bom: null,
+      workflowInstance: null,
+      requirements: null,
+      baselines: null,
+      summary: summarizeModuleStatuses(projectTree.configurations[0].assemblies),
+      marketProfiles: MARKET_PROFILES,
+      modulePackages: MODULE_PACKAGES,
+      workflowDefinitions: WORKFLOW_DEFINITIONS,
+    };
+    const { rerender } = render(<WorkspaceShell {...shellProps} />);
+
+    expect(screen.getByText("Not run yet")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Run" }));
+
+    expect(
+      await screen.findByText(
+        "Preview — not saved. Click Save to keep this result.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Thrust force")).toBeInTheDocument();
+    expect(screen.queryByText("Not run yet")).not.toBeInTheDocument();
+
+    // Switching to a different module instance must not carry the stale
+    // preview over onto whatever renders next for it (the
+    // seenModuleInstanceId "adjust state during render" guard in
+    // workspace-shell.tsx). A minimal second-module fixture (no input
+    // fields, no result) is enough here — this assertion only cares that
+    // the preview banner is gone, not about that module's own content.
+    const otherModuleWorkspace: ModuleWorkspaceView = {
+      moduleInstance: {
+        id: "m2" as ModuleWorkspaceView["moduleInstance"]["id"],
+        assemblyId: "a1" as ModuleWorkspaceView["moduleInstance"]["assemblyId"],
+        configurationId:
+          "c1" as ModuleWorkspaceView["moduleInstance"]["configurationId"],
+        label: "Other check",
+        modulePackageId: "example-scaffold",
+        moduleVersion: "0.1.0",
+        category: "example",
+        lastRunStatus: null,
+      },
+      groups: [],
+    };
+    const otherModuleResult: ModuleResultView = {
+      moduleInstance: {
+        id: "m2" as ModuleResultView["moduleInstance"]["id"],
+        assemblyId: "a1" as ModuleResultView["moduleInstance"]["assemblyId"],
+        configurationId:
+          "c1" as ModuleResultView["moduleInstance"]["configurationId"],
+        label: "Other check",
+      },
+      run: null,
+      outputs: [],
+      checks: [],
+      warnings: [],
+      validity: [],
+      trace: null,
+      sources: [],
+      comparison: null,
+    };
+
+    rerender(
+      <WorkspaceShell
+        {...shellProps}
+        selectedModuleInstanceId="m2"
+        moduleWorkspace={otherModuleWorkspace}
+        moduleResult={otherModuleResult}
+      />,
+    );
+
+    expect(
+      screen.queryByText("Preview — not saved. Click Save to keep this result."),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Thrust force")).not.toBeInTheDocument();
+    expect(screen.getByText("Not run yet")).toBeInTheDocument();
   });
 });
