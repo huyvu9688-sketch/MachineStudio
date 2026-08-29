@@ -1,8 +1,13 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Link2Off } from "lucide-react";
+import { EllipsisVertical, Link2Off } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   confirmSuggestedLinkAction,
   removeParameterLinkAction,
@@ -201,40 +206,104 @@ export interface LinkSuggestionPanelProps {
   readonly targetModuleInstanceId: string;
 }
 
-/** Renders `field.suggestions`, nearest scope first. Renders nothing when there are none or all are dismissed. */
-export function LinkSuggestionPanel({
+/**
+ * The ⋮ suggestion-menu trigger (module workspace save/run redesign,
+ * 2026-08-27) — replaces the old always-visible "Suggested sources" box,
+ * which read as unexplained clutter (founder feedback). Renders nothing
+ * when `field.suggestions` is empty, same as the box it replaces. No
+ * suggestion-count badge on the trigger — a plain icon, per founder
+ * preference. Every row inside keeps identical underlying behavior to the
+ * old panel: Confirm still calls the unchanged `confirmSuggestedLinkAction`;
+ * View source still expands inline detail; Dismiss is still
+ * client-side-only, recomputed every render, nothing persisted.
+ */
+export function LinkSuggestionMenu({
   field,
   configurationId,
   targetModuleInstanceId,
 }: LinkSuggestionPanelProps) {
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
+  const [open, setOpen] = useState(false);
+
+  // Nothing was ever offered for this field -- no trigger to render at all,
+  // same as the box this menu replaces. Once a first suggestion exists, the
+  // trigger stays mounted even after every suggestion is dismissed (see
+  // `onDismiss` below) rather than being force-unmounted mid-interaction:
+  // this is a `Popover`, not a `DropdownMenu` (`role="menu"`) — hosting
+  // `LinkSuggestionRow`'s own `<form>` and stateful buttons inside a real
+  // menu's roving-tabindex/ARIA contract is a semantic mismatch a plain
+  // anchored panel doesn't have, and unmounting an *open* popover's trigger
+  // out from under a keyboard user (rather than closing it through Radix's
+  // own `onOpenChange`) drops focus to `<body>` instead of restoring it.
+  if (field.suggestions.length === 0) return null;
+
   const visible = field.suggestions.filter(
     (s) => !dismissed.has(suggestionKey(s)),
   );
-  if (visible.length === 0) return null;
 
   return (
-    <div
-      className="flex flex-col gap-2 rounded-md border border-border-default p-2.5"
-      style={{ backgroundColor: "rgba(29, 78, 216, 0.05)" }}
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        // Refuses to (re)open once every suggestion is dismissed, whatever
+        // triggered the attempt (click, keyboard). Guarding here rather
+        // than on the trigger's own onClick avoids depending on Radix's
+        // internal event-handler composition order, and — critically —
+        // leaves the trigger's native `disabled` attribute unset, so it
+        // stays focusable: Radix's onCloseAutoFocus calls
+        // `triggerRef.current?.focus()` after the close animation, and
+        // `.focus()` on a disabled element is a silent no-op, which would
+        // reintroduce the exact focus-loss bug this Popover switch exists
+        // to avoid.
+        if (next && visible.length === 0) return;
+        setOpen(next);
+      }}
     >
-      <p className="text-[11px] font-medium tracking-wide text-text-muted uppercase">
-        Suggested source{visible.length > 1 ? "s" : ""}
-      </p>
-      {visible.map((suggestion) => (
-        <LinkSuggestionRow
-          key={suggestionKey(suggestion)}
-          suggestion={suggestion}
-          configurationId={configurationId}
-          targetModuleInstanceId={targetModuleInstanceId}
-          targetParameterId={field.parameterId}
-          targetLoadCase={field.loadCase}
-          onDismiss={() =>
-            setDismissed((prev) => new Set(prev).add(suggestionKey(suggestion)))
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          size="icon-xs"
+          variant="ghost"
+          className={visible.length === 0 ? "opacity-50" : undefined}
+          aria-disabled={visible.length === 0}
+          aria-label={
+            visible.length === 0
+              ? `No remaining suggestions for ${field.label}`
+              : `Suggested source${visible.length > 1 ? "s" : ""} for ${field.label}`
           }
-        />
-      ))}
-    </div>
+        >
+          <EllipsisVertical aria-hidden="true" className="h-3.5 w-3.5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80 p-2.5">
+        <p className="mb-2 text-[11px] font-medium tracking-wide text-text-muted uppercase">
+          Suggested source{visible.length > 1 ? "s" : ""}
+        </p>
+        <div className="flex flex-col gap-2">
+          {visible.map((suggestion) => (
+            <LinkSuggestionRow
+              key={suggestionKey(suggestion)}
+              suggestion={suggestion}
+              configurationId={configurationId}
+              targetModuleInstanceId={targetModuleInstanceId}
+              targetParameterId={field.parameterId}
+              targetLoadCase={field.loadCase}
+              onDismiss={() => {
+                const next = new Set(dismissed);
+                next.add(suggestionKey(suggestion));
+                setDismissed(next);
+                // Dismissing the last one closes the popover through
+                // Radix's own onOpenChange path (restoring focus to the
+                // still-mounted trigger) instead of unmounting anything.
+                if (next.size === field.suggestions.length) {
+                  setOpen(false);
+                }
+              }}
+            />
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
