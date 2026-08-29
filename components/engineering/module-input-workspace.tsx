@@ -140,6 +140,30 @@ export function ModuleInputWorkspace({ view }: ModuleInputWorkspaceProps) {
         />
       </header>
 
+      {(view.callouts ?? [])
+        .filter((callout) => callout.imagePath.startsWith("/module-guides/"))
+        .map((callout) => (
+          <figure
+            key={`${callout.title}:${callout.imagePath}`}
+            className="overflow-hidden rounded-lg border border-border-default bg-bg-surface"
+          >
+            <img
+              src={callout.imagePath}
+              alt={callout.alt}
+              className="h-auto w-full bg-bg-muted"
+            />
+            <figcaption className="flex flex-col gap-1 border-t border-border-default px-4 py-3">
+              <span className="text-[13px] font-semibold text-text-primary">
+                {callout.title}
+              </span>
+              {callout.text === null ? null : (
+                <span className="text-[12px] leading-5 text-text-muted">
+                  {callout.text}
+                </span>
+              )}
+            </figcaption>
+          </figure>
+        ))}
       {view.groups.length === 0 ? (
         <p className="text-[13px] text-text-muted">
           This module declares no input fields.

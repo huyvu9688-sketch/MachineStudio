@@ -183,6 +183,22 @@ export interface ModuleUiGroup {
   readonly fields: readonly ModuleUiField[];
 }
 
+/** A case-dependent explanatory line in a reusable module callout. */
+export interface ModuleUiCalloutCaseText {
+  /** Declared enum input port whose current value selects the helper text. */
+  readonly portKey: string;
+  /** One concise helper sentence for each supported enum value. */
+  readonly cases: readonly { readonly value: string; readonly text: string }[];
+}
+
+/** An optional diagram and contextual helper rendered by the generic workspace. */
+export interface ModuleUiCallout {
+  readonly title: string;
+  /** Public, same-origin image path. The renderer permits `/module-guides/` only. */
+  readonly imagePath: string;
+  readonly alt: string;
+  readonly caseText?: ModuleUiCalloutCaseText;
+}
 /**
  * The generic UI schema for a module's input pane. It selects and groups input
  * ports for the generic workspace renderer (Unit 3.3); it never encodes
@@ -190,6 +206,7 @@ export interface ModuleUiGroup {
  */
 export interface ModuleUiSchema {
   readonly groups: readonly ModuleUiGroup[];
+  readonly callouts?: readonly ModuleUiCallout[];
 }
 
 /** What a report section renders from the stored computation. */

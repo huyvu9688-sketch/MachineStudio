@@ -252,6 +252,26 @@ describe("validateModulePackage", () => {
     expect(() => validateModulePackage(pkg)).not.toThrow();
   });
 
+  it("rejects a case-text callout that does not reference an enum input port", () => {
+    const draft = baseDraft();
+    const pkg = sealModulePackage({
+      ...draft,
+      uiSchema: {
+        ...draft.uiSchema,
+        callouts: [{
+          title: "Guide",
+          imagePath: "/module-guides/guide.svg",
+          alt: "Guide diagram",
+          caseText: {
+            portKey: "mass",
+            cases: [{ value: "anything", text: "Helper text" }],
+          },
+        }],
+      },
+    });
+
+    expectSdkError(() => validateModulePackage(pkg), "invalid_ui_schema");
+  });
   it("rejects duplicate report section IDs", () => {
     const draft = baseDraft();
     const pkg = sealModulePackage({

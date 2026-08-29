@@ -175,6 +175,34 @@ export function validateModulePackage(
     }
   }
 
+  for (const callout of ui.data.callouts ?? []) {
+    if (callout.caseText === undefined) continue;
+    const drivingPort = inputPortsByKey.get(callout.caseText.portKey);
+    if (drivingPort === undefined) {
+      fail(
+        "invalid_ui_schema",
+        `Module "${id}" callout "${callout.title}" references unknown input port "${callout.caseText.portKey}".`,
+        callout.caseText.portKey,
+      );
+    }
+    const drivingDefinition = registry.get(drivingPort.parameterId);
+    if (drivingDefinition?.valueType !== "enum") {
+      fail(
+        "invalid_ui_schema",
+        `Module "${id}" callout "${callout.title}" caseText must reference an enum input port.`,
+        callout.caseText.portKey,
+      );
+    }
+    for (const entry of callout.caseText.cases) {
+      if (!drivingDefinition.enumOptions?.includes(entry.value)) {
+        fail(
+          "invalid_ui_schema",
+          `Module "${id}" callout "${callout.title}" has unsupported enum value "${entry.value}".`,
+          entry.value,
+        );
+      }
+    }
+  }
   const report = ModuleReportSchemaSchema.safeParse(pkg.reportSchema);
   if (!report.success) {
     fail(

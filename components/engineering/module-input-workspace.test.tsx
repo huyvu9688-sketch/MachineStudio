@@ -277,6 +277,23 @@ function view(fields: readonly ModuleInputFieldView[]): ModuleWorkspaceView {
 }
 
 describe("ModuleInputWorkspace", () => {
+  it("renders an allowed module guide and its resolved case helper", () => {
+    render(<ModuleInputWorkspace view={{ ...view([enumManualField]), callouts: [{ title: "Choose the MGP selection case", imagePath: "/module-guides/mgp-selection-cases.svg", alt: "MGP lifter, pusher, and stopper selection cases", text: "Use the stopper graph." }] }} />);
+    expect(screen.getByRole("img", { name: "MGP lifter, pusher, and stopper selection cases" })).toHaveAttribute("src", "/module-guides/mgp-selection-cases.svg");
+    expect(screen.getByText("Use the stopper graph.")).toBeInTheDocument();
+  });
+
+  it("does not render an external callout image", () => {
+    render(<ModuleInputWorkspace view={{ ...view([quantityDefaultField]), callouts: [{ title: "Unsafe guide", imagePath: "https://example.test/guide.svg", alt: "External guide", text: null }] }} />);
+    expect(screen.queryByRole("img", { name: "External guide" })).toBeNull();
+    expect(screen.queryByText("Unsafe guide")).toBeNull();
+  });
+
+  it("does not add a guide when the module declares no callouts", () => {
+    render(<ModuleInputWorkspace view={view([quantityDefaultField])} />);
+    expect(screen.queryByRole("figure")).toBeNull();
+  });
+
   it("renders the module header, group title, and every field kind generically", () => {
     render(
       <ModuleInputWorkspace

@@ -70,6 +70,10 @@ import {
 } from "./describe-field";
 import { resolveModuleOutputValue } from "./resolve-module-output-value";
 import { resolveFieldDisabled } from "./resolve-field-disabled";
+import {
+  resolveModuleUiCallouts,
+  type ModuleWorkspaceCalloutView,
+} from "./resolve-module-ui-callouts";
 
 export { describeField };
 export type { ModuleInputFieldDescriptor };
@@ -176,6 +180,7 @@ export interface ModuleWorkspaceModuleSummary {
 export interface ModuleWorkspaceView {
   readonly moduleInstance: ModuleWorkspaceModuleSummary;
   readonly groups: readonly ModuleInputGroupView[];
+  readonly callouts?: readonly ModuleWorkspaceCalloutView[];
 }
 
 /**
@@ -350,5 +355,6 @@ export async function loadModuleWorkspaceView(
       lastRunStatus: moduleInstance.lastRunStatus,
     },
     groups,
+    callouts: resolveModuleUiCallouts(pkg.uiSchema.callouts, resolvedByPortKey),
   };
 }

@@ -32,6 +32,8 @@ import type {
   ModuleReplacement,
   ModuleReportSchema,
   ModuleReportSection,
+  ModuleUiCallout,
+  ModuleUiCalloutCaseText,
   ModuleUiField,
   ModuleUiGroup,
   ModuleUiSchema,
@@ -114,8 +116,23 @@ export const ModuleUiGroupSchema = z.strictObject({
   fields: z.array(ModuleUiFieldSchema).readonly(),
 });
 
+export const ModuleUiCalloutCaseTextSchema = z.strictObject({
+  portKey: nonEmptyString,
+  cases: z
+    .array(z.strictObject({ value: nonEmptyString, text: nonEmptyString }))
+    .min(1)
+    .readonly(),
+});
+
+export const ModuleUiCalloutSchema = z.strictObject({
+  title: nonEmptyString,
+  imagePath: nonEmptyString,
+  alt: nonEmptyString,
+  caseText: ModuleUiCalloutCaseTextSchema.optional(),
+});
 export const ModuleUiSchemaSchema = z.strictObject({
   groups: z.array(ModuleUiGroupSchema).readonly(),
+  callouts: z.array(ModuleUiCalloutSchema).readonly().optional(),
 });
 
 const reportSectionKind = z.enum([
@@ -222,6 +239,8 @@ export type _ModuleSdkSchemaParity = [
     MutuallyAssignable<ModuleUiGroup, z.infer<typeof ModuleUiGroupSchema>>
   >,
   Assert<
+    MutuallyAssignable<ModuleUiCalloutCaseText, z.infer<typeof ModuleUiCalloutCaseTextSchema>>,
+    MutuallyAssignable<ModuleUiCallout, z.infer<typeof ModuleUiCalloutSchema>>,
     MutuallyAssignable<ModuleUiSchema, z.infer<typeof ModuleUiSchemaSchema>>
   >,
   Assert<
