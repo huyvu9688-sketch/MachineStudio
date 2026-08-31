@@ -131,13 +131,37 @@
 // unit-registry dimension or unit is needed (N*m/torqueDisplay already
 // exist).
 //
+// v1.20 adds the full pneumatic_guided_mgp_sizing.* group (4 new
+// parameters) for guided-cylinder-sizing 0.2.0, a simplified, MGP-first
+// application-case selector sibling to 0.1.0's own MGQ/MGP roll-pitch-yaw
+// force/moment sizing (context/modules/guided-cylinder-sizing/
+// 0.2.0-stage-2-contract.md). 0.1.0's own pneumatic_guided_sizing.* group
+// is unedited.
+//
+// v1.21 adds three new scopes -- shaft.*, key.*, bolt.* (38 new
+// parameters) -- for the shaft-key-bolt-checks module (context/modules/
+// shaft-key-bolt-checks/stage-2-contract.md), Milestone 7's fifth module
+// and the first not scoped to any one mechanism family: torque/moment
+// inputs are generic, plain required engineer entries, not a hard
+// dependency on any one upstream mechanism module. shaft.applied_torque
+// shares screw.drive_torque's own unit/qualifiers/load cases but is NOT
+// graph-link-compatible with it (this project has no populated
+// ApprovedParameterMapping mechanism yet -- see stage-2-contract.md
+// "Decisions" item 5's own Stage 5 correction). key.* reuses shaft.diameter and
+// shaft.applied_torque directly instead of minting duplicate ports for the
+// same physical shaft -- this project's first case of one module reusing
+// its own sibling sub-check's ports rather than another module's. Stress
+// shares the pressure dimension (force/area), so shaft/key/bolt stress
+// ports reuse the existing MPa/psi units pneumatic.operating_pressure
+// already released -- no new unit-registry dimension or unit is needed.
+//
 
 import { makeQuantity } from "../units";
 import { defineParameter } from "./define";
 import type { ParameterDefinition } from "./types";
 
 /** Semantic version of the released canonical parameter registry. */
-export const PARAMETER_REGISTRY_VERSION = "1.20.0";
+export const PARAMETER_REGISTRY_VERSION = "1.21.0";
 
 const massDisplay = ["kg", "g", "lbm"] as const;
 const forceDisplay = ["N", "kN", "lbf"] as const;
@@ -4019,7 +4043,512 @@ const dualRodSizing: readonly ParameterDefinition[] = [
   }),
 ];
 
-/** All released parameter definitions for registry v1.19, in authored order. */
+// --- Shaft, key, and bolted-joint checks (Unit 7.5 Stage 2) -----------------
+// See context/modules/shaft-key-bolt-checks/stage-2-contract.md. Three
+// semi-independent scopes (shaft, key, bolt) for the shaft-key-bolt-checks
+// module, Milestone 7's fifth module and the first not scoped to any one
+// mechanism family -- torque/moment inputs are generic, plain required
+// engineer entries, never a hard dependency on any one upstream mechanism
+// module. shaft.applied_torque shares screw.drive_torque's own unit/
+// qualifiers/load cases but is NOT graph-link-compatible with it (no
+// populated ApprovedParameterMapping mechanism exists yet -- see
+// context/modules/shaft-key-bolt-checks/stage-2-contract.md "Decisions"
+// item 5's own Stage 5 correction). The key
+// check reuses shaft.diameter and shaft.applied_torque directly rather than
+// minting duplicate key.* ports for the same physical shaft -- the first
+// case in this project of one module reusing its own sibling sub-check's
+// ports rather than another module's. Stress shares the pressure dimension
+// (force/area), so shaft/key/bolt stress ports reuse the existing MPa/psi
+// units the pneumatic.* group already released -- no new unit-registry
+// dimension or unit is needed.
+
+const shaftKeyBoltCases = ["normal", "peak"] as const;
+const stressDisplay = ["MPa", "psi"] as const;
+
+const shaftKeyBoltChecks: readonly ParameterDefinition[] = [
+  // shaft.* -- combined torque/bending stress check (stage-1-spec.md
+  // "Formulas" item 1; the Air-Force/ASME-B106.1M Ks/Km service-factor
+  // tradition, not the Shigley/Reuven geometric stress-concentration-factor
+  // tradition -- stage-2-contract.md "Decisions" item 2). No axial-load term
+  // (F, alpha in the sourced cubic): omitted from 0.1.0's own port list,
+  // since no registered worked example exercises a nonzero axial term
+  // (stage-2-contract.md "Decisions" item 1).
+  defineParameter({
+    id: "shaft.diameter",
+    displayName: "Candidate shaft diameter",
+    symbol: "D",
+    definition:
+      "Outer diameter of the candidate shaft segment being checked. Also reused directly by the key check for the same physical shaft (stage-2-contract.md 'Decisions' item 6) -- not duplicated as a key.* port.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "shaft.bore_diameter",
+    displayName: "Shaft bore diameter",
+    symbol: "Di",
+    definition:
+      "Inner bore diameter for a hollow shaft. Defaults to 0 (a solid shaft) -- a structural statement about the candidate shaft, not a guessed physical value.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "m") },
+  }),
+  defineParameter({
+    id: "shaft.material_yield_strength",
+    displayName: "Shaft material yield strength",
+    symbol: "Sy",
+    definition:
+      "Yield strength of the candidate shaft material. Checked, with shaft.safety_factor_minimum, against the combined stress from applied torque and bending moment -- static/yield-based only, no fatigue (stage-1-spec.md 'Validity Envelope').",
+    valueType: "quantity",
+    canonicalUnit: "MPa",
+    displayUnits: [...stressDisplay],
+    range: { min: 0, unit: "MPa" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "shaft.applied_torque",
+    displayName: "Applied shaft torque",
+    symbol: "T",
+    definition:
+      "Torque transmitted by the shaft segment for a declared load case, reported as a magnitude -- direct engineer entry or linked from an upstream module's own torque output (e.g. screw.drive_torque), never a hard dependency on one specific mechanism module (stage-1-spec.md 'Purpose'; stage-2-contract.md 'Decisions' item 5). Also reused by the key check for the same physical shaft.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+    loadCases: shaftKeyBoltCases,
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "shaft.applied_bending_moment",
+    displayName: "Applied shaft bending moment",
+    symbol: "M",
+    definition:
+      "Bending moment at the shaft cross-section being checked, for a declared load case, reported as a magnitude. Required, no default and no upstream link: this project has no released 'bending moment at an arbitrary shaft cross-section' output -- motion.axis.resultant_moment resolves a moment at the moving assembly's own guide/carriage reference point, a different physical location (stage-1-spec.md 'Existing Parameter Review').",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    qualifiers: { bound: "required" },
+    loadCases: shaftKeyBoltCases,
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "shaft.torque_service_factor",
+    displayName: "Torque combined shock-and-fatigue factor",
+    symbol: "Ks",
+    definition:
+      "Empirical service-severity factor applied to torque in the Air Force Stress Manual / ASME-B106.1M-tradition combined-stress formula (the historical ASME Code term is 'combined shock and fatigue factor' -- not a fatigue S-N calculation; this module is static/yield-based only, stage-1-spec.md 'Validity Envelope'). Selected from the source's own machine-type service table (e.g. 1.0 for a gradually applied load, the table's own minimum); required, no default, since reproducing the full service table as a registry enum is a larger scope commitment than a first release needs -- the same 'required input, neither table adopted' treatment coupling.service_factor already received.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "shaft.bending_service_factor",
+    displayName: "Bending combined shock-and-fatigue factor",
+    symbol: "Km",
+    definition:
+      "Empirical service-severity factor applied to bending moment, the Km counterpart to shaft.torque_service_factor's own Ks -- same source, same service table, same required-no-default treatment.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "shaft.safety_factor_minimum",
+    displayName: "Minimum required shaft safety factor",
+    symbol: "N_min",
+    definition:
+      "Minimum acceptable yield-based safety factor (shaft.safety_factor) the engineer requires for this shaft, supplied explicitly rather than assumed -- the same 'required, no built-in default' treatment screw.static_safety_factor_minimum and guide.static_safety_factor_minimum already receive.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "shaft.combined_stress",
+    displayName: "Combined torque/bending stress",
+    symbol: "sigma_e",
+    definition:
+      "Computed maximum-shear-stress (Tresca) equivalent stress from combined torque and bending moment at shaft.diameter, per the Air Force Stress Manual's own formula (no axial-load term -- see this group's own header note). Checked, via shaft.safety_factor, against shaft.material_yield_strength.",
+    valueType: "quantity",
+    canonicalUnit: "MPa",
+    displayUnits: [...stressDisplay],
+    range: { min: 0, unit: "MPa" },
+    loadCases: shaftKeyBoltCases,
+  }),
+  defineParameter({
+    id: "shaft.safety_factor",
+    displayName: "Shaft safety factor",
+    symbol: "fs",
+    definition:
+      "Computed yield-based safety factor for a declared load case: fs = shaft.material_yield_strength / shaft.combined_stress. Checked against shaft.safety_factor_minimum.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: shaftKeyBoltCases,
+  }),
+
+  // key.* -- parallel/sunk key shear and bearing stress check
+  // (stage-1-spec.md "Formulas" item 2). Reuses shaft.diameter and
+  // shaft.applied_torque rather than minting duplicate ports (see this
+  // group's own header note); w/h are direct engineer entry, not a JIS
+  // B 1301 / ASME B17.1 dimension-table lookup -- the same 'engineer already
+  // knows/enters the actual dimension' treatment coupling.driving_shaft_
+  // diameter already receives (a Stage 3 UI affordance could still suggest a
+  // table value without the registry itself encoding the table).
+  defineParameter({
+    id: "key.width",
+    displayName: "Key width",
+    symbol: "w",
+    definition:
+      "Width of the candidate parallel (sunk) key, across which shear stress is checked. Direct entry, typically read off a JIS B 1301 or ASME B17.1 dimension table by shaft diameter.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "key.height",
+    displayName: "Key height",
+    symbol: "h",
+    definition:
+      "Height of the candidate parallel (sunk) key. key.bearing_stress uses h/2 as the bearing/compressive contact depth -- an approximation to a more exact geometry-dependent effective depth that one registered source (RoyMech) flags explicitly; 0.1.0 adopts h/2, the form every other registered source uses directly (stage-1-spec.md 'Formulas' item 2; stage-2-contract.md 'Decisions' item 3).",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "key.length",
+    displayName: "Key length",
+    symbol: "L",
+    definition: "Engaged length of the candidate key along the shaft axis.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "key.material_yield_strength",
+    displayName: "Key material yield strength",
+    symbol: "Sy",
+    definition:
+      "Yield strength of the candidate key material. Checked, with key.safety_factor_minimum, against both key.shear_stress and key.bearing_stress.",
+    valueType: "quantity",
+    canonicalUnit: "MPa",
+    displayUnits: [...stressDisplay],
+    range: { min: 0, unit: "MPa" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "key.safety_factor_minimum",
+    displayName: "Minimum required key safety factor",
+    symbol: "N_min",
+    definition:
+      "Minimum acceptable safety factor the engineer requires for this key, applied to both key.shear_safety_factor and key.bearing_safety_factor -- one consolidated input rather than two separate shear/bearing minimums, a deliberate first-release simplification (the same treatment coupling.service_factor's own 'Decisions' item 5 already gives its own steady/shock pair).",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "key.shear_stress",
+    displayName: "Key shear stress",
+    symbol: "tau",
+    definition:
+      "Shear stress across the key's width from the tangential force implied by shaft.applied_torque: tau = F/(w*L), F = 2*T/d. Checked, via key.shear_safety_factor, against key.material_yield_strength.",
+    valueType: "quantity",
+    canonicalUnit: "MPa",
+    displayUnits: [...stressDisplay],
+    range: { min: 0, unit: "MPa" },
+    loadCases: shaftKeyBoltCases,
+  }),
+  defineParameter({
+    id: "key.bearing_stress",
+    displayName: "Key bearing stress",
+    symbol: "sigma_b",
+    definition:
+      "Bearing (compressive) stress on the key's side face: sigma_bearing = F/((h/2)*L), F = 2*T/d. Checked, via key.bearing_safety_factor, against key.material_yield_strength.",
+    valueType: "quantity",
+    canonicalUnit: "MPa",
+    displayUnits: [...stressDisplay],
+    range: { min: 0, unit: "MPa" },
+    loadCases: shaftKeyBoltCases,
+  }),
+  defineParameter({
+    id: "key.shear_safety_factor",
+    displayName: "Key shear safety factor",
+    symbol: "fs_tau",
+    definition:
+      "Computed safety factor for a declared load case: key.material_yield_strength / key.shear_stress. Checked against key.safety_factor_minimum.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: shaftKeyBoltCases,
+  }),
+  defineParameter({
+    id: "key.bearing_safety_factor",
+    displayName: "Key bearing safety factor",
+    symbol: "fs_sigma",
+    definition:
+      "Computed safety factor for a declared load case: key.material_yield_strength / key.bearing_stress. Checked against key.safety_factor_minimum.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: shaftKeyBoltCases,
+  }),
+
+  // bolt.* -- installation-torque preload, tensile-capacity, joint-
+  // separation, and shear/bearing checks (stage-1-spec.md "Formulas" items
+  // 3-6). Tension (items 3-5) and shear (item 6) are two independent paths,
+  // not one combined interaction equation (stage-1-spec.md 'Purpose'); the
+  // shear-path-specific ports below are all optional at the registry level
+  // since the whole shear/bearing sub-path itself is conditional on
+  // bolt.external_shear_load being supplied, the same 'graceful reduced-
+  // scope path' treatment bolt.joint_stiffness_ratio already gets for the
+  // separation check (stage-2-contract.md 'Decisions' item 4).
+  defineParameter({
+    id: "bolt.thread_standard",
+    displayName: "Bolt thread standard",
+    symbol: "std",
+    definition:
+      "Which stress-area formula this bolt's own tensile-capacity check uses: 'metric' (ISO 898-1 / JIS B1051, As = (pi/4)*(d - 0.9382*P)^2) or 'unified' (US/UN, ASME B1.1, TS = 0.7854*(Dia - 0.9743/TPI)^2, with bolt.thread_pitch converted to TPI = 25.4/pitch_mm).",
+    valueType: "enum",
+    enumId: "bolt_thread_standard",
+    enumOptions: ["metric", "unified"],
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bolt.nominal_diameter",
+    displayName: "Bolt nominal diameter",
+    symbol: "d",
+    definition: "Nominal (major) diameter of the candidate bolt.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bolt.thread_pitch",
+    displayName: "Bolt thread pitch",
+    symbol: "P",
+    definition:
+      "Axial distance between adjacent threads. For a bolt.thread_standard of 'unified', the engineer converts a catalog TPI (threads per inch) figure to pitch directly (pitch_m = 0.0254/TPI) before entry -- one canonical physical quantity for both thread families rather than two separate ports.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: ["mm", "in"],
+    range: { min: 0, unit: "m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bolt.proof_strength",
+    displayName: "Bolt proof strength",
+    symbol: "Sp",
+    definition:
+      "Proof stress of the candidate bolt's property class (ISO 898-1 / JIS B1051, e.g. 8.8 -> 580 N/mm^2) or the SAE J429 grade's own proof-load-equivalent stress on the US/UN side. Direct numeric entry read off the applicable published table -- required, no default, the same 'engineer reads the source table directly, table not reproduced as an enum' treatment coupling.service_factor already receives.",
+    valueType: "quantity",
+    canonicalUnit: "MPa",
+    displayUnits: [...stressDisplay],
+    range: { min: 0, unit: "MPa" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bolt.k_factor",
+    displayName: "Bolt nut (friction) factor",
+    symbol: "K",
+    definition:
+      "Nut/friction factor in T = K*F*d (installation torque to preload). Found in the range 0.12-0.33 across every registered source, by coating/lubrication/finish -- required, no single built-in default, the same treatment ball-screw.static_safety_factor_minimum and coupling.service_factor already receive for a similarly source-disputed value.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, max: 1, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bolt.installation_torque",
+    displayName: "Bolt installation torque",
+    symbol: "T_i",
+    definition:
+      "Torque applied to install the candidate bolt, used with bolt.k_factor and bolt.nominal_diameter to compute bolt.preload.",
+    valueType: "quantity",
+    canonicalUnit: "N*m",
+    displayUnits: [...torqueDisplay],
+    range: { min: 0, unit: "N*m" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bolt.external_tensile_load",
+    displayName: "Externally applied tensile load",
+    symbol: "P_ext",
+    definition:
+      "Externally applied axial tensile load on the joint for a declared load case, reported as a magnitude. Defaults to 0 -- a structural statement (no external tension beyond preload) rather than a guessed physical value, so the tensile-capacity check still runs (preload alone against proof strength) with no external load supplied.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    qualifiers: { bound: "required" },
+    loadCases: shaftKeyBoltCases,
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "N") },
+  }),
+  defineParameter({
+    id: "bolt.external_shear_load",
+    displayName: "Externally applied shear load",
+    symbol: "V_ext",
+    definition:
+      "Externally applied shear load on the joint for a declared load case, reported as a magnitude, checked through the independent shear/bearing path (stage-1-spec.md 'Formulas' item 6). Defaults to 0, meaning the shear/bearing path does not meaningfully run (no shear load to check) rather than being enabled with an assumed load.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+    qualifiers: { bound: "required" },
+    loadCases: shaftKeyBoltCases,
+    defaultPolicy: { kind: "constant", value: makeQuantity(0, "N") },
+  }),
+  defineParameter({
+    id: "bolt.joint_stiffness_ratio",
+    displayName: "Joint stiffness ratio",
+    symbol: "C",
+    definition:
+      "Bolt's own share of an externally applied load, C = kb/(kb+km) (bolt stiffness over bolt-plus-member stiffness), typically 15-25%. No source gives a single agreed kb/km estimation formula -- two registered methods disagree by roughly 8% on the same worked example (stage-1-spec.md 'Formulas' item 5). Optional, no default: when omitted, only the preload and tensile-capacity checks run, not joint separation -- a graceful reduced-scope path (stage-2-contract.md 'Decisions' item 4), not a required input with an invented default.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, max: 1, unit: "ratio" },
+  }),
+  defineParameter({
+    id: "bolt.shear_plane_count",
+    displayName: "Bolt shear plane count",
+    symbol: "n_shear",
+    definition:
+      "Whether the shear-loaded joint puts the bolt in single or double shear -- selects between tau = 4*F/(pi*d^2) (single) and tau = 2*F/(pi*d^2) (double). Optional: only meaningful when bolt.external_shear_load is supplied.",
+    valueType: "enum",
+    enumId: "bolt_shear_plane_count",
+    enumOptions: ["single", "double"],
+  }),
+  defineParameter({
+    id: "bolt.clamped_material_thickness",
+    displayName: "Clamped material thickness",
+    symbol: "t",
+    definition:
+      "Thickness of the clamped material at the shear plane, used in the bearing check sigma_bearing = F/(d*t). Optional: only meaningful when bolt.external_shear_load is supplied.",
+    valueType: "quantity",
+    canonicalUnit: "m",
+    displayUnits: [...lengthDisplay],
+    range: { min: 0, unit: "m" },
+  }),
+  defineParameter({
+    id: "bolt.shear_allowable_stress",
+    displayName: "Bolt material shear allowable stress",
+    symbol: "tau_allow",
+    definition:
+      "Allowable shear stress of the bolt's own material, checked against the shear-loaded joint's computed shear stress. Direct entry rather than a derived fraction of bolt.proof_strength: no registered source ties the two by a specific ratio for this project's own evidence bar (stage-1-spec.md 'Evidence Gaps'). Optional: only meaningful when bolt.external_shear_load is supplied.",
+    valueType: "quantity",
+    canonicalUnit: "MPa",
+    displayUnits: [...stressDisplay],
+    range: { min: 0, unit: "MPa" },
+  }),
+  defineParameter({
+    id: "bolt.bearing_allowable_stress",
+    displayName: "Clamped material bearing allowable stress",
+    symbol: "sigma_allow",
+    definition:
+      "Allowable bearing (compressive) stress of the clamped material at the shear plane -- a property of the plate/bracket material, not the bolt's own material. Optional: only meaningful when bolt.external_shear_load is supplied.",
+    valueType: "quantity",
+    canonicalUnit: "MPa",
+    displayUnits: [...stressDisplay],
+    range: { min: 0, unit: "MPa" },
+  }),
+  defineParameter({
+    id: "bolt.safety_factor_minimum",
+    displayName: "Minimum required bolt safety factor",
+    symbol: "N_min",
+    definition:
+      "Minimum acceptable safety factor the engineer requires for this bolted joint, applied to bolt.tensile_safety_factor, bolt.separation_safety_factor, bolt.shear_safety_factor, and bolt.bearing_safety_factor alike -- one consolidated input rather than four separate minimums, the same first-release simplification key.safety_factor_minimum already makes for its own shear/bearing pair.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    defaultPolicy: { kind: "required" },
+  }),
+  defineParameter({
+    id: "bolt.preload",
+    displayName: "Bolt preload",
+    symbol: "F_p",
+    definition:
+      "Computed clamp/preload force from the installation torque: F = T/(K*d). Not load-case-specific -- a fixed installation fact set once during assembly, independent of the duty cycle bolt.external_tensile_load/bolt.external_shear_load vary across.",
+    valueType: "quantity",
+    canonicalUnit: "N",
+    displayUnits: [...forceDisplay],
+    range: { min: 0, unit: "N" },
+  }),
+  defineParameter({
+    id: "bolt.tensile_safety_factor",
+    displayName: "Bolt tensile capacity safety factor",
+    symbol: "fs_t",
+    definition:
+      "Computed safety factor for a declared load case: bolt proof-load capacity (from bolt.proof_strength) divided by preload plus the bolt's own share of externally applied tension (bolt.preload + bolt.external_tensile_load * bolt.joint_stiffness_ratio, or bolt.preload + bolt.external_tensile_load when no stiffness ratio is supplied). Checked against bolt.safety_factor_minimum.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: shaftKeyBoltCases,
+  }),
+  defineParameter({
+    id: "bolt.separation_safety_factor",
+    displayName: "Bolt joint separation safety factor",
+    symbol: "fs_sep",
+    definition:
+      "Computed safety factor for a declared load case: FoS_separation = bolt.preload / (bolt.external_tensile_load * (1 - bolt.joint_stiffness_ratio)). Present only when bolt.joint_stiffness_ratio is supplied (stage-2-contract.md 'Decisions' item 4). Checked against bolt.safety_factor_minimum.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: shaftKeyBoltCases,
+  }),
+  defineParameter({
+    id: "bolt.shear_safety_factor",
+    displayName: "Bolt shear safety factor",
+    symbol: "fs_v",
+    definition:
+      "Computed safety factor for a declared load case: bolt.shear_allowable_stress divided by the computed shear stress (single or double shear, per bolt.shear_plane_count). Present only when bolt.external_shear_load is supplied. Checked against bolt.safety_factor_minimum.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: shaftKeyBoltCases,
+  }),
+  defineParameter({
+    id: "bolt.bearing_safety_factor",
+    displayName: "Bolt joint bearing safety factor",
+    symbol: "fs_brg",
+    definition:
+      "Computed safety factor for a declared load case: bolt.bearing_allowable_stress divided by the computed bearing stress (F/(d*t)). Present only when bolt.external_shear_load is supplied -- added alongside the shear check for the same clamped-material failure mode the sourced formula already gives (stage-1-spec.md 'Formulas' item 6), even though stage-1-spec.md's own 'Checks' list named shear but not bearing explicitly (stage-2-contract.md 'Decisions' item 7). Checked against bolt.safety_factor_minimum.",
+    valueType: "quantity",
+    canonicalUnit: "ratio",
+    displayUnits: ["ratio"],
+    range: { min: 0, unit: "ratio" },
+    loadCases: shaftKeyBoltCases,
+  }),
+];
+
+/** All released parameter definitions for registry v1.21, in authored order. */
 export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...projectAndEnvironment,
   ...axisApplication,
@@ -4039,4 +4568,5 @@ export const PARAMETER_DEFINITIONS: readonly ParameterDefinition[] = [
   ...pneumaticGuidedCylinderSizing,
   ...pneumaticGuidedMgpSizing,
   ...dualRodSizing,
+  ...shaftKeyBoltChecks,
 ];

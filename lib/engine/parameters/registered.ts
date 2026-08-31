@@ -37,6 +37,7 @@ export const PARAMETER_REGISTRY_SUPPORTED_VERSIONS = [
   "1.17.0",
   "1.18.0",
   "1.19.0",
+  "1.20.0",
 ] as const;
 
 /** The released canonical parameter registry. */

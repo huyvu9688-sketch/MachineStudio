@@ -67,8 +67,8 @@ describe("parameter registry compatibility", () => {
 });
 
 describe("released registry", () => {
-  it("loads every seed definition and is version 1.20.0", () => {
-    expect(PARAMETER_REGISTRY.version).toBe("1.20.0");
+  it("loads every seed definition and is version 1.21.0", () => {
+    expect(PARAMETER_REGISTRY.version).toBe("1.21.0");
     expect(listParameters().length).toBe(PARAMETER_DEFINITIONS.length);
   });
 
@@ -146,6 +146,67 @@ describe("released registry", () => {
       displayUnits: ["m/s", "m/min"],
       range: { min: 0, unit: "m/s" },
       defaultPolicy: { kind: "required" },
+    });
+  });
+  it("maps the shaft, key, and bolt check ports", () => {
+    expect(PARAMETER_REGISTRY.get("shaft.diameter")).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "m",
+      defaultPolicy: { kind: "required" },
+    });
+    expect(PARAMETER_REGISTRY.get("shaft.bore_diameter")).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "m",
+      defaultPolicy: { kind: "constant" },
+    });
+    expect(PARAMETER_REGISTRY.get("shaft.applied_torque")).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "N*m",
+      qualifiers: { bound: "required" },
+      loadCases: ["normal", "peak"],
+    });
+    expect(PARAMETER_REGISTRY.get("shaft.torque_service_factor")).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "ratio",
+      range: { min: 1, unit: "ratio" },
+      defaultPolicy: { kind: "required" },
+    });
+    expect(PARAMETER_REGISTRY.get("key.width")).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "m",
+      defaultPolicy: { kind: "required" },
+    });
+    expect(PARAMETER_REGISTRY.get("key.bearing_safety_factor")).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "ratio",
+      loadCases: ["normal", "peak"],
+    });
+    expect(PARAMETER_REGISTRY.get("bolt.thread_standard")).toMatchObject({
+      valueType: "enum",
+      enumOptions: ["metric", "unified"],
+      defaultPolicy: { kind: "required" },
+    });
+    expect(PARAMETER_REGISTRY.get("bolt.joint_stiffness_ratio")).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "ratio",
+      range: { min: 0, max: 1, unit: "ratio" },
+      defaultPolicy: { kind: "optional" },
+    });
+    expect(PARAMETER_REGISTRY.get("bolt.external_tensile_load")).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "N",
+      qualifiers: { bound: "required" },
+      loadCases: ["normal", "peak"],
+      defaultPolicy: { kind: "constant" },
+    });
+    expect(PARAMETER_REGISTRY.get("bolt.preload")).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "N",
+    });
+    expect(PARAMETER_REGISTRY.get("bolt.bearing_safety_factor")).toMatchObject({
+      valueType: "quantity",
+      canonicalUnit: "ratio",
+      loadCases: ["normal", "peak"],
     });
   });
   it("lists definitions sorted by ID", () => {

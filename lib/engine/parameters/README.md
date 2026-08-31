@@ -231,6 +231,27 @@ founder judgment rather than a manufacturer-sourced figure — see
 `docs/superpowers/specs/2026-08-18-motor-sizing-consistency-pass-design.md`
 "Inertia-ratio recommended default" for the full account.
 
+Registry v1.21 adds three new scopes -- shaft.\*, key.\*, bolt.\* (38
+parameters) -- for the shaft-key-bolt-checks module (context/modules/
+shaft-key-bolt-checks/stage-2-contract.md), Milestone 7's fifth module and
+the first not scoped to any one mechanism family. Torque is a plain
+required, direct-entry port sharing screw.drive_torque's own unit,
+qualifiers, and load cases -- but it is NOT graph-link-compatible with it
+(a Stage 5 finding, not the original claim: this project has no populated
+ApprovedParameterMapping mechanism, so a link needs the identical
+parameterId, and shaft.applied_torque was deliberately minted as its own
+parameter, not a reuse of screw.drive_torque, since this module is not
+scoped to ball screws -- see stage-2-contract.md "Decisions" item 5's own
+Stage 5 correction). The module does not hard-depend on any upstream
+source either way; bending moment stays
+direct-entry only, since no released port represents a bending moment at
+an arbitrary shaft cross-section. key.* reuses shaft.diameter and
+shaft.applied_torque directly -- one module's own two scopes sharing ports,
+a new kind of reuse distinct from every prior module's own cross-module
+reuse. Stress reuses the pressure dimension (MPa/psi, already released for
+pneumatic.operating_pressure) -- no new unit-registry dimension or unit is
+needed.
+
 Follow this before adding a parameter (mirrors context/code-standards.md
 "Canonical Parameters"). Every item must be satisfied.
 

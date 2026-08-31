@@ -2685,7 +2685,92 @@ far). 17 new sources registered in `lib/standards/engineering-sources.ts`.
 Two real, disclosed evidence gaps: no JP-market source for the shaft-stress
 check specifically; the actual ANSI/ASME B106.1M and ASME B17.1 standard
 texts were never obtained (handbook/tertiary reproductions and B17.1's own
-scope page only). Stage 2 (parameter contract) is next.
+scope page only).
+
+**2026-08-31 (same day): Stage 4 (validation) is done.** Three real,
+independently-sourced published worked examples — one per sub-check — are
+now reproduced through the real `executeModule()` compute path, not only at
+the kernel level (`lib/modules/shaft-key-bolt-checks/0.1.0/reference-
+examples.ts`/`.test.ts`): the AFDL 20 hp/300 rpm pulley-shaft combined stress
+(12,150 psi), instant.engineer's parallel-key shear/bearing example
+(83.3 MPa / 208.3 MPa), and RoyMech's own torque-to-preload example
+(T=40 N*m, K=0.2, d=10mm -> 20 kN preload) — each within a disclosed
+tolerance, using disclosed non-sourced placeholder values for the two
+sub-checks each scenario is not exercising (required because `0.1.0` always
+computes the full shaft+key+bolt set together — Decision 9). A genuine
+independent-benchmark second computation was added for the shaft check
+(`reuven-benchmark.ts`/`.test.ts`): Reuven Engineering Tools' own Tresca/von
+Mises shaft-design-calculator formulas, implemented independently of
+`math.ts`, reproduce Reuven's own worked result (`d~=41.6mm` Tresca,
+`d~=40.7mm` von Mises), and this module's own `resolveShaftCombinedStress`
+— evaluated at Reuven's own independently solved diameter — recovers
+Reuven's own governing allowable stress to within 0.5%. The key check's own
+independent-method agreement (RoyMech and instant.engineer giving
+algebraically identical shear/bearing formulas once `F=2T/d` is substituted)
+was already established at Stage 1 and is cited, not re-derived as a second
+code artifact. **Two real, disclosed gaps remain, not silently closed:** no
+independent benchmark exists for the bolt tensile-capacity check
+specifically, and the bolt stress-area figures (M10x1.5, 1/2-13 UNC) stay
+kernel-level only — stress area is an internal intermediate value, not an
+output port, so it cannot be reproduced through `executeModule()` directly.
+`reviewer`/`reviewDate` are finalized (solo validation, the Reuven
+independent-benchmark substitute for the shaft check, `2026-08-31`). Full
+record: `lib/modules/shaft-key-bolt-checks/0.1.0/validation.ts`. Full non-DB
+suite green (2943/2943), typecheck/lint/build clean.
+
+**2026-08-31 (same day): Stage 5 (generic surfaces) is done — and it found
+and corrected a real defect in Stage 2's own design record, not just a
+conformance confirmation.** `ui.ts`/`report.ts` (already drafted at Stage 3)
+pass generic module conformance as-is (`package.test.ts`'s own
+`runModuleConformance` — `package-validation`, `import-boundary`,
+`execution`, `determinism` all pass). `manifest.workflowRoles: []`
+(mechanism-agnostic per Purpose), so there is no workflow-role integration
+to build, and no catalog adapter (this module does not support catalog
+matching). Cross-module link compatibility
+(`lib/modules/shaft-key-bolt-checks/0.1.0/cross-module-links.test.ts`,
+against `ball-screw@0.1.0`'s real ports, the same pattern
+`ball-screw/0.1.0/cross-module-links.test.ts` established) found that
+`stage-2-contract.md` "Decisions" item 5's own claim — `shaft.
+applied_torque` is "link-compatible" with `screw.drive_torque` — is false
+against the real `evaluateLinkCompatibility` evaluator: the two are
+distinct registered parameter IDs, and this project's own
+`ApprovedParameterMapping` mechanism has never been populated with real
+data anywhere (see "Open decisions" below, new item). Corrected the same
+session in `stage-2-contract.md`, `manifest.ts`'s own header comment,
+`lib/engine/parameters/definitions.ts`'s two v1.21 change-note comments,
+and `lib/engine/parameters/README.md` — not a release blocker
+(`shaft.applied_torque` is a plain required direct-entry input either way),
+but a real correction, not a silent one. Full non-DB suite green
+(2947/2947), typecheck/lint clean.
+
+**2026-08-31 (same day): Stage 6 (release) is done — `shaft-key-bolt-
+checks@0.1.0` is released and registered, Milestone 7's fifth module.**
+`package.ts` renamed to `index.ts` (imports in `package.test.ts`/
+`reference-examples.ts` updated). Source-immutability hash pinned (`npm run
+module:source-hash -- shaft-key-bolt-checks 0.1.0` -> `2b2961a779ba6b59`,
+14 source files including the Stage 4/5 evidence files `reference-
+examples.ts`/`reuven-benchmark.ts`/`test-helpers.ts`, the same "every
+non-.test.ts file in the directory" scope every sibling module's own hash
+covers) and wired into `package.test.ts`'s own `runModuleConformance` call
+— `source-immutability` now passes for real, not skipped. Registered via
+`npm run registry:generate` (`shaft-key-bolt-checks@0.1.0` in
+`lib/modules/registry.generated.ts`, 31 modules total, a purely additive
+diff). Sealed package content hash: `808edb3b29b7c879`. Full validation
+record: `lib/modules/shaft-key-bolt-checks/0.1.0/validation.ts`. Full
+non-DB suite green (2951/2951), typecheck/lint/build clean. **Not yet done,
+disclosed, not silently dropped:** the founder's own action of running
+`scripts/seed-*-catalog.mts`-style review does not apply here (this module
+has no catalog matching), but the `AddModuleInstanceDialog`'s own "Pneumatic
+Selection" category button label (`components/engineering/
+add-module-instance-dialog.tsx`) is now slightly inaccurate — the flat
+dropdown it opens already generically lists any non-motor-sizing,
+non-pneumatic module (confirmed: no code change was needed for this
+module's own category, `mechanical-checks`, to appear there), but the
+button's own static copy still says "Pneumatic Selection" specifically. A
+one-line copy fix, deliberately left undone this session per `context/
+ai-workflow-rules.md` "Split Rules" (a generic UI copy change is a separate
+unit from a module release, however small) — noted here rather than
+silently combined into this release.
 
 ---
 
@@ -2800,6 +2885,85 @@ variable names.
    reproductions and B17.1's own scope page). Stage 2 (parameter contract)
    is next — six open questions listed in the spec's own "Stage 2 Entry
    Criteria".
+
+   **2026-08-31 (same day): Unit 7.5 Stage 2 is done — registry `1.21.0`
+   released.** All six of Stage 1's own "Stage 2 Entry Criteria" questions
+   are resolved, plus two more Stage 2 itself found: `shaft.*`/`key.*`/
+   `bolt.*` (38 new parameters) adopt the Air-Force/ASME-B106.1M `Ks`/`Km`
+   shock-factor tradition (not Shigley/Reuven's geometric `Kf`/`Kfs`, a
+   different physical meaning stage-1-spec.md itself flagged), ship joint
+   separation as an *optional* engineer-supplied `bolt.joint_stiffness_
+   ratio` rather than deferring it, and release without a JP-market
+   shaft-stress source (disclosed, matching `coupling@0.1.0`'s own
+   precedent for the identical kind of gap). `shaft.applied_torque` is
+   deliberately authored link-compatible with `screw.drive_torque` from day
+   one (same unit/qualifiers/load-cases), the first module in this project
+   to do that at Stage 2 rather than discovering the link later; `key.*`
+   reuses `shaft.diameter`/`shaft.applied_torque` directly rather than
+   minting duplicate ports, this project's first case of one module's own
+   two scopes sharing ports. A real, disclosed Stage 1 gap was found and
+   fixed: the "Formulas" section sourced a bolt bearing-stress formula
+   (`sigma_bearing = F/(d*t)`) that the "Checks" section's own list omitted
+   — `0.1.0`'s own port list now includes `bolt.bearing_allowable_stress`/
+   `bolt.bearing_safety_factor` to close it. No new unit or dimension:
+   stress reuses the pressure dimension's existing `MPa`/`psi` units.
+   Closing this also surfaced and fixed a real, pre-existing gap from the
+   prior session's own `guided-cylinder-sizing@0.2.0` release: its manifest
+   pins registry target `1.20.0`, but that version was never added to
+   `PARAMETER_REGISTRY_SUPPORTED_VERSIONS` (only needed once a later
+   version supersedes it as active, which `1.21.0` now does) — added, with
+   full non-DB suite (2892/2892), lint, typecheck, and build all
+   reconfirmed green. Full record: `context/modules/shaft-key-bolt-checks/
+   stage-2-contract.md`.
+
+   **2026-08-31 (same day): Unit 7.5 Stage 3 (compute and trace) is done —
+   a full draft `ModulePackage` exists at `lib/modules/shaft-key-bolt-checks/
+   0.1.0/`** (manifest, ports, input schema, `math.ts` kernel, compute,
+   checks, trace, generic UI/report schema, a draft `validation.ts`, all
+   sealed in `package.ts` — named `package.ts`, not `index.ts`, so `npm run
+   registry:generate` does not discover it yet; confirmed by running that
+   script directly, no diff to `registry.generated.ts`). Two real
+   architectural findings from this session, not merely wiring: **the
+   module SDK requires every declared output port to be produced by every
+   `compute()` call**, which broke both the bolt shear/bearing/separation
+   "optional sub-path" design registry `1.21.0` had assumed possible and,
+   one level up, the "shaft+key and bolt are independently optional"
+   design — **presented as a choice, the founder directed the simpler,
+   single-module `0.1.0` path: every instance now supplies the full shaft,
+   key, and bolt (preload+tensile) input set together**, deferring true
+   per-check independence (and the whole joint-separation/shear/bearing
+   bolt path) to a future version; `stage-2-contract.md` "Decisions" item 9
+   records the full account. Also found and fixed the same session: eight
+   `shaft.*`/`key.*`/`bolt.*` length parameters registry `1.21.0` had
+   wrongly given `canonicalUnit: "mm"` (`shaft.diameter`, `shaft.
+   bore_diameter`, `key.width`, `key.height`, `key.length`, `bolt.
+   nominal_diameter`, `bolt.thread_pitch`, `bolt.clamped_material_
+   thickness`) — every other length parameter in this registry (e.g.
+   `screw.lead`, `coupling.driving_shaft_diameter`) canonicalizes to `m`
+   with `mm` as a display-only unit; caught by the module SDK's own
+   port-unit-mismatch check while building `package.test.ts`, fixed
+   directly in `definitions.ts` (registry hash re-pinned, still `1.21.0` —
+   additive-only content changed, not the version). The AFDL 20 hp/300 rpm
+   worked example (`stage-1-spec.md` Shaft item 1) is reproduced at the
+   kernel level in `math.test.ts` (fetched directly this session for the
+   exact intermediate figures — T, M, Ks, Km — not just the final solved
+   diameter `stage-1-spec.md` already cited), together with two widely-
+   published bolt stress-area sanity checks (M10x1.5, 1/2-13 UNC); not yet
+   run through the real `compute()` path (Stage 4). Full non-DB suite green
+   (2932/2932 relevant; one pre-existing, unrelated `module-input-workspace.
+   test.tsx` UI test is flaky under full-suite parallel load — passes
+   standalone 35/35, reproduced on two consecutive full-suite runs with a
+   different failure count each time, not a regression from this session's
+   own changes), typecheck/lint/build all clean. **Stages 4 (validation), 5
+   (generic surfaces), and 6 (release) are now all done (2026-08-31, same
+   day) — see "Active work" above for the full account, including a real
+   Stage 5 finding that corrected Stage 2's own "link-compatible" claim.
+   `shaft-key-bolt-checks@0.1.0` is released and registered, Milestone 7's
+   fifth module.** Nothing left to do for Unit 7.5 itself; the next Phase 2
+   candidate (bushings/plain bearings or tolerance/fit reference, per the
+   priority-score pass — `context/modules/shaft-key-bolt-checks/
+   stage-1-spec.md` "Why this module, next") is the next pick when Milestone
+   7 work continues.
 1. **All five Motor Sizing Tool family mechanism modules are fully released
    (2026-08-13), and Phase 1E's own last open deliverable — the
    `AddModuleInstanceDialog` category step/mechanism picker and the
@@ -3012,6 +3176,30 @@ past calls.
   "Decisions" item 2) — a per-module workaround for a much smaller, fixed
   motion shape, not a fix to `motion-profile@0.1.0`'s own generic-engine
   gap, which remains exactly as described above.
+- **New (2026-08-31, found by Unit 7.5 Stage 5): `ApprovedParameterMapping`
+  (`lib/engine/graph/types.ts`) has never been populated with real data,
+  anywhere in this codebase.** `evaluateLinkCompatibility`
+  (`lib/engine/graph/compatibility.ts`) only authorizes a link when the
+  source and sink share the identical registered `parameterId`, or when an
+  `ApprovedParameterMapping` explicitly joins two different ones; every
+  "link-compatible" module pair released so far (e.g. `axis-load-cases` ->
+  `ball-screw`'s own `motion.axis.thrust_force`) achieves this by reusing
+  the identical parameter ID, never by a mapping. `shaft-key-bolt-checks`
+  is the first module whose own design record (`context/modules/
+  shaft-key-bolt-checks/stage-2-contract.md` "Decisions" item 5) assumed a
+  mapping-based link would just work — confirmed false by running the real
+  evaluator against both modules' real ports
+  (`lib/modules/shaft-key-bolt-checks/0.1.0/cross-module-links.test.ts`),
+  corrected in that record the same session. `confirmParameterLink`
+  (`lib/application/parameters/stale-propagation.ts`) never passes a
+  `mappings` argument today, so even if a mapping were populated it
+  would not yet reach the real link-confirmation path. Needs a founder
+  decision on whether/how to build a real approved-mapping registry and
+  wire it into `confirmParameterLink` — a cross-cutting generic-engine
+  change, not any one module's own Stage 2/5 work
+  (`context/ai-workflow-rules.md` "Split Rules"). Not a release blocker for
+  `shaft-key-bolt-checks@0.1.0` itself: `shaft.applied_torque` remains a
+  plain required direct-entry input either way.
 
 ---
 
