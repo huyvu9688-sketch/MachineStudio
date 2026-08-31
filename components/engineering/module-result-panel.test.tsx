@@ -9,7 +9,23 @@ import type {
   EngineeringValue,
   Warning,
 } from "@/lib/engine";
-import type { ModulePreviewView, ModuleResultView } from "@/lib/application";
+import type {
+  CatalogMatchingView,
+  ModulePreviewView,
+  ModuleResultView,
+} from "@/lib/application";
+
+// `ModulePreviewView.componentAssignment` isn't this file's concern (see
+// component-assignment-panel.test.tsx for that) — every fixture here just
+// needs a valid, "no adapter" placeholder so the type checks.
+const noMatchingComponentAssignment: CatalogMatchingView = {
+  componentType: null,
+  requiredSpec: [],
+  matchingAvailable: false,
+  matchingUnavailableReason: "This module does not define catalog matching.",
+  accepted: [],
+  rejected: [],
+};
 
 const thrustForceOut: EngineeringValue = {
   v: 1,
@@ -322,6 +338,7 @@ describe("ModuleResultPanel", () => {
       validity: [],
       trace: null,
       sources: [],
+      componentAssignment: noMatchingComponentAssignment,
     };
 
     render(<ModuleResultPanel view={view()} preview={preview} />);
@@ -344,6 +361,7 @@ describe("ModuleResultPanel", () => {
       validity: [],
       trace: null,
       sources: [],
+      componentAssignment: noMatchingComponentAssignment,
     };
 
     render(
@@ -380,6 +398,7 @@ describe("ModuleResultPanel", () => {
           validity: [],
           trace: null,
           sources: [],
+          componentAssignment: noMatchingComponentAssignment,
         }}
       />,
     );
@@ -402,6 +421,7 @@ describe("ModuleResultPanel", () => {
           validity: [],
           trace: null,
           sources: [],
+          componentAssignment: noMatchingComponentAssignment,
         }}
       />,
     );

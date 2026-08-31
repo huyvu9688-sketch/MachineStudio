@@ -31,6 +31,7 @@ import "server-only";
 import {
   ModuleSdkError,
   executeModule,
+  resolveModuleInput,
   type CalculationTrace,
   type CheckResult,
   type EngineeringValue,
@@ -54,6 +55,10 @@ import {
   type SourceReferenceView,
 } from "./run-view-helpers";
 import { resolveModuleOutputValue } from "./resolve-module-output-value";
+import {
+  evaluateCatalogMatching,
+  type CatalogMatchingView,
+} from "../catalogs/evaluate-catalog-matching";
 
 /**
  * Input to {@link previewModuleComputation}. Deliberately has no
@@ -97,6 +102,15 @@ export interface ModulePreviewView {
   readonly validity: readonly ValidityResult[];
   readonly trace: CalculationTrace | null;
   readonly sources: readonly SourceReferenceView[];
+  /**
+   * Catalog candidates matched against this preview's own (unsaved)
+   * computation — lets `ComponentAssignmentPanel` suggest a part right after
+   * Run, without requiring Save first. Evaluated by the same
+   * `evaluateCatalogMatching` a persisted run's own panel uses
+   * (`load-component-assignment-view.ts`), so a candidate shown here is never
+   * a preview-only approximation of the real matcher.
+   */
+  readonly componentAssignment: CatalogMatchingView;
 }
 
 /** Result of {@link previewModuleComputation}. */
@@ -217,6 +231,19 @@ export async function previewModuleComputation(
     throw error;
   }
 
+  // `executeModule` already validated `rawInput` against the module's own
+  // schema internally; re-resolving it here (cheap — no computation) gives
+  // `evaluateCatalogMatching` the same typed `ModuleInput` shape
+  // `run.snapshot.input` carries for a persisted run, so the MGP matcher's
+  // own selection-only-input reads (`snapshotQuantity`) work identically for
+  // a preview.
+  const resolvedInput = resolveModuleInput(pkg, rawInput);
+  const componentAssignment = await evaluateCatalogMatching(
+    pkg.catalogAdapter,
+    computation,
+    resolvedInput,
+  );
+
   return {
     ok: true,
     preview: {
@@ -226,6 +253,7 @@ export async function previewModuleComputation(
       validity: computation.validity,
       trace: computation.trace,
       sources: resolveSourceReferences(collectClauseReferences(computation)),
+      componentAssignment,
     },
   };
 }

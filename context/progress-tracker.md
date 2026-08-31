@@ -2739,8 +2739,38 @@ variable names.
    Nothing left to do for either unit — except the founder's own pending
    action for Unit 7.2 (running `scripts/seed-pneumatic-cylinder-catalog.mts`
    against the live database, then reviewing/trimming the seeded CM2/CA2
-   catalog rows), which is not implementation work. **Next: Unit 7.3 — the
-   third Milestone 7 (Phase 2) module.** `context/roadmap.md` "Phase 2"
+   catalog rows), which is not implementation work.
+
+   **Unit 7.3 (`guided-cylinder-sizing`) is also fully complete, both
+   versions.** `0.1.0` (MGQ/MGP roll-pitch-yaw force/moment sizing) released
+   2026-08-26. `0.2.0` (a simplified, MGP-first application-case selector
+   that factors an engineer-entered load mass once and defers bore/bearing
+   selection to SMC's own published MGP graphs at the catalog boundary) is
+   registered 2026-08-29 (`lib/modules/registry.generated.ts`, 30 modules
+   total) — the implementation-plan work
+   (`docs/superpowers/plans/2026-08-27-guided-cylinder-sizing-mgp-selection-
+   implementation.md`) that had stalled after Tasks 1-4 (parameter contract,
+   selection curves, module package, catalog matcher — all built and tested
+   but never wired in) is now finished: the catalog dispatch in
+   `load-component-assignment-view.ts` didn't recognize the MGP component
+   type at all (`pneumatic_cylinder_guided_mgp` was missing from its
+   allowlist, so a real matcher sat unreachable), the UI callout
+   (`public/module-guides/mgp-selection-cases.svg`, an original schematic —
+   not a reproduction of SMC's own copyrighted diagrams) was undrawn, and no
+   reference examples or validation record existed. Both of SMC's own
+   published MGP page-545 "Selection Example" scenarios now reproduce
+   end to end (real compute + real matcher) to the exact model SMC's own
+   text names (`MGPL25-30Z`, `MGPM20-30Z`) —
+   `lib/application/catalogs/mgp-guided-cylinder-smc-examples.ts`. A real,
+   disclosed finding along the way: this module has no bearing-type
+   preference input, so offering both bearing types for the same scenario
+   selects a different (still valid, smaller-bore) candidate than SMC's own
+   worked example, which treats bearing type as a given precondition — not a
+   defect, recorded in `validation/guided-cylinder-sizing/0.2.0.md`. Full
+   validation record written; DB-gated catalog-matching fixture written and
+   typechecked, not run this session (no `DATABASE_URL`). `0.1.0` stays
+   released, registered, and untouched. **Next: a genuinely new Milestone 7
+   (Phase 2) module.** `context/roadmap.md` "Phase 2"
    lists eight remaining candidates (timing belts; chain and sprocket;
    bushings and plain bearings; cable carriers; mechanical stops and energy
    absorption; basic shaft/key/bolted-joint checks; a tolerance and fit

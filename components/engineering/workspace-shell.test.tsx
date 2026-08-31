@@ -11,12 +11,26 @@ import type { WorkflowDefinitionOption } from "./start-workflow-instance-dialog"
 import type { MachineProjectRecord, ProjectTree } from "@/lib/db";
 import type {
   BaselineWorkspaceView,
+  CatalogMatchingView,
+  ComponentAssignmentPanelView,
   ModulePreviewView,
   ModuleResultView,
   ModuleWorkspaceView,
   RequirementsView,
   WorkflowInstanceView,
 } from "@/lib/application";
+
+// `ModulePreviewView.componentAssignment` isn't most of this file's
+// concern — a valid, "no adapter" placeholder is enough so the type checks
+// (component-assignment-panel.test.tsx covers the real merge behavior).
+const noMatchingComponentAssignment: CatalogMatchingView = {
+  componentType: null,
+  requiredSpec: [],
+  matchingAvailable: false,
+  matchingUnavailableReason: "This module does not define catalog matching.",
+  accepted: [],
+  rejected: [],
+};
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/workspace",
@@ -543,6 +557,7 @@ describe("WorkspaceShell", () => {
       validity: [],
       trace: null,
       sources: [],
+      componentAssignment: noMatchingComponentAssignment,
     };
     vi.mocked(previewModuleComputationAction).mockResolvedValueOnce({
       status: "success",
@@ -635,5 +650,131 @@ describe("WorkspaceShell", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Thrust force")).not.toBeInTheDocument();
     expect(screen.getByText("Not run yet")).toBeInTheDocument();
+  });
+
+  // Covers the sibling half of the wiring above
+  // (`preview={preview?.componentAssignment ?? null}` in workspace-shell.tsx)
+  // — a Run preview's own catalog matching must reach the rendered
+  // `ComponentAssignmentPanel`, not just `ModuleResultPanel`, so a
+  // recommended part can show up right after Run without requiring Save
+  // first.
+  it("lifts a Run preview's catalog matching into the rendered ComponentAssignmentPanel", async () => {
+    const moduleWorkspace: ModuleWorkspaceView = {
+      moduleInstance: {
+        id: "m1" as ModuleWorkspaceView["moduleInstance"]["id"],
+        assemblyId: "a1" as ModuleWorkspaceView["moduleInstance"]["assemblyId"],
+        configurationId:
+          "c1" as ModuleWorkspaceView["moduleInstance"]["configurationId"],
+        label: "Thrust check",
+        modulePackageId: "example-scaffold",
+        moduleVersion: "0.1.0",
+        category: "example",
+        lastRunStatus: "pass",
+      },
+      groups: [],
+    };
+    const moduleResult: ModuleResultView = {
+      moduleInstance: {
+        id: "m1" as ModuleResultView["moduleInstance"]["id"],
+        assemblyId: "a1" as ModuleResultView["moduleInstance"]["assemblyId"],
+        configurationId:
+          "c1" as ModuleResultView["moduleInstance"]["configurationId"],
+        label: "Thrust check",
+      },
+      run: null,
+      outputs: [],
+      checks: [],
+      warnings: [],
+      validity: [],
+      trace: null,
+      sources: [],
+      comparison: null,
+    };
+    const componentAssignment: ComponentAssignmentPanelView = {
+      moduleInstance: {
+        id: "m1" as ComponentAssignmentPanelView["moduleInstance"]["id"],
+        configurationId:
+          "c1" as ComponentAssignmentPanelView["moduleInstance"]["configurationId"],
+        label: "Thrust check",
+      },
+      latestRunId: null,
+      componentType: null,
+      requiredSpec: [],
+      matchingAvailable: false,
+      matchingUnavailableReason: "This module does not define catalog matching.",
+      accepted: [],
+      rejected: [],
+      assignments: [],
+    };
+    const preview: ModulePreviewView = {
+      outputs: [],
+      checks: [],
+      warnings: [],
+      validity: [],
+      trace: null,
+      sources: [],
+      componentAssignment: {
+        componentType: "example_component",
+        requiredSpec: [],
+        matchingAvailable: true,
+        matchingUnavailableReason: null,
+        accepted: [
+          {
+            part: {
+              id: "rev-1" as never,
+              manufacturerName: "Acme",
+              partNumber: "AC-100",
+              sourceRevision: "2026-A",
+              sourceLink: null,
+              lifecycleStatus: null,
+              dataQualityStatus: "valid",
+            },
+            score: 1,
+            rankingReasons: [],
+          },
+        ],
+        rejected: [],
+      },
+    };
+    vi.mocked(previewModuleComputationAction).mockResolvedValueOnce({
+      status: "success",
+      preview,
+    });
+
+    const user = userEvent.setup();
+    render(
+      <WorkspaceShell
+        status="loaded"
+        projects={projects}
+        selectedProject={projectTree}
+        selectedConfigurationId="c1"
+        selectedModuleInstanceId="m1"
+        selectedWorkflowInstanceId={null}
+        moduleWorkspace={moduleWorkspace}
+        moduleResult={moduleResult}
+        componentAssignment={componentAssignment}
+        bom={null}
+        workflowInstance={null}
+        requirements={null}
+        baselines={null}
+        summary={summarizeModuleStatuses(
+          projectTree.configurations[0].assemblies,
+        )}
+        marketProfiles={MARKET_PROFILES}
+        modulePackages={MODULE_PACKAGES}
+        workflowDefinitions={WORKFLOW_DEFINITIONS}
+      />,
+    );
+
+    expect(
+      screen.getByText("This module does not define catalog matching."),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Run" }));
+
+    expect(await screen.findByText("AC-100")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Preview — from the unsaved Run/i),
+    ).toBeInTheDocument();
   });
 });

@@ -27,6 +27,8 @@ export {
   type ModuleInputGroupView,
   type ModuleInputFieldView,
   type ModuleInputFieldDescriptor,
+  type ModuleWorkspaceCalloutView,
+  type ModuleWorkspaceCalloutCaseSelectorView,
 } from "./calculations/load-module-workspace-view";
 
 export {
@@ -87,6 +89,8 @@ export {
   type RankedCandidateView,
   type RejectedCandidateView,
 } from "./catalogs/load-component-assignment-view";
+
+export { type CatalogMatchingView } from "./catalogs/evaluate-catalog-matching";
 
 export {
   createBaseline,

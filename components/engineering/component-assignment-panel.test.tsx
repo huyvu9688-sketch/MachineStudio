@@ -4,7 +4,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ComponentAssignmentPanel } from "./component-assignment-panel";
 import { assignComponentAction } from "@/app/(workspace)/workspace/actions";
-import type { ComponentAssignmentPanelView } from "@/lib/application";
+import type {
+  CatalogMatchingView,
+  ComponentAssignmentPanelView,
+} from "@/lib/application";
 
 // component-assignment-panel.tsx imports this Server Action directly (inline
 // assign forms) — mocked the same way every other component test in this
@@ -55,7 +58,7 @@ const part = {
 
 describe("ComponentAssignmentPanel", () => {
   it("states why matching is unavailable instead of rendering an empty candidate table", () => {
-    render(<ComponentAssignmentPanel view={view()} />);
+    render(<ComponentAssignmentPanel view={view()} preview={null} />);
 
     expect(
       screen.getByText(/does not define catalog matching/i),
@@ -90,6 +93,7 @@ describe("ComponentAssignmentPanel", () => {
             },
           ],
         })}
+        preview={null}
       />,
     );
 
@@ -119,6 +123,7 @@ describe("ComponentAssignmentPanel", () => {
             },
           ],
         })}
+        preview={null}
       />,
     );
 
@@ -142,6 +147,7 @@ describe("ComponentAssignmentPanel", () => {
           matchingUnavailableReason: null,
           accepted: [{ part, score: 0, rankingReasons: [] }],
         })}
+        preview={null}
       />,
     );
 
@@ -152,7 +158,7 @@ describe("ComponentAssignmentPanel", () => {
 
   it("submits a manual part assignment", async () => {
     const user = userEvent.setup();
-    render(<ComponentAssignmentPanel view={view()} />);
+    render(<ComponentAssignmentPanel view={view()} preview={null} />);
 
     await user.type(screen.getByLabelText(/description/i), "Custom bracket");
     await user.click(
@@ -163,7 +169,12 @@ describe("ComponentAssignmentPanel", () => {
   });
 
   it("blocks assignment and explains why when the module has never been run", () => {
-    render(<ComponentAssignmentPanel view={view({ latestRunId: null })} />);
+    render(
+      <ComponentAssignmentPanel
+        view={view({ latestRunId: null })}
+        preview={null}
+      />,
+    );
 
     expect(
       screen.getByRole("button", { name: /assign manual part/i }),
@@ -197,6 +208,7 @@ describe("ComponentAssignmentPanel", () => {
             },
           ],
         })}
+        preview={null}
       />,
     );
 
@@ -226,6 +238,7 @@ describe("ComponentAssignmentPanel", () => {
             },
           ],
         })}
+        preview={null}
       />,
     );
 
@@ -235,10 +248,58 @@ describe("ComponentAssignmentPanel", () => {
   });
 
   it("reports the empty state when nothing is assigned yet", () => {
-    render(<ComponentAssignmentPanel view={view()} />);
+    render(<ComponentAssignmentPanel view={view()} preview={null} />);
 
     expect(
       screen.getByText(/No part is assigned to this module yet/i),
     ).toBeInTheDocument();
+  });
+
+  it("shows a live preview's own candidates over the persisted view's, with a not-saved banner", () => {
+    const preview: CatalogMatchingView = {
+      componentType: "pneumatic_cylinder_guided_mgp",
+      requiredSpec: [
+        {
+          key: "factored_load_mass",
+          label: "Factored guided load mass",
+          operator: "gte",
+          displayValue: "30.00 kg",
+        },
+      ],
+      matchingAvailable: true,
+      matchingUnavailableReason: null,
+      accepted: [{ part, score: 12, rankingReasons: ["MGP graph 5 allows…"] }],
+      rejected: [],
+    };
+    render(
+      <ComponentAssignmentPanel view={view()} preview={preview} />,
+    );
+
+    expect(screen.getByText(/Preview — from the unsaved Run/i)).toBeInTheDocument();
+    expect(screen.getByText("30.00 kg")).toBeInTheDocument();
+    expect(screen.getByText("BNK1520")).toBeInTheDocument();
+    expect(screen.getByText("MGP graph 5 allows…")).toBeInTheDocument();
+  });
+
+  it("blocks assigning a previewed candidate even when a persisted run already exists, with a save-first reason", () => {
+    const preview: CatalogMatchingView = {
+      componentType: "pneumatic_cylinder_guided_mgp",
+      requiredSpec: [],
+      matchingAvailable: true,
+      matchingUnavailableReason: null,
+      accepted: [{ part, score: 0, rankingReasons: [] }],
+      rejected: [],
+    };
+    render(
+      <ComponentAssignmentPanel
+        view={view({ latestRunId: "run-1" as never })}
+        preview={preview}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Assign" })).toBeDisabled();
+    expect(
+      screen.getAllByText(/Save this module first/i).length,
+    ).toBeGreaterThan(0);
   });
 });

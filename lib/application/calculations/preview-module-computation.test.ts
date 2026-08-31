@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import { liveDatabaseAvailable } from "@/tests/live-database";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { makeQuantity } from "@/lib/engine";
+import { applicationCaseValue } from "@/lib/modules/guided-cylinder-sizing/0.2.0/test-helpers";
 import type {
   AssemblyId,
   MachineConfigurationId,
@@ -18,6 +19,9 @@ import type {
 const RELAY_ID = "example-relay";
 const RELAY_VERSION = "0.1.0";
 const THRUST_FORCE = "motion.axis.thrust_force";
+
+const MGP_ID = "guided-cylinder-sizing";
+const MGP_VERSION = "0.2.0";
 
 describe.skipIf(!liveDatabaseAvailable)(
   "previewModuleComputation (live database)",
@@ -37,7 +41,10 @@ describe.skipIf(!liveDatabaseAvailable)(
       readonly moduleInstanceId: ModuleInstanceId;
     }
 
-    async function scaffold(): Promise<Scaffold> {
+    async function scaffold(
+      modulePackageId: string = RELAY_ID,
+      moduleVersion: string = RELAY_VERSION,
+    ): Promise<Scaffold> {
       const user = await projects.upsertUser(`test-user-${randomUUID()}`);
       createdUserIds.push(user.id);
       const project = await projects.createProject({
@@ -56,8 +63,8 @@ describe.skipIf(!liveDatabaseAvailable)(
       const mi = await projects.createModuleInstance({
         assemblyId: assembly.id,
         configurationId: config.id,
-        modulePackageId: RELAY_ID,
-        moduleVersion: RELAY_VERSION,
+        modulePackageId,
+        moduleVersion,
         label: "Relay",
       });
       return {
@@ -246,6 +253,106 @@ describe.skipIf(!liveDatabaseAvailable)(
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("invalid_input");
+
+      const persistedRuns = await client.prisma.calculationRun.findMany({
+        where: { moduleInstanceId: s.moduleInstanceId },
+      });
+      expect(persistedRuns).toHaveLength(0);
+    });
+
+    // guided-cylinder-sizing@0.2.0 declares a real `catalogAdapter`
+    // (componentType "pneumatic_cylinder_guided_mgp"), unlike example-relay
+    // above — the only way to actually exercise `previewModuleComputation`'s
+    // own new `componentAssignment` field against a real, seeded catalog
+    // (reference/catalog-seed/smc-mgp.csv via
+    // scripts/seed-mgp-guided-cylinder-catalog.mts) instead of a fixture.
+    // Inputs mirror mgp-guided-cylinder-smc-examples.ts's own
+    // runMgpVerticalLifterExample (SMC's published page-545 "Selection
+    // Example 1"), which this module's own compute resolves to a factored
+    // load the seeded MGP catalog's real graphs can match against.
+    it("matches real seeded MGP catalog candidates against a live preview, without persisting anything", async () => {
+      const s = await scaffold(MGP_ID, MGP_VERSION);
+      await Promise.all([
+        graph.createParameterValue({
+          configurationId: s.configId,
+          moduleInstanceId: s.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: "pneumatic_guided_mgp_sizing.application_case",
+          source: "manual",
+          value: applicationCaseValue("vertical_lifter"),
+        }),
+        graph.createParameterValue({
+          configurationId: s.configId,
+          moduleInstanceId: s.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: "motion.axis.total_moving_mass",
+          source: "manual",
+          value: makeQuantity(3, "kg"),
+        }),
+        graph.createParameterValue({
+          configurationId: s.configId,
+          moduleInstanceId: s.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: "pneumatic_guided_mgp_sizing.load_safety_factor",
+          source: "manual",
+          value: makeQuantity(1, "ratio"),
+        }),
+        graph.createParameterValue({
+          configurationId: s.configId,
+          moduleInstanceId: s.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: "pneumatic_guided_sizing.required_stroke",
+          source: "manual",
+          value: makeQuantity(30, "mm"),
+        }),
+        graph.createParameterValue({
+          configurationId: s.configId,
+          moduleInstanceId: s.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: "pneumatic.operating_pressure",
+          source: "manual",
+          value: makeQuantity(0.5, "MPa"),
+        }),
+        graph.createParameterValue({
+          configurationId: s.configId,
+          moduleInstanceId: s.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: "pneumatic.max_piston_speed",
+          source: "manual",
+          value: makeQuantity(0.2, "m/s"),
+        }),
+        graph.createParameterValue({
+          configurationId: s.configId,
+          moduleInstanceId: s.moduleInstanceId,
+          nodeKind: "module_input",
+          parameterId: "pneumatic_guided_mgp_sizing.eccentric_distance",
+          source: "manual",
+          value: makeQuantity(90, "mm"),
+        }),
+      ]);
+
+      const result = await application.previewModuleComputation({
+        moduleInstanceId: s.moduleInstanceId,
+        ownerId: s.ownerId,
+        overrides: {},
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      expect(result.preview.componentAssignment.componentType).toBe(
+        "pneumatic_cylinder_guided_mgp",
+      );
+      expect(result.preview.componentAssignment.matchingAvailable).toBe(true);
+      // At least one real, seeded MGP part revision satisfies this scenario —
+      // this is what actually answers "why doesn't Run recommend a bore":
+      // it's non-empty once the catalog is seeded, and reachable from a
+      // preview alone, no Save required.
+      expect(
+        result.preview.componentAssignment.accepted.length,
+      ).toBeGreaterThan(0);
+      for (const candidate of result.preview.componentAssignment.accepted) {
+        expect(candidate.part.partNumber).toMatch(/^MGP/);
+      }
 
       const persistedRuns = await client.prisma.calculationRun.findMany({
         where: { moduleInstanceId: s.moduleInstanceId },

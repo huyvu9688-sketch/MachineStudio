@@ -46,7 +46,7 @@ function stopperInput(): RawInput {
   return input;
 }
 
-const EXPECTED_SOURCE_HASH = "78532e55df3f76cf";
+const EXPECTED_SOURCE_HASH = "eb4cd79beb2f767d";
 
 describe("guided-cylinder-sizing 0.2.0 module conformance", () => {
   const report = runModuleConformance(guidedCylinderSizingMgpModule, {

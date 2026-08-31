@@ -781,5 +781,175 @@ describe.skipIf(!liveDatabaseAvailable)(
       });
       await client.prisma.manufacturer.delete({ where: { id: manufacturer.id } });
     });
+
+    // Disclosed gap, same order-of-operations pattern as the dual-rod test
+    // above: this test cannot pass until `guided-cylinder-sizing@0.2.0` is
+    // actually registered (`npm run registry:generate`) -- written and
+    // typechecked now, not executed against a live database in this
+    // session (DATABASE_URL unset, so describe.skipIf above skips this
+    // whole block regardless). Expected to pass unmodified once the module
+    // is registered.
+    it("returns real ranked/rejected candidates for a guided-cylinder-sizing@0.2.0 (MGP) module instance with catalog rows", async () => {
+      const user = await projects.upsertUser(`test-user-${randomUUID()}`);
+      createdUserIds.push(user.id);
+      const project = await projects.createProject({
+        ownerId: user.id,
+        name: "MGP lifter station",
+        marketProfileKey: "US-General-Industrial-Machinery@1",
+      });
+      const config = await projects.createConfiguration({
+        projectId: project.id,
+        name: "Baseline",
+      });
+      const assembly = await projects.createAssembly({
+        configurationId: config.id,
+        name: "MGP lifter",
+      });
+      const mi = await projects.createModuleInstance({
+        assemblyId: assembly.id,
+        configurationId: config.id,
+        modulePackageId: "guided-cylinder-sizing",
+        moduleVersion: "0.2.0",
+        label: "MGP guided cylinder sizing",
+      });
+
+      // MGP page-545 "Selection Example 1 (Vertical Mounting)" -- the same
+      // scenario lib/modules/guided-cylinder-sizing/0.2.0/
+      // smc-reference-example.ts's runMgpVerticalLifterExample() reproduces:
+      // ball bushing, 30 stroke, 200 mm/s, 3 kg load mass, 90 mm eccentric
+      // distance. load_safety_factor: 1 isolates the catalog's own
+      // published condition.
+      const inputs: Array<{
+        parameterId: string;
+        value: ReturnType<typeof makeQuantity> | EnumValue;
+      }> = [
+        {
+          parameterId: "pneumatic_guided_mgp_sizing.application_case",
+          value: enumValue("pneumatic_guided_mgp_application_case", "vertical_lifter"),
+        },
+        { parameterId: "motion.axis.total_moving_mass", value: makeQuantity(3, "kg") },
+        {
+          parameterId: "pneumatic_guided_mgp_sizing.load_safety_factor",
+          value: makeQuantity(1, "ratio"),
+        },
+        { parameterId: "pneumatic_guided_sizing.required_stroke", value: makeQuantity(30, "mm") },
+        { parameterId: "pneumatic.operating_pressure", value: makeQuantity(0.5, "MPa") },
+        { parameterId: "pneumatic.max_piston_speed", value: makeQuantity(0.2, "m/s") },
+        {
+          parameterId: "pneumatic_guided_mgp_sizing.eccentric_distance",
+          value: makeQuantity(90, "mm"),
+        },
+      ];
+      for (const input of inputs) {
+        await graph.createParameterValue({
+          configurationId: config.id,
+          moduleInstanceId: mi.id,
+          nodeKind: "module_input",
+          parameterId: input.parameterId,
+          source: "manual",
+          value: input.value,
+        });
+      }
+
+      const executed = await executeModuleInstance({
+        moduleInstanceId: mi.id,
+        ownerId: user.id,
+      });
+      if (!executed.ok) {
+        throw new Error(`fixture run failed: ${executed.error.message}`);
+      }
+
+      // Catalog fixture: a real MGPL25-30Z (accepts -- the exact model SMC's
+      // own text names for this scenario) and a real MGPL20-30Z (rejects --
+      // its own real published graph-5 allowable mass at 90 mm eccentric
+      // distance is below 3 kg, confirmed directly in
+      // smc-reference-example.test.ts). Uses the real
+      // "pneumatic_cylinder_guided_mgp" ComponentType id, the same
+      // idempotent load-or-create pattern the fixtures above use.
+      const manufacturer = await catalog.createManufacturer({
+        name: `Test SMC ${randomUUID()}`,
+      });
+      const componentTypeId = asComponentTypeId("pneumatic_cylinder_guided_mgp");
+      const existingType = await client.prisma.componentType.findUnique({
+        where: { id: componentTypeId },
+      });
+      if (existingType === null) {
+        await catalog.createComponentType({
+          id: componentTypeId,
+          name: "Pneumatic MGP guided cylinder",
+        });
+      }
+      const schemaFields = [
+        { key: "bore_diameter", label: "Bore diameter", valueKind: "quantity" as const, required: true, unit: "mm" },
+        { key: "rod_diameter", label: "Rod diameter", valueKind: "quantity" as const, required: true, unit: "mm" },
+        { key: "bearing_type", label: "Bearing type", valueKind: "enum" as const, required: true, enumId: "mgp_bearing_type" },
+        { key: "standard_stroke", label: "Standard stroke", valueKind: "quantity" as const, required: true, unit: "mm" },
+      ];
+      const schemaVersionString = "1.0.0";
+      const existingSchemaVersion = await client.prisma.componentSchemaVersion.findUnique({
+        where: {
+          componentTypeId_version: {
+            componentTypeId,
+            version: schemaVersionString,
+          },
+        },
+      });
+      const schemaVersion =
+        existingSchemaVersion !== null
+          ? { id: asComponentSchemaVersionId(existingSchemaVersion.id) }
+          : await catalog.createComponentSchemaVersion({
+              componentTypeId,
+              version: schemaVersionString,
+              fields: schemaFields,
+            });
+
+      const passingRevision = await catalog.createManufacturerPartRevision({
+        manufacturerId: manufacturer.id,
+        componentTypeId,
+        componentSchemaVersionId: schemaVersion.id,
+        partNumber: `MGPL25-30Z-test-${randomUUID()}`,
+        sourceRevision: "test-fixture",
+        attributes: {
+          bore_diameter: makeQuantity(25, "mm"),
+          rod_diameter: makeQuantity(10, "mm"),
+          bearing_type: enumValue("mgp_bearing_type", "ball_bushing"),
+          standard_stroke: makeQuantity(30, "mm"),
+        },
+      });
+      const rejectedRevision = await catalog.createManufacturerPartRevision({
+        manufacturerId: manufacturer.id,
+        componentTypeId,
+        componentSchemaVersionId: schemaVersion.id,
+        partNumber: `MGPL20-30Z-test-${randomUUID()}`,
+        sourceRevision: "test-fixture",
+        attributes: {
+          bore_diameter: makeQuantity(20, "mm"),
+          rod_diameter: makeQuantity(10, "mm"),
+          bearing_type: enumValue("mgp_bearing_type", "ball_bushing"),
+          standard_stroke: makeQuantity(30, "mm"),
+        },
+      });
+
+      const view = await loadComponentAssignmentView(mi.id, user.id);
+
+      expect(view).not.toBeNull();
+      expect(view?.componentType).toBe("pneumatic_cylinder_guided_mgp");
+      expect(view?.matchingAvailable).toBe(true);
+      expect(view?.matchingUnavailableReason).toBeNull();
+      expect(view?.requiredSpec.length).toBeGreaterThan(0);
+
+      const acceptedIds = (view?.accepted ?? []).map((c) => c.part.id);
+      const rejectedIds = (view?.rejected ?? []).map((c) => c.part.id);
+      expect(acceptedIds).toContain(passingRevision.id);
+      expect(rejectedIds).toContain(rejectedRevision.id);
+      expect(
+        (view?.accepted.length ?? 0) + (view?.rejected.length ?? 0),
+      ).toBeGreaterThanOrEqual(2);
+
+      await client.prisma.manufacturerPartRevision.deleteMany({
+        where: { id: { in: [passingRevision.id, rejectedRevision.id] } },
+      });
+      await client.prisma.manufacturer.delete({ where: { id: manufacturer.id } });
+    });
   },
 );

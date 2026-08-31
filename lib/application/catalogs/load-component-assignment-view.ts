@@ -39,60 +39,30 @@ import type { RequiredSpecEntry } from "@/lib/catalog";
 import type { CheckStatus } from "@/lib/engine";
 import { getModulePackage } from "@/lib/modules";
 import {
-  asComponentTypeId,
   listComponentAssignmentsForModuleInstance,
-  listManufacturerPartRevisionsByComponentType,
   listRunsForModuleInstance,
   loadCalculationRun,
-  loadManufacturer,
   loadManufacturerPartRevision,
   loadModuleInstanceForOwner,
   type CalculationRunId,
   type ComponentAssignmentRecord,
   type MachineConfigurationId,
-  type ManufacturerPartRevisionId,
-  type ManufacturerPartRevisionRecord,
   type ModuleInstanceId,
   type UserId,
 } from "@/lib/db";
 import {
-  evaluatePneumaticCylinderCandidates,
-  type PneumaticCylinderMatchCandidate,
-} from "./pneumatic-cylinder-matching";
-import {
-  evaluateGuidedCylinderCandidates,
-  type GuidedCylinderMatchCandidate,
-} from "./guided-cylinder-matching";
-import {
-  evaluateDualRodCylinderCandidates,
-  type DualRodCylinderMatchCandidate,
-} from "./dual-rod-cylinder-matching";
+  describePart,
+  evaluateCatalogMatching,
+  type CandidatePartView,
+  type RankedCandidateView,
+  type RejectedCandidateView,
+} from "./evaluate-catalog-matching";
 
-/** One candidate manufacturer part, described for the candidate table. */
-export interface CandidatePartView {
-  readonly id: ManufacturerPartRevisionId;
-  readonly manufacturerName: string;
-  readonly partNumber: string;
-  readonly sourceRevision: string;
-  readonly sourceLink: string | null;
-  readonly lifecycleStatus: string | null;
-  readonly dataQualityStatus: string;
-}
-
-/** A hard-filter-passing candidate with its transparent ranking explanation. */
-export interface RankedCandidateView {
-  readonly part: CandidatePartView;
-  /** Mean fractional surplus across scored criteria; lower is a tighter fit. */
-  readonly score: number;
-  /** Why this candidate ranks where it does — one line per satisfied criterion. */
-  readonly rankingReasons: readonly string[];
-}
-
-/** A hard-filter-failing candidate with the reasons it was excluded. */
-export interface RejectedCandidateView {
-  readonly part: CandidatePartView;
-  readonly rejectionReasons: readonly string[];
-}
+export type {
+  CandidatePartView,
+  RankedCandidateView,
+  RejectedCandidateView,
+} from "./evaluate-catalog-matching";
 
 /** An existing assignment on this module instance, with its supporting run. */
 export interface ComponentAssignmentView {
@@ -148,28 +118,6 @@ export interface ComponentAssignmentPanelView {
   readonly assignments: readonly ComponentAssignmentView[];
 }
 
-/** Resolves a part revision plus its manufacturer's display name (memoized per view). */
-async function describePart(
-  revision: ManufacturerPartRevisionRecord,
-  manufacturerNames: Map<string, string>,
-): Promise<CandidatePartView> {
-  let manufacturerName = manufacturerNames.get(revision.manufacturerId);
-  if (manufacturerName === undefined) {
-    const manufacturer = await loadManufacturer(revision.manufacturerId);
-    manufacturerName = manufacturer?.name ?? revision.manufacturerId;
-    manufacturerNames.set(revision.manufacturerId, manufacturerName);
-  }
-  return {
-    id: revision.id,
-    manufacturerName,
-    partNumber: revision.partNumber,
-    sourceRevision: revision.sourceRevision,
-    sourceLink: revision.sourceLink,
-    lifecycleStatus: revision.lifecycleStatus,
-    dataQualityStatus: revision.dataQualityStatus,
-  };
-}
-
 async function describeAssignment(
   assignment: ComponentAssignmentRecord,
   ownerId: UserId,
@@ -220,8 +168,6 @@ const NO_ADAPTER_REASON =
   "This module does not define catalog matching, so there is no required specification to filter parts against. A manual or custom part can still be assigned.";
 const NO_RUN_REASON =
   "Run this module to calculate its required specification before matching manufacturer parts.";
-const NO_CRITERIA_REASON =
-  "This module publishes a required specification but no comparison rules yet, so candidate parts cannot be filtered or ranked automatically. A manual or custom part can still be assigned.";
 
 /**
  * Loads the catalog matching and assignment read model for
@@ -234,6 +180,13 @@ const NO_CRITERIA_REASON =
  * normal render, not an error: `matchingAvailable` is `false` with a reason,
  * the candidate tables are empty, and the manual/custom part assignment path
  * plus any existing assignments still render.
+ *
+ * The candidate-matching half (componentType dispatch, hard filtering,
+ * ranking, and the `matchingAvailable: false` deferral this file's own
+ * header explains) is shared with the live-preview path
+ * (`preview-module-computation.ts`) via `evaluateCatalogMatching` — this
+ * function's own job is just resolving *which* computation a saved run
+ * provides for that shared evaluator to run against.
  */
 export async function loadComponentAssignmentView(
   moduleInstanceId: ModuleInstanceId,
@@ -268,120 +221,53 @@ export async function loadComponentAssignmentView(
   const summaries = await listRunsForModuleInstance(moduleInstanceId, ownerId);
   const latestRunId = summaries[0]?.id ?? null;
 
-  const base = {
-    moduleInstance: {
-      id: moduleInstance.id,
-      configurationId: moduleInstance.configurationId,
-      label: moduleInstance.label,
-    },
-    latestRunId,
+  const moduleInstanceView = {
+    id: moduleInstance.id,
+    configurationId: moduleInstance.configurationId,
+    label: moduleInstance.label,
+  };
+  const emptyMatching = {
     requiredSpec: [] as readonly RequiredSpecEntry[],
     matchingAvailable: false,
     accepted: [] as readonly RankedCandidateView[],
     rejected: [] as readonly RejectedCandidateView[],
-    assignments,
   };
 
   const adapter = pkg.catalogAdapter;
   if (adapter === undefined) {
     return {
-      ...base,
+      moduleInstance: moduleInstanceView,
+      latestRunId,
       componentType: null,
       matchingUnavailableReason: NO_ADAPTER_REASON,
-    };
-  }
-  if (latestRunId === null) {
-    return {
-      ...base,
-      componentType: adapter.componentType,
-      matchingUnavailableReason: NO_RUN_REASON,
+      ...emptyMatching,
+      assignments,
     };
   }
 
-  // An adapter exists and the module has run. For "pneumatic_cylinder"
-  // (Unit 7.2), "pneumatic_cylinder_guided" (Unit 7.3), and
-  // "pneumatic_cylinder_dual_rod" (Unit 7.4), the requiredSpec ->
-  // MatchCriterion mapping now has a real implementation -- see this
-  // file's own header for why every other component type still reports
-  // matchingAvailable: false (Milestone 4's own still-open deferral, not
-  // touched by this change).
-  if (
-    adapter.componentType !== "pneumatic_cylinder" &&
-    adapter.componentType !== "pneumatic_cylinder_guided" &&
-    adapter.componentType !== "pneumatic_cylinder_dual_rod"
-  ) {
-    return {
-      ...base,
-      componentType: adapter.componentType,
-      matchingUnavailableReason: NO_CRITERIA_REASON,
-    };
-  }
-
-  const run = await loadCalculationRun(latestRunId, ownerId);
+  const run =
+    latestRunId === null ? null : await loadCalculationRun(latestRunId, ownerId);
   if (run === null) {
     return {
-      ...base,
+      moduleInstance: moduleInstanceView,
+      latestRunId,
       componentType: adapter.componentType,
       matchingUnavailableReason: NO_RUN_REASON,
+      ...emptyMatching,
+      assignments,
     };
   }
 
-  const revisions = await listManufacturerPartRevisionsByComponentType(
-    asComponentTypeId(adapter.componentType),
+  const matching = await evaluateCatalogMatching(
+    adapter,
+    run.snapshot.computation,
+    run.snapshot.input,
   );
-  const matchCandidates = revisions.map((revision) => ({
-    id: revision.id,
-    attributes: revision.attributes,
-  }));
-
-  const outcome =
-    adapter.componentType === "pneumatic_cylinder"
-      ? evaluatePneumaticCylinderCandidates(
-          run.snapshot.computation,
-          matchCandidates as PneumaticCylinderMatchCandidate[],
-        )
-      : adapter.componentType === "pneumatic_cylinder_guided"
-        ? evaluateGuidedCylinderCandidates(
-            run.snapshot.computation,
-            matchCandidates as GuidedCylinderMatchCandidate[],
-          )
-        : evaluateDualRodCylinderCandidates(
-            run.snapshot.computation,
-            matchCandidates as DualRodCylinderMatchCandidate[],
-          );
-
-  const revisionById = new Map(revisions.map((r) => [r.id, r]));
-  const accepted: RankedCandidateView[] = [];
-  for (const rankedCandidate of outcome.accepted) {
-    const revision = revisionById.get(
-      rankedCandidate.candidate.id as ManufacturerPartRevisionId,
-    );
-    if (revision === undefined) continue;
-    accepted.push({
-      part: await describePart(revision, manufacturerNames),
-      score: rankedCandidate.score,
-      rankingReasons: rankedCandidate.reasons,
-    });
-  }
-  const rejected: RejectedCandidateView[] = [];
-  for (const rejectedCandidate of outcome.rejected) {
-    const revision = revisionById.get(
-      rejectedCandidate.candidate.id as ManufacturerPartRevisionId,
-    );
-    if (revision === undefined) continue;
-    rejected.push({
-      part: await describePart(revision, manufacturerNames),
-      rejectionReasons: rejectedCandidate.reasons,
-    });
-  }
 
   return {
-    ...base,
-    componentType: adapter.componentType,
-    matchingUnavailableReason: null,
-    requiredSpec: outcome.requiredSpec,
-    matchingAvailable: true,
-    accepted,
-    rejected,
+    moduleInstance: moduleInstanceView,
+    latestRunId,
+    ...matching,
+    assignments,
   };
 }

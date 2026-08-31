@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340" role="img" aria-labelledby="mgp-cases-title mgp-cases-desc">
+  <title id="mgp-cases-title">MGP guided cylinder selection cases</title>
+  <desc id="mgp-cases-desc">Three schematic diagrams of a guided cylinder used as a vertical lifter, a horizontal pusher, and a stopper, each showing the load's eccentric distance L from the mounting plate.</desc>
+
+  <rect x="0" y="0" width="900" height="340" fill="#FFFFFF" />
+
+  <!-- Panel dividers -->
+  <line x1="300" y1="20" x2="300" y2="270" stroke="#E5E7EB" stroke-width="1.5" />
+  <line x1="600" y1="20" x2="600" y2="270" stroke="#E5E7EB" stroke-width="1.5" />
+
+  <!-- ============ Panel 1: Vertical lifter ============ -->
+  <g stroke="#1F2937" stroke-width="2.5" fill="none">
+    <!-- Guide body -->
+    <rect x="115" y="40" width="30" height="120" fill="#F3F4F6" />
+    <!-- Mounting plate -->
+    <rect x="90" y="160" width="80" height="16" fill="#1F2937" />
+    <!-- Bracket down to offset load -->
+    <line x1="180" y1="176" x2="205" y2="176" />
+    <line x1="205" y1="176" x2="205" y2="215" />
+  </g>
+  <!-- Load -->
+  <circle cx="205" cy="228" r="12" fill="#4B5563" stroke="none" />
+  <!-- Travel arrow -->
+  <g stroke="#4B5563" stroke-width="2" fill="none">
+    <line x1="65" y1="55" x2="65" y2="145" />
+    <polygon points="65,48 60,58 70,58" fill="#4B5563" stroke="none" />
+    <polygon points="65,152 60,142 70,142" fill="#4B5563" stroke="none" />
+  </g>
+  <!-- L dimension: guide centerline (x=130) to load center (x=205) -->
+  <g stroke="#1565C0" stroke-width="1.5" fill="none">
+    <line x1="130" y1="176" x2="130" y2="252" stroke-dasharray="3,3" />
+    <line x1="205" y1="228" x2="205" y2="252" stroke-dasharray="3,3" />
+    <line x1="130" y1="246" x2="205" y2="246" />
+    <polygon points="130,246 138,242 138,250" fill="#1565C0" stroke="none" />
+    <polygon points="205,246 197,242 197,250" fill="#1565C0" stroke="none" />
+  </g>
+  <text x="167" y="260" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="600" fill="#1565C0">L</text>
+  <text x="150" y="300" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="600" fill="#1F2937">Vertical lifter</text>
+
+  <!-- ============ Panel 2: Horizontal pusher ============ -->
+  <g stroke="#1F2937" stroke-width="2.5" fill="none">
+    <!-- Guide body -->
+    <rect x="335" y="115" width="120" height="30" fill="#F3F4F6" />
+    <!-- Mounting plate -->
+    <rect x="455" y="90" width="16" height="80" fill="#1F2937" />
+  </g>
+  <!-- Load (workpiece being pushed) -->
+  <rect x="510" y="105" width="46" height="46" fill="#4B5563" stroke="none" />
+  <!-- Travel arrow -->
+  <g stroke="#4B5563" stroke-width="2" fill="none">
+    <line x1="350" y1="70" x2="440" y2="70" />
+    <polygon points="447,70 437,65 437,75" fill="#4B5563" stroke="none" />
+  </g>
+  <!-- L dimension: plate face (x=471) to load center (x=533) -->
+  <g stroke="#1565C0" stroke-width="1.5" fill="none">
+    <line x1="471" y1="170" x2="471" y2="200" stroke-dasharray="3,3" />
+    <line x1="533" y1="151" x2="533" y2="200" stroke-dasharray="3,3" />
+    <line x1="471" y1="194" x2="533" y2="194" />
+    <polygon points="471,194 479,190 479,198" fill="#1565C0" stroke="none" />
+    <polygon points="533,194 525,190 525,198" fill="#1565C0" stroke="none" />
+  </g>
+  <text x="502" y="215" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="600" fill="#1565C0">L</text>
+  <text x="450" y="300" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="600" fill="#1F2937">Horizontal pusher</text>
+
+  <!-- ============ Panel 3: Stopper ============ -->
+  <!-- Roller conveyor line -->
+  <line x1="635" y1="165" x2="865" y2="165" stroke="#9CA3AF" stroke-width="2.5" />
+  <g fill="#9CA3AF" stroke="none">
+    <circle cx="655" cy="165" r="5" />
+    <circle cx="685" cy="165" r="5" />
+    <circle cx="715" cy="165" r="5" />
+    <circle cx="745" cy="165" r="5" />
+    <circle cx="815" cy="165" r="5" />
+    <circle cx="845" cy="165" r="5" />
+  </g>
+  <!-- Workpiece approaching, stopped short of the cylinder rod -->
+  <rect x="780" y="130" width="44" height="34" fill="#4B5563" stroke="none" />
+  <g stroke="#4B5563" stroke-width="2" fill="none">
+    <line x1="855" y1="140" x2="830" y2="140" />
+    <polygon points="823,140 833,135 833,145" fill="#4B5563" stroke="none" />
+  </g>
+  <!-- Stopper cylinder body, rod extended up into the workpiece's path -->
+  <g stroke="#1F2937" stroke-width="2.5" fill="none">
+    <rect x="748" y="185" width="24" height="55" fill="#F3F4F6" />
+    <line x1="760" y1="185" x2="760" y2="148" />
+  </g>
+  <circle cx="760" cy="145" r="6" fill="#1F2937" stroke="none" />
+  <text x="750" y="300" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="600" fill="#1F2937">Stopper</text>
+
+  <!-- Shared caption -->
+  <text x="450" y="325" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#4B5563">L = distance from plate to load centre of gravity</text>
+</svg>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { EllipsisVertical, Link2Off } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -387,17 +387,37 @@ export function LinkedFieldControl({
               : "Removing this link will not affect any other module."}
           </p>
           <div className="flex items-center gap-2">
-            <form action={formAction}>
-              <input type="hidden" name="linkId" value={resolved.link.id} />
-              <Button
-                type="submit"
-                size="sm"
-                variant="destructive"
-                disabled={isPending}
-              >
-                {isPending ? "Removing…" : "Confirm removal"}
-              </Button>
-            </form>
+            {/* Not a nested <form>: this control already renders inside
+                ModuleInputWorkspace's single outer Save/Run form (module
+                workspace save/run redesign, 2026-08-27), and HTML forbids a
+                <form> descendant of another <form> -- a browser's parser
+                would discard this inner <form> tag while parsing the
+                server-rendered markup, reparenting "Confirm removal" onto
+                the outer form (submitting Save instead of removing the
+                link) before hydration ever runs. useActionState's dispatch
+                is directly callable with a FormData payload, but React only
+                wraps it in a transition automatically when it's invoked
+                through real form submission (a <form action> or a button's
+                formAction prop) -- calling it from a plain onClick must be
+                wrapped in startTransition explicitly, or isPending never
+                updates correctly and the pending call can still be in
+                flight (a state update outside any test's own `act` scope)
+                when the next test starts rendering. */}
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              disabled={isPending}
+              onClick={() => {
+                const data = new FormData();
+                data.set("linkId", resolved.link.id);
+                startTransition(() => {
+                  formAction(data);
+                });
+              }}
+            >
+              {isPending ? "Removing…" : "Confirm removal"}
+            </Button>
             <Button
               type="button"
               size="sm"

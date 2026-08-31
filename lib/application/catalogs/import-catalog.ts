@@ -127,6 +127,17 @@ export type ImportCatalogResult =
   | { readonly ok: false; readonly error: ImportCatalogError };
 
 /**
+ * Prisma's 5000ms default interactive-transaction timeout, applied to a
+ * multi-hundred-row seed doing two round trips per row (find, then create),
+ * is far too tight over this environment's corporate-proxied connection to
+ * Neon (context/progress-tracker.md "Environment notes" — the same latency
+ * DB-gated tests work around with a longer `--testTimeout`); confirmed
+ * empirically against the 371-row MGP guided-cylinder seed, the largest
+ * catalog import today, at roughly 80ms/round-trip (~60s of real work).
+ */
+const TRANSACTION_OPTIONS = { timeout: 120_000 };
+
+/**
  * Parses a manufacturer catalog CSV against `mapping` and records every valid
  * row as a `ManufacturerPartRevision`, idempotently: re-running the identical
  * import is a no-op, while a row whose content differs from the revision
@@ -348,7 +359,7 @@ export async function importCatalog(
         persistedCount: persisted,
         conflictCount: conflicts,
       };
-    });
+    }, TRANSACTION_OPTIONS);
 
   return {
     ok: true,

@@ -10,6 +10,7 @@ import { assignComponentAction } from "@/app/(workspace)/workspace/actions";
 import { IDLE_ACTION_STATE } from "@/app/(workspace)/workspace/action-state";
 import type {
   CandidatePartView,
+  CatalogMatchingView,
   ComponentAssignmentPanelView,
   ComponentAssignmentView,
   RankedCandidateView,
@@ -18,6 +19,14 @@ import type {
 
 export interface ComponentAssignmentPanelProps {
   readonly view: ComponentAssignmentPanelView;
+  /**
+   * Catalog candidates matched against the live, unsaved preview from a Run
+   * click in the sibling `ModuleInputWorkspace` (lifted via `WorkspaceShell`,
+   * same wiring `ModuleResultPanel` already uses for its own `preview` prop).
+   * `null` when there is none showing, in which case the panel renders
+   * `view`'s own persisted-run matching unchanged.
+   */
+  readonly preview: CatalogMatchingView | null;
 }
 
 const CONTROL_CLASS =
@@ -88,11 +97,11 @@ function PartIdentity({ part }: { readonly part: CandidatePartView }) {
 
 /** Required specification summary, shown first (ui-context.md "Catalog and Assignment UI"). */
 function RequiredSpecPanel({
-  view,
+  requiredSpec,
 }: {
-  readonly view: ComponentAssignmentPanelView;
+  readonly requiredSpec: ComponentAssignmentPanelView["requiredSpec"];
 }) {
-  if (view.requiredSpec.length === 0) {
+  if (requiredSpec.length === 0) {
     return (
       <p className="text-[13px] text-text-muted">
         No required specification has been calculated for this module.
@@ -115,7 +124,7 @@ function RequiredSpecPanel({
         </tr>
       </thead>
       <tbody>
-        {view.requiredSpec.map((entry) => (
+        {requiredSpec.map((entry) => (
           <tr
             key={entry.key}
             className="border-b border-border-default last:border-0"
@@ -140,11 +149,13 @@ function CandidateTable({
   moduleInstanceId,
   configurationId,
   calculationRunId,
+  blockedReason,
 }: {
   readonly candidates: readonly RankedCandidateView[];
   readonly moduleInstanceId: string;
   readonly configurationId: string;
   readonly calculationRunId: string | null;
+  readonly blockedReason: string;
 }) {
   if (candidates.length === 0) {
     return (
@@ -172,6 +183,7 @@ function CandidateTable({
               configurationId={configurationId}
               calculationRunId={calculationRunId}
               manufacturerPartRevisionId={candidate.part.id}
+              blockedReason={blockedReason}
             />
           </div>
           {candidate.rankingReasons.length > 0 ? (
@@ -242,11 +254,13 @@ function AssignPartForm({
   configurationId,
   calculationRunId,
   manufacturerPartRevisionId,
+  blockedReason,
 }: {
   readonly moduleInstanceId: string;
   readonly configurationId: string;
   readonly calculationRunId: string | null;
   readonly manufacturerPartRevisionId: string;
+  readonly blockedReason: string;
 }) {
   const [state, formAction, isPending] = useActionState(
     assignComponentAction,
@@ -291,7 +305,7 @@ function AssignPartForm({
       </div>
       {blocked ? (
         <p className="max-w-xs text-right text-[11px] text-text-muted">
-          Run this module first — a calculated component needs a supporting run.
+          {blockedReason}
         </p>
       ) : null}
       {state.status === "error" ? (
@@ -312,10 +326,12 @@ function ManualPartForm({
   moduleInstanceId,
   configurationId,
   calculationRunId,
+  blockedReason,
 }: {
   readonly moduleInstanceId: string;
   readonly configurationId: string;
   readonly calculationRunId: string | null;
+  readonly blockedReason: string;
 }) {
   const [state, formAction, isPending] = useActionState(
     assignComponentAction,
@@ -385,10 +401,7 @@ function ManualPartForm({
           {isPending ? "Assigning…" : "Assign manual part"}
         </Button>
         {blocked ? (
-          <p className="text-[12px] text-text-muted">
-            Run this module first — a calculated component needs a supporting
-            run.
-          </p>
+          <p className="text-[12px] text-text-muted">{blockedReason}</p>
         ) : null}
       </div>
       {state.status === "error" ? (
@@ -493,18 +506,37 @@ function AssignmentList({
  * The catalog matching and assignment panel (Unit 3.6,
  * `implementation-map.md`: "Required-spec panel", "Filtered candidate
  * table", "Rejection reasons", "Ranking explanations", "Datasheet/source
- * link", "Assign and manual-part actions"). Renders entirely from
- * `loadComponentAssignmentView`'s already-described view — no catalog
- * filtering, ranking, or engineering calculation happens here.
+ * link", "Assign and manual-part actions"). Renders `loadComponentAssignmentView`'s
+ * already-described `view` — no catalog filtering, ranking, or engineering
+ * calculation happens here — merged with `preview` (a live, unpersisted
+ * Run's own matching, lifted from the sibling `ModuleInputWorkspace` exactly
+ * as `ModuleResultPanel` already lifts its own `preview` prop) when one is
+ * showing, so a suggested candidate appears right after Run, not only after
+ * Save.
  *
- * When `matchingAvailable` is `false` (today: every module, since none
- * declares a `catalogAdapter` — see the read model's header for the standing
- * Milestone 4 deferral), the candidate tables are replaced by an honest
- * notice stating why, and the manual/custom part path stays fully usable.
+ * When `matchingAvailable` is `false` (module declares no `catalogAdapter`,
+ * or its component type has no `MatchCriterion` mapping yet — see the read
+ * model's header for the standing Milestone 4 deferral), the candidate
+ * tables are replaced by an honest notice stating why, and the manual/custom
+ * part path stays fully usable.
  */
 export function ComponentAssignmentPanel({
   view,
+  preview,
 }: ComponentAssignmentPanelProps) {
+  const active = preview ?? view;
+  // Assigning a real part needs a real, saved `CalculationRun` behind it
+  // (`AssignPartForm`'s own TSDoc) — a live preview's candidates are shown
+  // for the engineer's judgment, but assigning one from unsaved inputs would
+  // record a supporting run that doesn't actually match what's on screen.
+  // Save first, exactly as this same module's Result panel already asks for
+  // ("Preview — not saved. Click Save to keep this result.").
+  const calculationRunId = preview !== null ? null : view.latestRunId;
+  const blockedReason =
+    preview !== null
+      ? "Save this module first — assigning a previewed candidate needs a saved, supporting run."
+      : "Run this module first — a calculated component needs a supporting run.";
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-6 pb-6">
       <header className="flex items-center gap-2 border-b border-border-default pb-3">
@@ -515,30 +547,47 @@ export function ComponentAssignmentPanel({
         <h1 className="text-[16px] font-semibold text-text-primary">
           Component assignment
         </h1>
-        {view.componentType !== null ? (
+        {active.componentType !== null ? (
           <span className="ml-auto shrink-0 rounded-md border border-border-default px-1.5 py-0.5 font-mono text-[11px] text-text-muted">
-            {view.componentType}
+            {active.componentType}
           </span>
         ) : null}
       </header>
 
+      {preview !== null ? (
+        <div
+          className="flex items-center gap-2 rounded-md border px-3 py-2 text-[13px]"
+          style={{
+            borderColor: "var(--state-neutral)",
+            color: "var(--state-neutral)",
+          }}
+        >
+          <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
+          <span>
+            Preview — from the unsaved Run result above. Click Save to match
+            against a real, persisted run.
+          </span>
+        </div>
+      ) : null}
+
       <PanelSection title="Required specification">
-        <RequiredSpecPanel view={view} />
+        <RequiredSpecPanel requiredSpec={active.requiredSpec} />
       </PanelSection>
 
       <PanelSection title="Candidate parts">
-        {view.matchingAvailable ? (
+        {active.matchingAvailable ? (
           <>
             <CandidateTable
-              candidates={view.accepted}
+              candidates={active.accepted}
               moduleInstanceId={view.moduleInstance.id}
               configurationId={view.moduleInstance.configurationId}
-              calculationRunId={view.latestRunId}
+              calculationRunId={calculationRunId}
+              blockedReason={blockedReason}
             />
-            <RejectedTable candidates={view.rejected} />
+            <RejectedTable candidates={active.rejected} />
           </>
         ) : (
-          <InfoNotice>{view.matchingUnavailableReason}</InfoNotice>
+          <InfoNotice>{active.matchingUnavailableReason}</InfoNotice>
         )}
       </PanelSection>
 
@@ -546,7 +595,8 @@ export function ComponentAssignmentPanel({
         <ManualPartForm
           moduleInstanceId={view.moduleInstance.id}
           configurationId={view.moduleInstance.configurationId}
-          calculationRunId={view.latestRunId}
+          calculationRunId={calculationRunId}
+          blockedReason={blockedReason}
         />
       </PanelSection>
 

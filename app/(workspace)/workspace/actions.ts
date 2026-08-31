@@ -47,15 +47,17 @@ import {
   asRequirementId,
   asUserId,
   asWorkflowInstanceId,
+  resolveModuleInputs,
   type ParameterNodeKind,
 } from "@/lib/db";
-import { type EngineeringValue } from "@/lib/engine";
+import { engineeringValuesClose, type EngineeringValue } from "@/lib/engine";
 import type { ActionState, ModulePreviewActionState } from "./action-state";
 import {
   isSkippableBlankField,
   parseLoadCase,
   parseSubmittedField,
   submittedPortKeys,
+  type SubmittedFieldParseResult,
 } from "./parse-submitted-field";
 
 function fieldValue(formData: FormData, key: string): string {
@@ -269,11 +271,24 @@ export async function previewDeleteModuleInstanceImpactAction(
  * `submittedPortKeys` enumerates exactly the ports the client rendered an
  * editable control for (`fields.<portKey>.valueKind`) — a linked, disabled,
  * or unsupported port never appears there, so nothing extra needs skipping
- * here. Loops unconditionally (`setParameterValue`'s own no-op guard absorbs
- * a resubmitted, unchanged value) rather than tracking per-field dirty
- * state. Two sequential existing calls (`setParameterValue`,
- * `executeModuleInstance`), not one new cross-field transaction — see the
- * design doc's "Non-goals".
+ * here.
+ *
+ * Every submitted field's *currently resolved* source/value is looked up
+ * first (`resolveModuleInputs`, the same resolver `previewModuleComputation`
+ * and `executeModuleInstance` already use) so a workflow-provided field the
+ * user never actually touched can be recognized and skipped, rather than
+ * unconditionally written as `source: "manual"`. Before this check existed,
+ * a single Save on a guided-workflow module — even with no field edited —
+ * silently reclassified every workflow-provided value as manual (their
+ * submitted value always equals the resolved one, but `source: "manual"`
+ * never equals the stored `source: "workflow"`, so `setParameterValue`'s own
+ * no-op guard, which compares both source and value, never actually treated
+ * it as a no-op), severing the workflow's own provenance and marking every
+ * downstream run and component assignment stale. A field whose submitted
+ * value genuinely differs from what's currently resolved is still written as
+ * `source: "manual"` — a real, intentional override — exactly as before.
+ * Two sequential existing calls (`setParameterValue`, `executeModuleInstance`),
+ * not one new cross-field transaction — see the design doc's "Non-goals".
  */
 export async function saveModuleInputsAction(
   _prevState: ActionState,
@@ -288,23 +303,51 @@ export async function saveModuleInputsAction(
     fieldValue(formData, "moduleInstanceId"),
   );
 
-  for (const portKey of submittedPortKeys(formData)) {
-    if (isSkippableBlankField(formData, portKey)) {
-      continue;
-    }
+  const portKeys = submittedPortKeys(formData).filter(
+    (portKey) => !isSkippableBlankField(formData, portKey),
+  );
+  const parsedFields: Extract<SubmittedFieldParseResult, { ok: true }>[] = [];
+  for (const portKey of portKeys) {
     const parsed = parseSubmittedField(formData, portKey);
     if (!parsed.ok) {
       return { status: "error", message: parsed.message };
+    }
+    parsedFields.push(parsed);
+  }
+
+  const resolved = await resolveModuleInputs(
+    moduleInstanceId,
+    ownerId,
+    parsedFields.map((field) => ({
+      parameterId: field.parameterId,
+      ...(field.loadCase !== undefined ? { loadCase: field.loadCase } : {}),
+    })),
+  );
+  if (resolved === null) {
+    return {
+      status: "error",
+      message: "Module instance not found or not owned by this user.",
+    };
+  }
+
+  for (let i = 0; i < parsedFields.length; i++) {
+    const field = parsedFields[i];
+    const current = resolved[i].resolved;
+    if (
+      current.source === "workflow" &&
+      engineeringValuesClose(current.value, field.value)
+    ) {
+      continue;
     }
     const result = await setParameterValue(
       {
         configurationId,
         moduleInstanceId,
         nodeKind: "module_input",
-        parameterId: parsed.parameterId,
-        ...(parsed.loadCase !== undefined ? { loadCase: parsed.loadCase } : {}),
+        parameterId: field.parameterId,
+        ...(field.loadCase !== undefined ? { loadCase: field.loadCase } : {}),
         source: "manual",
-        value: parsed.value,
+        value: field.value,
       },
       ownerId,
     );

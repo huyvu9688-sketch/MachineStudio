@@ -21,6 +21,7 @@ import mod_dual_rod_cylinder_sizing_0_1_0 from "./dual-rod-cylinder-sizing/0.1.0
 import mod_example_relay_0_1_0 from "./example-relay/0.1.0";
 import mod_example_scaffold_0_1_0 from "./example-scaffold/0.1.0";
 import mod_guided_cylinder_sizing_0_1_0 from "./guided-cylinder-sizing/0.1.0";
+import mod_guided_cylinder_sizing_0_2_0 from "./guided-cylinder-sizing/0.2.0";
 import mod_index_table_motor_sizing_0_1_0 from "./index-table-motor-sizing/0.1.0";
 import mod_index_table_motor_sizing_0_2_0 from "./index-table-motor-sizing/0.2.0";
 import mod_index_table_motor_sizing_0_2_1 from "./index-table-motor-sizing/0.2.1";
@@ -53,6 +54,7 @@ export const MODULE_REGISTRY: Readonly<Record<string, ModulePackage>> = {
   "example-relay@0.1.0": mod_example_relay_0_1_0,
   "example-scaffold@0.1.0": mod_example_scaffold_0_1_0,
   "guided-cylinder-sizing@0.1.0": mod_guided_cylinder_sizing_0_1_0,
+  "guided-cylinder-sizing@0.2.0": mod_guided_cylinder_sizing_0_2_0,
   "index-table-motor-sizing@0.1.0": mod_index_table_motor_sizing_0_1_0,
   "index-table-motor-sizing@0.2.0": mod_index_table_motor_sizing_0_2_0,
   "index-table-motor-sizing@0.2.1": mod_index_table_motor_sizing_0_2_1,

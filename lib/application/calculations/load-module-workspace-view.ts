@@ -44,6 +44,7 @@ import "server-only";
 import {
   getParameter,
   type CheckStatus,
+  type EngineeringValue,
   type LoadCaseCategory,
 } from "@/lib/engine";
 import { getModulePackage } from "@/lib/modules";
@@ -73,10 +74,15 @@ import { resolveFieldDisabled } from "./resolve-field-disabled";
 import {
   resolveModuleUiCallouts,
   type ModuleWorkspaceCalloutView,
+  type ModuleWorkspaceCalloutCaseSelectorView,
 } from "./resolve-module-ui-callouts";
 
 export { describeField };
-export type { ModuleInputFieldDescriptor };
+export type {
+  ModuleInputFieldDescriptor,
+  ModuleWorkspaceCalloutView,
+  ModuleWorkspaceCalloutCaseSelectorView,
+};
 
 /** One input field, fully described for the generic renderer — no engine imports needed downstream. */
 export interface ModuleInputFieldView {
@@ -108,6 +114,20 @@ export interface ModuleInputFieldView {
    * case — most parameters have no registry-level constant).
    */
   readonly hasBuiltInDefault?: boolean;
+  /**
+   * The registry's own constant value when `hasBuiltInDefault` is true
+   * (e.g. standard gravity, 9.80665 m/s^2) — `undefined` whenever
+   * `hasBuiltInDefault` is false/absent. The generic renderer pre-fills a
+   * `resolved.source === "default"` field's control with this value instead
+   * of leaving it blank: `resolved` itself never carries a value for the
+   * `"default"` source (`ResolvedInputSource`, lib/db/repositories/
+   * graph-types.ts), since nothing was actually authored — only the engine
+   * SDK applies the constant, at compute time. Before this field existed,
+   * the input rendered blank while still carrying HTML `required`, which the
+   * browser then silently refused to submit, even though the "Default"
+   * badge and the enabled Run button both told the user the field was fine.
+   */
+  readonly builtInDefaultValue?: EngineeringValue;
   /**
    * Ranked link suggestions for this port (Unit 3.4), nearest scope first.
    * Always `[]` when `resolved.source === "linked"` — a field with a
@@ -332,6 +352,10 @@ export async function loadModuleWorkspaceView(
         field: describeField(definition.valueType, definition),
         resolved,
         hasBuiltInDefault: definition.defaultPolicy.kind === "constant",
+        builtInDefaultValue:
+          definition.defaultPolicy.kind === "constant"
+            ? definition.defaultPolicy.value
+            : undefined,
         suggestions,
         linkRemovalImpact:
           resolved.source === "linked"

@@ -239,8 +239,15 @@ export type _ModuleSdkSchemaParity = [
     MutuallyAssignable<ModuleUiGroup, z.infer<typeof ModuleUiGroupSchema>>
   >,
   Assert<
-    MutuallyAssignable<ModuleUiCalloutCaseText, z.infer<typeof ModuleUiCalloutCaseTextSchema>>,
-    MutuallyAssignable<ModuleUiCallout, z.infer<typeof ModuleUiCalloutSchema>>,
+    MutuallyAssignable<
+      ModuleUiCalloutCaseText,
+      z.infer<typeof ModuleUiCalloutCaseTextSchema>
+    >
+  >,
+  Assert<
+    MutuallyAssignable<ModuleUiCallout, z.infer<typeof ModuleUiCalloutSchema>>
+  >,
+  Assert<
     MutuallyAssignable<ModuleUiSchema, z.infer<typeof ModuleUiSchemaSchema>>
   >,
   Assert<

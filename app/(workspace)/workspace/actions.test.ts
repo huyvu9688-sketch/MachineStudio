@@ -40,6 +40,7 @@ const {
   mockStartWorkflowInstance,
   mockDeleteAccount,
   mockRedirect,
+  mockResolveModuleInputs,
 } = vi.hoisted(() => ({
   mockAuthProtect: vi.fn(),
   mockSetParameterValue: vi.fn(),
@@ -47,6 +48,7 @@ const {
   mockStartWorkflowInstance: vi.fn(),
   mockDeleteAccount: vi.fn(),
   mockRedirect: vi.fn(),
+  mockResolveModuleInputs: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({
@@ -81,6 +83,7 @@ vi.mock("@/lib/db", () => ({
   asRequirementId: (id: string) => id,
   asUserId: (id: string) => id,
   asWorkflowInstanceId: (id: string) => id,
+  resolveModuleInputs: mockResolveModuleInputs,
 }));
 
 // saveModuleInputsAction, startWorkflowInstanceAction, and
@@ -127,6 +130,22 @@ describe("saveModuleInputsAction: vector_quantity branch", () => {
       ok: true,
       run: { id: "run-1", status: "pass" },
     });
+    mockResolveModuleInputs.mockReset();
+    // Default: every submitted port currently resolves to a "manual" source
+    // (never "workflow"), so the F-03 skip check below never triggers and
+    // every existing test's "every submitted field gets written" expectation
+    // holds unchanged. Length must match the requested ports array so
+    // saveModuleInputsAction's index-aligned lookup doesn't read undefined.
+    mockResolveModuleInputs.mockImplementation(
+      (
+        _moduleInstanceId: string,
+        _ownerId: string,
+        ports: readonly unknown[],
+      ) =>
+        Promise.resolve(
+          ports.map(() => ({ resolved: { source: "manual" as const } })),
+        ),
+    );
   });
 
   it("rejects a vector_quantity submission for a parameter whose real registry frame is not axis, without writing", async () => {
@@ -324,6 +343,89 @@ describe("saveModuleInputsAction: vector_quantity branch", () => {
       Record<string, unknown>,
     ];
     expect(input.parameterId).toBe("motion.axis.payload_mass");
+    expect(mockExecuteModuleInstance).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves a workflow-provided field's source when its submitted value is unchanged (F-03 regression)", async () => {
+    // Before this fix, saving the whole form always wrote every submitted
+    // port with source: "manual" -- so a guided-workflow module's own
+    // workflow-provided fields were silently reclassified as manual on
+    // *every* Save, even when the user never touched them, marking every
+    // downstream run and component assignment stale for no real change.
+    mockResolveModuleInputs.mockResolvedValueOnce([
+      {
+        resolved: {
+          source: "workflow",
+          value: {
+            v: SERIALIZATION_FORMAT_VERSION,
+            kind: "quantity",
+            value: 12,
+            unit: "kg",
+            // Must match parseSubmittedQuantity's own output shape exactly
+            // (it sets displayUnit to the submitted unit) --
+            // engineeringValuesClose compares displayUnit, not just
+            // magnitude, per lib/engine/values/equality.ts.
+            displayUnit: "kg",
+          },
+        },
+      },
+    ]);
+
+    const result = await saveModuleInputsAction(
+      IDLE_ACTION_STATE,
+      buildFormData({
+        configurationId: "cfg-1",
+        moduleInstanceId: "mod-1",
+        "fields.payload_mass.parameterId": "motion.axis.payload_mass",
+        "fields.payload_mass.valueKind": "quantity",
+        "fields.payload_mass.required": "true",
+        // Same value the workflow already supplied -- the field was never
+        // actually edited.
+        "fields.payload_mass.magnitude": "12",
+        "fields.payload_mass.unit": "kg",
+      }),
+    );
+
+    expect(result).toEqual({ status: "success" });
+    expect(mockSetParameterValue).not.toHaveBeenCalled();
+    expect(mockExecuteModuleInstance).toHaveBeenCalledTimes(1);
+  });
+
+  it("writes a workflow-provided field as manual when the submitted value is a genuine override (F-03 regression)", async () => {
+    mockResolveModuleInputs.mockResolvedValueOnce([
+      {
+        resolved: {
+          source: "workflow",
+          value: {
+            v: SERIALIZATION_FORMAT_VERSION,
+            kind: "quantity",
+            value: 12,
+            unit: "kg",
+          },
+        },
+      },
+    ]);
+
+    const result = await saveModuleInputsAction(
+      IDLE_ACTION_STATE,
+      buildFormData({
+        configurationId: "cfg-1",
+        moduleInstanceId: "mod-1",
+        "fields.payload_mass.parameterId": "motion.axis.payload_mass",
+        "fields.payload_mass.valueKind": "quantity",
+        "fields.payload_mass.required": "true",
+        // A genuinely different value -- an intentional override.
+        "fields.payload_mass.magnitude": "20",
+        "fields.payload_mass.unit": "kg",
+      }),
+    );
+
+    expect(result).toEqual({ status: "success" });
+    expect(mockSetParameterValue).toHaveBeenCalledTimes(1);
+    const [input] = mockSetParameterValue.mock.calls[0] as [
+      Record<string, unknown>,
+    ];
+    expect(input.source).toBe("manual");
     expect(mockExecuteModuleInstance).toHaveBeenCalledTimes(1);
   });
 });

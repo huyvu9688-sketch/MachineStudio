@@ -189,7 +189,10 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
                 <ModuleResultPanel view={props.moduleResult} preview={preview} />
               ) : null}
               {props.componentAssignment !== null ? (
-                <ComponentAssignmentPanel view={props.componentAssignment} />
+                <ComponentAssignmentPanel
+                  view={props.componentAssignment}
+                  preview={preview?.componentAssignment ?? null}
+                />
               ) : null}
             </div>
           ) : props.status === "loaded" && props.workflowInstance !== null ? (

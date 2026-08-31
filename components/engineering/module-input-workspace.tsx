@@ -1,6 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState } from "react";
+import {
+  createContext,
+  useActionState,
+  useContext,
+  useEffect,
+  useId,
+  useState,
+} from "react";
 import {
   Boxes,
   CircleAlert,
@@ -33,6 +40,7 @@ import type {
   ModuleInputFieldView,
   ModuleInputGroupView,
   ModulePreviewView,
+  ModuleWorkspaceCalloutView,
   ModuleWorkspaceView,
 } from "@/lib/application";
 
@@ -51,6 +59,29 @@ export interface ModuleInputWorkspaceProps {
 
 const CONTROL_CLASS =
   "h-9 rounded-md border border-border-default bg-bg-surface px-2.5 text-[13px] text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary";
+
+/**
+ * Lets a callout illustration's clickable case regions (`CalloutCard`) set an
+ * enum field's value directly, without threading two extra props through
+ * every layer between `ModuleInputWorkspace` and the one `FieldControl`
+ * branch that cares (`FieldGroup` → `ModuleInputFieldRow` → `FieldControl`).
+ * A click stores its portKey/value pair here; `FieldControl`'s enum branch
+ * reads it to override the select's otherwise-uncontrolled default value.
+ */
+interface CaseOverrideContextValue {
+  readonly overrides: Readonly<Record<string, string>>;
+  readonly setOverride: (portKey: string, value: string) => void;
+}
+const CaseOverrideContext = createContext<CaseOverrideContextValue>({
+  overrides: {},
+  setOverride: () => {},
+});
+
+/** "vertical_lifter" -> "Vertical lifter", matching the SVG panel's own label. */
+function formatCaseLabel(value: string): string {
+  const words = value.split("_").join(" ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 /**
  * axis.v1's fixed 3-component order and physical meaning
@@ -141,13 +172,31 @@ export function ModuleInputWorkspace({
 
   const [complete, setComplete] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
-      allFields.map((field) => [field.portKey, isFieldInitiallyComplete(field)]),
+      allFields.map((field) => [
+        field.portKey,
+        isFieldInitiallyComplete(field),
+      ]),
     ),
   );
   const handleCompletenessChange = (portKey: string, isComplete: boolean) => {
     setComplete((prev) =>
       prev[portKey] === isComplete ? prev : { ...prev, [portKey]: isComplete },
     );
+  };
+
+  // Case selected by clicking a callout illustration's region, keyed by the
+  // enum port it drives — see `CaseOverrideContext` above.
+  const [caseOverrides, setCaseOverrides] = useState<Record<string, string>>(
+    {},
+  );
+  const caseOverrideContextValue: CaseOverrideContextValue = {
+    overrides: caseOverrides,
+    setOverride: (portKey, value) => {
+      setCaseOverrides((prev) =>
+        prev[portKey] === value ? prev : { ...prev, [portKey]: value },
+      );
+      handleCompletenessChange(portKey, true);
+    },
   };
 
   const [saveState, saveFormAction, isSaving] = useActionState(
@@ -186,7 +235,8 @@ export function ModuleInputWorkspace({
       field.resolved.source !== "linked" &&
       !(complete[field.portKey] ?? false),
   );
-  const runDisabled = missingRequiredFields.length > 0 || isSaving || isPreviewing;
+  const runDisabled =
+    missingRequiredFields.length > 0 || isSaving || isPreviewing;
   const runTitle =
     missingRequiredFields.length > 0
       ? `Missing required input${missingRequiredFields.length > 1 ? "s" : ""}: ${missingRequiredFields.map((field) => field.label).join(", ")}`
@@ -260,26 +310,12 @@ export function ModuleInputWorkspace({
       {(view.callouts ?? [])
         .filter((callout) => callout.imagePath.startsWith("/module-guides/"))
         .map((callout) => (
-          <figure
+          <CalloutCard
             key={`${callout.title}:${callout.imagePath}`}
-            className="overflow-hidden rounded-lg border border-border-default bg-bg-surface"
-          >
-            <img
-              src={callout.imagePath}
-              alt={callout.alt}
-              className="h-auto w-full bg-bg-muted"
-            />
-            <figcaption className="flex flex-col gap-1 border-t border-border-default px-4 py-3">
-              <span className="text-[13px] font-semibold text-text-primary">
-                {callout.title}
-              </span>
-              {callout.text === null ? null : (
-                <span className="text-[12px] leading-5 text-text-muted">
-                  {callout.text}
-                </span>
-              )}
-            </figcaption>
-          </figure>
+            callout={callout}
+            overrides={caseOverrides}
+            setOverride={caseOverrideContextValue.setOverride}
+          />
         ))}
 
       {runTitle !== undefined ? (
@@ -315,34 +351,112 @@ export function ModuleInputWorkspace({
         <p className="text-[13px] text-text-muted">
           This module declares no input fields.
         </p>
-      ) : isBentoLayout ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:grid-rows-[auto_auto_auto]">
-          {view.groups.map((group) => (
-            <FieldGroup
-              key={group.id}
-              group={group}
-              configurationId={view.moduleInstance.configurationId}
-              moduleInstanceId={view.moduleInstance.id}
-              onCompletenessChange={handleCompletenessChange}
-              className={cn("h-full", BENTO_CELL_CLASS[group.id])}
-              showMotionProfilePlaceholder={group.id === "motion"}
-            />
-          ))}
-        </div>
       ) : (
-        <div className="flex flex-col gap-6">
-          {view.groups.map((group) => (
-            <FieldGroup
-              key={group.id}
-              group={group}
-              configurationId={view.moduleInstance.configurationId}
-              moduleInstanceId={view.moduleInstance.id}
-              onCompletenessChange={handleCompletenessChange}
-            />
-          ))}
-        </div>
+        <CaseOverrideContext.Provider value={caseOverrideContextValue}>
+          {isBentoLayout ? (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:grid-rows-[auto_auto_auto]">
+              {view.groups.map((group) => (
+                <FieldGroup
+                  key={group.id}
+                  group={group}
+                  configurationId={view.moduleInstance.configurationId}
+                  moduleInstanceId={view.moduleInstance.id}
+                  onCompletenessChange={handleCompletenessChange}
+                  className={cn("h-full", BENTO_CELL_CLASS[group.id])}
+                  showMotionProfilePlaceholder={group.id === "motion"}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-6">
+              {view.groups.map((group) => (
+                <FieldGroup
+                  key={group.id}
+                  group={group}
+                  configurationId={view.moduleInstance.configurationId}
+                  moduleInstanceId={view.moduleInstance.id}
+                  onCompletenessChange={handleCompletenessChange}
+                />
+              ))}
+            </div>
+          )}
+        </CaseOverrideContext.Provider>
       )}
     </form>
+  );
+}
+
+/**
+ * A module guide illustration (Task 5 of the MGP implementation plan). When
+ * the callout declares `caseSelector`, the image is divided into one equal
+ * click region per case, left to right in `cases` order — matching every
+ * current source SVG's own equal-width side-by-side panels — so a case can
+ * be chosen by clicking its diagram directly instead of only through the
+ * paired dropdown.
+ */
+function CalloutCard({
+  callout,
+  overrides,
+  setOverride,
+}: {
+  readonly callout: ModuleWorkspaceCalloutView;
+  readonly overrides: Readonly<Record<string, string>>;
+  readonly setOverride: (portKey: string, value: string) => void;
+}) {
+  const selector = callout.caseSelector;
+  const overrideValue =
+    selector === undefined ? undefined : overrides[selector.portKey];
+  const activeValue = overrideValue ?? selector?.selectedValue;
+  const activeText =
+    selector === undefined
+      ? callout.text
+      : (selector.cases.find((entry) => entry.value === activeValue)?.text ??
+        callout.text);
+
+  return (
+    <figure className="overflow-hidden rounded-lg border border-border-default bg-bg-surface">
+      <div className="relative">
+        <img
+          src={callout.imagePath}
+          alt={callout.alt}
+          className="h-auto w-full bg-bg-muted"
+        />
+        {selector === undefined ? null : (
+          <div
+            className="absolute inset-0 flex"
+            role="group"
+            aria-label={`${callout.title} — choose a case`}
+          >
+            {selector.cases.map((entry) => (
+              <button
+                key={entry.value}
+                type="button"
+                aria-pressed={entry.value === activeValue}
+                title={entry.text}
+                onClick={() => setOverride(selector.portKey, entry.value)}
+                className={cn(
+                  "flex-1 cursor-pointer border-b-4 border-transparent transition-colors hover:bg-accent-primary/10 focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent-primary",
+                  entry.value === activeValue &&
+                    "border-accent-primary bg-accent-primary/10",
+                )}
+              >
+                <span className="sr-only">{formatCaseLabel(entry.value)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <figcaption className="flex flex-col gap-1 border-t border-border-default px-4 py-3">
+        <span className="text-[13px] font-semibold text-text-primary">
+          {callout.title}
+        </span>
+        {activeText === null ? null : (
+          <span className="text-[12px] leading-5 text-text-muted">
+            {activeText}
+          </span>
+        )}
+      </figcaption>
+    </figure>
   );
 }
 
@@ -577,10 +691,26 @@ function FieldControl({
 }) {
   const descriptor = field.field;
   const resolved = field.resolved;
+  const { overrides: caseOverrides } = useContext(CaseOverrideContext);
   // "linked"/"unsupported" never reach here (handled by the caller), so
-  // `resolved` here is always "manual" | "workflow" | "default".
+  // `resolved` here is always "manual" | "workflow" | "default". A
+  // "default" source itself carries no value (`ResolvedInputSource`,
+  // lib/db/repositories/graph-types.ts — nothing was actually authored),
+  // but when the registry backs it with a real constant
+  // (`field.hasBuiltInDefault`), `field.builtInDefaultValue` carries that
+  // constant so the control pre-fills it instead of rendering blank. Before
+  // this fallback existed, a field like this rendered empty while still
+  // carrying HTML `required` (below), which silently blocked submission even
+  // though the "Default" badge and an enabled Run button both told the user
+  // the field was already satisfied.
   const currentValue =
-    resolved.source === "default" ? undefined : resolved.value;
+    resolved.source === "default" ? field.builtInDefaultValue : resolved.value;
+  // A field backed by a real registry constant is already satisfied
+  // (`isFieldInitiallyComplete` above treats it as complete regardless of
+  // what's rendered) — the HTML `required` attribute must not contradict
+  // that and block a native form submission, even if the pre-filled value
+  // above were ever unexpectedly absent.
+  const nativeRequired = field.required && !(field.hasBuiltInDefault ?? false);
 
   if (descriptor.kind === "quantity") {
     const current =
@@ -599,7 +729,7 @@ function FieldControl({
           step="any"
           name={`fields.${field.portKey}.magnitude`}
           defaultValue={defaultMagnitude}
-          required={field.required}
+          required={nativeRequired}
           disabled={disabled}
           onChange={(event) => {
             const text = event.target.value.trim();
@@ -638,10 +768,9 @@ function FieldControl({
       <div
         className="flex flex-wrap items-start gap-2"
         onChange={(event) => {
-          const inputs =
-            event.currentTarget.querySelectorAll<HTMLInputElement>(
-              "input[type='number']",
-            );
+          const inputs = event.currentTarget.querySelectorAll<HTMLInputElement>(
+            "input[type='number']",
+          );
           const allParseable =
             inputs.length === 3 &&
             Array.from(inputs).every((el) => {
@@ -663,7 +792,7 @@ function FieldControl({
               name={`fields.${field.portKey}.component-${index}`}
               defaultValue={defaultComponents?.[index]}
               aria-label={`${field.label} ${axisLabel}`}
-              required={field.required}
+              required={nativeRequired}
               disabled={disabled}
               className={cn(CONTROL_CLASS, "w-24 font-mono tabular-nums")}
             />
@@ -687,14 +816,22 @@ function FieldControl({
   }
 
   if (descriptor.kind === "enum") {
+    // A case picked by clicking a callout illustration's region
+    // (`CaseOverrideContext`) takes priority over the field's own resolved
+    // value. The select stays uncontrolled otherwise, so the override is
+    // applied by remounting it (`key`) with a new `defaultValue` rather than
+    // by driving `value` directly.
+    const override = caseOverrides[field.portKey];
     const current =
-      currentValue?.kind === "enum" ? currentValue.value : undefined;
+      override ??
+      (currentValue?.kind === "enum" ? currentValue.value : undefined);
     return (
       <select
+        key={override ?? "resolved"}
         id={inputId}
         name={`fields.${field.portKey}.option`}
         defaultValue={current ?? ""}
-        required={field.required}
+        required={nativeRequired}
         disabled={disabled}
         onChange={(event) => onCompletenessChange(event.target.value !== "")}
         className={cn(CONTROL_CLASS, "w-48")}

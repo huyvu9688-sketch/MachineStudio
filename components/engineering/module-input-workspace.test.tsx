@@ -10,11 +10,24 @@ import {
   saveModuleInputsAction,
 } from "@/app/(workspace)/workspace/actions";
 import type {
+  CatalogMatchingView,
   LinkSuggestionSourceView,
   ModuleInputFieldView,
   ModulePreviewView,
   ModuleWorkspaceView,
 } from "@/lib/application";
+
+// `ModulePreviewView.componentAssignment` isn't this file's concern — every
+// fixture here just needs a valid, "no adapter" placeholder so the type
+// checks (component-assignment-panel.test.tsx covers the real behavior).
+const noMatchingComponentAssignment: CatalogMatchingView = {
+  componentType: null,
+  requiredSpec: [],
+  matchingAvailable: false,
+  matchingUnavailableReason: "This module does not define catalog matching.",
+  accepted: [],
+  rejected: [],
+};
 
 // module-input-workspace.tsx (and the link-suggestion-panel.tsx it renders)
 // import these Server Actions directly (inline forms, unlike the dialogs) —
@@ -40,6 +53,7 @@ beforeEach(() => {
       validity: [],
       trace: null,
       sources: [],
+      componentAssignment: noMatchingComponentAssignment,
     },
   });
   vi.mocked(confirmSuggestedLinkAction).mockReset();
@@ -144,6 +158,23 @@ const enumManualField: ModuleInputFieldView = {
       value: "vertical",
     },
   },
+  suggestions: [],
+  linkRemovalImpact: null,
+};
+
+const applicationCaseUnsetField: ModuleInputFieldView = {
+  portKey: "application_case",
+  parameterId: "pneumatic_guided_mgp_sizing.application_case",
+  label: "Application case",
+  help: null,
+  required: true,
+  loadCase: null,
+  field: {
+    kind: "enum",
+    enumId: "pneumatic_guided_mgp_application_case",
+    options: ["vertical_lifter", "horizontal_pusher", "stopper"],
+  },
+  resolved: { source: "default" },
   suggestions: [],
   linkRemovalImpact: null,
 };
@@ -298,19 +329,106 @@ function view(fields: readonly ModuleInputFieldView[]): ModuleWorkspaceView {
 
 describe("ModuleInputWorkspace", () => {
   it("renders an allowed module guide and its resolved case helper", () => {
-    render(<ModuleInputWorkspace view={{ ...view([enumManualField]), callouts: [{ title: "Choose the MGP selection case", imagePath: "/module-guides/mgp-selection-cases.svg", alt: "MGP lifter, pusher, and stopper selection cases", text: "Use the stopper graph." }] }} />);
-    expect(screen.getByRole("img", { name: "MGP lifter, pusher, and stopper selection cases" })).toHaveAttribute("src", "/module-guides/mgp-selection-cases.svg");
+    render(
+      <ModuleInputWorkspace
+        view={{
+          ...view([enumManualField]),
+          callouts: [
+            {
+              title: "Choose the MGP selection case",
+              imagePath: "/module-guides/mgp-selection-cases.svg",
+              alt: "MGP lifter, pusher, and stopper selection cases",
+              text: "Use the stopper graph.",
+            },
+          ],
+        }}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
+    expect(
+      screen.getByRole("img", {
+        name: "MGP lifter, pusher, and stopper selection cases",
+      }),
+    ).toHaveAttribute("src", "/module-guides/mgp-selection-cases.svg");
     expect(screen.getByText("Use the stopper graph.")).toBeInTheDocument();
   });
 
   it("does not render an external callout image", () => {
-    render(<ModuleInputWorkspace view={{ ...view([quantityDefaultField]), callouts: [{ title: "Unsafe guide", imagePath: "https://example.test/guide.svg", alt: "External guide", text: null }] }} />);
+    render(
+      <ModuleInputWorkspace
+        view={{
+          ...view([quantityDefaultField]),
+          callouts: [
+            {
+              title: "Unsafe guide",
+              imagePath: "https://example.test/guide.svg",
+              alt: "External guide",
+              text: null,
+            },
+          ],
+        }}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
     expect(screen.queryByRole("img", { name: "External guide" })).toBeNull();
     expect(screen.queryByText("Unsafe guide")).toBeNull();
   });
 
+  it("selects an application case by clicking its region in the callout illustration, instead of requiring the paired dropdown", async () => {
+    const user = userEvent.setup();
+    render(
+      <ModuleInputWorkspace
+        view={{
+          ...view([applicationCaseUnsetField]),
+          callouts: [
+            {
+              title: "MGP selection cases",
+              imagePath: "/module-guides/mgp-selection-cases.svg",
+              alt: "Vertical lifter, horizontal pusher, and stopper MGP application diagrams",
+              text: null,
+              caseSelector: {
+                portKey: "application_case",
+                selectedValue: undefined,
+                cases: [
+                  {
+                    value: "vertical_lifter",
+                    text: "Vertical lifter guidance.",
+                  },
+                  {
+                    value: "horizontal_pusher",
+                    text: "Horizontal pusher guidance.",
+                  },
+                  { value: "stopper", text: "Stopper guidance." },
+                ],
+              },
+            },
+          ],
+        }}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Horizontal pusher" }));
+
+    expect(screen.getByLabelText("Application case")).toHaveValue(
+      "horizontal_pusher",
+    );
+    expect(
+      screen.getByText("Horizontal pusher guidance."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run" })).not.toBeDisabled();
+    expect(saveModuleInputsAction).not.toHaveBeenCalled();
+  });
+
   it("does not add a guide when the module declares no callouts", () => {
-    render(<ModuleInputWorkspace view={view([quantityDefaultField])} />);
+    render(
+      <ModuleInputWorkspace
+        view={view([quantityDefaultField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
     expect(screen.queryByRole("figure")).toBeNull();
   });
 
@@ -379,6 +497,46 @@ describe("ModuleInputWorkspace", () => {
 
     expect(screen.getByText("Default")).toBeInTheDocument();
     expect(screen.queryByText("Not set")).not.toBeInTheDocument();
+  });
+
+  it("pre-fills a required field's control from its registry constant instead of rendering blank, and does not block Save/Run", async () => {
+    // Regression test: a required port resolved to "default" with a real
+    // registry constant behind it (e.g. motor_sizing.*.inertia_ratio_
+    // recommended_maximum on every Motor Sizing Tool module) used to render
+    // its control blank while still carrying HTML `required` — a fresh
+    // instance of any of those five modules could never be saved or
+    // previewed at all: the browser silently refused submission on a field
+    // the app itself reported as "Default" and Run-ready.
+    const user = userEvent.setup();
+    const inertiaRatioField: ModuleInputFieldView = {
+      ...quantityDefaultField,
+      portKey: "inertia_ratio_maximum",
+      parameterId: "motor_sizing.ball_screw.inertia_ratio_recommended_maximum",
+      label: "Inertia ratio maximum",
+      hasBuiltInDefault: true,
+      builtInDefaultValue: {
+        v: 1,
+        kind: "quantity",
+        value: 10,
+        unit: "kg",
+      },
+    };
+    render(
+      <ModuleInputWorkspace
+        view={view([inertiaRatioField])}
+        onPreviewChange={noopOnPreviewChange}
+      />,
+    );
+
+    const input = screen.getByLabelText(
+      "Inertia ratio maximum",
+    ) as HTMLInputElement;
+    expect(input).toHaveValue(10);
+    expect(input.validity.valueMissing).toBe(false);
+    expect(screen.getByRole("button", { name: "Run" })).not.toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(saveModuleInputsAction).toHaveBeenCalled();
   });
 
   it("renders a stored canonical length in its selected display unit", () => {
@@ -457,9 +615,7 @@ describe("ModuleInputWorkspace", () => {
       container.querySelector('input[name="fields.payload_mass.required"]'),
     ).toHaveValue("true");
     expect(
-      container.querySelector(
-        'input[name="fields.optional_stroke.required"]',
-      ),
+      container.querySelector('input[name="fields.optional_stroke.required"]'),
     ).toHaveValue("false");
   });
 
@@ -500,6 +656,7 @@ describe("ModuleInputWorkspace", () => {
       validity: [],
       trace: null,
       sources: [],
+      componentAssignment: noMatchingComponentAssignment,
     };
     vi.mocked(previewModuleComputationAction).mockResolvedValueOnce({
       status: "success",
@@ -618,7 +775,9 @@ describe("ModuleInputWorkspace", () => {
     );
 
     expect(
-      screen.queryByText("Use Payload mass 12 kg from Machine — Normal load case?"),
+      screen.queryByText(
+        "Use Payload mass 12 kg from Machine — Normal load case?",
+      ),
     ).not.toBeInTheDocument();
 
     await user.click(
@@ -668,7 +827,7 @@ describe("ModuleInputWorkspace", () => {
 
   it("states the downstream stale-impact count before removing a confirmed link", async () => {
     const user = userEvent.setup();
-    render(
+    const { container } = render(
       <ModuleInputWorkspace
         view={view([linkedField])}
         onPreviewChange={noopOnPreviewChange}
@@ -681,6 +840,13 @@ describe("ModuleInputWorkspace", () => {
     expect(
       screen.getByText("Removing this link will mark 2 other modules stale."),
     ).toBeInTheDocument();
+
+    // Regression check (F-04): "Confirm removal" used to render inside its
+    // own <form>, nested inside ModuleInputWorkspace's own outer Save/Run
+    // <form> -- invalid HTML a real browser's parser reparents onto the
+    // outer form before hydration, submitting Save instead of removing the
+    // link. Only the one outer form should exist in the rendered tree.
+    expect(container.querySelectorAll("form")).toHaveLength(1);
 
     await user.click(screen.getByRole("button", { name: "Confirm removal" }));
     expect(removeParameterLinkAction).toHaveBeenCalled();
@@ -834,10 +1000,7 @@ describe("ModuleInputWorkspace", () => {
     );
     expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
 
-    await user.type(
-      screen.getByLabelText("External process force Z"),
-      "30",
-    );
+    await user.type(screen.getByLabelText("External process force Z"), "30");
     expect(screen.getByRole("button", { name: "Run" })).not.toBeDisabled();
   });
 
@@ -901,7 +1064,10 @@ describe("ModuleInputWorkspace", () => {
     };
 
     render(
-      <ModuleInputWorkspace view={bentoView} onPreviewChange={noopOnPreviewChange} />,
+      <ModuleInputWorkspace
+        view={bentoView}
+        onPreviewChange={noopOnPreviewChange}
+      />,
     );
 
     expect(
