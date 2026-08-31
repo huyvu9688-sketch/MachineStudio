@@ -2675,6 +2675,18 @@ Unit 7.1 — `pneumatic-cylinder`, the first Milestone 7 (Phase 2) module.
   modules total); sealed package content hash `739621ff948938a9`. Full
   non-DB suite green (2546/2546), typecheck/lint/build clean.
 
+Unit 7.5 — `shaft-key-bolt-checks`. **Stage 1 (spec) drafted 2026-08-31,**
+picked via the Module Prioritization score pass (see "Next up" item 0).
+`context/modules/shaft-key-bolt-checks/stage-1-spec.md` — three checks
+(shaft combined-stress, key shear/bearing, bolted-joint preload/tensile/
+separation/shear), static/yield-based only in `0.1.0`, mechanism-agnostic
+inputs (not tied to one upstream module, unlike every module released so
+far). 17 new sources registered in `lib/standards/engineering-sources.ts`.
+Two real, disclosed evidence gaps: no JP-market source for the shaft-stress
+check specifically; the actual ANSI/ASME B106.1M and ASME B17.1 standard
+texts were never obtained (handbook/tertiary reproductions and B17.1's own
+scope page only). Stage 2 (parameter contract) is next.
+
 ---
 
 ## Blocked — needs evidence, not code
@@ -2769,17 +2781,25 @@ variable names.
    defect, recorded in `validation/guided-cylinder-sizing/0.2.0.md`. Full
    validation record written; DB-gated catalog-matching fixture written and
    typechecked, not run this session (no `DATABASE_URL`). `0.1.0` stays
-   released, registered, and untouched. **Next: a genuinely new Milestone 7
-   (Phase 2) module.** `context/roadmap.md` "Phase 2"
-   lists eight remaining candidates (timing belts; chain and sprocket;
-   bushings and plain bearings; cable carriers; mechanical stops and energy
-   absorption; basic shaft/key/bolted-joint checks; a tolerance and fit
-   reference module; PDF generation and improved catalog import) with no
-   priority-score pass or founder direction yet picking which goes next —
-   Units 7.1 and 7.2 were each a founder-directed exception to
-   `context/roadmap.md`'s own "Module Prioritization" scoring order (see
-   Unit 7.1's own Stage 1 spec "Status"), not a precedent that scoring is
-   skipped going forward.
+   released, registered, and untouched.
+
+   **2026-08-31: the priority-score pass across Phase 2's eight remaining
+   candidates is done** (`context/modules/shaft-key-bolt-checks/
+   stage-1-spec.md` "Why this module, next") — `shaft, key, and
+   bolted-joint checks` scores highest (40 vs. next-best 18), on workflow
+   leverage (`coupling@0.1.0` and `support-bearing@0.1.0` both already name
+   shaft compatibility as an assumed input, never checked) and low data
+   cost (standard machine-design/handbook sources, not manufacturer
+   catalogs). **Unit 7.5 (`shaft-key-bolt-checks`) Stage 1 is now drafted**
+   — three parallel source-research passes (shaft stress, key shear/bearing,
+   bolted joint) read and registered 17 new sources in `lib/standards/
+   engineering-sources.ts`; see the spec's own "Evidence Gaps" for two real,
+   disclosed gaps carried into Stage 2 (no JP-market source found for the
+   shaft-stress check specifically; the actual ANSI/ASME B106.1M and ASME
+   B17.1 standard texts were never obtained, only handbook/tertiary
+   reproductions and B17.1's own scope page). Stage 2 (parameter contract)
+   is next — six open questions listed in the spec's own "Stage 2 Entry
+   Criteria".
 1. **All five Motor Sizing Tool family mechanism modules are fully released
    (2026-08-13), and Phase 1E's own last open deliverable — the
    `AddModuleInstanceDialog` category step/mechanism picker and the

@@ -322,12 +322,18 @@ work rather than a new scored candidate.
   `pneumatic-cylinder-sizing@0.1.0` released and registered 2026-08-24
   (`validation/pneumatic-cylinder-sizing/0.1.0.md`) — the project's first
   module with a real `CatalogAdapter` wired end to end.
+- **Basic shaft, key, and bolted-joint checks — scored and picked
+  (2026-08-31), in progress.** The Module Prioritization score pass across
+  all eight remaining candidates picked this one (priority 40, next-best
+  18) — see `context/modules/shaft-key-bolt-checks/stage-1-spec.md` "Why
+  this module, next" for the full scoring table and reasoning. Stage 1
+  (engineering specification) is drafted; see
+  `context/progress-tracker.md` Unit 7.5.
 - Timing belts
 - Chain and sprocket
 - Bushings and plain bearings
 - Cable carriers
 - Mechanical stops and energy absorption
-- Basic shaft, key, and bolted-joint checks
 - Tolerance and fit reference module
 - PDF generation and improved catalog import
 

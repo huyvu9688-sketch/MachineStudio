@@ -2745,6 +2745,53 @@ annotation, pending confirmation. **What still needs a session with live
 database access:** running the DB-gated suite (including the new fixture
 test above) to confirm it actually passes, not just typechecks.
 
+## Unit 7.5 — Shaft, key, and bolted-joint checks module
+
+Picked via `context/roadmap.md`'s own Module Prioritization score pass
+across the eight remaining Phase 2 candidates (2026-08-31) — priority 40
+(usage 4 x pain 4 x leverage 5 / data cost 2), the highest of all eight,
+next-best 18. Full scoring table and reasoning:
+`context/modules/shaft-key-bolt-checks/stage-1-spec.md` "Why this module,
+next".
+
+### Stage 1 — Engineering specification
+
+**Done (2026-08-31).** `context/modules/shaft-key-bolt-checks/
+stage-1-spec.md` — proposed module ID `shaft-key-bolt-checks`. Three
+semi-independent checks: shaft combined-stress (torque + bending, static
+Tresca/von Mises, no fatigue), key shear/bearing (parallel keys only,
+JIS B 1301 / ASME B17.1 dimensioning), and bolted joint (preload from
+installation torque, tensile-capacity margin, joint-separation margin when
+the engineer supplies a stiffness ratio, and an independent shear/bearing
+path). Unlike every module released so far, this module's torque/moment
+inputs are not tied to one upstream mechanism module — the engineer
+supplies them directly or links from an upstream output (e.g.
+`screw.drive_torque`), since a shaft/key/bolt exists in nearly every
+mechanism this project models. Three parallel research passes (one per
+sub-check) read and registered 17 new sources in `lib/standards/
+engineering-sources.ts`. Two real, disclosed evidence gaps carried into
+Stage 2: no JP-market source was found for the shaft-stress check
+specifically (key and bolt each have a real JP/ISO-aligned source — Miki
+Pulley/instant.engineer, NBK America); and the actual ANSI/ASME B106.1M and
+ASME B17.1 standard texts were never obtained (every direct-access attempt
+failed or was paywalled) — only handbook/tertiary reproductions and
+B17.1's own scope-confirmation page from `asme.org` directly. A real
+semantic trap was found and recorded, not silently resolved: the shaft
+check's own shock/duty factor (`Ks`/`Km`) means two different things across
+the sources found — an empirical service-severity factor in the
+Air-Force/ASME-B106.1M tradition vs. a geometric stress-concentration
+factor in the Shigley/Reuven tradition — Stage 2 must pick one meaning, not
+blend them under one parameter name. See the spec's own "Stage 2 Entry
+Criteria" for the six open questions Stage 2 must resolve (registry
+namespace, the shock/duty-factor convention, the key bearing-stress
+convention, whether joint separation ships in `0.1.0`, whether torque
+inputs are direct-entry-only or link-capable from the start, and whether
+`0.1.0` releases without a JP shaft-stress source or waits for one).
+
+### Stage 2 — Parameter contract
+
+Not started.
+
 # Initial Two-Week Start Sequence
 
 This is the recommended exact starting order. It is not a promise of
